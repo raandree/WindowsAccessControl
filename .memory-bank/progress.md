@@ -56,6 +56,12 @@ both supported PowerShell editions within the available token privileges.
     engine, process identity pinning, NTFSSecurity-style SID conversion,
     cross-edition rights enums, and scoped automatic privileges; passed 277
     PowerShell 7 tests at 87.4 percent coverage and 15 focused 5.1 tests.
+- 2026-07-25: Added 15 local registry-key commands for descriptor, access,
+    audit, and inheritance workflows with explicit registry views, curated
+    formatting, local-only target validation, and section-scoped persistence.
+- 2026-07-25: Passed 399 PowerShell 7 tests at 86.13 percent coverage and a
+    31-test Windows PowerShell 5.1 registry/contract gate with zero failures or
+    skips; verified scratch cleanup and privilege restoration.
 
 ## Stable capabilities
 
@@ -67,11 +73,12 @@ both supported PowerShell editions within the available token privileges.
 - Reproducible Sampler build plus a two-edition Azure Pipelines test matrix.
 - Normative numbered specifications with requirement-to-test traceability and
     immutable accepted ADRs.
+- Local registry-key descriptor, access-rule, audit-rule, and inheritance
+    workflows across the default, 32-bit, and 64-bit registry views.
 
 ## Open work
 
-- Expand and rename the module to `WindowsAccessControl` for file-system,
-    registry-key, service/SCM, and process security descriptors.
+- Add service/SCM and process security descriptor command families.
 - Add class-based DSC exact-descriptor and rule-presence resources for every
     current object family.
 - Remote publication remains user-controlled.

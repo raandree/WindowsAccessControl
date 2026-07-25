@@ -1,4 +1,4 @@
-# Specification conformance for NFR-4 and ADR 0001.
+﻿# Specification conformance for NFR-4 and ADR 0001.
 BeforeAll {
     $script:repositoryRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
     $script:specRoot = Join-Path $script:repositoryRoot 'specs'
@@ -124,6 +124,8 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             'WindowsAccessControl.Owner'
             'WindowsAccessControl.EffectiveAccess'
             'WindowsAccessControl.Privilege'
+            'WindowsAccessControl.RegistryKeyAccessRule'
+            'WindowsAccessControl.RegistryKeyAuditRule'
         )
 
         foreach ($typeName in $requiredTypes) {

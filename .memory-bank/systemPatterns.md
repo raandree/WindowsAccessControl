@@ -164,3 +164,30 @@ Normative record: [ADR 0013](../specs/decisions/0013-use-bounded-parallel-target
     serialize aliases of one canonical target.
 - Rationale: Enterprise-size batches need throughput without lost updates or
     unbounded native resource use.
+
+### Decision 17: Normalize and verify registry targets before native calls
+
+Normative record: [ADR 0011](../specs/decisions/0011-limit-release-to-local-object-families.md).
+
+- Choice: Normalize provider/native hive aliases into one named-object target,
+    select registry view through `SE_REGISTRY_*`, and reject remote paths or
+    remote/unverifiable `RegistryKey` objects before using their names.
+- Rationale: Remote `RegistryKey.Name` values look local; accepting them could
+    redirect an intended remote mutation to the same path on the local host.
+
+### Decision 18: Keep ACL masks and objects explicit across editions
+
+- Choice: Assign `RawAcl` instances in direct branches so PowerShell does not
+    enumerate them into ACEs, and perform .NET `AceFlags`, `AuditFlags`, and
+    `ControlFlags` bitwise operations through integer masks before casting at
+    API boundaries.
+- Rationale: PowerShell 7 tolerates enum coercion that Windows PowerShell 5.1
+    rejects, while expression output can silently unwrap an enumerable ACL.
+
+### Decision 19: Skip semantically identical named-descriptor writes
+
+- Choice: Compare selected-section SDDL under the same privilege scope before
+    native persistence; return an absent SACL unchanged for matchless clear or
+    remove operations.
+- Rationale: Idempotent operations must not require an unnecessary privileged
+    write or turn an absent SACL into an empty present SACL.

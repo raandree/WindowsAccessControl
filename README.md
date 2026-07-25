@@ -2,9 +2,9 @@
 
 `WindowsAccessControl` is a Windows PowerShell module for pipeline-first
 management of Windows security descriptors. Its current filesystem commands
-turn common DACL, SACL, owner, inheritance, backup, and effective-access
-operations into composable commands without requiring callers to manipulate
-.NET access-control objects directly.
+and registry-key commands turn common DACL, SACL, owner, inheritance, backup,
+and effective-access operations into composable commands without requiring
+callers to manipulate .NET access-control objects directly.
 
 The module has no third-party runtime dependency. It supports Windows
 PowerShell 5.1 and PowerShell 7 on Windows.
@@ -53,6 +53,47 @@ Preview any mutation before applying it:
 Get-ChildItem -LiteralPath 'C:\Data' -Recurse |
     Clear-NTFSAccessRule -WhatIf
 ```
+
+Manage a local registry key with provider paths or `RegistryKey` pipeline
+objects:
+
+```powershell
+Add-RegistryKeyAccessRule -Path 'HKLM:\Software\Contoso' `
+    -Account 'BUILTIN\Users' `
+    -AccessRights ReadKey `
+    -AppliesTo ThisKeyAndSubkeys
+
+Get-Item -LiteralPath 'HKLM:\Software\Contoso' |
+    Get-RegistryKeyAccessRule -ExcludeInherited
+```
+
+## Registry keys
+
+Registry commands manage local keys only. `RegistryView` selects `Default`,
+`Registry32`, or `Registry64`; native remote paths and remote `RegistryKey`
+objects are rejected.
+Registry values do not have independent security descriptors, so permissions
+always apply to their containing key.
+
+Access and audit mutations preserve inherited, unknown, and unrelated ACEs.
+Exact removal consumes a path-bound rule from the matching `Get` command:
+
+```powershell
+Get-RegistryKeyAuditRule -Path 'HKLM:\Software\Contoso' `
+    -Account 'S-1-1-0' -ExcludeInherited |
+    Remove-RegistryKeyAuditRule -Confirm:$false
+```
+
+Use `Section Access`, `Audit`, or `All` when changing registry inheritance:
+
+```powershell
+Disable-RegistryKeyInheritance -Path 'HKLM:\Software\Contoso' `
+    -Section All -PreserveInherited $true
+Enable-RegistryKeyInheritance -Path 'HKLM:\Software\Contoso' -Section All
+```
+
+Registry SACL reads and writes temporarily enable `SeSecurityPrivilege` when
+it is present in the process token, then restore its original state.
 
 ## Access rules
 
@@ -227,6 +268,10 @@ the NTFS result.
 | Owner | `Get-NTFSItemOwner`, `Set-NTFSItemOwner` |
 | Inheritance | `Get-NTFSItemInheritance`, `Enable-NTFSItemInheritance`, `Disable-NTFSItemInheritance` |
 | Descriptor portability | `Get-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor` |
+| Registry descriptors | `Get-RegistryKeySecurityDescriptor`, `Set-RegistryKeySecurityDescriptor` |
+| Registry access rules | `Get-RegistryKeyAccessRule`, `Add-RegistryKeyAccessRule`, `Set-RegistryKeyAccessRule`, `Remove-RegistryKeyAccessRule`, `Clear-RegistryKeyAccessRule` |
+| Registry audit rules | `Get-RegistryKeyAuditRule`, `Add-RegistryKeyAuditRule`, `Set-RegistryKeyAuditRule`, `Remove-RegistryKeyAuditRule`, `Clear-RegistryKeyAuditRule` |
+| Registry inheritance | `Get-RegistryKeyInheritance`, `Enable-RegistryKeyInheritance`, `Disable-RegistryKeyInheritance` |
 | Diagnostics | `Resolve-WindowsIdentity`, `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
 | Privileges | `Get-WindowsPrivilege`, `Test-WindowsPrivilege`, `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege` |
 
@@ -271,6 +316,12 @@ audit inheritance, SACL backup/restore/copy, and arbitrary-owner operations.
 They run automatically when the test process contains the required privileges
 and otherwise report explicit skips. Run the test workflow from an elevated
 PowerShell process to exercise the available privileged paths.
+
+Sixteen additional live scenarios exercise registry descriptor round trips,
+access and audit rule CRUD, inheritance, view selection, pipeline input,
+local-target validation, audit-flag isolation, absent-SACL preservation, and
+`WhatIf`. The same registry scenarios pass in PowerShell 7 and Windows
+PowerShell 5.1.
 
 ## Design research
 

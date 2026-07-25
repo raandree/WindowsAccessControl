@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     preservation evidence
 - Add public registry-view, descriptor-section, service, SCM, and process
     rights enums
+- Add 15 local registry-key commands for selected security descriptors,
+    access and audit rules, inheritance control, explicit 32/64-bit views, and
+    curated access/audit rule formatting
 - Add a shared Unicode named/handle security descriptor engine with pinned
     process identity checks and caller-owned handle support
 - Allow `Resolve-WindowsIdentity` to accept native identity references, module
@@ -47,6 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     before restoring security descriptors
 - Persist only modified descriptor sections to avoid unintended SACL or owner
     changes during DACL operations
+- Reject remote `RegistryKey` objects before their local-looking names can be
+    normalized to local targets
 
 ### Fixed
 
@@ -58,3 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Treat disabling a privilege absent from the process token as a no-op
 - Add destructive-mode, `WhatIf`, malformed-backup, orphaned-SID,
     noncanonical-ACL, and section-preservation regression coverage
+- Preserve registry audit rules with opposite success/failure flags when
+    replacing a matching rule
+- Skip identical registry descriptor writes, preserve an absent SACL during a
+    matchless clear, reject audit rules with `AuditFlags None`, and normalize
+    provider-style forward-slash paths without changing native slash names

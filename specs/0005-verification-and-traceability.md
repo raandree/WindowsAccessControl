@@ -10,6 +10,7 @@ mapping, command coverage, and remaining privileged release gate for
 | --- | --- |
 | Unit descriptor | Real in-memory security objects; filesystem persistence is mocked |
 | Live NTFS | Real files/directories and descriptor reads or writes on the host NTFS volume |
+| Live registry | Disposable local keys and descriptor reads or writes in `HKCU` |
 | Token integration | Real current-process token inventory or mutation in an isolated process |
 | Privilege-gated acceptance | Real SACL or arbitrary-owner workflow, run only when its privilege exists |
 | QA | Export, help, analysis, manifest, formatting, specs, and changelog contracts |
@@ -81,9 +82,24 @@ is not reported as a successful live write.
 | `Set-NTFSItemOwner` | 1 | Live current owner | Arbitrary-owner workflow |
 | `Test-NTFSItemAcl` | 2 | Live and synthetic DACL | Not required |
 | `Test-WindowsPrivilege` | 1 | Token integration | Not required |
+| `Get-RegistryKeySecurityDescriptor` | 2 | Live registry | SACL path included in registry acceptance |
+| `Set-RegistryKeySecurityDescriptor` | 1 | Live registry | SACL path included in registry acceptance |
+| `Get-RegistryKeyAccessRule` | 1 | Live registry | Not required |
+| `Add-RegistryKeyAccessRule` | 1 | Live registry | Not required |
+| `Set-RegistryKeyAccessRule` | 1 | Live registry | Not required |
+| `Remove-RegistryKeyAccessRule` | 1 | Live registry | Not required |
+| `Clear-RegistryKeyAccessRule` | 1 | Live registry | Not required |
+| `Get-RegistryKeyAuditRule` | 1 | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Add-RegistryKeyAuditRule` | 1 | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Set-RegistryKeyAuditRule` | 2 | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Remove-RegistryKeyAuditRule` | 1 | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Clear-RegistryKeyAuditRule` | 2 | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Get-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
+| `Enable-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
+| `Disable-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
 
-The direct command total is 50 specifications across 28 exported commands.
-Cross-cutting checks add 17 Unit-level mutator `WhatIf` specifications in
+The direct command total is 68 specifications across 43 exported commands.
+Cross-cutting checks add 18 Unit-level mutator `WhatIf` specifications in
 `tests/Unit/MutatorSafety.Tests.ps1` and the QA specification contract in
 `tests/QA/Specifications.Tests.ps1`.
 
@@ -114,6 +130,19 @@ separate elevated PowerShell 7 and Windows PowerShell 5.1 processes on
 2026-07-25. Release validation must rerun the same file from a suitably
 privileged isolated process rather than treating historical evidence as a
 substitute for the current package.
+
+## Registry evidence
+
+`RegistryKeyPermissions.Tests.ps1` uses a disposable hierarchy under `HKCU`
+and removes it after the run. Sixteen live scenarios cover selected descriptor
+round trips, access and audit add/set/remove/clear, exact pipeline removal,
+access and audit inheritance, explicit registry views, provider-object input,
+native and object-based remote-target rejection, audit-flag isolation, and
+absent-SACL preservation under a matchless clear, and `WhatIf`.
+
+The registry suite and 15 exact-name command-contract tests passed with 31
+tests, zero failures, and zero skips in separate PowerShell 7 and Windows
+PowerShell 5.1 processes on 2026-07-25.
 
 ## See also
 

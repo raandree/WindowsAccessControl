@@ -58,9 +58,22 @@ Expand and rename the unpublished module to `WindowsAccessControl` on
 - Full QA with the specification contract passes 181 tests with zero failures;
     its eight conformance checks cover structure, status, requirement identity,
     traceability, exports, local links, format views, and ADR indexing.
+- The local registry-key family exports 15 descriptor, access-rule, audit-rule,
+    and inheritance commands, bringing the module to 43 exported commands.
+- Sixteen disposable `HKCU` scenarios pass with zero failures or skips in both
+    PowerShell 7 and Windows PowerShell 5.1. They cover descriptor round trips,
+    access/audit CRUD, audit-flag isolation, inheritance, registry views,
+    provider objects, remote path/object rejection, and `WhatIf`.
+- The authoritative PowerShell 7 gate passes 399 tests with zero failures or
+    skips at 86.13 percent coverage. Fifteen exact-name registry command
+    contracts also pass with the live registry suite in Windows PowerShell 5.1
+    for a 31-test focused cross-edition gate.
+- Registry operations use the shared named-descriptor engine, persist only the
+    selected sections, scope `SeSecurityPrivilege` for SACL work, reject remote
+    `RegistryKey` objects before name normalization, and restore token state.
 
 ## Next step
 
-Layer object-specific registry, service, and process commands over the shared
-engine, then add class-based DSC resources. Do not push or publish without an
-explicit request.
+Implement the local service and explicit SCM command family over the shared
+engine, then add the process family and class-based DSC resources. Do not push
+or publish without an explicit request.

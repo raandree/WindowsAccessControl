@@ -20,6 +20,7 @@ through `Get-Help` (ADR 0001).
 ### Naming and structure
 
 - Filesystem commands use approved verbs and singular `NTFS`-prefixed nouns.
+- Registry commands use approved verbs and singular `RegistryKey`-prefixed nouns.
 - Cross-domain identity and privilege commands use `Windows`-prefixed nouns.
 - Every public function uses `CmdletBinding` and declares `OutputType`.
 - Every public function has synopsis, description, parameter, example, input,
@@ -37,6 +38,9 @@ through `Get-Help` (ADR 0001).
 - `FullName` is the by-property alias for wildcard path input.
 - Query commands emit one object per rule or target so output can re-enter
   another module command.
+- Registry commands accept local provider/native paths and `RegistryKey`
+  objects. `WindowsRegistryView` selects the default, 32-bit, or 64-bit view;
+  native remote registry paths and remote `RegistryKey` objects are rejected.
 
 ### Identity input
 
@@ -71,6 +75,10 @@ Stable PowerShell type names identify module output:
 - `WindowsAccessControl.EffectiveAccess`
 - `WindowsAccessControl.AclTest`
 - `WindowsAccessControl.Privilege`
+- `WindowsAccessControl.RegistryKeyAccessRule`
+- `WindowsAccessControl.RegistryKeyAuditRule`
+- `WindowsAccessControl.RegistryKeyInheritance`
+- `WindowsAccessControl.RegistryKeySecurityDescriptor`
 
 Native .NET rule or descriptor objects remain available as properties where a
 caller needs exact Windows semantics.
@@ -145,6 +153,31 @@ The `Sections` value selects any combination of owner, group, DACL, and SACL.
 Copy, backup, and restore preserve sections outside that selection (ADR 0003).
 Restore reads the target paths from the trusted backup document and validates
 every record before the first write (ADR 0005).
+
+## Registry-key commands
+
+| Command | Pipeline input | Returns |
+| --- | --- | --- |
+| `Get-RegistryKeySecurityDescriptor` | paths, `RegistryKey` objects | `RegistryKeySecurityDescriptor` |
+| `Set-RegistryKeySecurityDescriptor` | paths, `RegistryKey` objects | none / `RegistryKeySecurityDescriptor` |
+| `Get-RegistryKeyAccessRule` | paths, `RegistryKey` objects | `RegistryKeyAccessRule` |
+| `Add-RegistryKeyAccessRule` | paths, `RegistryKey` objects | none / `RegistryKeyAccessRule` |
+| `Set-RegistryKeyAccessRule` | paths, `RegistryKey` objects | none / `RegistryKeyAccessRule` |
+| `Remove-RegistryKeyAccessRule` | path-bound `RegistryKeyAccessRule` | none / `RegistryKeyAccessRule` |
+| `Clear-RegistryKeyAccessRule` | paths, `RegistryKey` objects | none / `RegistryKeyAccessRule` |
+| `Get-RegistryKeyAuditRule` | paths, `RegistryKey` objects | `RegistryKeyAuditRule` |
+| `Add-RegistryKeyAuditRule` | paths, `RegistryKey` objects | none / `RegistryKeyAuditRule` |
+| `Set-RegistryKeyAuditRule` | paths, `RegistryKey` objects | none / `RegistryKeyAuditRule` |
+| `Remove-RegistryKeyAuditRule` | path-bound `RegistryKeyAuditRule` | none / `RegistryKeyAuditRule` |
+| `Clear-RegistryKeyAuditRule` | paths, `RegistryKey` objects | none / `RegistryKeyAuditRule` |
+| `Get-RegistryKeyInheritance` | paths, `RegistryKey` objects | `RegistryKeyInheritance` |
+| `Enable-RegistryKeyInheritance` | paths, `RegistryKey` objects | none / `RegistryKeyInheritance` |
+| `Disable-RegistryKeyInheritance` | paths, `RegistryKey` objects | none / `RegistryKeyInheritance` |
+
+Registry-rule commands expose `System.Security.AccessControl.RegistryRights`
+and preserve unknown or unrelated ACEs. Audit and audit-inheritance operations
+scope `SeSecurityPrivilege` to each read/write operation. Registry values do not
+have independent security descriptors; callers manage the containing key.
 
 ## Identity, diagnostics, and effective access
 

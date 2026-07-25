@@ -1,4 +1,4 @@
-# Cross-cutting ShouldProcess and WhatIf contract (FR-17).
+﻿# Cross-cutting ShouldProcess and WhatIf contract (FR-17).
 BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
@@ -18,6 +18,7 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
         Set-Content -LiteralPath $script:sourceFile -Value 'source'
         Set-Content -LiteralPath $script:targetFile -Value 'target'
         Mock -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence
+        Mock -ModuleName WindowsAccessControl -CommandName Set-WindowsNamedSecurityDescriptor
     }
 
     It 'Should expose WhatIf on every state-changing command' {
@@ -38,6 +39,17 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             'Restore-NTFSItemSecurityDescriptor'
             'Enable-WindowsPrivilege'
             'Disable-WindowsPrivilege'
+            'Add-RegistryKeyAccessRule'
+            'Set-RegistryKeyAccessRule'
+            'Remove-RegistryKeyAccessRule'
+            'Clear-RegistryKeyAccessRule'
+            'Add-RegistryKeyAuditRule'
+            'Set-RegistryKeyAuditRule'
+            'Remove-RegistryKeyAuditRule'
+            'Clear-RegistryKeyAuditRule'
+            'Set-RegistryKeySecurityDescriptor'
+            'Enable-RegistryKeyInheritance'
+            'Disable-RegistryKeyInheritance'
         )
 
         foreach ($commandName in $mutators) {
@@ -156,5 +168,64 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
         $wasEnabled = Test-WindowsPrivilege -Name 'SeChangeNotifyPrivilege'
         Disable-WindowsPrivilege -Name 'SeChangeNotifyPrivilege' -WhatIf
         Test-WindowsPrivilege -Name 'SeChangeNotifyPrivilege' | Should -Be $wasEnabled
+    }
+
+    It 'Should not persist registry descriptor changes under WhatIf' {
+        $path = 'HKCU:\Software\WindowsAccessControlWhatIf'
+        $sid = [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0')
+        $accessAce = [System.Security.AccessControl.CommonAce]::new(
+            [System.Security.AccessControl.AceFlags]::None,
+            [System.Security.AccessControl.AceQualifier]::AccessAllowed,
+            1,
+            $sid,
+            $false,
+            $null
+        )
+        $auditAce = [System.Security.AccessControl.CommonAce]::new(
+            [System.Security.AccessControl.AceFlags]::FailedAccess,
+            [System.Security.AccessControl.AceQualifier]::SystemAudit,
+            1,
+            $sid,
+            $false,
+            $null
+        )
+        $accessRule = [pscustomobject]@{
+            Path         = $path
+            RegistryView = 'Default'
+            NativeAce    = $accessAce
+            SID          = $sid.Value
+        }
+        $accessRule.PSObject.TypeNames.Insert(
+            0,
+            'WindowsAccessControl.RegistryKeyAccessRule'
+        )
+        $auditRule = [pscustomobject]@{
+            Path         = $path
+            RegistryView = 'Default'
+            NativeAce    = $auditAce
+            SID          = $sid.Value
+        }
+        $auditRule.PSObject.TypeNames.Insert(
+            0,
+            'WindowsAccessControl.RegistryKeyAuditRule'
+        )
+
+        Add-RegistryKeyAccessRule -Path $path -Account $sid -AccessRights ReadKey -WhatIf
+        Set-RegistryKeyAccessRule -Path $path -Account $sid -AccessRights ReadKey -WhatIf
+        Remove-RegistryKeyAccessRule -InputObject $accessRule -WhatIf
+        Clear-RegistryKeyAccessRule -Path $path -Account $sid -WhatIf
+        Add-RegistryKeyAuditRule -Path $path -Account $sid -AccessRights ReadKey `
+            -AuditFlags Failure -WhatIf
+        Set-RegistryKeyAuditRule -Path $path -Account $sid -AccessRights ReadKey `
+            -AuditFlags Failure -WhatIf
+        Remove-RegistryKeyAuditRule -InputObject $auditRule -WhatIf
+        Clear-RegistryKeyAuditRule -Path $path -Account $sid -WhatIf
+        Set-RegistryKeySecurityDescriptor -Path $path -Sddl 'D:(A;;KR;;;WD)' `
+            -Sections Access -WhatIf
+        Enable-RegistryKeyInheritance -Path $path -Section All -WhatIf
+        Disable-RegistryKeyInheritance -Path $path -Section All -WhatIf
+
+        Should -Invoke -ModuleName WindowsAccessControl `
+            -CommandName Set-WindowsNamedSecurityDescriptor -Times 0 -Exactly
     }
 }

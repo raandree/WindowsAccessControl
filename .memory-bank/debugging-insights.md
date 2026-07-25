@@ -89,3 +89,37 @@ the module under test. For security-descriptor reads and writes, keep the
 script block in module scope and pass data through an explicit `ArgumentList`.
 This preserves mocks, avoids hidden parameter capture, and is clearer for later
 runspace dispatch.
+
+## RawAcl expression enumeration
+
+`RawAcl` implements enumeration. Assigning it from an `if` expression can
+unwrap a one-ACE ACL into `CommonAce`, causing `InsertAce` or `RemoveAce` to be
+invoked on the wrong type. Assign `SystemAcl` or `DiscretionaryAcl` directly
+inside each branch so the mutable `RawAcl` object retains its identity.
+
+An absent registry SACL needs both an empty `RawAcl` and the
+`SystemAclPresent` control flag before binary serialization. Keep null DACLs
+rejected because they represent unrestricted access rather than an empty ACL.
+
+## .NET enum masks in Windows PowerShell
+
+Windows PowerShell 5.1 throws `InvalidCastException` for bitwise operations on
+several .NET ACL enum values that PowerShell 7 coerces. Convert operands to
+integers, perform the mask operation, and cast back to `AceFlags`,
+`AuditFlags`, or `ControlFlags` only when calling a typed API.
+
+## Remote RegistryKey objects
+
+`RegistryKey.OpenRemoteBaseKey()` returns an object whose `Name` is
+indistinguishable from a local hive path. Before name normalization, inspect
+the supported runtime's nonpublic remote marker (`_remoteKey`, `remoteKey`, or
+`m_remoteKey`) and fail closed if it is true or unavailable. Otherwise an
+intended remote operation can be redirected to a local key.
+
+## Binary descriptor argument lists
+
+PowerShell can enumerate a `byte[]` when it is inserted into a general
+argument array before later values. Build script-block argument lists with a
+`List[object]` and call `Add($byteArray)` so the descriptor remains one object;
+otherwise `RawSecurityDescriptor` receives a single byte and reports that the
+destination array is too short.

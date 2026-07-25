@@ -80,6 +80,62 @@
       </TableControl>
     </View>
     <View>
+      <Name>WindowsAccessControl.RegistryKeyAccessRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.RegistryKeyAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>Path</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Inherited</Label></TableColumnHeader>
+          <TableColumnHeader><Label>AppliesTo</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AppliesTo</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>WindowsAccessControl.RegistryKeyAuditRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.RegistryKeyAuditRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>Path</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Audit</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Inherited</Label></TableColumnHeader>
+          <TableColumnHeader><Label>AppliesTo</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AuditFlags</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AppliesTo</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
       <Name>WindowsAccessControl.EffectiveAccess</Name>
       <ViewSelectedBy>
         <TypeName>WindowsAccessControl.EffectiveAccess</TypeName>
