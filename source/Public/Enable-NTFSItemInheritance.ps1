@@ -19,6 +19,10 @@ function Enable-NTFSItemInheritance {
         Selects access inheritance, audit inheritance, or both. Changing audit
         inheritance can require SeSecurityPrivilege.
 
+    .PARAMETER RemoveExplicitRules
+        Removes explicit rules from each selected ACL before inheritance is
+        enabled. Inherited rules from the parent are unaffected.
+
     .PARAMETER PassThru
         Returns the updated inheritance state for each changed item.
 
@@ -52,6 +56,9 @@ function Enable-NTFSItemInheritance {
         [string]$Section = 'Access',
 
         [Parameter()]
+        [switch]$RemoveExplicitRules,
+
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -75,9 +82,29 @@ function Enable-NTFSItemInheritance {
                 $security = Get-Acl @getAclParameters
                 if ($Section -in @('Access', 'All')) {
                     $security.SetAccessRuleProtection($false, $false)
+                    if ($RemoveExplicitRules) {
+                        $explicitAccessRules = $security.GetAccessRules(
+                            $true,
+                            $false,
+                            [System.Security.Principal.SecurityIdentifier]
+                        )
+                        foreach ($explicitAccessRule in $explicitAccessRules) {
+                            $security.RemoveAccessRuleSpecific($explicitAccessRule)
+                        }
+                    }
                 }
                 if ($Section -in @('Audit', 'All')) {
                     $security.SetAuditRuleProtection($false, $false)
+                    if ($RemoveExplicitRules) {
+                        $explicitAuditRules = $security.GetAuditRules(
+                            $true,
+                            $false,
+                            [System.Security.Principal.SecurityIdentifier]
+                        )
+                        foreach ($explicitAuditRule in $explicitAuditRules) {
+                            $security.RemoveAuditRuleSpecific($explicitAuditRule)
+                        }
+                    }
                 }
                 Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
 

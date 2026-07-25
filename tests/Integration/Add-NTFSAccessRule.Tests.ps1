@@ -53,4 +53,52 @@ Describe 'Add-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
         $after = (Get-Acl -LiteralPath $testFile).GetSecurityDescriptorSddlForm($sections)
         $after | Should -BeExactly $before
     }
+
+    It 'Should add access rules for multiple accounts with one descriptor write' {
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'multiple-accounts.txt'
+        Set-Content -LiteralPath $testFile -Value 'test'
+        $accounts = @(
+            'S-1-5-21-4242424242-4242424242-4242424242-4242'
+            'S-1-5-21-4242424242-4242424242-4242424242-4243'
+        )
+        $addParameters = @{
+            LiteralPath = $testFile
+            Account     = $accounts
+            AccessRights = 'Read'
+            PassThru    = $true
+        }
+
+        $addedRules = @(Add-NTFSAccessRule @addParameters)
+        $storedRules = @(Get-NTFSAccessRule -LiteralPath $testFile -ExcludeInherited |
+            Where-Object SID -In $accounts)
+
+        $addedRules | Should -HaveCount 2
+        $storedRules | Should -HaveCount 2
+        foreach ($account in $accounts) {
+            $addedRules.SID | Should -Contain $account
+        }
+    }
+
+    It 'Should add one access rule for duplicate account inputs' {
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'duplicate-accounts.txt'
+        Set-Content -LiteralPath $testFile -Value 'test'
+        $account = 'S-1-5-21-4242424242-4242424242-4242424242-4244'
+        $addParameters = @{
+            LiteralPath  = $testFile
+            Account      = @($account, $account)
+            AccessRights = 'Read'
+            PassThru     = $true
+        }
+        $getParameters = @{
+            LiteralPath     = $testFile
+            Account         = $account
+            ExcludeInherited = $true
+        }
+
+        $addedRules = @(Add-NTFSAccessRule @addParameters)
+        $storedRules = @(Get-NTFSAccessRule @getParameters)
+
+        $addedRules | Should -HaveCount 1
+        $storedRules | Should -HaveCount 1
+    }
 }

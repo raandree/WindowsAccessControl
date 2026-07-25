@@ -9,11 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add 27 pipeline-first commands for NTFS access rules, audit rules, ownership,
+- Add 28 pipeline-first commands for NTFS access rules, audit rules, ownership,
     inheritance, identities, privileges, effective access, and ACL diagnostics
 - Add selected-section descriptor copy plus validated JSON backup and restore
 - Add a Sampler build with PowerShell 7 and Windows PowerShell 5.1 test coverage
 - Add command help, object formatting, usage documentation, and research notes
+- Add structured current-token privilege inventory with `Get-NTFSPrivilege`
+- Add privilege-gated live SACL and arbitrary-owner acceptance specifications
+
+### Changed
+
+- Allow `Add-NTFSAccessRule` and `Add-NTFSAuditRule` to add rules for multiple
+    unique accounts with one descriptor write per item
+- Allow `Enable-NTFSItemInheritance` to remove explicit rules while enabling
+    access or audit inheritance
 
 ### Security
 

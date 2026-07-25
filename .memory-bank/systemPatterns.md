@@ -60,3 +60,18 @@ without elevation.
     for each access and audit path.
 - Rationale: The native APIs have different semantics and account-wide purge
     does not require a rights mask.
+
+### Decision 7: Batch only after identity prevalidation
+
+- Choice: Resolve and deduplicate all account inputs by SID before changing a
+    descriptor, then persist once per target and emit one result per unique SID.
+- Rationale: Invalid identities fail before mutation, duplicate aliases cannot
+    misrepresent persisted ACEs, and batch operations avoid repeated writes.
+
+### Decision 8: Make privilege gaps executable and explicit
+
+- Choice: Enumerate current-token privileges without enabling them, and keep
+    privileged acceptance scenarios discovered but skipped with exact reasons
+    when required privileges are absent.
+- Rationale: Missing privilege evidence must not look like a passing SACL or
+    arbitrary-owner live test, and read operations must not broaden token state.

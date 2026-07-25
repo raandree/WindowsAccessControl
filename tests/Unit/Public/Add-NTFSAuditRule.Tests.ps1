@@ -32,4 +32,52 @@ Describe 'Add-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
         $result.AuditFlags | Should -Be ([System.Security.AccessControl.AuditFlags]::Failure)
         Should -Invoke -ModuleName NTFSPermission -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 1 -Exactly
     }
+
+    It 'Should add audit rules for multiple accounts with one descriptor write' {
+        $accounts = @('S-1-1-0', 'S-1-5-32-545')
+        $addParameters = @{
+            LiteralPath  = $script:testFile
+            Account      = $accounts
+            AccessRights = 'Read'
+            AuditFlags   = 'Failure'
+            PassThru     = $true
+        }
+
+        $result = @(Add-NTFSAuditRule @addParameters)
+        $rules = @($script:testSecurity.GetAuditRules(
+            $true,
+            $false,
+            [System.Security.Principal.SecurityIdentifier]
+        ))
+
+        $result | Should -HaveCount 2
+        $rules | Should -HaveCount 2
+        $invokeParameters = @{
+            ModuleName  = 'NTFSPermission'
+            CommandName = 'Invoke-NTFSSecurityDescriptorPersistence'
+            Times       = 1
+            Exactly     = $true
+        }
+        Should -Invoke @invokeParameters
+    }
+
+    It 'Should add one audit rule for duplicate account inputs' {
+        $addParameters = @{
+            LiteralPath  = $script:testFile
+            Account      = @('S-1-1-0', 'S-1-1-0')
+            AccessRights = 'Read'
+            AuditFlags   = 'Failure'
+            PassThru     = $true
+        }
+
+        $result = @(Add-NTFSAuditRule @addParameters)
+        $rules = @($script:testSecurity.GetAuditRules(
+            $true,
+            $false,
+            [System.Security.Principal.SecurityIdentifier]
+        ))
+
+        $result | Should -HaveCount 1
+        $rules | Should -HaveCount 1
+    }
 }

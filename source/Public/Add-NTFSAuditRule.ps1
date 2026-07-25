@@ -16,7 +16,7 @@ function Add-NTFSAuditRule {
         objects bind to this parameter through their PSPath property.
 
     .PARAMETER Account
-        The account name or SID to which the audit rule applies.
+        One or more account names or SIDs to which the audit rule applies.
 
     .PARAMETER AccessRights
         The filesystem rights whose access attempts are audited.
@@ -58,7 +58,8 @@ function Add-NTFSAuditRule {
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$Account,
+        [Alias('IdentityReference', 'ID')]
+        [string[]]$Account,
 
         [Parameter(Mandatory)]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
@@ -80,7 +81,17 @@ function Add-NTFSAuditRule {
     )
 
     begin {
-        $securityIdentifier = Resolve-NTFSIdentityReference -Identity $Account
+        $seenIdentifiers = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
+        $securityIdentifiers = @(
+            foreach ($accountName in $Account) {
+                $securityIdentifier = Resolve-NTFSIdentityReference -Identity $accountName
+                if ($seenIdentifiers.Add($securityIdentifier.Value)) {
+                    $securityIdentifier
+                }
+            }
+        )
     }
 
     process {
@@ -101,20 +112,29 @@ function Add-NTFSAuditRule {
                 }
             }
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
-            $rule = [System.Security.AccessControl.FileSystemAuditRule]::new(
-                $securityIdentifier,
-                $AccessRights,
-                $scope.InheritanceFlags,
-                $scope.PropagationFlags,
-                $AuditFlags
-            )
+            $rules = foreach ($securityIdentifier in $securityIdentifiers) {
+                [System.Security.AccessControl.FileSystemAuditRule]::new(
+                    $securityIdentifier,
+                    $AccessRights,
+                    $scope.InheritanceFlags,
+                    $scope.PropagationFlags,
+                    $AuditFlags
+                )
+            }
 
-            if ($PSCmdlet.ShouldProcess($item.FullName, "Add $AuditFlags audit rule for $Account")) {
+            $identityLabel = $securityIdentifiers.Value -join ', '
+            $ruleNoun = if ($securityIdentifiers.Count -eq 1) { 'rule' } else { 'rules' }
+            $action = "Add $AuditFlags audit $ruleNoun for $identityLabel"
+            if ($PSCmdlet.ShouldProcess($item.FullName, $action)) {
                 $security = Get-Acl -LiteralPath $item.FullName -Audit -ErrorAction Stop
-                $security.AddAuditRule($rule)
+                foreach ($rule in $rules) {
+                    $security.AddAuditRule($rule)
+                }
                 Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
                 if ($PassThru) {
-                    ConvertTo-NTFSAuditRuleObject -Rule $rule -Path $item.FullName
+                    foreach ($rule in $rules) {
+                        ConvertTo-NTFSAuditRuleObject -Rule $rule -Path $item.FullName
+                    }
                 }
             }
         }

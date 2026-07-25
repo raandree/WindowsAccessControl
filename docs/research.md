@@ -26,6 +26,48 @@ is based on in-box Windows security types, supported PowerShell security
 commands for descriptor reads, and narrow Win32 interop where no managed API
 exists.
 
+## Detailed NTFSSecurity comparison
+
+A follow-up source review used the upstream
+[module manifest](https://github.com/raandree/NTFSSecurity/blob/master/NTFSSecurity/NTFSSecurity.psd1)
+and command implementations rather than command names alone.
+
+The following ideas are implemented here:
+
+- Pipeline input from paths and filesystem objects, account and inheritance
+  filters, orphaned SID reporting, and opt-in `PassThru` output.
+- Multi-account additions modeled on
+  [`AddAccess.cs`](https://github.com/raandree/NTFSSecurity/blob/master/NTFSSecurity/AccessCmdlets/AddAccess.cs),
+  with one descriptor persistence operation per target.
+- Optional removal of explicit rules while enabling inheritance, modeled on
+  [`EnableAccessInheritance.cs`](https://github.com/raandree/NTFSSecurity/blob/master/NTFSSecurity/InheritanceCmdlets/EnableAccessInheritance.cs).
+- Structured current-token privilege inventory corresponding to upstream
+  `Get-Privileges`, without enabling privileges as an import side effect.
+- Access and audit parity for rule construction, query, mutation, orphaned SID
+  filtering, inheritance, and selected-section descriptor portability.
+
+The following ideas are deliberately deferred:
+
+- Inherited-source provenance requires the Windows inheritance-source API for
+  unambiguous results. Guessing by comparing parent ACEs can report the wrong
+  ancestor when identical rules exist at multiple levels.
+- Remote effective-access evaluation changes RPC, trust, and authorization
+  boundaries. The current Authz result is explicitly local and SID based.
+- In-memory descriptor mutation would create a second persistence model beside
+  the path-bound commands. It needs a separate contract rather than hidden
+  write-through behavior.
+- A simplified access view is lossy because composite rights, deny rules, and
+  inheritance scopes cannot always be collapsed without changing meaning.
+
+The following upstream behavior is rejected for this module:
+
+- AlphaFS-backed `Item2`, link, disk-space, and hash commands are general
+  filesystem utilities rather than permission management.
+- Automatically enabling backup, restore, take-ownership, and security
+  privileges is broader than the requested operation and obscures token state.
+- Temporarily changing ownership after an authorization failure mutates an
+  additional security boundary and creates restoration failure modes.
+
 ## Verified access-rule semantics
 
 The .NET
@@ -132,7 +174,7 @@ Version 0.1 covers files and directories:
 - selected-section descriptor get, copy, JSON backup, and restore
 - canonical-order diagnostics
 - Authz effective access
-- process token privilege query, enable, and disable
+- process token privilege inventory, query, enable, and disable
 
 Registry, service, printer, process, share-level, POSIX, Central Access Policy,
 and operating-system audit policy management are deliberately outside scope.

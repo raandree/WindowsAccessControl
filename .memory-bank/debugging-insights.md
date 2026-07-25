@@ -33,3 +33,12 @@ purge only when `PassThru` is requested.
 Validate path, item type, section mask, SDDL, and duplicate targets for every
 backup record before the first persistence call. In-memory descriptor mutation
 during validation is safe; filesystem writes belong in a second loop.
+
+## Cross-edition Pester evidence
+
+Windows PowerShell treats native Git line-ending warnings as error records when
+`ErrorActionPreference` is `Stop`. Normalize changed files according to
+`.gitattributes` before QA, and set Pester `Run.Exit` to false when a caller must
+inspect the returned result instead of allowing Pester to terminate the host.
+Keep console output separate from explicit NUnit or JSON result artifacts when
+the Desktop host buffers streams.

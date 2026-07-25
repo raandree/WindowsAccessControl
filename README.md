@@ -35,6 +35,13 @@ Get-ChildItem -LiteralPath 'C:\Data' -Directory |
     Add-NTFSAccessRule -Account 'CONTOSO\Analysts' -AccessRights Modify
 ```
 
+Add the same rule for several accounts with one descriptor write per item:
+
+```powershell
+$accounts = 'CONTOSO\Analysts', 'CONTOSO\Auditors'
+Add-NTFSAccessRule -LiteralPath 'C:\Data' -Account $accounts -AccessRights Read
+```
+
 Preview any mutation before applying it:
 
 ```powershell
@@ -114,6 +121,13 @@ Disable-NTFSItemInheritance -LiteralPath 'C:\Data' `
     -PreserveInherited:$false
 ```
 
+When re-enabling inheritance, explicit rules can be removed in the same
+operation:
+
+```powershell
+Enable-NTFSItemInheritance -LiteralPath 'C:\Data' -RemoveExplicitRules
+```
+
 Owner commands emit both account and SID forms:
 
 ```powershell
@@ -131,6 +145,7 @@ SACL operations require `SeSecurityPrivilege`, and Windows audit policy must
 enable object access auditing before events are produced.
 
 ```powershell
+Get-NTFSPrivilege
 Enable-NTFSPrivilege -Name SeSecurityPrivilege -Confirm:$false
 
 Add-NTFSAuditRule -LiteralPath 'C:\Data' `
@@ -141,7 +156,8 @@ Add-NTFSAuditRule -LiteralPath 'C:\Data' `
 
 `Enable-NTFSPrivilege` can enable only privileges already present in the current
 process token. It fails explicitly when Windows reports
-`ERROR_NOT_ALL_ASSIGNED`.
+`ERROR_NOT_ALL_ASSIGNED`. `Get-NTFSPrivilege` distinguishes privileges that are
+present but disabled from privileges absent from the token.
 
 ## Backup, restore, and copy
 
@@ -205,7 +221,7 @@ the NTFS result.
 | Inheritance | `Get-NTFSItemInheritance`, `Enable-NTFSItemInheritance`, `Disable-NTFSItemInheritance` |
 | Descriptor portability | `Get-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor` |
 | Diagnostics | `Resolve-NTFSIdentity`, `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
-| Privileges | `Test-NTFSPrivilege`, `Enable-NTFSPrivilege`, `Disable-NTFSPrivilege` |
+| Privileges | `Get-NTFSPrivilege`, `Test-NTFSPrivilege`, `Enable-NTFSPrivilege`, `Disable-NTFSPrivilege` |
 
 Use `Get-Help <command> -Full` for parameter semantics and examples.
 
@@ -243,7 +259,14 @@ Builds and Pester runs should be launched from a clean process when developing
 in VS Code. Sampler enforces at least 80% executable coverage for the merged
 module.
 
+Six `RequiresElevation` acceptance specifications perform real SACL CRUD,
+audit inheritance, SACL backup and restore, and arbitrary-owner operations.
+They run automatically when the test process contains the required privileges
+and otherwise report explicit skips. Run the test workflow from an elevated
+PowerShell process to exercise the available privileged paths.
+
 ## Design research
 
 See [docs/research.md](docs/research.md) for the source review, API semantics,
-scope decisions, and dependency analysis that informed this implementation.
+scope decisions, and NTFSSecurity comparison. The executable evidence is
+cataloged in [docs/specification-matrix.md](docs/specification-matrix.md).

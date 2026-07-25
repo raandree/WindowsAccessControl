@@ -86,6 +86,7 @@ FunctionsToExport = @(
     'Get-NTFSItemEffectiveAccess'
     'Get-NTFSItemOwner'
     'Get-NTFSItemSecurityDescriptor'
+    'Get-NTFSPrivilege'
     'New-NTFSAccessRule'
     'New-NTFSAuditRule'
     'Remove-NTFSAccessRule'

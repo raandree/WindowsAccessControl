@@ -17,7 +17,7 @@ function Add-NTFSAccessRule {
         objects bind to this parameter through their PSPath property.
 
     .PARAMETER Account
-        The account name or SID to which the access rule applies.
+        One or more account names or SIDs to which the access rule applies.
 
     .PARAMETER AccessRights
         The filesystem rights to add to the access control list.
@@ -60,7 +60,8 @@ function Add-NTFSAccessRule {
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$Account,
+        [Alias('IdentityReference', 'ID')]
+        [string[]]$Account,
 
         [Parameter(Mandatory)]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
@@ -88,7 +89,17 @@ function Add-NTFSAccessRule {
     )
 
     begin {
-        $securityIdentifier = Resolve-NTFSIdentityReference -Identity $Account
+        $seenIdentifiers = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
+        $securityIdentifiers = @(
+            foreach ($accountName in $Account) {
+                $securityIdentifier = Resolve-NTFSIdentityReference -Identity $accountName
+                if ($seenIdentifiers.Add($securityIdentifier.Value)) {
+                    $securityIdentifier
+                }
+            }
+        )
     }
 
     process {
@@ -110,21 +121,30 @@ function Add-NTFSAccessRule {
             }
 
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
-            $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-                $securityIdentifier,
-                $AccessRights,
-                $scope.InheritanceFlags,
-                $scope.PropagationFlags,
-                $AccessControlType
-            )
+            $rules = foreach ($securityIdentifier in $securityIdentifiers) {
+                [System.Security.AccessControl.FileSystemAccessRule]::new(
+                    $securityIdentifier,
+                    $AccessRights,
+                    $scope.InheritanceFlags,
+                    $scope.PropagationFlags,
+                    $AccessControlType
+                )
+            }
 
-            if ($PSCmdlet.ShouldProcess($item.FullName, "Add $AccessControlType access rule for $Account")) {
+            $identityLabel = $securityIdentifiers.Value -join ', '
+            $ruleNoun = if ($securityIdentifiers.Count -eq 1) { 'rule' } else { 'rules' }
+            $action = "Add $AccessControlType access $ruleNoun for $identityLabel"
+            if ($PSCmdlet.ShouldProcess($item.FullName, $action)) {
                 $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
-                $security.AddAccessRule($rule)
+                foreach ($rule in $rules) {
+                    $security.AddAccessRule($rule)
+                }
                 Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
 
                 if ($PassThru) {
-                    ConvertTo-NTFSAccessRuleObject -Rule $rule -Path $item.FullName
+                    foreach ($rule in $rules) {
+                        ConvertTo-NTFSAccessRuleObject -Rule $rule -Path $item.FullName
+                    }
                 }
             }
         }

@@ -105,5 +105,29 @@
         </TableRowEntries>
       </TableControl>
     </View>
+    <View>
+      <Name>NTFSPermission.Privilege</Name>
+      <ViewSelectedBy>
+        <TypeName>NTFSPermission.Privilege</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>Name</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Enabled</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Default</Label></TableColumnHeader>
+          <TableColumnHeader><Label>UsedForAccess</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>Name</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Enabled</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>EnabledByDefault</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>UsedForAccess</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
   </ViewDefinitions>
 </Configuration>

@@ -9,8 +9,8 @@ source: repository evidence
 
 ## Current status
 
-Initial 0.1.0 implementation is complete, independently approved, and green on
-both supported PowerShell editions.
+The 0.1.0 follow-up is complete, independently approved, packaged, and green on
+both supported PowerShell editions within the available token privileges.
 
 ## Recent milestones
 
@@ -22,15 +22,32 @@ both supported PowerShell editions.
     finding; focused re-review returned APPROVE.
 - 2026-07-25: Created the green local feature commit; no remote push was
     requested or performed.
+- 2026-07-25: Audited all exports and recorded 50 direct behavior
+    specifications across 28 commands.
+- 2026-07-25: Scanned NTFSSecurity and adopted multi-account additions,
+    explicit-rule cleanup while enabling inheritance, and token privilege
+    inventory without adopting AlphaFS or implicit privilege escalation.
+- 2026-07-25: Added six privilege-gated live acceptance specifications for
+    SACL workflows and arbitrary-owner assignment.
+- 2026-07-25: Passed final Unit and Integration behavior suites in PowerShell 7
+    and Windows PowerShell 5.1 with 67 passed, zero failed, and six explicit
+    privilege skips per edition.
+- 2026-07-25: Built and inspected `NTFSPermission.0.1.0.nupkg`; final AST,
+    analyzer, manifest, format, changelog, and Memory Bank gates passed.
+- 2026-07-25: Prepared the approved, green follow-up as a local feature commit;
+    no remote push was requested or performed.
 
 ## Stable capabilities
 
 - Access and audit rule construction, query, mutation, filtering, and clearing.
 - Owner, inheritance, identity, privilege, and Authz effective-access workflows.
+- Structured token privilege inventory and deduplicated multi-account additions.
+- Optional explicit-rule removal while enabling access or audit inheritance.
 - Selected-section descriptor copy and versioned JSON backup or restore.
 - Reproducible Sampler build plus a two-edition Azure Pipelines test matrix.
 
 ## Open work
 
-- Finalize repository records and local commit; remote publication remains a
-    user-controlled follow-up.
+- Execute the six elevated acceptance specifications before release when the
+    required token privileges are available.
+- Remote publication remains user-controlled.

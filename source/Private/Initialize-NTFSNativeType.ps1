@@ -8,8 +8,10 @@ function Initialize-NTFSNativeType {
 
     $typeDefinition = @'
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace NTFSPermission
 {
@@ -61,6 +63,24 @@ namespace NTFSPermission
         public IntPtr Error;
     }
 
+    public sealed class TokenPrivilegeInfo
+    {
+        public string Name { get; private set; }
+        public UInt32 Attributes { get; private set; }
+        public bool Enabled { get; private set; }
+        public bool EnabledByDefault { get; private set; }
+        public bool UsedForAccess { get; private set; }
+
+        internal TokenPrivilegeInfo(string name, UInt32 attributes)
+        {
+            Name = name;
+            Attributes = attributes;
+            EnabledByDefault = (attributes & 0x00000001) != 0;
+            Enabled = (attributes & 0x00000002) != 0;
+            UsedForAccess = (attributes & 0x80000000) != 0;
+        }
+    }
+
     public static class NativeMethods
     {
         private const UInt32 TokenQuery = 0x0008;
@@ -68,6 +88,8 @@ namespace NTFSPermission
         private const UInt32 PrivilegeEnabled = 0x0002;
         private const UInt32 PrivilegeSetAllNecessary = 0x0001;
         private const Int32 ErrorNotAllAssigned = 1300;
+        private const Int32 ErrorInsufficientBuffer = 122;
+        private const Int32 TokenPrivilegesInformationClass = 3;
         private const UInt32 AuthzResourceManagerNoAudit = 0x0001;
         private const UInt32 MaximumAllowed = 0x02000000;
 
@@ -88,12 +110,29 @@ namespace NTFSPermission
             UInt32 desiredAccess,
             out IntPtr tokenHandle);
 
+        [DllImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetTokenInformation(
+            IntPtr tokenHandle,
+            Int32 tokenInformationClass,
+            IntPtr tokenInformation,
+            UInt32 tokenInformationLength,
+            out UInt32 returnLength);
+
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool LookupPrivilegeValue(
             string systemName,
             string name,
             out Luid luid);
+
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool LookupPrivilegeName(
+            string systemName,
+            ref Luid luid,
+            StringBuilder name,
+            ref UInt32 nameLength);
 
         [DllImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -153,6 +192,97 @@ namespace NTFSPermission
         [DllImport("authz.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool AuthzFreeResourceManager(IntPtr resourceManager);
+
+        private static string GetPrivilegeName(Luid luid)
+        {
+            UInt32 nameLength = 0;
+            LookupPrivilegeName(null, ref luid, null, ref nameLength);
+            Int32 error = Marshal.GetLastWin32Error();
+            if (nameLength == 0 && error != ErrorInsufficientBuffer)
+            {
+                throw new Win32Exception(error);
+            }
+
+            StringBuilder name = new StringBuilder((Int32)nameLength + 1);
+            UInt32 bufferLength = (UInt32)name.Capacity;
+            if (!LookupPrivilegeName(null, ref luid, name, ref bufferLength))
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            return name.ToString();
+        }
+
+        public static TokenPrivilegeInfo[] GetTokenPrivileges()
+        {
+            IntPtr tokenHandle;
+            if (!OpenProcessToken(GetCurrentProcess(), TokenQuery, out tokenHandle))
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+
+            IntPtr tokenInformation = IntPtr.Zero;
+            try
+            {
+                UInt32 requiredLength;
+                GetTokenInformation(
+                    tokenHandle,
+                    TokenPrivilegesInformationClass,
+                    IntPtr.Zero,
+                    0,
+                    out requiredLength);
+                Int32 error = Marshal.GetLastWin32Error();
+                if (requiredLength == 0)
+                {
+                    throw new InvalidOperationException(
+                        "Windows returned an empty token privilege buffer.");
+                }
+                if (error != ErrorInsufficientBuffer)
+                {
+                    throw new Win32Exception(error);
+                }
+
+                tokenInformation = Marshal.AllocHGlobal((Int32)requiredLength);
+                if (!GetTokenInformation(
+                    tokenHandle,
+                    TokenPrivilegesInformationClass,
+                    tokenInformation,
+                    requiredLength,
+                    out requiredLength))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+
+                UInt32 privilegeCount = unchecked((UInt32)Marshal.ReadInt32(tokenInformation));
+                Int32 privilegeOffset = (Int32)Marshal.OffsetOf(
+                    typeof(TokenPrivileges),
+                    "Privileges");
+                Int32 privilegeSize = Marshal.SizeOf(typeof(LuidAndAttributes));
+                List<TokenPrivilegeInfo> result = new List<TokenPrivilegeInfo>();
+
+                for (UInt32 index = 0; index < privilegeCount; index++)
+                {
+                    IntPtr privilegePointer = IntPtr.Add(
+                        tokenInformation,
+                        privilegeOffset + ((Int32)index * privilegeSize));
+                    LuidAndAttributes privilege = (LuidAndAttributes)Marshal.PtrToStructure(
+                        privilegePointer,
+                        typeof(LuidAndAttributes));
+                    result.Add(new TokenPrivilegeInfo(
+                        GetPrivilegeName(privilege.Luid),
+                        privilege.Attributes));
+                }
+
+                return result.ToArray();
+            }
+            finally
+            {
+                if (tokenInformation != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(tokenInformation);
+                }
+                CloseHandle(tokenHandle);
+            }
+        }
 
         public static bool IsPrivilegeEnabled(string privilegeName)
         {
