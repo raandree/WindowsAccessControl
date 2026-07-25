@@ -19,6 +19,7 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
         Set-Content -LiteralPath $script:targetFile -Value 'target'
         Mock -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence
         Mock -ModuleName WindowsAccessControl -CommandName Set-WindowsNamedSecurityDescriptor
+        Mock -ModuleName WindowsAccessControl -CommandName Set-WindowsServiceTargetSecurityDescriptor
     }
 
     It 'Should expose WhatIf on every state-changing command' {
@@ -50,6 +51,15 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             'Set-RegistryKeySecurityDescriptor'
             'Enable-RegistryKeyInheritance'
             'Disable-RegistryKeyInheritance'
+            'Add-ServiceAccessRule'
+            'Set-ServiceAccessRule'
+            'Remove-ServiceAccessRule'
+            'Clear-ServiceAccessRule'
+            'Add-ServiceAuditRule'
+            'Set-ServiceAuditRule'
+            'Remove-ServiceAuditRule'
+            'Clear-ServiceAuditRule'
+            'Set-ServiceSecurityDescriptor'
         )
 
         foreach ($commandName in $mutators) {
@@ -227,5 +237,69 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
 
         Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Set-WindowsNamedSecurityDescriptor -Times 0 -Exactly
+    }
+
+    It 'Should not persist service descriptor changes under WhatIf' {
+        $sid = [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0')
+        $accessAce = [System.Security.AccessControl.CommonAce]::new(
+            [System.Security.AccessControl.AceFlags]::None,
+            [System.Security.AccessControl.AceQualifier]::AccessAllowed,
+            4,
+            $sid,
+            $false,
+            $null
+        )
+        $auditAce = [System.Security.AccessControl.CommonAce]::new(
+            [System.Security.AccessControl.AceFlags]::FailedAccess,
+            [System.Security.AccessControl.AceQualifier]::SystemAudit,
+            16,
+            $sid,
+            $false,
+            $null
+        )
+        $accessRule = [pscustomobject]@{
+            ObjectType  = 'Service'
+            ServiceName = 'WacWhatIf'
+            NativeAce   = $accessAce
+            SID         = $sid.Value
+        }
+        $accessRule.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.ServiceAccessRule')
+        $auditRule = [pscustomobject]@{
+            ObjectType  = 'Service'
+            ServiceName = 'WacWhatIf'
+            NativeAce   = $auditAce
+            SID         = $sid.Value
+        }
+        $auditRule.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.ServiceAuditRule')
+
+        Add-ServiceAccessRule -Name WacWhatIf -Account $sid `
+            -ServiceRights QueryStatus -WhatIf
+        Set-ServiceAccessRule -Name WacWhatIf -Account $sid `
+            -ServiceRights QueryStatus -WhatIf
+        Remove-ServiceAccessRule -InputObject $accessRule -WhatIf
+        Clear-ServiceAccessRule -Name WacWhatIf -Account $sid -WhatIf
+        Add-ServiceAuditRule -Name WacWhatIf -Account $sid `
+            -ServiceRights Start -AuditFlags Failure -WhatIf
+        Set-ServiceAuditRule -Name WacWhatIf -Account $sid `
+            -ServiceRights Start -AuditFlags Failure -WhatIf
+        Remove-ServiceAuditRule -InputObject $auditRule -WhatIf
+        Clear-ServiceAuditRule -Name WacWhatIf -Account $sid -WhatIf
+        Set-ServiceSecurityDescriptor -Name WacWhatIf `
+            -Sddl 'D:(A;;CC;;;WD)' -Sections Access -WhatIf
+        Add-ServiceAccessRule -ServiceControlManager -Account $sid `
+            -ControlManagerRights Connect -WhatIf
+        Set-ServiceAccessRule -ServiceControlManager -Account $sid `
+            -ControlManagerRights Connect -WhatIf
+        Clear-ServiceAccessRule -ServiceControlManager -Account $sid -WhatIf
+        Add-ServiceAuditRule -ServiceControlManager -Account $sid `
+            -ControlManagerRights Connect -AuditFlags Failure -WhatIf
+        Set-ServiceAuditRule -ServiceControlManager -Account $sid `
+            -ControlManagerRights Connect -AuditFlags Failure -WhatIf
+        Clear-ServiceAuditRule -ServiceControlManager -Account $sid -WhatIf
+        Set-ServiceSecurityDescriptor -ServiceControlManager `
+            -Sddl 'D:(A;;CC;;;WD)' -Sections Access -WhatIf
+
+        Should -Invoke -ModuleName WindowsAccessControl `
+            -CommandName Set-WindowsServiceTargetSecurityDescriptor -Times 0 -Exactly
     }
 }

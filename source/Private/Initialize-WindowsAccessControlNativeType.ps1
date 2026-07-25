@@ -146,6 +146,7 @@ namespace WindowsAccessControl
         private const UInt32 AccessSystemSecurity = 0x01000000;
         private const UInt32 ProcessQueryLimitedInformation = 0x00001000;
         private const UInt32 FileObject = 1;
+        private const UInt32 ServiceObject = 2;
         private const UInt32 KernelObject = 6;
 
         [DllImport("kernel32.dll")]
@@ -182,6 +183,16 @@ namespace WindowsAccessControl
             IntPtr processHandle,
             UInt32 desiredAccess,
             out IntPtr tokenHandle);
+
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, EntryPoint = "OpenSCManagerW", SetLastError = true)]
+        private static extern IntPtr OpenServiceControlManager(
+            string machineName,
+            string databaseName,
+            UInt32 desiredAccess);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CloseServiceHandle(IntPtr serviceHandle);
 
         [DllImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -568,6 +579,48 @@ namespace WindowsAccessControl
             return handle;
         }
 
+        private static IntPtr OpenServiceControlManagerForSecurity(
+            UInt32 sections,
+            bool write)
+        {
+            UInt32 desiredAccess = 0;
+            if ((sections & (OwnerSecurityInformation |
+                GroupSecurityInformation |
+                DaclSecurityInformation)) != 0)
+            {
+                if (write)
+                {
+                    if ((sections & (OwnerSecurityInformation | GroupSecurityInformation)) != 0)
+                    {
+                        desiredAccess |= WriteOwner;
+                    }
+                    if ((sections & DaclSecurityInformation) != 0)
+                    {
+                        desiredAccess |= WriteDac;
+                    }
+                }
+                else
+                {
+                    desiredAccess |= ReadControl;
+                }
+            }
+            if ((sections & SaclSecurityInformation) != 0)
+            {
+                desiredAccess |= AccessSystemSecurity;
+            }
+            if (desiredAccess == 0)
+            {
+                throw new ArgumentOutOfRangeException("sections");
+            }
+
+            IntPtr handle = OpenServiceControlManager(null, null, desiredAccess);
+            if (handle == IntPtr.Zero)
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            return handle;
+        }
+
         public static byte[] GetNamedSecurityDescriptor(
             string objectName,
             UInt32 objectType,
@@ -736,6 +789,45 @@ namespace WindowsAccessControl
                 {
                     Marshal.FreeHGlobal(descriptorPointer);
                 }
+            }
+        }
+
+        public static byte[] GetServiceControlManagerSecurityDescriptor(UInt32 sections)
+        {
+            IntPtr serviceControlManager = OpenServiceControlManagerForSecurity(
+                sections,
+                false);
+            try
+            {
+                return GetHandleSecurityDescriptor(
+                    serviceControlManager,
+                    ServiceObject,
+                    sections);
+            }
+            finally
+            {
+                CloseServiceHandle(serviceControlManager);
+            }
+        }
+
+        public static void SetServiceControlManagerSecurityDescriptor(
+            UInt32 sections,
+            byte[] securityDescriptor)
+        {
+            IntPtr serviceControlManager = OpenServiceControlManagerForSecurity(
+                sections,
+                true);
+            try
+            {
+                SetHandleSecurityDescriptor(
+                    serviceControlManager,
+                    ServiceObject,
+                    sections,
+                    securityDescriptor);
+            }
+            finally
+            {
+                CloseServiceHandle(serviceControlManager);
             }
         }
 

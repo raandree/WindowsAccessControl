@@ -126,6 +126,10 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             'WindowsAccessControl.Privilege'
             'WindowsAccessControl.RegistryKeyAccessRule'
             'WindowsAccessControl.RegistryKeyAuditRule'
+            'WindowsAccessControl.ServiceAccessRule'
+            'WindowsAccessControl.ServiceAuditRule'
+            'WindowsAccessControl.ServiceControlManagerAccessRule'
+            'WindowsAccessControl.ServiceControlManagerAuditRule'
         )
 
         foreach ($typeName in $requiredTypes) {

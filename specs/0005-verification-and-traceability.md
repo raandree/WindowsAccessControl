@@ -11,6 +11,7 @@ mapping, command coverage, and remaining privileged release gate for
 | Unit descriptor | Real in-memory security objects; filesystem persistence is mocked |
 | Live NTFS | Real files/directories and descriptor reads or writes on the host NTFS volume |
 | Live registry | Disposable local keys and descriptor reads or writes in `HKCU` |
+| Live service | Disposable local services plus read-only/no-op SCM descriptor workflows |
 | Token integration | Real current-process token inventory or mutation in an isolated process |
 | Privilege-gated acceptance | Real SACL or arbitrary-owner workflow, run only when its privilege exists |
 | QA | Export, help, analysis, manifest, formatting, specs, and changelog contracts |
@@ -97,9 +98,21 @@ is not reported as a successful live write.
 | `Get-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
 | `Enable-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
 | `Disable-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
+| `Get-ServiceSecurityDescriptor` | 2 | Live service and SCM | Named service plus SCM handle reads |
+| `Set-ServiceSecurityDescriptor` | 2 | Live service and SCM | DACL round trip and `WhatIf` |
+| `Get-ServiceAccessRule` | 2 | Live service and SCM | Typed domain-right outputs |
+| `Add-ServiceAccessRule` | 1 | Live service | Not required |
+| `Set-ServiceAccessRule` | 1 | Live service | Opposite qualifier preservation |
+| `Remove-ServiceAccessRule` | 1 | Live service | Not required |
+| `Clear-ServiceAccessRule` | 1 | Live service | Not required |
+| `Get-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
+| `Add-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
+| `Set-ServiceAuditRule` | 1 | Live service SACL | Audit-flag isolation |
+| `Remove-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
+| `Clear-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
 
-The direct command total is 68 specifications across 43 exported commands.
-Cross-cutting checks add 18 Unit-level mutator `WhatIf` specifications in
+The direct command total is 83 specifications across 55 exported commands.
+Cross-cutting checks add 19 Unit-level mutator `WhatIf` specifications in
 `tests/Unit/MutatorSafety.Tests.ps1` and the QA specification contract in
 `tests/QA/Specifications.Tests.ps1`.
 
@@ -143,6 +156,18 @@ absent-SACL preservation under a matchless clear, and `WhatIf`.
 The registry suite and 15 exact-name command-contract tests passed with 31
 tests, zero failures, and zero skips in separate PowerShell 7 and Windows
 PowerShell 5.1 processes on 2026-07-25.
+
+## Service evidence
+
+`ServicePermissions.Tests.ps1` creates a unique local service for each live
+case and deletes it in `AfterEach` plus a final leak-cleanup pass. Thirteen
+scenarios cover named-service and SCM descriptors, ServiceController pipeline
+input, display-name and remote-controller rejection, typed service/SCM rights,
+access/audit add/set/remove/clear, qualifier isolation, audit-flag isolation,
+`WhatIf`, and the explicit SCM target.
+
+The service suite passed with 13 tests, zero failures, and zero skips in
+separate PowerShell 7 and Windows PowerShell 5.1 processes on 2026-07-25.
 
 ## See also
 

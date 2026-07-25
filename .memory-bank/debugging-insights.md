@@ -123,3 +123,18 @@ argument array before later values. Build script-block argument lists with a
 `List[object]` and call `Add($byteArray)` so the descriptor remains one object;
 otherwise `RawSecurityDescriptor` receives a single byte and reports that the
 destination array is too short.
+
+## ServiceController type loading
+
+Windows PowerShell 5.1 may not resolve the `System.ServiceProcess.ServiceController`
+type until `System.ServiceProcess` is loaded. Avoid a direct type literal in a
+merged module resolver: resolve it through `PSTypeName`, load the in-box
+assembly on demand, and use `Type.IsInstanceOfType()` for cross-edition target
+recognition.
+
+## SCM is not a named service
+
+Plausible names such as `SCManager` and `ServicesActive` fail through
+`GetNamedSecurityInfoW` as nonexistent services. Open the SCM explicitly with
+`OpenSCManagerW`; close the returned service handle with `CloseServiceHandle`,
+not `CloseHandle`.

@@ -62,6 +62,12 @@ both supported PowerShell editions within the available token privileges.
 - 2026-07-25: Passed 399 PowerShell 7 tests at 86.13 percent coverage and a
     31-test Windows PowerShell 5.1 registry/contract gate with zero failures or
     skips; verified scratch cleanup and privilege restoration.
+- 2026-07-25: Added 12 local service/SCM commands for selected descriptors and
+    typed access/audit rule CRUD, including explicit SCM targeting and
+    cross-edition `ServiceController` pipeline support.
+- 2026-07-25: Passed 497 PowerShell 7 tests at 85.02 percent coverage and 25
+    Windows PowerShell 5.1 service/contract tests with zero failures or skips;
+    verified no `WacTest*` service leaks and restored privilege state.
 
 ## Stable capabilities
 
@@ -75,10 +81,12 @@ both supported PowerShell editions within the available token privileges.
     immutable accepted ADRs.
 - Local registry-key descriptor, access-rule, audit-rule, and inheritance
     workflows across the default, 32-bit, and 64-bit registry views.
+- Local named-service and explicit Service Control Manager descriptor and
+    typed rule workflows without inheritance semantics.
 
 ## Open work
 
-- Add service/SCM and process security descriptor command families.
+- Add the pinned live-process security descriptor command family.
 - Add class-based DSC exact-descriptor and rule-presence resources for every
     current object family.
 - Remote publication remains user-controlled.

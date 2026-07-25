@@ -116,6 +116,7 @@ Describe 'Registry key access rules' -Tag 'Integration', 'WindowsOnly' {
 
         $result | Should -HaveCount 1
         $result.AccessControlType | Should -Be 'Allow'
+        $result.AccessMask | Should -BeOfType ([uint64])
         ($result.AccessMask -band [int][System.Security.AccessControl.RegistryRights]::ReadKey) |
             Should -Be ([int][System.Security.AccessControl.RegistryRights]::ReadKey)
         $result.AppliesTo | Should -Be 'ThisKeyAndSubkeys'

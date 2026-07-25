@@ -1,10 +1,10 @@
 # WindowsAccessControl
 
 `WindowsAccessControl` is a Windows PowerShell module for pipeline-first
-management of Windows security descriptors. Its current filesystem commands
-and registry-key commands turn common DACL, SACL, owner, inheritance, backup,
-and effective-access operations into composable commands without requiring
-callers to manipulate .NET access-control objects directly.
+management of Windows security descriptors. Its current filesystem,
+registry-key, and service/SCM commands turn common DACL, SACL, owner,
+inheritance, backup, and effective-access operations into composable commands
+without requiring callers to manipulate .NET access-control objects directly.
 
 The module has no third-party runtime dependency. It supports Windows
 PowerShell 5.1 and PowerShell 7 on Windows.
@@ -94,6 +94,37 @@ Enable-RegistryKeyInheritance -Path 'HKLM:\Software\Contoso' -Section All
 
 Registry SACL reads and writes temporarily enable `SeSecurityPrivilege` when
 it is present in the process token, then restore its original state.
+
+## Services and the SCM
+
+Service commands accept local service names and `ServiceController` pipeline
+objects. Names are service names, not display names. Remote controllers and
+qualified remote names are rejected.
+
+```powershell
+Get-Service -Name BITS |
+    Add-ServiceAccessRule -Account 'BUILTIN\Users' `
+        -ServiceRights QueryStatus
+
+Get-ServiceAccessRule -Name BITS -Account 'BUILTIN\Users'
+```
+
+The local Service Control Manager is a separate explicit parameter set and
+uses its own rights enum:
+
+```powershell
+Get-ServiceAccessRule -ServiceControlManager
+
+Add-ServiceAccessRule -ServiceControlManager `
+    -Account 'BUILTIN\Administrators' `
+    -ControlManagerRights Connect `
+    -WhatIf
+```
+
+Service and SCM descriptors do not support ACL inheritance. Audit operations
+scope `SeSecurityPrivilege`; owner/group writes scope `SeRestorePrivilege`
+when it is present. SCM access uses a local `OpenSCManagerW` handle that is
+closed by the module after each operation.
 
 ## Access rules
 
@@ -272,6 +303,9 @@ the NTFS result.
 | Registry access rules | `Get-RegistryKeyAccessRule`, `Add-RegistryKeyAccessRule`, `Set-RegistryKeyAccessRule`, `Remove-RegistryKeyAccessRule`, `Clear-RegistryKeyAccessRule` |
 | Registry audit rules | `Get-RegistryKeyAuditRule`, `Add-RegistryKeyAuditRule`, `Set-RegistryKeyAuditRule`, `Remove-RegistryKeyAuditRule`, `Clear-RegistryKeyAuditRule` |
 | Registry inheritance | `Get-RegistryKeyInheritance`, `Enable-RegistryKeyInheritance`, `Disable-RegistryKeyInheritance` |
+| Service descriptors | `Get-ServiceSecurityDescriptor`, `Set-ServiceSecurityDescriptor` |
+| Service/SCM access rules | `Get-ServiceAccessRule`, `Add-ServiceAccessRule`, `Set-ServiceAccessRule`, `Remove-ServiceAccessRule`, `Clear-ServiceAccessRule` |
+| Service/SCM audit rules | `Get-ServiceAuditRule`, `Add-ServiceAuditRule`, `Set-ServiceAuditRule`, `Remove-ServiceAuditRule`, `Clear-ServiceAuditRule` |
 | Diagnostics | `Resolve-WindowsIdentity`, `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
 | Privileges | `Get-WindowsPrivilege`, `Test-WindowsPrivilege`, `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege` |
 
@@ -322,6 +356,12 @@ access and audit rule CRUD, inheritance, view selection, pipeline input,
 local-target validation, audit-flag isolation, absent-SACL preservation, and
 `WhatIf`. The same registry scenarios pass in PowerShell 7 and Windows
 PowerShell 5.1.
+
+Thirteen disposable-service scenarios exercise service and SCM descriptor
+reads, no-op descriptor sets, typed rights, access/audit CRUD, local target
+validation, and `ServiceController` pipeline input. They pass unchanged in
+PowerShell 7 and Windows PowerShell 5.1 and verify service cleanup after each
+case.
 
 ## Design research
 

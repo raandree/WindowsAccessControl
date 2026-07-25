@@ -79,9 +79,20 @@ Stable PowerShell type names identify module output:
 - `WindowsAccessControl.RegistryKeyAuditRule`
 - `WindowsAccessControl.RegistryKeyInheritance`
 - `WindowsAccessControl.RegistryKeySecurityDescriptor`
+- `WindowsAccessControl.ServiceAccessRule`
+- `WindowsAccessControl.ServiceAuditRule`
+- `WindowsAccessControl.ServiceSecurityDescriptor`
+- `WindowsAccessControl.ServiceControlManagerAccessRule`
+- `WindowsAccessControl.ServiceControlManagerAuditRule`
+- `WindowsAccessControl.ServiceControlManagerSecurityDescriptor`
 
 Native .NET rule or descriptor objects remain available as properties where a
 caller needs exact Windows semantics.
+
+Every registry, service, SCM, and process rule object exposes `AccessMask` as a
+`UInt64` containing the normalized unsigned 32-bit native mask. `AccessRights`
+uses the object family's public enum; exact removal uses the preserved native
+ACE rather than reconstructing it from display properties.
 
 The module ships curated default table views for `AccessRule`, `AuditRule`,
 `Owner`, `EffectiveAccess`, and `Privilege`. Other result types remain fully
@@ -178,6 +189,30 @@ Registry-rule commands expose `System.Security.AccessControl.RegistryRights`
 and preserve unknown or unrelated ACEs. Audit and audit-inheritance operations
 scope `SeSecurityPrivilege` to each read/write operation. Registry values do not
 have independent security descriptors; callers manage the containing key.
+
+## Service and Service Control Manager commands
+
+| Command | Primary parameter sets | Pipeline input | Returns |
+| --- | --- | --- | --- |
+| `Get-ServiceSecurityDescriptor` | Service, ServiceControlManager | service names, `ServiceController` objects | service / SCM descriptor |
+| `Set-ServiceSecurityDescriptor` | Service, ServiceControlManager | service names, `ServiceController` objects | none / service / SCM descriptor |
+| `Get-ServiceAccessRule` | Service, ServiceControlManager | service names, `ServiceController` objects | service / SCM access rules |
+| `Add-ServiceAccessRule` | Service, ServiceControlManager | service names, `ServiceController` objects | none / service / SCM access rules |
+| `Set-ServiceAccessRule` | Service, ServiceControlManager | service names, `ServiceController` objects | none / service / SCM access rules |
+| `Remove-ServiceAccessRule` | Rule | path-bound service / SCM access rules | none / removed rule |
+| `Clear-ServiceAccessRule` | Service, ServiceControlManager | service names, `ServiceController` objects | none / removed rules |
+| `Get-ServiceAuditRule` | Service, ServiceControlManager | service names, `ServiceController` objects | service / SCM audit rules |
+| `Add-ServiceAuditRule` | Service, ServiceControlManager | service names, `ServiceController` objects | none / service / SCM audit rules |
+| `Set-ServiceAuditRule` | Service, ServiceControlManager | service names, `ServiceController` objects | none / service / SCM audit rules |
+| `Remove-ServiceAuditRule` | Rule | path-bound service / SCM audit rules | none / removed rule |
+| `Clear-ServiceAuditRule` | Service, ServiceControlManager | service names, `ServiceController` objects | none / removed rules |
+
+Named service inputs are service names, not display names. Remote controllers
+and qualified service names are rejected. `ServiceControlManager` is an
+explicit parameter set, and rule mutations use `WindowsServiceRights` or
+`WindowsServiceControlManagerRights` respectively. Service objects do not
+support ACL inheritance, so this family exports no inheritance commands and
+rule outputs leave inheritance scope empty.
 
 ## Identity, diagnostics, and effective access
 

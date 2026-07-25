@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add 15 local registry-key commands for selected security descriptors,
     access and audit rules, inheritance control, explicit 32/64-bit views, and
     curated access/audit rule formatting
+- Add 12 local service and Service Control Manager commands for selected
+    descriptors plus typed access/audit rule CRUD without inheritance semantics
 - Add a shared Unicode named/handle security descriptor engine with pinned
     process identity checks and caller-owned handle support
 - Allow `Resolve-WindowsIdentity` to accept native identity references, module

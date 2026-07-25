@@ -71,9 +71,20 @@ Expand and rename the unpublished module to `WindowsAccessControl` on
 - Registry operations use the shared named-descriptor engine, persist only the
     selected sections, scope `SeSecurityPrivilege` for SACL work, reject remote
     `RegistryKey` objects before name normalization, and restore token state.
+- The service/SCM family exports 12 descriptor and access/audit rule commands,
+    bringing the module to 55 exported commands. Named services use the shared
+    named engine; the SCM uses a least-privilege `OpenSCManagerW` handle closed
+    through `CloseServiceHandle` in `finally`.
+- Thirteen disposable-service scenarios pass with zero failures or skips in
+    both PowerShell 7 and Windows PowerShell 5.1. They cover descriptor reads,
+    no-op writes, typed service/SCM rights, access/audit CRUD, qualifier and
+    audit-flag isolation, local-only target validation, and pipeline input.
+- The authoritative PowerShell 7 gate passes 497 tests with zero failures or
+    skips at 85.02 percent coverage. The 13 live service scenarios and 12
+    exact-name command contracts also pass in Windows PowerShell 5.1.
 
 ## Next step
 
-Implement the local service and explicit SCM command family over the shared
-engine, then add the process family and class-based DSC resources. Do not push
-or publish without an explicit request.
+Implement the pinned live-process command family over the shared handle engine,
+then add cross-domain portability and class-based DSC resources. Do not push or
+publish without an explicit request.

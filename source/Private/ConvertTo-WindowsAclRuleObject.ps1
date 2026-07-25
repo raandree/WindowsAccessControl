@@ -13,7 +13,13 @@ function ConvertTo-WindowsAclRuleObject {
         [string]$RuleType,
 
         [Parameter(Mandatory)]
-        [string]$TypeName
+        [string]$TypeName,
+
+        [Parameter(Mandatory)]
+        [type]$RightsType,
+
+        [Parameter()]
+        [bool]$SupportsInheritance = $false
     )
 
     $qualifiedAce = $Ace -as [System.Security.AccessControl.QualifiedAce]
@@ -54,35 +60,39 @@ function ConvertTo-WindowsAclRuleObject {
             [int][System.Security.AccessControl.AuditFlags]::Failure
     }
 
-    $inheritFlags = [int]$Ace.AceFlags -band (
-        [int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
-        [int][System.Security.AccessControl.AceFlags]::InheritOnly -bor
-        [int][System.Security.AccessControl.AceFlags]::NoPropagateInherit
-    )
-    $appliesTo = switch ([int]$inheritFlags) {
-        0 { 'ThisKeyOnly' }
-        ([int][System.Security.AccessControl.AceFlags]::ContainerInherit) {
-            'ThisKeyAndSubkeys'
-        }
-        ([int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
-            [int][System.Security.AccessControl.AceFlags]::InheritOnly) {
-            'SubkeysOnly'
-        }
-        ([int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
-            [int][System.Security.AccessControl.AceFlags]::NoPropagateInherit) {
-            'ThisKeyAndSubkeysOneLevel'
-        }
-        ([int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
+    $appliesTo = $null
+    if ($SupportsInheritance) {
+        $inheritFlags = [int]$Ace.AceFlags -band (
+            [int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
             [int][System.Security.AccessControl.AceFlags]::InheritOnly -bor
-            [int][System.Security.AccessControl.AceFlags]::NoPropagateInherit) {
-            'SubkeysOnlyOneLevel'
+            [int][System.Security.AccessControl.AceFlags]::NoPropagateInherit
+        )
+        $appliesTo = switch ([int]$inheritFlags) {
+            0 { 'ThisKeyOnly' }
+            ([int][System.Security.AccessControl.AceFlags]::ContainerInherit) {
+                'ThisKeyAndSubkeys'
+            }
+            ([int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
+                [int][System.Security.AccessControl.AceFlags]::InheritOnly) {
+                'SubkeysOnly'
+            }
+            ([int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
+                [int][System.Security.AccessControl.AceFlags]::NoPropagateInherit) {
+                'ThisKeyAndSubkeysOneLevel'
+            }
+            ([int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
+                [int][System.Security.AccessControl.AceFlags]::InheritOnly -bor
+                [int][System.Security.AccessControl.AceFlags]::NoPropagateInherit) {
+                'SubkeysOnlyOneLevel'
+            }
+            default { 'Custom' }
         }
-        default { 'Custom' }
     }
 
     $result = [pscustomobject]@{
         ObjectType         = $Target.ObjectType
         Path               = $Target.Path
+        ServiceName        = $Target.ServiceName
         NativePath         = $Target.NativePath
         CanonicalTarget    = $Target.CanonicalTarget
         RegistryView       = $Target.RegistryView
@@ -90,9 +100,11 @@ function ConvertTo-WindowsAclRuleObject {
         Account            = $account
         SID                = if ($securityIdentifier) { $securityIdentifier.Value } else { $null }
         IsOrphaned         = $isOrphaned
-        AccessMask         = if ($knownAce) { [int]$knownAce.AccessMask } else { $null }
+        AccessMask         = if ($knownAce) {
+            [uint64]([int64]$knownAce.AccessMask -band 0xFFFFFFFFL)
+        } else { $null }
         AccessRights       = if ($knownAce) {
-            [System.Security.AccessControl.RegistryRights]$knownAce.AccessMask
+            [System.Enum]::ToObject($RightsType, $knownAce.AccessMask)
         } else {
             $null
         }
@@ -102,6 +114,8 @@ function ConvertTo-WindowsAclRuleObject {
         IsInherited        = ([int]$Ace.AceFlags -band (
             [int][System.Security.AccessControl.AceFlags]::Inherited
         )) -ne 0
+        AceFlags           = $Ace.AceFlags
+        IdentityReference  = $securityIdentifier
         NativeAce          = $Ace
     }
     $result.PSObject.TypeNames.Insert(0, $TypeName)

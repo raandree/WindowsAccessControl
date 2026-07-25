@@ -23,6 +23,7 @@ function ConvertTo-WindowsSecurityDescriptorObject {
     $result = [pscustomobject]@{
         ObjectType               = $Target.ObjectType
         Path                     = $Target.Path
+        ServiceName              = $Target.ServiceName
         NativePath               = $Target.NativePath
         CanonicalTarget          = $Target.CanonicalTarget
         RegistryView             = $Target.RegistryView

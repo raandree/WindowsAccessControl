@@ -191,3 +191,23 @@ Normative record: [ADR 0011](../specs/decisions/0011-limit-release-to-local-obje
     remove operations.
 - Rationale: Idempotent operations must not require an unnecessary privileged
     write or turn an absent SACL into an empty present SACL.
+
+### Decision 20: Address the SCM through a scoped native handle
+
+Normative record: [ADR 0010](../specs/decisions/0010-use-shared-binary-security-descriptor-engine.md).
+
+- Choice: Open the local SCM with `OpenSCManagerW` using only `READ_CONTROL`,
+    `WRITE_DAC`, `WRITE_OWNER`, and/or `ACCESS_SYSTEM_SECURITY` required by the
+    selected operation; use the shared `GetSecurityInfo`/`SetSecurityInfo`
+    engine and close with `CloseServiceHandle` in `finally`.
+- Rationale: The SCM is not a named service and cannot be addressed through
+    `GetNamedSecurityInfoW`, while the handle engine preserves the same binary
+    descriptor and section-scoped persistence model.
+
+### Decision 21: Keep service and SCM rights distinct
+
+- Choice: Use one service command family with explicit `Service` and
+    `ServiceControlManager` parameter sets; bind `WindowsServiceRights` for
+    named services and `WindowsServiceControlManagerRights` for the SCM.
+- Rationale: One public noun keeps workflows discoverable while parameter-set
+    typing prevents applying rights from the wrong Windows object contract.

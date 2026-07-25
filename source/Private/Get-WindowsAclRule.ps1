@@ -30,12 +30,20 @@ function Get-WindowsAclRule {
     } else {
         [WindowsSecurityDescriptorSection]::Access
     }
-    $getDescriptorParameters = @{
-        NativePath       = $Target.NativePath
-        NativeObjectType = $Target.NativeObjectType
-        Sections         = $sections
+    if ($Target.ObjectType -in @('Service', 'ServiceControlManager')) {
+        $getDescriptorParameters = @{
+            Target   = $Target
+            Sections = $sections
+        }
+        $descriptorBytes = Get-WindowsServiceTargetSecurityDescriptor @getDescriptorParameters
+    } else {
+        $getDescriptorParameters = @{
+            NativePath       = $Target.NativePath
+            NativeObjectType = $Target.NativeObjectType
+            Sections         = $sections
+        }
+        $descriptorBytes = Get-WindowsNamedSecurityDescriptor @getDescriptorParameters
     }
-    $descriptorBytes = Get-WindowsNamedSecurityDescriptor @getDescriptorParameters
     $descriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new(
         $descriptorBytes,
         0
@@ -84,6 +92,12 @@ function Get-WindowsAclRule {
             Target   = $Target
             RuleType = $RuleType
             TypeName = $TypeName
+            RightsType = switch ($Target.ObjectType) {
+                Service { [WindowsServiceRights] }
+                ServiceControlManager { [WindowsServiceControlManagerRights] }
+                default { [System.Security.AccessControl.RegistryRights] }
+            }
+            SupportsInheritance = $Target.ObjectType -eq 'RegistryKey'
         }
         ConvertTo-WindowsAclRuleObject @conversionParameters
     }
