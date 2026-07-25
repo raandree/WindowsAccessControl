@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add command help, object formatting, usage documentation, and research notes
 - Add structured current-token privilege inventory with `Get-NTFSPrivilege`
 - Add privilege-gated live SACL and arbitrary-owner acceptance specifications
+- Add live SACL-only descriptor-copy acceptance with owner, group, and DACL
+    preservation evidence
 - Add numbered source-of-truth specifications, stable requirement identifiers,
     ADRs, open issues, and automated specification conformance checks
 
@@ -35,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Persist DACL and SACL inheritance protection changes on PowerShell 7 through
+    a section-scoped native security update
 - Fix account-wide access and audit removal when `AccessRights` is omitted
 - Validate all restore records before persisting the first descriptor
 - Refuse to overwrite existing backup files unless `Force` is specified

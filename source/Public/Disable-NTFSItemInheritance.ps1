@@ -88,7 +88,12 @@ function Disable-NTFSItemInheritance {
                 if ($Section -in @('Audit', 'All')) {
                     $security.SetAuditRuleProtection($true, $PreserveInherited)
                 }
-                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+                $persistenceParameters = @{
+                    Item              = $item
+                    Security          = $security
+                    ProtectionSection = $Section
+                }
+                Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
 
                 if ($PassThru) {
                     ConvertTo-NTFSInheritanceObject -Security $security -Path $item.FullName -Section $Section

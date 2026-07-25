@@ -9,8 +9,8 @@ source: current task evidence
 
 ## Current focus
 
-The Vivarium-style specification governance is established and locally
-committed on `ai/ntfs-permissions-module`.
+Expand and rename the unpublished module to `WindowsAccessControl` on
+`ai/windows-access-control`, following the signed one-round design interview.
 
 ## Evidence
 
@@ -24,9 +24,12 @@ committed on `ai/ntfs-permissions-module`.
     two deduplication guards were added. Final behavior reruns in each edition
     discovered 73 tests: 67 passed, zero failed, and six privilege-gated tests
     skipped with explicit reasons.
-- The current token does not contain `SeSecurityPrivilege` or
-    `SeRestorePrivilege`; real SACL persistence and arbitrary-owner acceptance
-    remain an elevated release gate rather than a claimed pass.
+- The elevated token contains `SeSecurityPrivilege`, `SeRestorePrivilege`, and
+    `SeTakeOwnershipPrivilege`; all seven live SACL, descriptor-copy, and
+    arbitrary-owner scenarios pass with zero skips.
+- PowerShell 7 did not persist an unprotected SACL control flag through
+    `FileSystemAclExtensions.SetAccessControl`; section-scoped
+    `SetNamedSecurityInfoW` persistence with the selected ACL pointer fixed it.
 - Independent security and quality review returned APPROVE with no Blocker or
     Major findings; all concrete Minor and Nit findings were resolved.
 - The current package is `output/NTFSPermission.0.1.0.nupkg`.
@@ -39,6 +42,7 @@ committed on `ai/ntfs-permissions-module`.
 
 ## Next step
 
-Do not push or publish without an explicit request. Run the six
-`RequiresElevation` specifications before a release when a suitably privileged
-token is available.
+Codify the signed expanded-scope design, then implement the shared Windows
+identity/security-descriptor engine, object-specific registry/service/process
+commands, and class-based DSC resources. Do not push or publish without an
+explicit request.

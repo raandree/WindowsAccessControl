@@ -5,7 +5,11 @@ function Invoke-NTFSSecurityDescriptorPersistence {
         [System.IO.FileSystemInfo]$Item,
 
         [Parameter(Mandatory)]
-        [System.Security.AccessControl.FileSystemSecurity]$Security
+        [System.Security.AccessControl.FileSystemSecurity]$Security,
+
+        [Parameter()]
+        [ValidateSet('Access', 'Audit', 'All')]
+        [string]$ProtectionSection
     )
 
     if ($PSVersionTable.PSEdition -eq 'Core') {
@@ -29,6 +33,18 @@ function Invoke-NTFSSecurityDescriptorPersistence {
         [System.IO.File]::SetAccessControl(
             $Item.FullName,
             [System.Security.AccessControl.FileSecurity]$Security
+        )
+    }
+
+    if ($ProtectionSection) {
+        Initialize-NTFSNativeType
+        [NTFSPermission.NativeMethods]::SetFileSystemAclProtection(
+            $Item.FullName,
+            $Security.GetSecurityDescriptorBinaryForm(),
+            $ProtectionSection -in @('Access', 'All'),
+            $Security.AreAccessRulesProtected,
+            $ProtectionSection -in @('Audit', 'All'),
+            $Security.AreAuditRulesProtected
         )
     }
 }

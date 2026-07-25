@@ -191,6 +191,55 @@ Describe 'Elevated NTFSPermission acceptance' -Tag 'Integration', 'WindowsOnly',
             Should -Not -BeNullOrEmpty
     }
 
+    It 'Should copy only a real SACL and preserve every unselected section' {
+        if (-not $script:hasSecurityPrivilege) {
+            Set-ItResult -Skipped -Because $script:privilegeReasons.SeSecurityPrivilege
+            return
+        }
+        $source = Join-Path -Path $TestDrive -ChildPath 'audit-copy-source.txt'
+        $destination = Join-Path -Path $TestDrive -ChildPath 'audit-copy-destination.txt'
+        Set-Content -LiteralPath $source -Value 'source'
+        Set-Content -LiteralPath $destination -Value 'destination'
+        $auditRuleParameters = @{
+            LiteralPath  = $source
+            Account      = 'S-1-1-0'
+            AccessRights = 'Read'
+            AuditFlags   = 'Failure'
+            Confirm      = $false
+        }
+        Add-NTFSAuditRule @auditRuleParameters
+        $accessRuleParameters = @{
+            LiteralPath  = $destination
+            Account      = 'S-1-1-0'
+            AccessRights = 'Write'
+            Confirm      = $false
+        }
+        Add-NTFSAccessRule @accessRuleParameters
+        $preservedSections =
+            [System.Security.AccessControl.AccessControlSections]::Owner -bor
+            [System.Security.AccessControl.AccessControlSections]::Group -bor
+            [System.Security.AccessControl.AccessControlSections]::Access
+        $auditSection = [System.Security.AccessControl.AccessControlSections]::Audit
+        $sourceAuditSddl = (Get-Acl -LiteralPath $source -Audit).
+            GetSecurityDescriptorSddlForm($auditSection)
+        $beforePreservedSddl = (Get-Acl -LiteralPath $destination -Audit).
+            GetSecurityDescriptorSddlForm($preservedSections)
+
+        $copyParameters = @{
+            SourceLiteralPath = $source
+            LiteralPath       = $destination
+            Sections          = 'Audit'
+            Confirm           = $false
+        }
+        Copy-NTFSItemSecurityDescriptor @copyParameters
+
+        $destinationSecurity = Get-Acl -LiteralPath $destination -Audit
+        $destinationSecurity.GetSecurityDescriptorSddlForm($auditSection) |
+            Should -BeExactly $sourceAuditSddl
+        $destinationSecurity.GetSecurityDescriptorSddlForm($preservedSections) |
+            Should -BeExactly $beforePreservedSddl
+    }
+
     It 'Should assign an arbitrary owner with SeRestorePrivilege' {
         if (-not $script:hasRestorePrivilege) {
             Set-ItResult -Skipped -Because $script:privilegeReasons.SeRestorePrivilege

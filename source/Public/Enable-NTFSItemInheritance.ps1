@@ -106,7 +106,12 @@ function Enable-NTFSItemInheritance {
                         }
                     }
                 }
-                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+                $persistenceParameters = @{
+                    Item              = $item
+                    Security          = $security
+                    ProtectionSection = $Section
+                }
+                Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
 
                 if ($PassThru) {
                     ConvertTo-NTFSInheritanceObject -Security $security -Path $item.FullName -Section $Section

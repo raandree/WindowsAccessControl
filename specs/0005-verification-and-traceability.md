@@ -58,7 +58,7 @@ is not reported as a successful live write.
 | `Backup-NTFSItemSecurityDescriptor` | 3 | Live NTFS DACL | Live SACL backup |
 | `Clear-NTFSAccessRule` | 1 | Live NTFS | Not required |
 | `Clear-NTFSAuditRule` | 1 | Unit descriptor | Live SACL clear |
-| `Copy-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Open issue OI-2 |
+| `Copy-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Live SACL copy and section preservation |
 | `Disable-NTFSItemInheritance` | 1 | Live NTFS DACL | Audit inheritance workflow |
 | `Disable-NTFSPrivilege` | 2 | Token integration | Not required |
 | `Enable-NTFSItemInheritance` | 2 | Live NTFS DACL | Audit inheritance cleanup |
@@ -95,21 +95,25 @@ fixed test-run snapshot. Current run counts and review outcomes are recorded in
 `output/testResults`. The build enforces an 80 percent merged-module coverage
 threshold.
 
-## Privileged release gate
+## Privileged release evidence
 
-The current non-administrative token does not contain `SeSecurityPrivilege` or
-`SeRestorePrivilege`. Six acceptance scenarios remain discovered but skipped:
+The elevated acceptance suite enables privileges already present in its
+isolated process token, restores their original state, and retains NUnit
+evidence. Seven live scenarios cover:
 
 1. Add and query a real SACL rule.
 2. Replace and remove a real SACL rule.
 3. Clear multiple real SACL rules.
 4. Remove explicit SACL rules while enabling audit inheritance.
 5. Back up and restore a real SACL.
-6. Assign an arbitrary owner with `SeRestorePrivilege`.
+6. Copy only a real SACL while preserving owner, group, and DACL state.
+7. Assign an arbitrary owner with `SeRestorePrivilege`.
 
-Run `tests/Integration/Elevated-NTFSPermission.Tests.ps1` from a suitably
-privileged isolated process before publishing a release. This is OI-1, not a
-claimed pass.
+The complete suite passed with seven tests, zero failures, and zero skips in
+separate elevated PowerShell 7 and Windows PowerShell 5.1 processes on
+2026-07-25. Release validation must rerun the same file from a suitably
+privileged isolated process rather than treating historical evidence as a
+substitute for the current package.
 
 ## See also
 

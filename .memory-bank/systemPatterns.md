@@ -102,3 +102,12 @@ Normative record: [ADR 0001](../specs/decisions/0001-document-api-contract-in-sp
     contracts; comment-based help owns exhaustive per-command detail.
 - Rationale: The design remains reviewable without duplicating parameter
     reference that belongs next to implementation.
+
+### Decision 10: Persist ACL protection with the selected ACL
+
+- Choice: When changing file-system DACL or SACL protection, persist the
+    selected ACL pointer and its protected or unprotected native control flag
+    together through `SetNamedSecurityInfoW`.
+- Rationale: PowerShell 7 can persist ACE content through
+    `FileSystemAclExtensions.SetAccessControl` while dropping an unprotected
+    SACL control flag; passing only a native protection flag is rejected.

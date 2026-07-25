@@ -5,24 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-1: Execute privileged release acceptance
-
-Specifications: 0004, 0005. Requirements: FR-6, FR-7, FR-8, FR-10, NFR-7.
-
-The six real SACL and arbitrary-owner acceptance scenarios are implemented and
-discovered, but the current token does not contain `SeSecurityPrivilege` or
-`SeRestorePrivilege`. Before publishing a release, run
-`tests/Integration/Elevated-NTFSPermission.Tests.ps1` from a suitably privileged
-isolated process and retain the NUnit evidence.
-
-## OI-2: Add live SACL descriptor-copy acceptance
-
-Specifications: 0004, 0005. Requirements: FR-9, NFR-3, NFR-7.
-
-Selected-section descriptor copy is live-tested for DACL state. Add a
-privilege-gated scenario that copies only `Audit`, verifies the target SACL, and
-proves owner, group, and DACL preservation.
-
 ## OI-3: Report inherited-rule provenance
 
 Specifications: 0003, 0004. Requirement: FR-1.

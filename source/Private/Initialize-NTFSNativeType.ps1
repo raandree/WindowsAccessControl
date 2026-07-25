@@ -193,6 +193,120 @@ namespace NTFSPermission
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool AuthzFreeResourceManager(IntPtr resourceManager);
 
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, EntryPoint = "SetNamedSecurityInfoW")]
+        private static extern UInt32 SetNamedSecurityInfo(
+            string objectName,
+            UInt32 objectType,
+            UInt32 securityInformation,
+            IntPtr owner,
+            IntPtr group,
+            IntPtr dacl,
+            IntPtr sacl);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetSecurityDescriptorDacl(
+            IntPtr securityDescriptor,
+            [MarshalAs(UnmanagedType.Bool)] out bool daclPresent,
+            out IntPtr dacl,
+            [MarshalAs(UnmanagedType.Bool)] out bool daclDefaulted);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetSecurityDescriptorSacl(
+            IntPtr securityDescriptor,
+            [MarshalAs(UnmanagedType.Bool)] out bool saclPresent,
+            out IntPtr sacl,
+            [MarshalAs(UnmanagedType.Bool)] out bool saclDefaulted);
+
+        public static void SetFileSystemAclProtection(
+            string path,
+            byte[] securityDescriptor,
+            bool setAccess,
+            bool accessProtected,
+            bool setAudit,
+            bool auditProtected)
+        {
+            const UInt32 FileObject = 1;
+            const UInt32 Dacl = 0x00000004;
+            const UInt32 Sacl = 0x00000008;
+            const UInt32 ProtectedDacl = 0x80000000;
+            const UInt32 UnprotectedDacl = 0x20000000;
+            const UInt32 ProtectedSacl = 0x40000000;
+            const UInt32 UnprotectedSacl = 0x10000000;
+
+            if (securityDescriptor == null || securityDescriptor.Length == 0)
+            {
+                throw new ArgumentException(
+                    "A security descriptor is required.",
+                    "securityDescriptor");
+            }
+
+            IntPtr descriptorPointer = IntPtr.Zero;
+            try
+            {
+                descriptorPointer = Marshal.AllocHGlobal(securityDescriptor.Length);
+                Marshal.Copy(
+                    securityDescriptor,
+                    0,
+                    descriptorPointer,
+                    securityDescriptor.Length);
+
+                UInt32 securityInformation = 0;
+                IntPtr daclPointer = IntPtr.Zero;
+                IntPtr saclPointer = IntPtr.Zero;
+                bool aclPresent;
+                bool aclDefaulted;
+
+                if (setAccess)
+                {
+                    if (!GetSecurityDescriptorDacl(
+                        descriptorPointer,
+                        out aclPresent,
+                        out daclPointer,
+                        out aclDefaulted))
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
+                    securityInformation |= Dacl;
+                    securityInformation |= accessProtected ? ProtectedDacl : UnprotectedDacl;
+                }
+                if (setAudit)
+                {
+                    if (!GetSecurityDescriptorSacl(
+                        descriptorPointer,
+                        out aclPresent,
+                        out saclPointer,
+                        out aclDefaulted))
+                    {
+                        throw new Win32Exception(Marshal.GetLastWin32Error());
+                    }
+                    securityInformation |= Sacl;
+                    securityInformation |= auditProtected ? ProtectedSacl : UnprotectedSacl;
+                }
+
+                UInt32 result = SetNamedSecurityInfo(
+                    path,
+                    FileObject,
+                    securityInformation,
+                    IntPtr.Zero,
+                    IntPtr.Zero,
+                    daclPointer,
+                    saclPointer);
+                if (result != 0)
+                {
+                    throw new Win32Exception((Int32)result);
+                }
+            }
+            finally
+            {
+                if (descriptorPointer != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(descriptorPointer);
+                }
+            }
+        }
+
         private static string GetPrivilegeName(Luid luid)
         {
             UInt32 nameLength = 0;

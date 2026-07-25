@@ -42,6 +42,9 @@ both supported PowerShell editions within the available token privileges.
 - 2026-07-25: Passed the complete QA folder with 181 tests. Eight specification
     checks enforce structure, status, requirement identity, traceability,
     exports, local links, curated format views, and ADR indexing.
+- 2026-07-25: Closed the privileged NTFS release gate with seven live
+    acceptance scenarios, zero failures, and zero skips; added SACL-only copy
+    preservation evidence and fixed PowerShell 7 SACL protection persistence.
 
 ## Stable capabilities
 
@@ -56,6 +59,8 @@ both supported PowerShell editions within the available token privileges.
 
 ## Open work
 
-- Execute the six elevated acceptance specifications before release when the
-    required token privileges are available.
+- Expand and rename the module to `WindowsAccessControl` for file-system,
+    registry-key, service/SCM, and process security descriptors.
+- Add class-based DSC exact-descriptor and rule-presence resources for every
+    current object family.
 - Remote publication remains user-controlled.
