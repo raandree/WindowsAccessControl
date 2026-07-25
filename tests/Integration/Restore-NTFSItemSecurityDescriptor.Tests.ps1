@@ -1,3 +1,4 @@
+# Versioned backup prevalidation and restore safety (FR-10, NFR-6, NFR-8, ADR 0005).
 BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |

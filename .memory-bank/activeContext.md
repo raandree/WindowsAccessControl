@@ -9,9 +9,8 @@ source: current task evidence
 
 ## Current focus
 
-The NTFSSecurity comparison, specification audit, live-test expansion, and
-selected 0.1.0 enhancements are complete and locally committed on
-`ai/ntfs-permissions-module`.
+The Vivarium-style specification governance is established and locally
+committed on `ai/ntfs-permissions-module`.
 
 ## Evidence
 
@@ -31,6 +30,12 @@ selected 0.1.0 enhancements are complete and locally committed on
 - Independent security and quality review returned APPROVE with no Blocker or
     Major findings; all concrete Minor and Nit findings were resolved.
 - The current package is `output/NTFSPermission.0.1.0.nupkg`.
+- `specs/` now owns five accepted numbered specifications, 27 stable
+    requirements, eight accepted ADRs, open issues, and executable conformance
+    checks. Comment-based help remains the per-command reference.
+- Full QA with the specification contract passes 181 tests with zero failures;
+    its eight conformance checks cover structure, status, requirement identity,
+    traceability, exports, local links, format views, and ADR indexing.
 
 ## Next step
 

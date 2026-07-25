@@ -36,6 +36,12 @@ both supported PowerShell editions within the available token privileges.
     analyzer, manifest, format, changelog, and Memory Bank gates passed.
 - 2026-07-25: Prepared the approved, green follow-up as a local feature commit;
     no remote push was requested or performed.
+- 2026-07-25: Migrated the test-count matrix into a Vivarium-style normative
+    `specs/` tree with numbered contracts, stable requirement IDs, MADR records,
+    open issues, and Pester conformance enforcement.
+- 2026-07-25: Passed the complete QA folder with 181 tests. Eight specification
+    checks enforce structure, status, requirement identity, traceability,
+    exports, local links, curated format views, and ADR indexing.
 
 ## Stable capabilities
 
@@ -45,6 +51,8 @@ both supported PowerShell editions within the available token privileges.
 - Optional explicit-rule removal while enabling access or audit inheritance.
 - Selected-section descriptor copy and versioned JSON backup or restore.
 - Reproducible Sampler build plus a two-edition Azure Pipelines test matrix.
+- Normative numbered specifications with requirement-to-test traceability and
+    immutable accepted ADRs.
 
 ## Open work
 

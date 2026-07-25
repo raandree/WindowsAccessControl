@@ -1,3 +1,4 @@
+# Audit batching and one-write descriptor behavior (FR-6, FR-15, NFR-3, NFR-6).
 BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |

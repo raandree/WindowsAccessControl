@@ -2,7 +2,8 @@
 
 This note records the web research completed on 2026-07-25 before the module
 API was designed. It separates verified platform behavior from project design
-choices.
+choices. Normative requirements and decisions live under
+[specs/](../specs/README.md); this note supplies their external evidence.
 
 ## Existing module landscape
 
@@ -178,3 +179,7 @@ Version 0.1 covers files and directories:
 
 Registry, service, printer, process, share-level, POSIX, Central Access Policy,
 and operating-system audit policy management are deliberately outside scope.
+
+The accepted scope contract is maintained in
+[specification 0001](../specs/0001-vision-and-scope.md). Deferred enhancements
+are tracked in [open issues](../specs/open-issues.md).

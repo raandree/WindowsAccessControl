@@ -1,0 +1,59 @@
+# Specifications
+
+This directory contains the normative requirements and design contracts for
+`NTFSPermission`. Specifications are the source of truth for what the module
+does and how its public and security boundaries behave. Comment-based help is
+the source of truth for exhaustive per-command parameter reference.
+
+The Memory Bank summarizes and points to these documents; it does not replace
+them.
+
+## Reading order
+
+1. [Vision and scope](0001-vision-and-scope.md)
+2. [Requirements](0002-requirements.md)
+3. [Public API](0003-public-api.md)
+4. [Security and persistence](0004-security-and-persistence.md)
+5. [Verification and traceability](0005-verification-and-traceability.md)
+
+## Status
+
+| ID | Specification | Status |
+| --- | --- | --- |
+| 0001 | Vision and scope | Accepted |
+| 0002 | Requirements | Accepted |
+| 0003 | Public API | Accepted |
+| 0004 | Security and persistence | Accepted |
+| 0005 | Verification and traceability | Accepted |
+
+These specifications describe the implemented 0.1.0 contract. A future change
+starts as `Draft` and becomes `Accepted` when approved.
+
+## Architecture decisions
+
+Cross-cutting decisions are recorded as immutable ADRs under
+[decisions/](decisions/README.md) using the MADR structure. A later ADR
+supersedes an accepted decision rather than rewriting its history.
+
+## Open issues
+
+Agreed but unfinished validation and design work is tracked in
+[open-issues.md](open-issues.md). Resolved items are removed from that file and
+recorded in the changelog.
+
+## Conventions
+
+- One specification per file, numbered `NNNN-title.md`.
+- Sentence-case headings and American English.
+- Each numbered specification declares `Status: Draft`, `Accepted`, or
+  `Superseded` near the top.
+- Requirements use stable `FR-*` and `NFR-*` identifiers.
+- Tests and traceability tables reference requirement, specification, and ADR
+  identifiers where they prove a contract.
+- Specifications describe design contracts. Comment-based help beside the code
+  describes every parameter and example.
+
+## See also
+
+- [Research sources](../docs/research.md)
+- [Project README](../README.md)

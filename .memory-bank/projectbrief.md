@@ -7,6 +7,10 @@ source: repository evidence
 
 # Project brief
 
+The normative project contract lives under [specs/](../specs/README.md). This
+Memory Bank file is a concise scope summary and does not replace the numbered
+specifications or ADRs.
+
 ## Purpose
 
 Provide an ergonomic, pipeline-first PowerShell module for managing NTFS
@@ -40,3 +44,7 @@ objects directly.
     PowerShell 5.1 and PowerShell 7 on Windows.
 5. A Sampler build, Pester tests, static analysis, and user documentation prove
     the supported behavior.
+
+Stable requirement identifiers and their executable evidence are maintained in
+[requirements](../specs/0002-requirements.md) and
+[verification and traceability](../specs/0005-verification-and-traceability.md).

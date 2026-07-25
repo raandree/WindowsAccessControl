@@ -267,6 +267,9 @@ PowerShell process to exercise the available privileged paths.
 
 ## Design research
 
-See [docs/research.md](docs/research.md) for the source review, API semantics,
-scope decisions, and NTFSSecurity comparison. The executable evidence is
-cataloged in [docs/specification-matrix.md](docs/specification-matrix.md).
+The numbered [specifications](specs/README.md) are the source of truth for
+scope, requirements, API shape, security boundaries, and verification
+traceability. Exhaustive command details remain in comment-based help.
+
+See [docs/research.md](docs/research.md) for the source review, platform API
+semantics, and NTFSSecurity comparison that informed those specifications.

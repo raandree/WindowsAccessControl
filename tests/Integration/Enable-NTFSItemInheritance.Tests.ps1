@@ -1,3 +1,4 @@
+# Access and audit inheritance contract (FR-8, NFR-3).
 BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |

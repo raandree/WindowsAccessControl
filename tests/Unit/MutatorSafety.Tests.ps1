@@ -1,3 +1,4 @@
+# Cross-cutting ShouldProcess and WhatIf contract (FR-17).
 BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |

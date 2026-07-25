@@ -1,3 +1,4 @@
+# Read-only process-token privilege inventory (FR-14, NFR-9, ADR 0007).
 BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
