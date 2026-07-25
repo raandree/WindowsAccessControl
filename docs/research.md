@@ -1,8 +1,9 @@
-# NTFS permission module research
+# Windows access-control module research
 
-This note records the web research completed on 2026-07-25 before the module
-API was designed. It separates verified platform behavior from project design
-choices. Normative requirements and decisions live under
+This note records the web research completed on 2026-07-25 before the original
+NTFS API and the expanded Windows access-control API were designed. It
+separates verified platform behavior from project design choices. Normative
+requirements and decisions live under
 [specs/](../specs/README.md); this note supplies their external evidence.
 
 ## Existing module landscape
@@ -64,10 +65,33 @@ The following upstream behavior is rejected for this module:
 
 - AlphaFS-backed `Item2`, link, disk-space, and hash commands are general
   filesystem utilities rather than permission management.
-- Automatically enabling backup, restore, take-ownership, and security
-  privileges is broader than the requested operation and obscures token state.
+- Enabling backup, restore, take-ownership, and security privileges on module
+  import is broader than the requested operation and obscures token state. The
+  expanded design instead uses reference-counted operation scopes that restore
+  the original state.
 - Temporarily changing ownership after an authorization failure mutates an
   additional security boundary and creates restoration failure modes.
+
+### NTFSSecurity identity and conversion model
+
+The upstream
+[`IdentityReference2`](https://github.com/raandree/NTFSSecurity/blob/master/Security2/IdentityReference2.cs)
+class accepts `IdentityReference` and string input, detects SID text, translates
+account names to SIDs, preserves an unresolvable but valid SID, compares values
+by SID, and returns an account name when resolvable or SID text otherwise. It
+also defines conversions among strings, `NTAccount`, `SecurityIdentifier`, and
+`IdentityReference`.
+
+`WindowsAccessControl` adopts those observable conveniences through cmdlet
+binding and conversion helpers rather than a caller-facing wrapper class:
+
+- account names, SID strings, `NTAccount`, `SecurityIdentifier`, and module
+  output normalize to one SID
+- deduplication and equality use SID identity, not display-name spelling
+- orphaned SIDs remain inspectable and round-trip through rule output
+- `Account`, `SID`, `IdentityReference`, and compatibility aliases support
+  object-to-command pipelines
+- only domain rights and configuration enums are direct caller types
 
 ## Verified access-rule semantics
 
@@ -165,7 +189,71 @@ and
 commands are Windows-specific. The built module fails clearly during import on
 another platform instead of implying cross-platform ACL support.
 
-## Scope decision
+## Expanded securable-object research
+
+Microsoft defines a
+[`SE_OBJECT_TYPE`](https://learn.microsoft.com/en-us/windows/win32/api/accctrl/ne-accctrl-se_object_type)
+enumeration for files, services, printers, registry keys, shares, kernel
+objects, window objects, directory-service objects, and WMI objects. The
+[securable objects](https://learn.microsoft.com/en-us/windows/win32/secauthz/securable-objects)
+reference confirms that named Windows objects and some unnamed objects,
+including processes, can have security descriptors. Each family still has its
+own rights, addressability, inheritance, lifetime, and safe test boundary.
+
+### Current expansion families
+
+| Family | Verified platform behavior | Release decision |
+| --- | --- | --- |
+| Registry key | Keys have security descriptors and inherit ACLs from parent keys. `KEY_QUERY_VALUE` and `KEY_SET_VALUE` govern values. | Ship local standard hives and 32/64-bit views. Do not invent registry-value ACLs. |
+| Service | Named services and the SCM expose owner, group, DACL, and SACL through service security APIs. | Ship local services, driver/per-user services, and explicit SCM targeting. |
+| Process | Processes have descriptors retrieved and changed through handle-based security APIs. | Ship local PID, process-object, module-object, and caller-owned-handle targets. Pin one instance and fail closed on exit or PID reuse. |
+
+The registry evidence is
+[Registry Key Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/sysinfo/registry-key-security-and-access-rights).
+It defines `KEY_SET_VALUE` as the right required to create, delete, or set a
+registry value and describes security descriptors for keys, not values.
+
+The service evidence is
+[Service Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/services/service-security-and-access-rights).
+It identifies `READ_CONTROL`, `WRITE_DAC`, `WRITE_OWNER`, and
+`ACCESS_SYSTEM_SECURITY` for descriptors and documents both service and SCM
+security.
+
+The process evidence is
+[Process Security and Access Rights](https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights).
+It directs callers to `GetSecurityInfo` and `SetSecurityInfo`, documents
+protected-process restrictions, and recommends requesting only required access.
+
+On 2026-07-25, a disposable elevated local probe used the proposed native
+boundaries and returned nonempty self-relative descriptors for all three new
+families: 172 bytes for an HKCU scratch key, 136 bytes for a temporary service,
+and 144 bytes for the current process. The key and service were removed in the
+probe's `finally` block.
+
+### Additional object-family recommendations
+
+| Candidate | Recommendation | Evidence and rationale |
+| --- | --- | --- |
+| Scheduled tasks | Future | [`RegisterTaskDefinition`](https://learn.microsoft.com/en-us/windows/win32/api/taskschd/nf-taskschd-itaskfolder-registertaskdefinition) accepts task SDDL, but COM registration and task-folder inheritance need a dedicated adapter. |
+| Printers | Future | [`PRINTER_INFO_3`](https://learn.microsoft.com/en-us/windows/win32/printdocs/printer-info-3) exposes a persistent descriptor; safe write tests need a disposable queue and port. |
+| WMI namespaces | Future | [Each namespace has a descriptor](https://learn.microsoft.com/en-us/windows/win32/wmisdk/setting-namespace-security-descriptors), but a bad write can lock out management infrastructure. |
+| SMB shares | Future | [`Grant-SmbShareAccess`](https://learn.microsoft.com/en-us/powershell/module/smbshare/grant-smbshareaccess) manages an independent share descriptor, so in-box commands already cover common workflows. |
+| Event-log channels | Future | [`wevtutil`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/wevtutil) sets channel access SDDL; custom-channel lifecycle is a separate test boundary. |
+| Certificate private keys | Future | [`CryptoKeySecurity`](https://learn.microsoft.com/en-us/dotnet/api/system.security.accesscontrol.cryptokeysecurity) covers classic key containers, but CAPI and CNG addressing differ across editions. |
+| Named synchronization objects | Exclude | Events, mutexes, semaphores, and timers are securable but ephemeral and poor DSC targets. |
+| Window stations and desktops | Exclude | They are local, session-scoped, high risk, and cannot use named security APIs because names are not unique. |
+| Active Directory | Exclude for this release | Technically securable but an explicit signed non-goal. |
+
+The
+[synchronization-object security](https://learn.microsoft.com/en-us/windows/win32/sync/synchronization-object-security-and-access-rights)
+reference confirms that synchronization ACLs come from the creator token and
+that some synchronization primitives are not securable. The object-type
+reference identifies window stations and desktops as local objects whose names
+are not unique for named security APIs.
+
+## Scope decisions
+
+### Version 0.1
 
 Version 0.1 covers files and directories:
 
@@ -178,8 +266,20 @@ Version 0.1 covers files and directories:
 - process token privilege inventory, query, enable, and disable
 
 Registry, service, printer, process, share-level, POSIX, Central Access Policy,
-and operating-system audit policy management are deliberately outside scope.
+and operating-system audit policy management were deliberately outside the 0.1
+scope.
 
-The accepted scope contract is maintained in
-[specification 0001](../specs/0001-vision-and-scope.md). Deferred enhancements
-are tracked in [open issues](../specs/open-issues.md).
+### WindowsAccessControl expansion
+
+The accepted next release renames the unpublished module to
+`WindowsAccessControl` and adds local registry-key, service/SCM, and live
+process security. Scheduled tasks, printers, WMI namespaces, SMB shares,
+event-log channels, and certificate private keys are future candidates.
+Remote native APIs, registry-value ACLs, Active Directory, POSIX ACLs, cloud
+IAM, Group Policy authoring, and graphical tooling remain non-goals.
+
+The original scope contract is maintained in
+[specification 0001](../specs/0001-vision-and-scope.md), and the signed expansion
+is maintained in
+[specification 0006](../specs/0006-windows-access-control-expansion.md).
+Deferred enhancements are tracked in [open issues](../specs/open-issues.md).

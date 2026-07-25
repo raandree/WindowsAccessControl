@@ -9,24 +9,29 @@ source: repository evidence
 
 ## Problem
 
-PowerShell exposes whole security descriptors through `Get-Acl` and `Set-Acl`,
-but routine NTFS permission operations require verbose and error-prone .NET
-method calls. Established convenience modules are dormant or depend on
-archived libraries.
+PowerShell exposes inconsistent whole-descriptor surfaces across Windows
+object families. Routine file-system, registry, service, and process permission
+operations require verbose and error-prone managed or native calls. Established
+convenience modules are dormant, narrowly scoped, or depend on archived
+libraries.
 
 ## Users
 
 - Windows administrators.
 - PowerShell automation authors.
+- DSC operators.
+- Security auditors.
 
 ## Core workflows
 
-1. Inspect and filter access or audit rules across pipeline input.
+1. Inspect and filter access or audit rules across object-specific pipelines.
 2. Add, replace, or remove precise rules with preview and confirmation support.
-3. Inspect or change ownership and inheritance without losing unrelated
-     descriptor sections.
-4. Copy, back up, and restore security descriptors.
-5. Resolve identities and inspect effective access or ACL health.
+3. Inspect or change owner, group, and supported inheritance without losing
+     unrelated descriptor sections.
+4. Copy, back up, verify, and restore unified descriptor records.
+5. Resolve identities, scope privileges automatically, and inspect effective
+     access, ACL health, or operation metrics.
+6. Converge exact descriptors or individual rules through class-based DSC.
 
 ## Experience goals
 
@@ -34,3 +39,5 @@ archived libraries.
 - Make destructive semantics explicit in command names and parameter sets.
 - Emit structured objects suitable for filtering, export, and further module
     commands.
+- Keep object-specific rights discoverable while centralizing high-risk native
+     descriptor behavior.

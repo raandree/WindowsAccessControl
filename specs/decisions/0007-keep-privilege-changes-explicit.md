@@ -1,8 +1,9 @@
 # Keep privilege changes explicit and acceptance gated
 
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-07-25
 - Deciders: user, software-engineer agent
+- Superseded by: ADR 0008 for production command behavior
 
 ## Context and problem statement
 

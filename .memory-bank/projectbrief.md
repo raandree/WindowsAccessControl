@@ -13,19 +13,21 @@ specifications or ADRs.
 
 ## Purpose
 
-Provide an ergonomic, pipeline-first PowerShell module for managing NTFS
-permissions without requiring callers to manipulate .NET access-control
-objects directly.
+Provide an ergonomic, pipeline-first PowerShell module for managing Windows
+security descriptors without requiring callers to manipulate native pointers
+or .NET access-control classes directly.
 
 ## Scope
 
-- In scope: access and audit rules, owner, access and audit inheritance,
-  security descriptors, copy, backup and restore, identity resolution,
-  canonical-order diagnostics, and effective-access reporting for files and
-  directories on Windows.
-- Out of scope: registry, service, printer, process, share-level, and POSIX
-  permissions; Central Access Policy management; and operating-system audit
-  policy configuration.
+- In scope: local NTFS files/directories, registry keys, named services, the
+    Service Control Manager, and pinned live processes; owner, group, DACL,
+    SACL, descriptor portability, identity, privileges, effective access,
+    metrics, and supported inheritance workflows.
+- Deferred: scheduled tasks, printers, WMI namespaces, SMB shares, event-log
+    channels, and certificate private keys.
+- Out of scope: registry-value ACLs, native remote APIs, Active Directory,
+    POSIX ACLs, cloud IAM, Group Policy authoring, Central Access Policy,
+    operating-system audit policy, and graphical tooling.
 
 ## Stakeholders
 
@@ -34,16 +36,20 @@ objects directly.
 
 ## Acceptance criteria
 
-1. Public commands accept paths, file-system objects, and relevant module
-    output through the pipeline.
+1. Object-specific commands accept canonical target strings, native objects,
+    relevant module output, and explicit caller-owned handles where supported.
 2. Mutating commands support `WhatIf`, `Confirm`, and opt-in pass-through
     output.
-3. The module covers DACL, SACL, owner, inheritance, descriptor portability,
-    identity, canonical-order, and effective-access workflows.
+3. Every current object family covers its supported owner, group, DACL, SACL,
+    descriptor portability, identity, and effective-access workflows.
 4. The module has no third-party runtime dependency and supports Windows
     PowerShell 5.1 and PowerShell 7 on Windows.
-5. A Sampler build, Pester tests, static analysis, and user documentation prove
-    the supported behavior.
+5. Required privileges are scoped to an operation, reference-counted across
+    parallel workers, and restored to their original state.
+6. Class-based DSC exact-descriptor and access-rule-presence resources cover
+    every current object family.
+7. A PowerShell 7 Sampler build, cross-edition Pester/live tests, static
+    analysis, package inspection, and user documentation prove the behavior.
 
 Stable requirement identifiers and their executable evidence are maintained in
 [requirements](../specs/0002-requirements.md) and

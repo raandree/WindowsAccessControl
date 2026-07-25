@@ -111,3 +111,56 @@ Normative record: [ADR 0001](../specs/decisions/0001-document-api-contract-in-sp
 - Rationale: PowerShell 7 can persist ACE content through
     `FileSystemAclExtensions.SetAccessControl` while dropping an unprotected
     SACL control flag; passing only a native protection flag is rejected.
+
+### Decision 11: Scope required privileges to operations
+
+Normative record: [ADR 0008](../specs/decisions/0008-use-scoped-automatic-privilege-enablement.md).
+
+- Choice: Reference-count required privilege scopes and restore original token
+    state after the final worker exits.
+- Rationale: Commands and DSC remain composable without import-time authority
+    broadening.
+
+### Decision 12: Rename to WindowsAccessControl
+
+Normative record: [ADR 0009](../specs/decisions/0009-rename-module-to-windows-access-control.md).
+
+- Choice: Hard-rename the unpublished package and cross-domain contracts while
+    retaining NTFS in filesystem-specific command nouns.
+- Rationale: The package name must describe all current object families.
+
+### Decision 13: Share one binary descriptor engine
+
+Normative record: [ADR 0010](../specs/decisions/0010-use-shared-binary-security-descriptor-engine.md).
+
+- Choice: Use named Unicode APIs for registry/services and handle APIs for
+    processes over self-relative binary descriptors.
+- Rationale: This preserves section and ACE fidelity across both PowerShell
+    editions without a runtime dependency.
+
+### Decision 14: Keep the release local and testable
+
+Normative record: [ADR 0011](../specs/decisions/0011-limit-release-to-local-object-families.md).
+
+- Choice: Ship local file system, registry key, service/SCM, and live process
+    targets; defer or exclude other securable object types explicitly.
+- Rationale: Remote trust and ephemeral object lifetimes require separate
+    contracts.
+
+### Decision 15: Use object-specific public and DSC surfaces
+
+Normative record: [ADR 0012](../specs/decisions/0012-use-object-specific-commands-and-dsc-resources.md).
+
+- Choice: Export object-specific commands, typed object contracts, public
+    enums, and exact/rule class-based DSC resources per family.
+- Rationale: Rights and capabilities remain discoverable while internals stay
+    shared.
+
+### Decision 16: Bound parallel target execution
+
+Normative record: [ADR 0013](../specs/decisions/0013-use-bounded-parallel-target-execution.md).
+
+- Choice: Prevalidate and deduplicate before bounded parallel dispatch;
+    serialize aliases of one canonical target.
+- Rationale: Enterprise-size batches need throughput without lost updates or
+    unbounded native resource use.

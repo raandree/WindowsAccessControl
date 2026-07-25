@@ -45,6 +45,9 @@ both supported PowerShell editions within the available token privileges.
 - 2026-07-25: Closed the privileged NTFS release gate with seven live
     acceptance scenarios, zero failures, and zero skips; added SACL-only copy
     preservation evidence and fixed PowerShell 7 SACL protection persistence.
+- 2026-07-25: Accepted the signed `WindowsAccessControl` expansion design and
+    six governing ADRs after a 50-question consolidated Grill-Me interview,
+    primary Microsoft-source research, and a successful three-family API probe.
 
 ## Stable capabilities
 

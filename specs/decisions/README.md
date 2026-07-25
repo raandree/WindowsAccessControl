@@ -15,7 +15,13 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0004 | [Expose explicit ACL mutation semantics](0004-expose-explicit-acl-mutation-semantics.md) | Accepted |
 | 0005 | [Use versioned validated JSON backups](0005-use-versioned-validated-json-backups.md) | Accepted |
 | 0006 | [Prevalidate and deduplicate identities before batching](0006-prevalidate-and-deduplicate-identities.md) | Accepted |
-| 0007 | [Keep privilege changes explicit and acceptance gated](0007-keep-privilege-changes-explicit.md) | Accepted |
+| 0007 | [Keep privilege changes explicit and acceptance gated](0007-keep-privilege-changes-explicit.md) | Superseded by 0008 |
+| 0008 | [Use scoped automatic privilege enablement](0008-use-scoped-automatic-privilege-enablement.md) | Accepted |
+| 0009 | [Rename the module to WindowsAccessControl](0009-rename-module-to-windows-access-control.md) | Accepted |
+| 0010 | [Use a shared binary security-descriptor engine](0010-use-shared-binary-security-descriptor-engine.md) | Accepted |
+| 0011 | [Limit the release to local object families](0011-limit-release-to-local-object-families.md) | Accepted |
+| 0012 | [Use object-specific commands and DSC resources](0012-use-object-specific-commands-and-dsc-resources.md) | Accepted |
+| 0013 | [Use bounded parallel target execution](0013-use-bounded-parallel-target-execution.md) | Accepted |
 
 ## See also
 

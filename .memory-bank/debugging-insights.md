@@ -14,6 +14,14 @@ a non-elevated test. Persisting through `FileSystemAclExtensions` on PowerShell
 Core and the .NET Framework filesystem APIs on Windows PowerShell wrote only
 the modified sections and removed that false SACL privilege dependency.
 
+PowerShell 7 has a narrower exception: `FileSystemAclExtensions` persisted SACL
+ACE changes but dropped `SetAuditRuleProtection($false, ...)`. The in-memory
+descriptor was unprotected before persistence and protected after reload.
+Persist the selected ACL pointer together with `SACL_SECURITY_INFORMATION` and
+`UNPROTECTED_SACL_SECURITY_INFORMATION` through `SetNamedSecurityInfoW`.
+Passing only the control flag returns access denied. Use the same section-scoped
+pattern for DACL control flags and never include an unselected ACL.
+
 ## Command collision avoidance
 
 The installed NTFSSecurity module autoloaded `Get-NTFSOwner` and related names
@@ -42,3 +50,15 @@ Windows PowerShell treats native Git line-ending warnings as error records when
 inspect the returned result instead of allowing Pester to terminate the host.
 Keep console output separate from explicit NUnit or JSON result artifacts when
 the Desktop host buffers streams.
+
+## GitVersion error output with a zero exit code
+
+GitVersion 5.12 could not infer a parent when the checkout contained only an
+`ai/` branch and no `master` ref. It wrote `INFO` lines and an exception instead
+of JSON but returned exit code zero. Sampler then failed when it passed the
+leading text to `ConvertFrom-Json`.
+
+Use Sampler's documented `ModuleVersion` environment override for deterministic
+local validation until `GitVersion.yml` recognizes `ai/` branches without a
+missing parent ref. Do not suppress the JSON error or classify it as a source
+compilation failure.

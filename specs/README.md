@@ -1,9 +1,11 @@
 # Specifications
 
 This directory contains the normative requirements and design contracts for
-`NTFSPermission`. Specifications are the source of truth for what the module
-does and how its public and security boundaries behave. Comment-based help is
-the source of truth for exhaustive per-command parameter reference.
+the current `NTFSPermission` implementation and its accepted rename and
+expansion to `WindowsAccessControl`. Specifications are the source of truth for
+what the module does and how its public and security boundaries behave.
+Comment-based help is the source of truth for exhaustive per-command parameter
+reference.
 
 The Memory Bank summarizes and points to these documents; it does not replace
 them.
@@ -15,6 +17,7 @@ them.
 3. [Public API](0003-public-api.md)
 4. [Security and persistence](0004-security-and-persistence.md)
 5. [Verification and traceability](0005-verification-and-traceability.md)
+6. [WindowsAccessControl expansion](0006-windows-access-control-expansion.md)
 
 ## Status
 
@@ -25,8 +28,11 @@ them.
 | 0003 | Public API | Accepted |
 | 0004 | Security and persistence | Accepted |
 | 0005 | Verification and traceability | Accepted |
+| 0006 | WindowsAccessControl expansion | Accepted |
 
-These specifications describe the implemented 0.1.0 contract. A future change
+Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
+Specification 0006 is the signed design contract for the current expansion and
+becomes implemented only when its verification gates pass. A future change
 starts as `Draft` and becomes `Accepted` when approved.
 
 ## Architecture decisions

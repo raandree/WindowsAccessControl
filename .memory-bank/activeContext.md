@@ -33,16 +33,22 @@ Expand and rename the unpublished module to `WindowsAccessControl` on
 - Independent security and quality review returned APPROVE with no Blocker or
     Major findings; all concrete Minor and Nit findings were resolved.
 - The current package is `output/NTFSPermission.0.1.0.nupkg`.
-- `specs/` now owns five accepted numbered specifications, 27 stable
-    requirements, eight accepted ADRs, open issues, and executable conformance
+- `specs/` now owns six accepted numbered specifications, 27 stable
+    requirements, 14 indexed ADRs, open issues, and executable conformance
     checks. Comment-based help remains the per-command reference.
+- Specification 0006 and ADRs 0008 through 0013 define the signed
+    `WindowsAccessControl` expansion, automatic scoped privileges, shared
+    binary descriptor engine, local object boundary, public/DSC shape, and
+    bounded parallel execution.
+- A disposable local native-API probe returned nonempty descriptors for a
+    registry key, service, and process and cleaned up its scratch targets.
 - Full QA with the specification contract passes 181 tests with zero failures;
     its eight conformance checks cover structure, status, requirement identity,
     traceability, exports, local links, format views, and ADR indexing.
 
 ## Next step
 
-Codify the signed expanded-scope design, then implement the shared Windows
-identity/security-descriptor engine, object-specific registry/service/process
-commands, and class-based DSC resources. Do not push or publish without an
-explicit request.
+Implement the module rename and shared Windows identity/security-descriptor
+engine test-first, then layer object-specific registry/service/process commands
+and class-based DSC resources. Do not push or publish without an explicit
+request.
