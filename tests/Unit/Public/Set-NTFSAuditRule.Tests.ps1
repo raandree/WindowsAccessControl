@@ -1,0 +1,43 @@
+BeforeAll {
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+        Sort-Object -Property { [version]$_.Directory.Name } -Descending |
+        Select-Object -First 1
+
+    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+}
+
+AfterAll {
+    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+}
+
+Describe 'Set-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
+    BeforeEach {
+        $script:testFile = Join-Path -Path $TestDrive -ChildPath 'set-audit.txt'
+        Set-Content -LiteralPath $script:testFile -Value 'test'
+        $script:testSecurity = [System.Security.AccessControl.FileSecurity]::new()
+        $sid = [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0')
+        $rule = [System.Security.AccessControl.FileSystemAuditRule]::new(
+            $sid,
+            [System.Security.AccessControl.FileSystemRights]::Read,
+            [System.Security.AccessControl.AuditFlags]::Failure
+        )
+        $script:testSecurity.AddAuditRule($rule)
+        Mock -ModuleName NTFSPermission -CommandName Get-Acl -MockWith { $script:testSecurity }
+        Mock -ModuleName NTFSPermission -CommandName Invoke-NTFSSecurityDescriptorPersistence
+    }
+
+    It 'Should replace audit rules for the same identity and audit flags' {
+        Set-NTFSAuditRule -LiteralPath $script:testFile -Account 'S-1-1-0' -AccessRights Write -AuditFlags Failure
+
+        $rules = @($script:testSecurity.GetAuditRules(
+            $true,
+            $false,
+            [System.Security.Principal.SecurityIdentifier]
+        ))
+        $rules | Should -HaveCount 1
+        [int]($rules[0].FileSystemRights -band [System.Security.AccessControl.FileSystemRights]::ReadData) |
+            Should -Be 0
+        ($rules[0].FileSystemRights -band [System.Security.AccessControl.FileSystemRights]::WriteData) |
+            Should -Be ([System.Security.AccessControl.FileSystemRights]::WriteData)
+    }
+}

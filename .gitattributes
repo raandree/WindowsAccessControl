@@ -1,0 +1,20 @@
+* text=auto
+
+*.ps1    text eol=crlf
+*.psm1   text eol=crlf
+*.psd1   text eol=crlf
+*.ps1xml text eol=crlf
+*.md     text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.sh     text eol=lf
+*.svg    text eol=lf
+
+*.coverage binary
+*.dll      binary
+*.exe      binary
+*.jpg      binary
+*.nupkg    binary
+*.pfx      binary
+*.png      binary
+*.so       binary

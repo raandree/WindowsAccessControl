@@ -1,0 +1,131 @@
+function Set-NTFSAccessRule {
+    <#
+    .SYNOPSIS
+        Replaces matching NTFS access rules.
+
+    .DESCRIPTION
+        Removes access rules with the same account and allow or deny qualifier,
+        then adds the specified rule. Rules with the opposite qualifier and
+        rules for other accounts are preserved.
+
+    .PARAMETER Path
+        One or more filesystem paths. Wildcards are expanded by the FileSystem
+        provider, and path strings can be supplied through the pipeline.
+
+    .PARAMETER LiteralPath
+        One or more filesystem paths used exactly as supplied. FileSystem
+        objects bind to this parameter through their PSPath property.
+
+    .PARAMETER Account
+        The account name or SID whose matching access rules are replaced.
+
+    .PARAMETER AccessRights
+        The filesystem rights for the replacement access rule.
+
+    .PARAMETER AccessControlType
+        Selects the allow or deny qualifier that is replaced.
+
+    .PARAMETER AppliesTo
+        Specifies how a directory rule applies to the directory and its child
+        files or directories. Files default to ThisFolderOnly.
+
+    .PARAMETER PassThru
+        Returns the replacement access rule after it is persisted.
+
+    .EXAMPLE
+        Set-NTFSAccessRule -LiteralPath C:\Data -Account 'CONTOSO\Analysts' -AccessRights Modify
+
+        Replaces allow rules for the Analysts group with a Modify rule.
+
+    .INPUTS
+        System.String
+        System.IO.FileSystemInfo
+
+    .OUTPUTS
+        None
+        NTFSPermission.AccessRule
+    #>
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'Path')]
+        [Alias('FullName')]
+        [SupportsWildcards()]
+        [string[]]$Path,
+
+        [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = 'LiteralPath')]
+        [Alias('PSPath')]
+        [string[]]$LiteralPath,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Account,
+
+        [Parameter(Mandatory)]
+        [System.Security.AccessControl.FileSystemRights]$AccessRights,
+
+        [Parameter()]
+        [System.Security.AccessControl.AccessControlType]$AccessControlType = 'Allow',
+
+        [Parameter()]
+        [ValidateSet(
+            'ThisFolderOnly',
+            'ThisFolderSubfoldersAndFiles',
+            'ThisFolderAndSubfolders',
+            'ThisFolderAndFiles',
+            'SubfoldersAndFilesOnly',
+            'SubfoldersOnly',
+            'FilesOnly',
+            'ThisFolderSubfoldersAndFilesOneLevel',
+            'ThisFolderAndSubfoldersOneLevel',
+            'ThisFolderAndFilesOneLevel'
+        )]
+        [string]$AppliesTo,
+
+        [Parameter()]
+        [switch]$PassThru
+    )
+
+    begin {
+        $securityIdentifier = Resolve-NTFSIdentityReference -Identity $Account
+    }
+
+    process {
+        $resolveParameters = @{}
+        if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
+            $resolveParameters.LiteralPath = $LiteralPath
+        } else {
+            $resolveParameters.Path = $Path
+        }
+
+        foreach ($item in Resolve-NTFSPath @resolveParameters) {
+            $effectiveAppliesTo = $AppliesTo
+            if (-not $PSBoundParameters.ContainsKey('AppliesTo')) {
+                $effectiveAppliesTo = if ($item.PSIsContainer) {
+                    'ThisFolderSubfoldersAndFiles'
+                } else {
+                    'ThisFolderOnly'
+                }
+            }
+
+            $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
+            $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+                $securityIdentifier,
+                $AccessRights,
+                $scope.InheritanceFlags,
+                $scope.PropagationFlags,
+                $AccessControlType
+            )
+
+            if ($PSCmdlet.ShouldProcess($item.FullName, "Replace $AccessControlType access rules for $Account")) {
+                $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
+                $security.SetAccessRule($rule)
+                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+
+                if ($PassThru) {
+                    ConvertTo-NTFSAccessRuleObject -Rule $rule -Path $item.FullName
+                }
+            }
+        }
+    }
+}

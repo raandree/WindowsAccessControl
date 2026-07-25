@@ -1,0 +1,22 @@
+# Build output and packages
+/output/
+*.nupkg
+*.coverage
+
+# Local project state
+/.memory-bank/promptHistory.md
+*.local.*
+**.bak
+
+# Tool output
+/.kitchen/
+/node_modules/
+/package-lock.json
+/markdownissues.txt
+
+# IDE and compiler output
+/.vs/
+*.psproj
+*.sln
+*.suo
+*.user

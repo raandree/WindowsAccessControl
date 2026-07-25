@@ -1,0 +1,126 @@
+---
+trigger:
+  branches:
+    include:
+      - master
+
+pr:
+  branches:
+    include:
+      - master
+
+variables:
+  buildArtifactName: output
+
+stages:
+  - stage: Build
+    displayName: Build module
+    jobs:
+      - job: BuildModule
+        displayName: Build Sampler artifact
+        pool:
+          vmImage: windows-latest
+        steps:
+          - checkout: self
+            displayName: Check out full repository history
+            fetchDepth: 0
+
+          - pwsh: |
+              dotnet tool install --global GitVersion.Tool --version 5.12.0
+              $moduleVersion = dotnet-gitversion /showvariable NuGetVersionV2
+              if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($moduleVersion)) {
+                  throw 'GitVersion did not return a module version.'
+              }
+              Write-Host "##vso[task.setvariable variable=moduleVersion;isOutput=true]$moduleVersion"
+              Write-Host "##vso[build.updatebuildnumber]$moduleVersion"
+            name: calculateVersion
+            displayName: Calculate module version
+
+          - task: PowerShell@2
+            displayName: Resolve dependencies and build module
+            inputs:
+              targetType: filePath
+              filePath: ./build.ps1
+              arguments: -ResolveDependency -Tasks build
+              pwsh: true
+            env:
+              ModuleVersion: $(calculateVersion.moduleVersion)
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Sampler output
+            inputs:
+              targetPath: ./output
+              artifact: $(buildArtifactName)
+              publishLocation: pipeline
+
+  - stage: Test
+    displayName: Test module
+    dependsOn: Build
+    variables:
+      moduleVersion: $[stageDependencies.Build.BuildModule.outputs['calculateVersion.moduleVersion']]
+    jobs:
+      - job: TestPowerShell7
+        displayName: Test with PowerShell 7
+        pool:
+          vmImage: windows-latest
+        steps:
+          - checkout: self
+            displayName: Check out source
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download Sampler output
+            inputs:
+              buildType: current
+              artifactName: $(buildArtifactName)
+              targetPath: $(Build.SourcesDirectory)/output
+
+          - task: PowerShell@2
+            displayName: Run Sampler tests with PowerShell 7
+            inputs:
+              targetType: filePath
+              filePath: ./build.ps1
+              arguments: -Tasks test
+              pwsh: true
+            env:
+              ModuleVersion: $(moduleVersion)
+
+          - task: PublishTestResults@2
+            displayName: Publish PowerShell 7 test results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: NUnit
+              testResultsFiles: output/testResults/NUnitXml_*.xml
+              testRunTitle: PowerShell 7
+
+      - job: TestWindowsPowerShell
+        displayName: Test with Windows PowerShell 5.1
+        pool:
+          vmImage: windows-latest
+        steps:
+          - checkout: self
+            displayName: Check out source
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download Sampler output
+            inputs:
+              buildType: current
+              artifactName: $(buildArtifactName)
+              targetPath: $(Build.SourcesDirectory)/output
+
+          - task: PowerShell@2
+            displayName: Run Sampler tests with Windows PowerShell 5.1
+            inputs:
+              targetType: filePath
+              filePath: ./build.ps1
+              arguments: -Tasks test
+              pwsh: false
+            env:
+              ModuleVersion: $(moduleVersion)
+
+          - task: PublishTestResults@2
+            displayName: Publish Windows PowerShell test results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: NUnit
+              testResultsFiles: output/testResults/NUnitXml_*.xml
+              testRunTitle: Windows PowerShell 5.1

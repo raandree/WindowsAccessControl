@@ -1,0 +1,32 @@
+TOPIC
+    about_NTFSPermission
+
+SHORT DESCRIPTION
+    Pipeline-first NTFS permission management for Windows PowerShell.
+
+LONG DESCRIPTION
+    NTFSPermission manages access rules, audit rules, ownership, inheritance,
+    effective access, and portable security descriptor backups for Windows
+    files and directories. Commands accept strings and FileSystemInfo objects
+    through the pipeline. State-changing commands support WhatIf and Confirm.
+
+EXAMPLES
+    PS C:\> Get-ChildItem C:\Data | Get-NTFSAccessRule -ExcludeInherited
+
+    PS C:\> Add-NTFSAccessRule -LiteralPath C:\Data -Account CONTOSO\Analysts -AccessRights Modify
+
+    PS C:\> Get-ChildItem C:\Data -Recurse | Backup-NTFSItemSecurityDescriptor -DestinationPath C:\Backup\permissions.json
+
+NOTE
+    The module is supported only on Windows. Audit operations require
+    SeSecurityPrivilege, and setting arbitrary owners can require
+    SeRestorePrivilege.
+
+SEE ALSO
+    Get-NTFSAccessRule
+    Get-NTFSAuditRule
+    Get-NTFSItemSecurityDescriptor
+    Get-NTFSItemEffectiveAccess
+
+KEYWORDS
+    NTFS, ACL, DACL, SACL, permissions, ownership, inheritance, Authz
