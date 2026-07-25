@@ -27,7 +27,7 @@ function Resolve-NTFSPath {
             )
             $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                 $exception,
-                'NTFSPermission.PathNotFileSystem',
+                'WindowsAccessControl.PathNotFileSystem',
                 [System.Management.Automation.ErrorCategory]::InvalidArgument,
                 $item
             )

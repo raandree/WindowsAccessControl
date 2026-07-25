@@ -40,11 +40,11 @@ function Remove-NTFSAuditRule {
         Removes each explicit audit rule returned for C:\Data.
 
     .INPUTS
-        NTFSPermission.AuditRule
+        WindowsAccessControl.AuditRule
 
     .OUTPUTS
         None
-        NTFSPermission.AuditRule
+        WindowsAccessControl.AuditRule
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Rule')]
     [OutputType([pscustomobject])]
@@ -101,7 +101,7 @@ function Remove-NTFSAuditRule {
 
     process {
         if ($PSCmdlet.ParameterSetName -eq 'Rule') {
-            if ($InputObject.PSObject.TypeNames -notcontains 'NTFSPermission.AuditRule' -or
+            if ($InputObject.PSObject.TypeNames -notcontains 'WindowsAccessControl.AuditRule' -or
                 -not $InputObject.NativeRule -or
                 [string]::IsNullOrWhiteSpace($InputObject.Path)) {
                 throw 'InputObject must be a path-bound rule returned by Get-NTFSAuditRule.'
@@ -117,7 +117,7 @@ function Remove-NTFSAuditRule {
                 $resolveParameters.Path = $Path
             }
             $items = @(Resolve-NTFSPath @resolveParameters)
-            $securityIdentifier = Resolve-NTFSIdentityReference -Identity $Account
+            $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
             $identityLabel = $securityIdentifier.Value
         }
 

@@ -70,7 +70,7 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
 
     It 'Should include every exported command in the public API contract' {
         $manifest = Test-ModuleManifest (
-            Join-Path $script:repositoryRoot 'source\NTFSPermission.psd1'
+            Join-Path $script:repositoryRoot 'source\WindowsAccessControl.psd1'
         ) -ErrorAction Stop
         $apiContract = Get-Content -LiteralPath (
             Join-Path $script:specRoot '0003-public-api.md'
@@ -113,17 +113,17 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
 
     It 'Should define curated format views required by the API contract' {
         [xml]$formatData = Get-Content -LiteralPath (
-            Join-Path $script:repositoryRoot 'source\NTFSPermission.Format.ps1xml'
+            Join-Path $script:repositoryRoot 'source\WindowsAccessControl.Format.ps1xml'
         ) -Raw
         $formattedTypes = @(
             $formatData.Configuration.ViewDefinitions.View.ViewSelectedBy.TypeName
         )
         $requiredTypes = @(
-            'NTFSPermission.AccessRule'
-            'NTFSPermission.AuditRule'
-            'NTFSPermission.Owner'
-            'NTFSPermission.EffectiveAccess'
-            'NTFSPermission.Privilege'
+            'WindowsAccessControl.AccessRule'
+            'WindowsAccessControl.AuditRule'
+            'WindowsAccessControl.Owner'
+            'WindowsAccessControl.EffectiveAccess'
+            'WindowsAccessControl.Privilege'
         )
 
         foreach ($typeName in $requiredTypes) {

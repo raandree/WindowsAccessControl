@@ -1,6 +1,6 @@
 # Multi-account, pipeline, and section-preservation evidence (FR-3, FR-15, NFR-3, NFR-6).
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
@@ -9,7 +9,7 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Add-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
@@ -22,7 +22,7 @@ Describe 'Add-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
 
         $storedRule = Get-NTFSAccessRule -LiteralPath $testFile -Account $script:currentSid -ExcludeInherited
 
-        $addedRule.PSObject.TypeNames | Should -Contain 'NTFSPermission.AccessRule'
+        $addedRule.PSObject.TypeNames | Should -Contain 'WindowsAccessControl.AccessRule'
         $addedRule.Path | Should -Be (Get-Item -LiteralPath $testFile).FullName
         $addedRule.SID | Should -Be $script:currentSid
         ($storedRule.AccessRights -band [System.Security.AccessControl.FileSystemRights]::Read) |

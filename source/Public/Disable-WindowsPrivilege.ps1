@@ -1,22 +1,22 @@
-function Enable-NTFSPrivilege {
+function Disable-WindowsPrivilege {
     <#
     .SYNOPSIS
-        Enables a privilege in the current process token.
+        Disables a privilege in the current process token.
 
     .DESCRIPTION
-        Enables a Windows privilege already assigned to the current process
-        token. The command cannot add privileges that the token does not hold.
+        Disables a Windows privilege already assigned to the current process
+        token. This does not remove the privilege from the token permanently.
 
     .PARAMETER Name
-        The Windows privilege constant name to enable in the current process.
+        The Windows privilege constant name to disable in the current process.
 
     .PARAMETER PassThru
         Returns the enabled state after the token is changed.
 
     .EXAMPLE
-        Enable-NTFSPrivilege -Name SeSecurityPrivilege
+        Disable-WindowsPrivilege -Name SeSecurityPrivilege
 
-        Enables SACL access for later audit-rule commands when the token holds it.
+        Disables SACL access in the current PowerShell process token.
 
     .INPUTS
         System.String
@@ -42,10 +42,10 @@ function Enable-NTFSPrivilege {
 
     process {
         foreach ($privilegeName in $Name) {
-            if ($PSCmdlet.ShouldProcess('Current process token', "Enable $privilegeName")) {
-                [NTFSPermission.NativeMethods]::SetPrivilege($privilegeName, $true)
+            if ($PSCmdlet.ShouldProcess('Current process token', "Disable $privilegeName")) {
+                [WindowsAccessControl.NativeMethods]::SetPrivilege($privilegeName, $false)
                 if ($PassThru) {
-                    [NTFSPermission.NativeMethods]::IsPrivilegeEnabled($privilegeName)
+                    [WindowsAccessControl.NativeMethods]::IsPrivilegeEnabled($privilegeName)
                 }
             }
         }

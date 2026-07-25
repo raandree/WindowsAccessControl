@@ -44,7 +44,7 @@ function Add-NTFSAccessRule {
 
     .OUTPUTS
         None
-        NTFSPermission.AccessRule
+        WindowsAccessControl.AccessRule
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -94,7 +94,7 @@ function Add-NTFSAccessRule {
         )
         $securityIdentifiers = @(
             foreach ($accountName in $Account) {
-                $securityIdentifier = Resolve-NTFSIdentityReference -Identity $accountName
+                $securityIdentifier = Resolve-WindowsIdentityReference -Identity $accountName
                 if ($seenIdentifiers.Add($securityIdentifier.Value)) {
                     $securityIdentifier
                 }

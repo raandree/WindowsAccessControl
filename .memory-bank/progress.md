@@ -48,6 +48,10 @@ both supported PowerShell editions within the available token privileges.
 - 2026-07-25: Accepted the signed `WindowsAccessControl` expansion design and
     six governing ADRs after a 50-question consolidated Grill-Me interview,
     primary Microsoft-source research, and a successful three-family API probe.
+- 2026-07-25: Hard-renamed the unpublished package to
+    `WindowsAccessControl`, preserved its GUID, fixed elevated-owner test
+    assumptions, and passed 259 tests in each supported PowerShell edition with
+    86.72 percent PowerShell 7 coverage.
 
 ## Stable capabilities
 

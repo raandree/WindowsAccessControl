@@ -51,6 +51,11 @@ inspect the returned result instead of allowing Pester to terminate the host.
 Keep console output separate from explicit NUnit or JSON result artifacts when
 the Desktop host buffers streams.
 
+For a standalone Windows PowerShell 5.1 Pester run, prepend both
+`output/module` and `output/RequiredModules` to `PSModulePath`. Without those
+paths, behavior tests that import an explicit manifest can pass while QA fails
+to autoload the built module, Sampler helpers, or ChangelogManagement.
+
 ## GitVersion error output with a zero exit code
 
 GitVersion 5.12 could not infer a parent when the checkout contained only an

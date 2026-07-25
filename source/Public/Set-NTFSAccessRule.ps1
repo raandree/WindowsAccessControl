@@ -43,7 +43,7 @@ function Set-NTFSAccessRule {
 
     .OUTPUTS
         None
-        NTFSPermission.AccessRule
+        WindowsAccessControl.AccessRule
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -87,7 +87,7 @@ function Set-NTFSAccessRule {
     )
 
     begin {
-        $securityIdentifier = Resolve-NTFSIdentityReference -Identity $Account
+        $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
     }
 
     process {

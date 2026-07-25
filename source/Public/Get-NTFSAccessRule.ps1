@@ -39,7 +39,7 @@ function Get-NTFSAccessRule {
         System.IO.FileSystemInfo
 
     .OUTPUTS
-        NTFSPermission.AccessRule
+        WindowsAccessControl.AccessRule
     #>
     [CmdletBinding(DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -74,7 +74,7 @@ function Get-NTFSAccessRule {
 
         $accountSids = @(
             foreach ($accountName in $Account) {
-                (Resolve-NTFSIdentityReference -Identity $accountName).Value
+                (Resolve-WindowsIdentityReference -Identity $accountName).Value
             }
         )
     }

@@ -39,7 +39,7 @@ function Backup-NTFSItemSecurityDescriptor {
 
     .OUTPUTS
         None
-        NTFSPermission.SecurityDescriptorBackupRecord
+        WindowsAccessControl.SecurityDescriptorBackupRecord
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -90,7 +90,7 @@ function Backup-NTFSItemSecurityDescriptor {
                 Sections = [int]$Sections
                 Sddl     = $security.GetSecurityDescriptorSddlForm($Sections)
             }
-            $record.PSObject.TypeNames.Insert(0, 'NTFSPermission.SecurityDescriptorBackupRecord')
+            $record.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.SecurityDescriptorBackupRecord')
             $records.Add($record)
         }
     }

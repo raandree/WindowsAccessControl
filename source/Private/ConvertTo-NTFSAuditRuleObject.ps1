@@ -38,6 +38,6 @@ function ConvertTo-NTFSAuditRuleObject {
         IsOrphaned       = $isOrphaned
         NativeRule       = $Rule
     }
-    $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.AuditRule')
+    $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.AuditRule')
     $result
 }

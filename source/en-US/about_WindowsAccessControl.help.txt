@@ -1,14 +1,15 @@
 TOPIC
-    about_NTFSPermission
+    about_WindowsAccessControl
 
 SHORT DESCRIPTION
-    Pipeline-first NTFS permission management for Windows PowerShell.
+    Pipeline-first Windows security descriptor management for PowerShell.
 
 LONG DESCRIPTION
-    NTFSPermission manages access rules, audit rules, ownership, inheritance,
-    effective access, and portable security descriptor backups for Windows
-    files and directories. Commands accept strings and FileSystemInfo objects
-    through the pipeline. State-changing commands support WhatIf and Confirm.
+    WindowsAccessControl manages Windows identities, privileges, access rules,
+    audit rules, ownership, inheritance, effective access, and portable
+    security descriptors. Filesystem commands accept strings and FileSystemInfo
+    objects through the pipeline. State-changing commands support WhatIf and
+    Confirm.
 
 EXAMPLES
     PS C:\> Get-ChildItem C:\Data | Get-NTFSAccessRule -ExcludeInherited
@@ -29,4 +30,5 @@ SEE ALSO
     Get-NTFSItemEffectiveAccess
 
 KEYWORDS
-    NTFS, ACL, DACL, SACL, permissions, ownership, inheritance, Authz
+    Windows, NTFS, registry, service, process, ACL, DACL, SACL, permissions,
+    ownership, inheritance, Authz, DSC

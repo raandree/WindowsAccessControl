@@ -42,13 +42,19 @@ Expand and rename the unpublished module to `WindowsAccessControl` on
     bounded parallel execution.
 - A disposable local native-API probe returned nonempty descriptors for a
     registry key, service, and process and cleaned up its scratch targets.
+- The package, source files, format data, help topic, output type prefix, and
+    cross-domain identity/privilege commands are hard-renamed to
+    `WindowsAccessControl`; the GUID remains unchanged.
+- The renamed artifact passes 259 tests with zero failures or skips in both
+    PowerShell 7 and Windows PowerShell 5.1. PowerShell 7 coverage is 86.72
+    percent against the 80 percent gate.
 - Full QA with the specification contract passes 181 tests with zero failures;
     its eight conformance checks cover structure, status, requirement identity,
     traceability, exports, local links, format views, and ADR indexing.
 
 ## Next step
 
-Implement the module rename and shared Windows identity/security-descriptor
-engine test-first, then layer object-specific registry/service/process commands
-and class-based DSC resources. Do not push or publish without an explicit
-request.
+Implement the shared Windows identity/security-descriptor engine and scoped
+privilege lifecycle test-first, then layer object-specific registry, service,
+and process commands and class-based DSC resources. Do not push or publish
+without an explicit request.

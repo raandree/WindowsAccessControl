@@ -1,6 +1,6 @@
 # Cross-cutting ShouldProcess and WhatIf contract (FR-17).
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
     Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
@@ -8,7 +8,7 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
@@ -17,7 +17,7 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
         $script:targetFile = Join-Path -Path $TestDrive -ChildPath 'target.txt'
         Set-Content -LiteralPath $script:sourceFile -Value 'source'
         Set-Content -LiteralPath $script:targetFile -Value 'target'
-        Mock -ModuleName NTFSPermission -CommandName Invoke-NTFSSecurityDescriptorPersistence
+        Mock -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence
     }
 
     It 'Should expose WhatIf on every state-changing command' {
@@ -36,8 +36,8 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             'Copy-NTFSItemSecurityDescriptor'
             'Backup-NTFSItemSecurityDescriptor'
             'Restore-NTFSItemSecurityDescriptor'
-            'Enable-NTFSPrivilege'
-            'Disable-NTFSPrivilege'
+            'Enable-WindowsPrivilege'
+            'Disable-WindowsPrivilege'
         )
 
         foreach ($commandName in $mutators) {
@@ -49,80 +49,80 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
     It 'Should not persist an added access rule under WhatIf' {
         Add-NTFSAccessRule -LiteralPath $script:targetFile `
             -Account 'S-1-1-0' -AccessRights Read -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not persist a replacement access rule under WhatIf' {
         Set-NTFSAccessRule -LiteralPath $script:targetFile `
             -Account 'S-1-1-0' -AccessRights Read -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not purge access rules under WhatIf' {
         Remove-NTFSAccessRule -LiteralPath $script:targetFile `
             -Account 'S-1-1-0' -RemovalMode All -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not clear access rules under WhatIf' {
         Clear-NTFSAccessRule -LiteralPath $script:targetFile -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not persist an added audit rule under WhatIf' {
         Add-NTFSAuditRule -LiteralPath $script:targetFile `
             -Account 'S-1-1-0' -AccessRights Read -AuditFlags Failure -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not persist a replacement audit rule under WhatIf' {
         Set-NTFSAuditRule -LiteralPath $script:targetFile `
             -Account 'S-1-1-0' -AccessRights Read -AuditFlags Failure -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not purge audit rules under WhatIf' {
         Remove-NTFSAuditRule -LiteralPath $script:targetFile `
             -Account 'S-1-1-0' -RemovalMode All -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not clear audit rules under WhatIf' {
         Clear-NTFSAuditRule -LiteralPath $script:targetFile -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not set an owner under WhatIf' {
         Set-NTFSItemOwner -LiteralPath $script:targetFile `
             -Account $script:currentSid -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not enable inheritance under WhatIf' {
         Enable-NTFSItemInheritance -LiteralPath $script:targetFile -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not disable inheritance under WhatIf' {
         Disable-NTFSItemInheritance -LiteralPath $script:targetFile -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not copy descriptor sections under WhatIf' {
         Copy-NTFSItemSecurityDescriptor -SourceLiteralPath $script:sourceFile `
             -LiteralPath $script:targetFile -Sections Access -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
@@ -132,7 +132,7 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             -DestinationPath $backupPath -Sections Access
 
         Restore-NTFSItemSecurityDescriptor -BackupPath $backupPath -WhatIf
-        Should -Invoke -ModuleName NTFSPermission `
+        Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
@@ -147,14 +147,14 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
     }
 
     It 'Should not enable a token privilege under WhatIf' {
-        $wasEnabled = Test-NTFSPrivilege -Name 'SeChangeNotifyPrivilege'
-        Enable-NTFSPrivilege -Name 'SeChangeNotifyPrivilege' -WhatIf
-        Test-NTFSPrivilege -Name 'SeChangeNotifyPrivilege' | Should -Be $wasEnabled
+        $wasEnabled = Test-WindowsPrivilege -Name 'SeChangeNotifyPrivilege'
+        Enable-WindowsPrivilege -Name 'SeChangeNotifyPrivilege' -WhatIf
+        Test-WindowsPrivilege -Name 'SeChangeNotifyPrivilege' | Should -Be $wasEnabled
     }
 
     It 'Should not disable a token privilege under WhatIf' {
-        $wasEnabled = Test-NTFSPrivilege -Name 'SeChangeNotifyPrivilege'
-        Disable-NTFSPrivilege -Name 'SeChangeNotifyPrivilege' -WhatIf
-        Test-NTFSPrivilege -Name 'SeChangeNotifyPrivilege' | Should -Be $wasEnabled
+        $wasEnabled = Test-WindowsPrivilege -Name 'SeChangeNotifyPrivilege'
+        Disable-WindowsPrivilege -Name 'SeChangeNotifyPrivilege' -WhatIf
+        Test-WindowsPrivilege -Name 'SeChangeNotifyPrivilege' | Should -Be $wasEnabled
     }
 }

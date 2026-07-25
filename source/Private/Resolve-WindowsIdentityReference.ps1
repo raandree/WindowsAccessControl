@@ -1,4 +1,4 @@
-function Resolve-NTFSIdentityReference {
+function Resolve-WindowsIdentityReference {
     [CmdletBinding()]
     [OutputType([System.Security.Principal.SecurityIdentifier])]
     param(

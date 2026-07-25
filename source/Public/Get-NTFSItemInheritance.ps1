@@ -29,7 +29,7 @@ function Get-NTFSItemInheritance {
         System.IO.FileSystemInfo
 
     .OUTPUTS
-        NTFSPermission.Inheritance
+        WindowsAccessControl.Inheritance
     #>
     [CmdletBinding(DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]

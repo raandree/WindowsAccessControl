@@ -34,7 +34,7 @@ function Get-NTFSItemEffectiveAccess {
         System.IO.FileSystemInfo
 
     .OUTPUTS
-        NTFSPermission.EffectiveAccess
+        WindowsAccessControl.EffectiveAccess
     #>
     [CmdletBinding(DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -59,7 +59,7 @@ function Get-NTFSItemEffectiveAccess {
     begin {
         Initialize-NTFSNativeType
         if ($PSBoundParameters.ContainsKey('Account')) {
-            $securityIdentifier = Resolve-NTFSIdentityReference -Identity $Account
+            $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
         } else {
             $securityIdentifier = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
         }
@@ -84,7 +84,7 @@ function Get-NTFSItemEffectiveAccess {
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
             $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
             $descriptorBytes = $security.GetSecurityDescriptorBinaryForm()
-            $accessMask = [NTFSPermission.NativeMethods]::GetEffectiveAccess($descriptorBytes, $sidBytes)
+            $accessMask = [WindowsAccessControl.NativeMethods]::GetEffectiveAccess($descriptorBytes, $sidBytes)
             $effectiveRights = [System.Security.AccessControl.FileSystemRights][int]$accessMask
             $isAllowed = $null
             if ($testRequestedRights) {
@@ -101,7 +101,7 @@ function Get-NTFSItemEffectiveAccess {
                 RequestedRights = if ($testRequestedRights) { $AccessRights } else { $null }
                 IsAllowed       = $isAllowed
             }
-            $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.EffectiveAccess')
+            $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.EffectiveAccess')
             $result
         }
     }

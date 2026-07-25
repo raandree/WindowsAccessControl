@@ -1,5 +1,5 @@
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
@@ -7,7 +7,7 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Clear-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
@@ -24,8 +24,8 @@ Describe 'Clear-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
             )
             $script:testSecurity.AddAuditRule($rule)
         }
-        Mock -ModuleName NTFSPermission -CommandName Get-Acl -MockWith { $script:testSecurity }
-        Mock -ModuleName NTFSPermission -CommandName Invoke-NTFSSecurityDescriptorPersistence
+        Mock -ModuleName WindowsAccessControl -CommandName Get-Acl -MockWith { $script:testSecurity }
+        Mock -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence
     }
 
     It 'Should clear every explicit audit rule' {

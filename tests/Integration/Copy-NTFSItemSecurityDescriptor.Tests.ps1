@@ -1,12 +1,12 @@
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
     Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
 }
 
 AfterAll {
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Copy-NTFSItemSecurityDescriptor' -Tag 'Integration', 'WindowsOnly' {

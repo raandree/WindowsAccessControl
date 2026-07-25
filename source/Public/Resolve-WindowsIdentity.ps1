@@ -1,7 +1,7 @@
-function Resolve-NTFSIdentity {
+function Resolve-WindowsIdentity {
     <#
     .SYNOPSIS
-        Resolves NTFS account names and security identifiers.
+        Resolves Windows account names and security identifiers.
 
     .DESCRIPTION
         Converts account names or SID strings into structured identity objects
@@ -13,7 +13,7 @@ function Resolve-NTFSIdentity {
         resolve. Values can be supplied through the pipeline.
 
     .EXAMPLE
-        'BUILTIN\Users', 'S-1-1-0' | Resolve-NTFSIdentity
+        'BUILTIN\Users', 'S-1-1-0' | Resolve-WindowsIdentity
 
         Resolves the built-in Users and Everyone identities.
 
@@ -22,7 +22,7 @@ function Resolve-NTFSIdentity {
         System.Security.Principal.IdentityReference
 
     .OUTPUTS
-        NTFSPermission.Identity
+        WindowsAccessControl.Identity
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -34,7 +34,7 @@ function Resolve-NTFSIdentity {
 
     process {
         foreach ($identityValue in $Identity) {
-            $securityIdentifier = Resolve-NTFSIdentityReference -Identity $identityValue
+            $securityIdentifier = Resolve-WindowsIdentityReference -Identity $identityValue
             $account = $null
             $isResolved = $true
             try {
@@ -49,7 +49,7 @@ function Resolve-NTFSIdentity {
                 IsResolved        = $isResolved
                 IdentityReference = $securityIdentifier
             }
-            $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.Identity')
+            $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.Identity')
             $result
         }
     }

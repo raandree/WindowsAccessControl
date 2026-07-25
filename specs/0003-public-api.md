@@ -2,7 +2,7 @@
 
 Status: Accepted. This specification defines the exported command catalog,
 pipeline contracts, return types, and cross-cutting conventions for
-`NTFSPermission` 0.1.0.
+the original NTFS surface in `WindowsAccessControl`.
 
 This document is the design contract. Exhaustive parameter descriptions and
 examples live as comment-based help beside each function and are available
@@ -19,7 +19,8 @@ through `Get-Help` (ADR 0001).
 
 ### Naming and structure
 
-- Commands use approved verbs and singular `NTFS`-prefixed nouns.
+- Filesystem commands use approved verbs and singular `NTFS`-prefixed nouns.
+- Cross-domain identity and privilege commands use `Windows`-prefixed nouns.
 - Every public function uses `CmdletBinding` and declares `OutputType`.
 - Every public function has synopsis, description, parameter, example, input,
   and output help where applicable.
@@ -60,16 +61,16 @@ through `Get-Help` (ADR 0001).
 
 Stable PowerShell type names identify module output:
 
-- `NTFSPermission.AccessRule`
-- `NTFSPermission.AuditRule`
-- `NTFSPermission.Owner`
-- `NTFSPermission.Inheritance`
-- `NTFSPermission.SecurityDescriptor`
-- `NTFSPermission.SecurityDescriptorBackupRecord`
-- `NTFSPermission.Identity`
-- `NTFSPermission.EffectiveAccess`
-- `NTFSPermission.AclTest`
-- `NTFSPermission.Privilege`
+- `WindowsAccessControl.AccessRule`
+- `WindowsAccessControl.AuditRule`
+- `WindowsAccessControl.Owner`
+- `WindowsAccessControl.Inheritance`
+- `WindowsAccessControl.SecurityDescriptor`
+- `WindowsAccessControl.SecurityDescriptorBackupRecord`
+- `WindowsAccessControl.Identity`
+- `WindowsAccessControl.EffectiveAccess`
+- `WindowsAccessControl.AclTest`
+- `WindowsAccessControl.Privilege`
 
 Native .NET rule or descriptor objects remain available as properties where a
 caller needs exact Windows semantics.
@@ -148,7 +149,7 @@ every record before the first write (ADR 0005).
 
 | Command | Primary parameter sets | Pipeline input | Returns |
 | --- | --- | --- | --- |
-| `Resolve-NTFSIdentity` | (single) | names, SIDs, identity references | `Identity` |
+| `Resolve-WindowsIdentity` | (single) | names, SIDs, identity references | `Identity` |
 | `Test-NTFSItemAcl` | Path, LiteralPath | paths, filesystem objects | Boolean / `AclTest` |
 | `Get-NTFSItemEffectiveAccess` | Path, LiteralPath | paths, filesystem objects | `EffectiveAccess` |
 
@@ -160,12 +161,12 @@ does not include share permissions or every logon-specific group (0004).
 
 | Command | Pipeline input | Returns |
 | --- | --- | --- |
-| `Get-NTFSPrivilege` | none | `Privilege` |
-| `Test-NTFSPrivilege` | privilege names | Boolean |
-| `Enable-NTFSPrivilege` | privilege names | none / Boolean |
-| `Disable-NTFSPrivilege` | privilege names | none / Boolean |
+| `Get-WindowsPrivilege` | none | `Privilege` |
+| `Test-WindowsPrivilege` | privilege names | Boolean |
+| `Enable-WindowsPrivilege` | privilege names | none / Boolean |
+| `Disable-WindowsPrivilege` | privilege names | none / Boolean |
 
-`Get-NTFSPrivilege` is read-only. Enable and disable operations can change only
+`Get-WindowsPrivilege` is read-only. Enable and disable operations can change only
 privileges already present in the current process token. Disabling a privilege
 absent from the token is an idempotent no-op; enabling it fails explicitly.
 

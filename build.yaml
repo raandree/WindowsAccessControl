@@ -6,7 +6,7 @@
 BuiltModuleSubdirectory: module
 CopyPaths:
   - en-US
-  - NTFSPermission.Format.ps1xml
+  - WindowsAccessControl.Format.ps1xml
 #  - DSCResources
   # - Modules
 Encoding: UTF8

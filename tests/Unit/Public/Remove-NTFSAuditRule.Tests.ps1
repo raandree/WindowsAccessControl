@@ -1,5 +1,5 @@
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
@@ -7,7 +7,7 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Remove-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
@@ -22,8 +22,8 @@ Describe 'Remove-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
             [System.Security.AccessControl.AuditFlags]::Failure
         )
         $script:testSecurity.AddAuditRule($rule)
-        Mock -ModuleName NTFSPermission -CommandName Get-Acl -MockWith { $script:testSecurity }
-        Mock -ModuleName NTFSPermission -CommandName Invoke-NTFSSecurityDescriptorPersistence
+        Mock -ModuleName WindowsAccessControl -CommandName Get-Acl -MockWith { $script:testSecurity }
+        Mock -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence
     }
 
     It 'Should remove an exact audit rule received through the pipeline' {
@@ -87,7 +87,7 @@ Describe 'Remove-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
             -Confirm:$false
 
         $removed | Should -HaveCount 1
-        $removed.PSObject.TypeNames | Should -Contain 'NTFSPermission.AuditRule'
+        $removed.PSObject.TypeNames | Should -Contain 'WindowsAccessControl.AuditRule'
         $removed.SID | Should -Be 'S-1-1-0'
     }
 }

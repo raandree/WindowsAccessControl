@@ -1,4 +1,4 @@
-function Test-NTFSPrivilege {
+function Test-WindowsPrivilege {
     <#
     .SYNOPSIS
         Tests whether a process token privilege is enabled.
@@ -12,7 +12,7 @@ function Test-NTFSPrivilege {
         SeTakeOwnershipPrivilege.
 
     .EXAMPLE
-        Test-NTFSPrivilege -Name SeSecurityPrivilege
+        Test-WindowsPrivilege -Name SeSecurityPrivilege
 
         Tests whether the current process can read and modify SACL information.
 
@@ -36,7 +36,7 @@ function Test-NTFSPrivilege {
 
     process {
         foreach ($privilegeName in $Name) {
-            [NTFSPermission.NativeMethods]::IsPrivilegeEnabled($privilegeName)
+            [WindowsAccessControl.NativeMethods]::IsPrivilegeEnabled($privilegeName)
         }
     }
 }

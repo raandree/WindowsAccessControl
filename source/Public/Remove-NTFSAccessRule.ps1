@@ -44,11 +44,11 @@ function Remove-NTFSAccessRule {
         Removes each explicit rule returned for C:\Data.
 
     .INPUTS
-        NTFSPermission.AccessRule
+        WindowsAccessControl.AccessRule
 
     .OUTPUTS
         None
-        NTFSPermission.AccessRule
+        WindowsAccessControl.AccessRule
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Rule')]
     [OutputType([pscustomobject])]
@@ -111,7 +111,7 @@ function Remove-NTFSAccessRule {
 
     process {
         if ($PSCmdlet.ParameterSetName -eq 'Rule') {
-            if ($InputObject.PSObject.TypeNames -notcontains 'NTFSPermission.AccessRule' -or
+            if ($InputObject.PSObject.TypeNames -notcontains 'WindowsAccessControl.AccessRule' -or
                 -not $InputObject.NativeRule -or
                 [string]::IsNullOrWhiteSpace($InputObject.Path)) {
                 throw 'InputObject must be a path-bound rule returned by Get-NTFSAccessRule.'
@@ -127,7 +127,7 @@ function Remove-NTFSAccessRule {
                 $resolveParameters.Path = $Path
             }
             $items = @(Resolve-NTFSPath @resolveParameters)
-            $securityIdentifier = Resolve-NTFSIdentityReference -Identity $Account
+            $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
             $identityLabel = $securityIdentifier.Value
         }
 

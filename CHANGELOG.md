@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add selected-section descriptor copy plus validated JSON backup and restore
 - Add a Sampler build with PowerShell 7 and Windows PowerShell 5.1 test coverage
 - Add command help, object formatting, usage documentation, and research notes
-- Add structured current-token privilege inventory with `Get-NTFSPrivilege`
+- Add structured current-token privilege inventory with `Get-WindowsPrivilege`
 - Add privilege-gated live SACL and arbitrary-owner acceptance specifications
 - Add live SACL-only descriptor-copy acceptance with owner, group, and DACL
     preservation evidence
@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** rename the unpublished module and output type prefix from
+    `NTFSPermission` to `WindowsAccessControl` while preserving its GUID
+- **Breaking:** rename cross-domain identity and privilege commands from
+    `*-NTFSIdentity` and `*-NTFSPrivilege` to `*-WindowsIdentity` and
+    `*-WindowsPrivilege`
 - Allow `Add-NTFSAccessRule` and `Add-NTFSAuditRule` to add rules for multiple
     unique accounts with one descriptor write per item
 - Allow `Enable-NTFSItemInheritance` to remove explicit rules while enabling

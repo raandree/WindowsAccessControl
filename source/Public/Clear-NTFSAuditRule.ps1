@@ -27,7 +27,7 @@ function Clear-NTFSAuditRule {
 
     .OUTPUTS
         None
-        NTFSPermission.AuditRule
+        WindowsAccessControl.AuditRule
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]

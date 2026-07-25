@@ -24,6 +24,6 @@ function ConvertTo-NTFSOwnerObject {
         SID        = $securityIdentifier.Value
         IsOrphaned = $isOrphaned
     }
-    $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.Owner')
+    $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.Owner')
     $result
 }

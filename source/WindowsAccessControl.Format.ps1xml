@@ -2,9 +2,9 @@
 <Configuration>
   <ViewDefinitions>
     <View>
-      <Name>NTFSPermission.AccessRule</Name>
+      <Name>WindowsAccessControl.AccessRule</Name>
       <ViewSelectedBy>
-        <TypeName>NTFSPermission.AccessRule</TypeName>
+        <TypeName>WindowsAccessControl.AccessRule</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -30,9 +30,9 @@
       </TableControl>
     </View>
     <View>
-      <Name>NTFSPermission.AuditRule</Name>
+      <Name>WindowsAccessControl.AuditRule</Name>
       <ViewSelectedBy>
-        <TypeName>NTFSPermission.AuditRule</TypeName>
+        <TypeName>WindowsAccessControl.AuditRule</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -58,9 +58,9 @@
       </TableControl>
     </View>
     <View>
-      <Name>NTFSPermission.Owner</Name>
+      <Name>WindowsAccessControl.Owner</Name>
       <ViewSelectedBy>
-        <TypeName>NTFSPermission.Owner</TypeName>
+        <TypeName>WindowsAccessControl.Owner</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -80,9 +80,9 @@
       </TableControl>
     </View>
     <View>
-      <Name>NTFSPermission.EffectiveAccess</Name>
+      <Name>WindowsAccessControl.EffectiveAccess</Name>
       <ViewSelectedBy>
-        <TypeName>NTFSPermission.EffectiveAccess</TypeName>
+        <TypeName>WindowsAccessControl.EffectiveAccess</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>
@@ -106,9 +106,9 @@
       </TableControl>
     </View>
     <View>
-      <Name>NTFSPermission.Privilege</Name>
+      <Name>WindowsAccessControl.Privilege</Name>
       <ViewSelectedBy>
-        <TypeName>NTFSPermission.Privilege</TypeName>
+        <TypeName>WindowsAccessControl.Privilege</TypeName>
       </ViewSelectedBy>
       <TableControl>
         <TableHeaders>

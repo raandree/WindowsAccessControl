@@ -1,12 +1,17 @@
-# NTFSPermission
+# WindowsAccessControl
 
-`NTFSPermission` is a Windows PowerShell module for pipeline-first management of
-file and directory security. It turns common DACL, SACL, owner, inheritance,
-backup, and effective-access operations into composable commands without
-requiring callers to manipulate .NET access-control objects directly.
+`WindowsAccessControl` is a Windows PowerShell module for pipeline-first
+management of Windows security descriptors. Its current filesystem commands
+turn common DACL, SACL, owner, inheritance, backup, and effective-access
+operations into composable commands without requiring callers to manipulate
+.NET access-control objects directly.
 
 The module has no third-party runtime dependency. It supports Windows
 PowerShell 5.1 and PowerShell 7 on Windows.
+
+The unpublished package was renamed from `NTFSPermission`. See the
+[migration map](docs/migration-from-ntfspermission.md) for package, command, and
+output type changes.
 
 ## Quick start
 
@@ -15,7 +20,7 @@ Build the module, then import the generated manifest:
 ```powershell
 .\build.ps1 -ResolveDependency
 
-$manifest = Get-ChildItem -Path '.\output\module\NTFSPermission\*\NTFSPermission.psd1' |
+$manifest = Get-ChildItem -Path '.\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1' |
     Sort-Object -Property { [version]$_.Directory.Name } -Descending |
     Select-Object -First 1
 Import-Module -Name $manifest.FullName
@@ -145,8 +150,8 @@ SACL operations require `SeSecurityPrivilege`, and Windows audit policy must
 enable object access auditing before events are produced.
 
 ```powershell
-Get-NTFSPrivilege
-Enable-NTFSPrivilege -Name SeSecurityPrivilege -Confirm:$false
+Get-WindowsPrivilege
+Enable-WindowsPrivilege -Name SeSecurityPrivilege -Confirm:$false
 
 Add-NTFSAuditRule -LiteralPath 'C:\Data' `
     -Account 'S-1-1-0' `
@@ -154,9 +159,9 @@ Add-NTFSAuditRule -LiteralPath 'C:\Data' `
     -AuditFlags Failure
 ```
 
-`Enable-NTFSPrivilege` can enable only privileges already present in the current
+`Enable-WindowsPrivilege` can enable only privileges already present in the current
 process token. It fails explicitly when Windows reports
-`ERROR_NOT_ALL_ASSIGNED`. `Get-NTFSPrivilege` distinguishes privileges that are
+`ERROR_NOT_ALL_ASSIGNED`. `Get-WindowsPrivilege` distinguishes privileges that are
 present but disabled from privileges absent from the token.
 
 ## Backup, restore, and copy
@@ -220,8 +225,8 @@ the NTFS result.
 | Owner | `Get-NTFSItemOwner`, `Set-NTFSItemOwner` |
 | Inheritance | `Get-NTFSItemInheritance`, `Enable-NTFSItemInheritance`, `Disable-NTFSItemInheritance` |
 | Descriptor portability | `Get-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor` |
-| Diagnostics | `Resolve-NTFSIdentity`, `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
-| Privileges | `Get-NTFSPrivilege`, `Test-NTFSPrivilege`, `Enable-NTFSPrivilege`, `Disable-NTFSPrivilege` |
+| Diagnostics | `Resolve-WindowsIdentity`, `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
+| Privileges | `Get-WindowsPrivilege`, `Test-WindowsPrivilege`, `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege` |
 
 Use `Get-Help <command> -Full` for parameter semantics and examples.
 
@@ -259,8 +264,8 @@ Builds and Pester runs should be launched from a clean process when developing
 in VS Code. Sampler enforces at least 80% executable coverage for the merged
 module.
 
-Six `RequiresElevation` acceptance specifications perform real SACL CRUD,
-audit inheritance, SACL backup and restore, and arbitrary-owner operations.
+Seven `RequiresElevation` acceptance specifications perform real SACL CRUD,
+audit inheritance, SACL backup/restore/copy, and arbitrary-owner operations.
 They run automatically when the test process contains the required privileges
 and otherwise report explicit skips. Run the test workflow from an elevated
 PowerShell process to exercise the available privileged paths.

@@ -23,6 +23,6 @@ function ConvertTo-NTFSSecurityDescriptorObject {
         AuditRulesCanonical  = $Security.AreAuditRulesCanonical
         NativeSecurity       = $Security
     }
-    $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.SecurityDescriptor')
+    $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.SecurityDescriptor')
     $result
 }

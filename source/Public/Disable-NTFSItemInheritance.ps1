@@ -38,7 +38,7 @@ function Disable-NTFSItemInheritance {
 
     .OUTPUTS
         None
-        NTFSPermission.Inheritance
+        WindowsAccessControl.Inheritance
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]

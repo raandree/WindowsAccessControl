@@ -29,7 +29,7 @@ function Get-NTFSItemSecurityDescriptor {
         System.IO.FileSystemInfo
 
     .OUTPUTS
-        NTFSPermission.SecurityDescriptor
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]

@@ -30,7 +30,7 @@ function New-NTFSAccessRule {
         System.String
 
     .OUTPUTS
-        NTFSPermission.AccessRule
+        WindowsAccessControl.AccessRule
     #>
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
         'PSUseShouldProcessForStateChangingFunctions',
@@ -69,7 +69,7 @@ function New-NTFSAccessRule {
     process {
         $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $AppliesTo
         foreach ($accountName in $Account) {
-            $securityIdentifier = Resolve-NTFSIdentityReference -Identity $accountName
+            $securityIdentifier = Resolve-WindowsIdentityReference -Identity $accountName
             $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
                 $securityIdentifier,
                 $AccessRights,

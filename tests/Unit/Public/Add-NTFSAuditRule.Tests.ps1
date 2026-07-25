@@ -1,6 +1,6 @@
 # Audit batching and one-write descriptor behavior (FR-6, FR-15, NFR-3, NFR-6).
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
@@ -8,7 +8,7 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Add-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
@@ -16,8 +16,8 @@ Describe 'Add-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
         $script:testFile = Join-Path -Path $TestDrive -ChildPath 'add-audit.txt'
         Set-Content -LiteralPath $script:testFile -Value 'test'
         $script:testSecurity = [System.Security.AccessControl.FileSecurity]::new()
-        Mock -ModuleName NTFSPermission -CommandName Get-Acl -MockWith { $script:testSecurity }
-        Mock -ModuleName NTFSPermission -CommandName Invoke-NTFSSecurityDescriptorPersistence
+        Mock -ModuleName WindowsAccessControl -CommandName Get-Acl -MockWith { $script:testSecurity }
+        Mock -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence
     }
 
     It 'Should add an audit rule and persist the changed descriptor' {
@@ -31,7 +31,7 @@ Describe 'Add-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
         ))
         $rules | Should -HaveCount 1
         $result.AuditFlags | Should -Be ([System.Security.AccessControl.AuditFlags]::Failure)
-        Should -Invoke -ModuleName NTFSPermission -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 1 -Exactly
+        Should -Invoke -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 1 -Exactly
     }
 
     It 'Should add audit rules for multiple accounts with one descriptor write' {
@@ -54,7 +54,7 @@ Describe 'Add-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
         $result | Should -HaveCount 2
         $rules | Should -HaveCount 2
         $invokeParameters = @{
-            ModuleName  = 'NTFSPermission'
+            ModuleName  = 'WindowsAccessControl'
             CommandName = 'Invoke-NTFSSecurityDescriptorPersistence'
             Times       = 1
             Exactly     = $true

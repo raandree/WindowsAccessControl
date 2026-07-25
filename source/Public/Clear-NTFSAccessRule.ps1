@@ -29,7 +29,7 @@ function Clear-NTFSAccessRule {
 
     .OUTPUTS
         None
-        NTFSPermission.AccessRule
+        WindowsAccessControl.AccessRule
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]

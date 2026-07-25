@@ -1,5 +1,5 @@
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
@@ -8,7 +8,7 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Remove-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
@@ -73,7 +73,7 @@ Describe 'Remove-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
             -Confirm:$false
 
         $removed | Should -HaveCount 1
-        $removed.PSObject.TypeNames | Should -Contain 'NTFSPermission.AccessRule'
+        $removed.PSObject.TypeNames | Should -Contain 'WindowsAccessControl.AccessRule'
         $removed.SID | Should -Be 'S-1-1-0'
     }
 }

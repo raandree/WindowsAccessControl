@@ -42,7 +42,7 @@ function Add-NTFSAuditRule {
 
     .OUTPUTS
         None
-        NTFSPermission.AuditRule
+        WindowsAccessControl.AuditRule
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -86,7 +86,7 @@ function Add-NTFSAuditRule {
         )
         $securityIdentifiers = @(
             foreach ($accountName in $Account) {
-                $securityIdentifier = Resolve-NTFSIdentityReference -Identity $accountName
+                $securityIdentifier = Resolve-WindowsIdentityReference -Identity $accountName
                 if ($seenIdentifiers.Add($securityIdentifier.Value)) {
                     $securityIdentifier
                 }

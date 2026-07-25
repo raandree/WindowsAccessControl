@@ -35,7 +35,7 @@ function Copy-NTFSItemSecurityDescriptor {
 
     .OUTPUTS
         None
-        NTFSPermission.SecurityDescriptor
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]

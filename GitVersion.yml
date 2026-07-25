@@ -16,6 +16,11 @@ branches:
     increment: Minor
     regex: f(eature(s)?)?[\/-]
     source-branches: ['master']
+  ai:
+    tag: useBranchName
+    increment: Minor
+    regex: ^ai[\/-]
+    source-branches: []
   hotfix:
     tag: fix
     increment: Patch

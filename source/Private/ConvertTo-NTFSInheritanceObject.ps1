@@ -41,6 +41,6 @@ function ConvertTo-NTFSInheritanceObject {
         AuditRulesProtected      = $auditProtected
         AuditRulesCanonical      = $auditCanonical
     }
-    $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.Inheritance')
+    $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.Inheritance')
     $result
 }

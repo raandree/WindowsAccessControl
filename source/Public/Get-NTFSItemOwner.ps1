@@ -25,7 +25,7 @@ function Get-NTFSItemOwner {
         System.IO.FileSystemInfo
 
     .OUTPUTS
-        NTFSPermission.Owner
+        WindowsAccessControl.Owner
     #>
     [CmdletBinding(DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]

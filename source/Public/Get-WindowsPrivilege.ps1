@@ -1,4 +1,4 @@
-function Get-NTFSPrivilege {
+function Get-WindowsPrivilege {
     <#
     .SYNOPSIS
         Gets privileges held by the current process token.
@@ -9,7 +9,7 @@ function Get-NTFSPrivilege {
         disable, add, or remove privileges.
 
     .EXAMPLE
-        Get-NTFSPrivilege | Where-Object Enabled
+        Get-WindowsPrivilege | Where-Object Enabled
 
         Lists privileges that are currently enabled in this process.
 
@@ -17,14 +17,14 @@ function Get-NTFSPrivilege {
         None
 
     .OUTPUTS
-        NTFSPermission.Privilege
+        WindowsAccessControl.Privilege
     #>
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param()
 
     Initialize-NTFSNativeType
-    foreach ($privilege in [NTFSPermission.NativeMethods]::GetTokenPrivileges() | Sort-Object Name) {
+    foreach ($privilege in [WindowsAccessControl.NativeMethods]::GetTokenPrivileges() | Sort-Object Name) {
         $result = [pscustomobject]@{
             Name             = $privilege.Name
             Enabled          = $privilege.Enabled
@@ -32,7 +32,7 @@ function Get-NTFSPrivilege {
             UsedForAccess    = $privilege.UsedForAccess
             Attributes       = $privilege.Attributes
         }
-        $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.Privilege')
+        $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.Privilege')
         $result
     }
 }

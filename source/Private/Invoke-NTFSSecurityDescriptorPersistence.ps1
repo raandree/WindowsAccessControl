@@ -38,7 +38,7 @@ function Invoke-NTFSSecurityDescriptorPersistence {
 
     if ($ProtectionSection) {
         Initialize-NTFSNativeType
-        [NTFSPermission.NativeMethods]::SetFileSystemAclProtection(
+        [WindowsAccessControl.NativeMethods]::SetFileSystemAclProtection(
             $Item.FullName,
             $Security.GetSecurityDescriptorBinaryForm(),
             $ProtectionSection -in @('Access', 'All'),

@@ -32,7 +32,7 @@ function Test-NTFSItemAcl {
 
     .OUTPUTS
         System.Boolean
-        NTFSPermission.AclTest
+        WindowsAccessControl.AclTest
     #>
     [CmdletBinding(DefaultParameterSetName = 'Path')]
     [OutputType([bool], [pscustomobject])]
@@ -87,7 +87,7 @@ function Test-NTFSItemAcl {
                     AccessRulesCanonical = $accessCanonical
                     AuditRulesCanonical  = $auditCanonical
                 }
-                $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.AclTest')
+                $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.AclTest')
                 $result
             } else {
                 $isCanonical

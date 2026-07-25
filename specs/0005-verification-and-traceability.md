@@ -2,7 +2,7 @@
 
 Status: Accepted. This specification defines the evidence levels, requirement
 mapping, command coverage, and remaining privileged release gate for
-`NTFSPermission`.
+`WindowsAccessControl`.
 
 ## Evidence levels
 
@@ -26,12 +26,12 @@ is not reported as a successful live write.
 | FR-3 | `Add-NTFSAccessRule.Tests.ps1` |
 | FR-4 | `Set-NTFSAccessRule.Tests.ps1` |
 | FR-5 | `Remove-NTFSAccessRule.Tests.ps1`, `Clear-NTFSAccessRule.Tests.ps1` |
-| FR-6 | Audit-rule Unit tests and `Elevated-NTFSPermission.Tests.ps1` |
+| FR-6 | Audit-rule Unit tests and `Elevated-WindowsAccessControl.Tests.ps1` |
 | FR-7 | Owner Integration tests and elevated arbitrary-owner acceptance |
 | FR-8 | Inheritance Integration tests and elevated audit-inheritance acceptance |
 | FR-9 | Security-descriptor Get and Copy Integration tests |
 | FR-10 | Backup and Restore Integration tests plus elevated SACL restore |
-| FR-11 | `Resolve-NTFSIdentity.Tests.ps1` and orphan-rule tests |
+| FR-11 | `Resolve-WindowsIdentity.Tests.ps1` and orphan-rule tests |
 | FR-12 | `Test-NTFSItemAcl.Tests.ps1` |
 | FR-13 | `Get-NTFSItemEffectiveAccess.Tests.ps1` |
 | FR-14 | Get/Test/Enable/Disable privilege Integration tests |
@@ -44,7 +44,7 @@ is not reported as a successful live write.
 | NFR-4 | Export/help QA and specification format-view conformance |
 | NFR-5 | PSScriptAnalyzer QA and Sampler coverage threshold |
 | NFR-6 | Restore prevalidation and duplicate-identity regression tests |
-| NFR-7 | `Elevated-NTFSPermission.Tests.ps1` explicit skip behavior |
+| NFR-7 | `Elevated-WindowsAccessControl.Tests.ps1` explicit skip behavior |
 | NFR-8 | Backup schema, no-clobber, malformed-document, and restore tests |
 | NFR-9 | Token inventory test and mutator `WhatIf` safety tests |
 | NFR-10 | Sampler build, package inspection, changelog QA, and GitVersion config |
@@ -60,27 +60,27 @@ is not reported as a successful live write.
 | `Clear-NTFSAuditRule` | 1 | Unit descriptor | Live SACL clear |
 | `Copy-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Live SACL copy and section preservation |
 | `Disable-NTFSItemInheritance` | 1 | Live NTFS DACL | Audit inheritance workflow |
-| `Disable-NTFSPrivilege` | 2 | Token integration | Not required |
+| `Disable-WindowsPrivilege` | 2 | Token integration | Not required |
 | `Enable-NTFSItemInheritance` | 2 | Live NTFS DACL | Audit inheritance cleanup |
-| `Enable-NTFSPrivilege` | 1 | Token integration | Not required |
+| `Enable-WindowsPrivilege` | 1 | Token integration | Not required |
 | `Get-NTFSAccessRule` | 2 | Live NTFS and Unit | Not required |
 | `Get-NTFSAuditRule` | 2 | Unit descriptor | Live SACL add/query |
 | `Get-NTFSItemEffectiveAccess` | 1 | Live NTFS Authz | Not required |
 | `Get-NTFSItemInheritance` | 1 | Live NTFS DACL | Audit inheritance workflow |
 | `Get-NTFSItemOwner` | 1 | Live NTFS | Not required; also read back by arbitrary-owner acceptance |
 | `Get-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Live SACL backup |
-| `Get-NTFSPrivilege` | 1 | Token integration | Not required |
+| `Get-WindowsPrivilege` | 1 | Token integration | Not required |
 | `New-NTFSAccessRule` | 1 | Unit descriptor | Not required |
 | `New-NTFSAuditRule` | 1 | Unit descriptor | Not required |
 | `Remove-NTFSAccessRule` | 4 | Live NTFS | Not required |
 | `Remove-NTFSAuditRule` | 4 | Unit descriptor | Live SACL set/remove |
-| `Resolve-NTFSIdentity` | 1 | Identity Unit | Not required |
+| `Resolve-WindowsIdentity` | 1 | Identity Unit | Not required |
 | `Restore-NTFSItemSecurityDescriptor` | 4 | Live NTFS DACL | Live SACL restore |
 | `Set-NTFSAccessRule` | 1 | Live NTFS | Not required |
 | `Set-NTFSAuditRule` | 1 | Unit descriptor | Live SACL set/remove |
 | `Set-NTFSItemOwner` | 1 | Live current owner | Arbitrary-owner workflow |
 | `Test-NTFSItemAcl` | 2 | Live and synthetic DACL | Not required |
-| `Test-NTFSPrivilege` | 1 | Token integration | Not required |
+| `Test-WindowsPrivilege` | 1 | Token integration | Not required |
 
 The direct command total is 50 specifications across 28 exported commands.
 Cross-cutting checks add 17 Unit-level mutator `WhatIf` specifications in
@@ -119,4 +119,4 @@ substitute for the current package.
 
 - [Requirements](0002-requirements.md)
 - [Open issues](open-issues.md)
-- [Elevated acceptance tests](../tests/Integration/Elevated-NTFSPermission.Tests.ps1)
+- [Elevated acceptance tests](../tests/Integration/Elevated-WindowsAccessControl.Tests.ps1)

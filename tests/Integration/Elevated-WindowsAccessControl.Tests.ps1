@@ -1,6 +1,6 @@
 # Privilege-gated SACL and arbitrary-owner acceptance (FR-6, FR-7, FR-8, FR-10, NFR-7).
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
@@ -8,7 +8,7 @@ BeforeAll {
     $script:currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     $script:enabledPrivileges = [System.Collections.Generic.List[string]]::new()
     $script:privilegeReasons = @{}
-    $tokenPrivileges = @(Get-NTFSPrivilege)
+    $tokenPrivileges = @(Get-WindowsPrivilege)
 
     foreach ($privilegeName in 'SeSecurityPrivilege', 'SeRestorePrivilege') {
         $privilege = $tokenPrivileges | Where-Object Name -eq $privilegeName
@@ -18,7 +18,7 @@ BeforeAll {
         }
         if ($privilege -and -not $privilege.Enabled) {
             try {
-                Enable-NTFSPrivilege -Name $privilegeName -Confirm:$false
+                Enable-WindowsPrivilege -Name $privilegeName -Confirm:$false
                 $script:enabledPrivileges.Add($privilegeName)
             } catch {
                 $script:privilegeReasons[$privilegeName] =
@@ -27,8 +27,8 @@ BeforeAll {
         }
     }
 
-    $script:hasSecurityPrivilege = Test-NTFSPrivilege -Name 'SeSecurityPrivilege'
-    $script:hasRestorePrivilege = Test-NTFSPrivilege -Name 'SeRestorePrivilege'
+    $script:hasSecurityPrivilege = Test-WindowsPrivilege -Name 'SeSecurityPrivilege'
+    $script:hasRestorePrivilege = Test-WindowsPrivilege -Name 'SeRestorePrivilege'
     if (-not $script:hasSecurityPrivilege -and
         -not $script:privilegeReasons.ContainsKey('SeSecurityPrivilege')) {
         $script:privilegeReasons.SeSecurityPrivilege = 'SeSecurityPrivilege is not enabled.'
@@ -41,12 +41,12 @@ BeforeAll {
 
 AfterAll {
     foreach ($privilegeName in $script:enabledPrivileges) {
-        Disable-NTFSPrivilege -Name $privilegeName -Confirm:$false
+        Disable-WindowsPrivilege -Name $privilegeName -Confirm:$false
     }
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
-Describe 'Elevated NTFSPermission acceptance' -Tag 'Integration', 'WindowsOnly', 'RequiresElevation' {
+Describe 'Elevated WindowsAccessControl acceptance' -Tag 'Integration', 'WindowsOnly', 'RequiresElevation' {
     It 'Should add and query a real SACL rule' {
         if (-not $script:hasSecurityPrivilege) {
             Set-ItResult -Skipped -Because $script:privilegeReasons.SeSecurityPrivilege

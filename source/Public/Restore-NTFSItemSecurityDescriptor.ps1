@@ -24,7 +24,7 @@ function Restore-NTFSItemSecurityDescriptor {
 
     .OUTPUTS
         None
-        NTFSPermission.SecurityDescriptor
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     [OutputType([pscustomobject])]
@@ -39,7 +39,7 @@ function Restore-NTFSItemSecurityDescriptor {
 
     $backup = Get-Content -LiteralPath $BackupPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     if ($backup.SchemaVersion -ne 1 -or $null -eq $backup.Records) {
-        throw 'The backup document is not a supported NTFSPermission schema.'
+        throw 'The backup document is not a supported WindowsAccessControl schema.'
     }
 
     $validatedRecords = [System.Collections.Generic.List[object]]::new()

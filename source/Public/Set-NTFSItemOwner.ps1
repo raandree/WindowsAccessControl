@@ -33,7 +33,7 @@ function Set-NTFSItemOwner {
 
     .OUTPUTS
         None
-        NTFSPermission.Owner
+        WindowsAccessControl.Owner
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -56,7 +56,7 @@ function Set-NTFSItemOwner {
     )
 
     begin {
-        $securityIdentifier = Resolve-NTFSIdentityReference -Identity $Account
+        $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
     }
 
     process {

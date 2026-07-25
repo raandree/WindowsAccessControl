@@ -1,6 +1,6 @@
 # Bounded SID-derived Authz effective-access calculation (FR-13).
 BeforeAll {
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\NTFSPermission\*\NTFSPermission.psd1" |
+    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
     Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
@@ -8,7 +8,7 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'NTFSPermission' -Force -ErrorAction SilentlyContinue
+    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Get-NTFSItemEffectiveAccess' -Tag 'Integration', 'WindowsOnly' {
@@ -19,7 +19,7 @@ Describe 'Get-NTFSItemEffectiveAccess' -Tag 'Integration', 'WindowsOnly' {
         $result = Get-Item -LiteralPath $testFile |
             Get-NTFSItemEffectiveAccess -Account $script:currentSid -AccessRights Read
 
-        $result.PSObject.TypeNames | Should -Contain 'NTFSPermission.EffectiveAccess'
+        $result.PSObject.TypeNames | Should -Contain 'WindowsAccessControl.EffectiveAccess'
         $result.SID | Should -Be $script:currentSid
         $result.AccessMask | Should -BeGreaterThan 0
         $result.IsAllowed | Should -BeTrue

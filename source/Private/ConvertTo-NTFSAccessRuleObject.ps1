@@ -39,6 +39,6 @@ function ConvertTo-NTFSAccessRuleObject {
         IsOrphaned        = $isOrphaned
         NativeRule        = $Rule
     }
-    $result.PSObject.TypeNames.Insert(0, 'NTFSPermission.AccessRule')
+    $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.AccessRule')
     $result
 }

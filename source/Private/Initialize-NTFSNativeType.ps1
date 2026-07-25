@@ -2,7 +2,7 @@ function Initialize-NTFSNativeType {
     [CmdletBinding()]
     param()
 
-    if ([System.Management.Automation.PSTypeName]'NTFSPermission.NativeMethods'.Type) {
+    if ([System.Management.Automation.PSTypeName]'WindowsAccessControl.NativeMethods'.Type) {
         return
     }
 
@@ -13,7 +13,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace NTFSPermission
+namespace WindowsAccessControl
 {
     [StructLayout(LayoutKind.Sequential)]
     internal struct Luid
