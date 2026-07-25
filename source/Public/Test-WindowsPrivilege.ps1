@@ -31,7 +31,7 @@ function Test-WindowsPrivilege {
     )
 
     begin {
-        Initialize-NTFSNativeType
+        Initialize-WindowsAccessControlNativeType
     }
 
     process {

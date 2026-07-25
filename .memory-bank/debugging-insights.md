@@ -67,3 +67,25 @@ Use Sampler's documented `ModuleVersion` environment override for deterministic
 local validation until `GitVersion.yml` recognizes `ai/` branches without a
 missing parent ref. Do not suppress the JSON error or classify it as a source
 compilation failure.
+
+## Cross-edition flags enums
+
+Windows PowerShell 5.1 does not parse PowerShell enum declarations with an
+explicit `: uint32` underlying type. Define flags enums with the default signed
+underlying type and represent `GENERIC_READ` as `-2147483648`. Normalize a
+rights mask with `[uint64]([int64]$value -band 0xFFFFFFFFL)` when an unsigned
+mask is required.
+
+PowerShell enum types declared inside a module require type accelerators for
+direct caller use. Replace a conflicting accelerator only when importing, and
+remove it in the module `OnRemove` handler only when it still points to the
+module's own type; otherwise same-session upgrades or foreign modules can retain
+stale types.
+
+## Module-scoped script block arguments
+
+`GetNewClosure()` creates a dynamic module and can bypass Pester mocks scoped to
+the module under test. For security-descriptor reads and writes, keep the
+script block in module scope and pass data through an explicit `ArgumentList`.
+This preserves mocks, avoids hidden parameter capture, and is clearer for later
+runspace dispatch.

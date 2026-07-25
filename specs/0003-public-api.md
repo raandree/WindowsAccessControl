@@ -113,8 +113,9 @@ rules unchanged.
 | `Clear-NTFSAuditRule` | Path, LiteralPath | paths, filesystem objects | none |
 
 Audit commands mirror access-rule semantics but operate on the SACL and require
-`SeSecurityPrivilege` for live descriptor reads or writes (0004, ADR 0007).
-They do not enable that privilege implicitly.
+`SeSecurityPrivilege` for live descriptor reads or writes. They acquire that
+privilege only when it exists in the token, reference-count nested use, and
+restore the original state (0004, ADR 0008).
 
 ## Owner and inheritance commands
 
@@ -169,6 +170,8 @@ does not include share permissions or every logon-specific group (0004).
 `Get-WindowsPrivilege` is read-only. Enable and disable operations can change only
 privileges already present in the current process token. Disabling a privilege
 absent from the token is an idempotent no-op; enabling it fails explicitly.
+Commands that require SACL, restore, or arbitrary-owner authority use scoped
+automatic privilege leases rather than requiring caller choreography.
 
 ## See also
 

@@ -84,7 +84,12 @@ function Copy-NTFSItemSecurityDescriptor {
             if ($PSCmdlet.ShouldProcess($item.FullName, $action)) {
                 $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections $Sections
                 $security.SetSecurityDescriptorSddlForm($sourceSddl, $Sections)
-                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+                $persistenceParameters = @{
+                    Item     = $item
+                    Security = $security
+                    Sections = $Sections
+                }
+                Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
                 if ($PassThru) {
                     $updated = Get-NTFSSecurityDescriptorForItem -Item $item -Sections $Sections
                     ConvertTo-NTFSSecurityDescriptorObject -Item $item -Security $updated -Sections $Sections

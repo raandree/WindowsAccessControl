@@ -86,9 +86,12 @@ function Restore-NTFSItemSecurityDescriptor {
             $validatedRecord.Item.FullName,
             "Restore $($validatedRecord.Sections) security descriptor sections"
         )) {
-            Invoke-NTFSSecurityDescriptorPersistence `
-                -Item $validatedRecord.Item `
-                -Security $validatedRecord.Security
+            $persistenceParameters = @{
+                Item     = $validatedRecord.Item
+                Security = $validatedRecord.Security
+                Sections = $validatedRecord.Sections
+            }
+            Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
             if ($PassThru) {
                 $updated = Get-NTFSSecurityDescriptorForItem `
                     -Item $validatedRecord.Item `

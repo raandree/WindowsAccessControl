@@ -16,5 +16,20 @@ function Get-NTFSSecurityDescriptorForItem {
     if (($Sections -band [System.Security.AccessControl.AccessControlSections]::Audit) -ne 0) {
         $getAclParameters.Audit = $true
     }
-    Get-Acl @getAclParameters
+    $readDescriptor = {
+        param($parameters)
+
+        Get-Acl @parameters
+    }
+    $readArguments = ,$getAclParameters
+    if (($Sections -band [System.Security.AccessControl.AccessControlSections]::Audit) -ne 0) {
+        $privilegeParameters = @{
+            Name         = 'SeSecurityPrivilege'
+            ScriptBlock  = $readDescriptor
+            ArgumentList = $readArguments
+        }
+        Invoke-WithWindowsPrivilege @privilegeParameters
+    } else {
+        & $readDescriptor @readArguments
+    }
 }

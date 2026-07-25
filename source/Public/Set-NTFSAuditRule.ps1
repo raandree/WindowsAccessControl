@@ -105,9 +105,14 @@ function Set-NTFSAuditRule {
                 $AuditFlags
             )
             if ($PSCmdlet.ShouldProcess($item.FullName, "Replace $AuditFlags audit rules for $Account")) {
-                $security = Get-Acl -LiteralPath $item.FullName -Audit -ErrorAction Stop
+                $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections Audit
                 $security.SetAuditRule($rule)
-                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+                $persistenceParameters = @{
+                    Item     = $item
+                    Security = $security
+                    Sections = 'Audit'
+                }
+                Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
                 if ($PassThru) {
                     ConvertTo-NTFSAuditRuleObject -Rule $rule -Path $item.FullName
                 }

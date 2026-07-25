@@ -48,13 +48,19 @@ Expand and rename the unpublished module to `WindowsAccessControl` on
 - The renamed artifact passes 259 tests with zero failures or skips in both
     PowerShell 7 and Windows PowerShell 5.1. PowerShell 7 coverage is 86.72
     percent against the 80 percent gate.
+- The shared Unicode named/handle descriptor engine, pinned-process checks,
+    richer SID conversion, public rights enums, and reference-counted automatic
+    privilege scopes are implemented and independently approved with no
+    Blocker or Major findings.
+- The hardened core passes 277 PowerShell 7 tests with zero skips at 87.4
+    percent coverage. Its 15 engine and privilege tests also pass unchanged in
+    Windows PowerShell 5.1.
 - Full QA with the specification contract passes 181 tests with zero failures;
     its eight conformance checks cover structure, status, requirement identity,
     traceability, exports, local links, format views, and ADR indexing.
 
 ## Next step
 
-Implement the shared Windows identity/security-descriptor engine and scoped
-privilege lifecycle test-first, then layer object-specific registry, service,
-and process commands and class-based DSC resources. Do not push or publish
-without an explicit request.
+Layer object-specific registry, service, and process commands over the shared
+engine, then add class-based DSC resources. Do not push or publish without an
+explicit request.

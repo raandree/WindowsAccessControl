@@ -52,6 +52,10 @@ both supported PowerShell editions within the available token privileges.
     `WindowsAccessControl`, preserved its GUID, fixed elevated-owner test
     assumptions, and passed 259 tests in each supported PowerShell edition with
     86.72 percent PowerShell 7 coverage.
+- 2026-07-25: Implemented and hardened the shared named/handle descriptor
+    engine, process identity pinning, NTFSSecurity-style SID conversion,
+    cross-edition rights enums, and scoped automatic privileges; passed 277
+    PowerShell 7 tests at 87.4 percent coverage and 15 focused 5.1 tests.
 
 ## Stable capabilities
 

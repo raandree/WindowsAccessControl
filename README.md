@@ -151,7 +151,6 @@ enable object access auditing before events are produced.
 
 ```powershell
 Get-WindowsPrivilege
-Enable-WindowsPrivilege -Name SeSecurityPrivilege -Confirm:$false
 
 Add-NTFSAuditRule -LiteralPath 'C:\Data' `
     -Account 'S-1-1-0' `
@@ -159,8 +158,11 @@ Add-NTFSAuditRule -LiteralPath 'C:\Data' `
     -AuditFlags Failure
 ```
 
-`Enable-WindowsPrivilege` can enable only privileges already present in the current
-process token. It fails explicitly when Windows reports
+SACL and arbitrary-owner commands temporarily enable only the required
+privileges already present in the process token, reference-count nested use,
+and restore the original state. `Enable-WindowsPrivilege` and
+`Disable-WindowsPrivilege` remain available for deliberate token management.
+They fail explicitly when Windows reports
 `ERROR_NOT_ALL_ASSIGNED`. `Get-WindowsPrivilege` distinguishes privileges that are
 present but disabled from privileges absent from the token.
 
@@ -240,8 +242,8 @@ Use `Get-Help <command> -Full` for parameter semantics and examples.
   privileges.
 - Inherited ACEs cannot be removed directly from a child; change inheritance or
   the parent rule instead.
-- SACL operations and arbitrary ownership changes can require elevated token
-  privileges.
+- SACL operations and arbitrary ownership changes scope required privileges
+    already present in the token and restore their original state.
 - FileSystem provider resolution follows reparse points such as symbolic links
     and junctions. A path can change between resolution and descriptor
     persistence, so do not accept untrusted path input for privileged operations.

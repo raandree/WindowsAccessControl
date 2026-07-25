@@ -71,7 +71,12 @@ function Set-NTFSItemOwner {
             if ($PSCmdlet.ShouldProcess($item.FullName, "Set owner to $Account")) {
                 $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
                 $security.SetOwner($securityIdentifier)
-                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+                $persistenceParameters = @{
+                    Item     = $item
+                    Security = $security
+                    Sections = 'Owner'
+                }
+                Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
 
                 if ($PassThru) {
                     $updatedSecurity = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop

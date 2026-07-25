@@ -54,7 +54,7 @@ function Clear-NTFSAuditRule {
         }
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
             if ($PSCmdlet.ShouldProcess($item.FullName, 'Remove every explicit audit rule')) {
-                $security = Get-Acl -LiteralPath $item.FullName -Audit -ErrorAction Stop
+                $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections Audit
                 $rules = @($security.GetAuditRules(
                     $true,
                     $false,
@@ -63,7 +63,12 @@ function Clear-NTFSAuditRule {
                 foreach ($rule in $rules) {
                     $security.RemoveAuditRuleSpecific($rule)
                 }
-                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+                $persistenceParameters = @{
+                    Item     = $item
+                    Security = $security
+                    Sections = 'Audit'
+                }
+                Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
                 if ($PassThru) {
                     foreach ($rule in $rules) {
                         ConvertTo-NTFSAuditRuleObject -Rule $rule -Path $item.FullName

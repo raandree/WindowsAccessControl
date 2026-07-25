@@ -57,7 +57,7 @@ function Get-NTFSItemEffectiveAccess {
     )
 
     begin {
-        Initialize-NTFSNativeType
+        Initialize-WindowsAccessControlNativeType
         if ($PSBoundParameters.ContainsKey('Account')) {
             $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
         } else {

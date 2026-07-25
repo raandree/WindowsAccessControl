@@ -164,6 +164,10 @@ rights, registry view, descriptor sections, rule mutation mode, and DSC ensure
 semantics. Default formatting is domain-specific and does not change pipeline
 objects.
 
+`WindowsSecurityDescriptorSection` uses the native `SECURITY_INFORMATION` bit
+values (`Owner = 1`, `Group = 2`, `Access = 4`, `Audit = 8`). It is not
+interchangeable with .NET `AccessControlSections`, whose values differ.
+
 Backup uses one schema-versioned JSON envelope across all object families. Each
 record includes object family, canonical target identity, instance identity
 where needed, selected sections, SDDL, and integrity metadata. A SHA-256 digest

@@ -62,8 +62,9 @@ to 0005 and the linked ADRs.
   exact skip reason when the process token lacks a required privilege.
 - **NFR-8**: Backup content is non-executable, schema-versioned, and treated as
   trusted administrative input because it controls restore targets.
-- **NFR-9**: Read operations never enable privileges, seize ownership, or
-  broaden process authority as a side effect.
+- **NFR-9**: Operations may enable only required privileges already present in
+  the token, must restore their original state after the final nested worker,
+  and never seize ownership as an authorization fallback.
 - **NFR-10**: Build, versioning, packaging, changelog, and tests use the Sampler
   project workflow and Semantic Versioning.
 

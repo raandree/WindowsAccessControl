@@ -68,8 +68,8 @@ the descriptor is persisted. Inherited ACEs are not selected for removal.
 
 ## Privilege boundary
 
-The module recognizes the Windows privilege boundary without broadening it as a
-side effect (ADR 0007):
+The module recognizes the Windows privilege boundary and scopes required
+authority to one operation (ADR 0008):
 
 - `SeSecurityPrivilege` gates SACL reads and writes.
 - `SeRestorePrivilege` can permit arbitrary valid owner assignment and restore
@@ -79,8 +79,10 @@ side effect (ADR 0007):
 
 Privilege inventory opens the token for query only. Explicit enable/disable
 commands call `AdjustTokenPrivileges`, check `ERROR_NOT_ALL_ASSIGNED`, and
-cannot add a privilege to the token. Importing the module, querying an ACL, or
-computing effective access never silently enables broad privileges.
+cannot add a privilege to the token. SACL and owner/group persistence acquires
+only required privileges already present in the token, reference-counts nested
+workers, and restores the original state in `finally`. Importing the module
+never enables privileges.
 
 The module does not temporarily set the owner after authorization failure.
 Such fallback changes an additional security boundary and can fail to restore

@@ -142,7 +142,7 @@ function Remove-NTFSAuditRule {
             }
 
             if ($PSCmdlet.ShouldProcess($item.FullName, "$RemovalMode removal of audit rules for $identityLabel")) {
-                $security = Get-Acl -LiteralPath $item.FullName -Audit -ErrorAction Stop
+                $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections Audit
                 $removedRules = @()
                 switch ($RemovalMode) {
                     'Exact' { $security.RemoveAuditRuleSpecific($rule) }
@@ -165,7 +165,12 @@ function Remove-NTFSAuditRule {
                         $security.PurgeAuditRules($identityReference)
                     }
                 }
-                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+                $persistenceParameters = @{
+                    Item     = $item
+                    Security = $security
+                    Sections = 'Audit'
+                }
+                Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
                 if ($PassThru) {
                     if ($RemovalMode -eq 'All') {
                         foreach ($removedRule in $removedRules) {

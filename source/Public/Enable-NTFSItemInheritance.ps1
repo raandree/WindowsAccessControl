@@ -72,14 +72,15 @@ function Enable-NTFSItemInheritance {
 
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
             if ($PSCmdlet.ShouldProcess($item.FullName, "Enable $Section rule inheritance")) {
-                $getAclParameters = @{
-                    LiteralPath = $item.FullName
-                    ErrorAction = 'Stop'
+                $descriptorSections = switch ($Section) {
+                    'Access' { [System.Security.AccessControl.AccessControlSections]::Access }
+                    'Audit' { [System.Security.AccessControl.AccessControlSections]::Audit }
+                    'All' {
+                        [System.Security.AccessControl.AccessControlSections]::Access -bor
+                            [System.Security.AccessControl.AccessControlSections]::Audit
+                    }
                 }
-                if ($Section -in @('Audit', 'All')) {
-                    $getAclParameters.Audit = $true
-                }
-                $security = Get-Acl @getAclParameters
+                $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections $descriptorSections
                 if ($Section -in @('Access', 'All')) {
                     $security.SetAccessRuleProtection($false, $false)
                     if ($RemoveExplicitRules) {

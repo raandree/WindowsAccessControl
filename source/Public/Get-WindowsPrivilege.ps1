@@ -23,7 +23,7 @@ function Get-WindowsPrivilege {
     [OutputType([pscustomobject])]
     param()
 
-    Initialize-NTFSNativeType
+    Initialize-WindowsAccessControlNativeType
     foreach ($privilege in [WindowsAccessControl.NativeMethods]::GetTokenPrivileges() | Sort-Object Name) {
         $result = [pscustomobject]@{
             Name             = $privilege.Name

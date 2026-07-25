@@ -85,7 +85,7 @@ function Get-NTFSAuditRule {
         }
 
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
-            $security = Get-Acl -LiteralPath $item.FullName -Audit -ErrorAction Stop
+            $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections Audit
             $rules = $security.GetAuditRules(
                 -not $ExcludeExplicit,
                 -not $ExcludeInherited,

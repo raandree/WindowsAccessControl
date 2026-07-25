@@ -126,11 +126,16 @@ function Add-NTFSAuditRule {
             $ruleNoun = if ($securityIdentifiers.Count -eq 1) { 'rule' } else { 'rules' }
             $action = "Add $AuditFlags audit $ruleNoun for $identityLabel"
             if ($PSCmdlet.ShouldProcess($item.FullName, $action)) {
-                $security = Get-Acl -LiteralPath $item.FullName -Audit -ErrorAction Stop
+                $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections Audit
                 foreach ($rule in $rules) {
                     $security.AddAuditRule($rule)
                 }
-                Invoke-NTFSSecurityDescriptorPersistence -Item $item -Security $security
+                $persistenceParameters = @{
+                    Item     = $item
+                    Security = $security
+                    Sections = 'Audit'
+                }
+                Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
                 if ($PassThru) {
                     foreach ($rule in $rules) {
                         ConvertTo-NTFSAuditRuleObject -Rule $rule -Path $item.FullName

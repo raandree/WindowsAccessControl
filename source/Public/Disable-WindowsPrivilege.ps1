@@ -37,7 +37,7 @@ function Disable-WindowsPrivilege {
     )
 
     begin {
-        Initialize-NTFSNativeType
+        Initialize-WindowsAccessControlNativeType
     }
 
     process {

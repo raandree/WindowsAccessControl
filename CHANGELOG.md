@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add privilege-gated live SACL and arbitrary-owner acceptance specifications
 - Add live SACL-only descriptor-copy acceptance with owner, group, and DACL
     preservation evidence
+- Add public registry-view, descriptor-section, service, SCM, and process
+    rights enums
+- Add a shared Unicode named/handle security descriptor engine with pinned
+    process identity checks and caller-owned handle support
+- Allow `Resolve-WindowsIdentity` to accept native identity references, module
+    output, and objects with `SID`, `Account`, or `IdentityReference` properties
 - Add numbered source-of-truth specifications, stable requirement identifiers,
     ADRs, open issues, and automated specification conformance checks
 
@@ -32,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     unique accounts with one descriptor write per item
 - Allow `Enable-NTFSItemInheritance` to remove explicit rules while enabling
     access or audit inheritance
+- Automatically scope and restore `SeSecurityPrivilege` for SACL operations and
+    `SeRestorePrivilege` for owner/group writes when the token contains them
 
 ### Security
 
