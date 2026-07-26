@@ -111,3 +111,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preserve single-target canonical batches on Windows PowerShell 5.1 and share
     target locks across isolated module instances to prevent concurrent alias
     writes
+- Use Pester breakpoint coverage so Windows PowerShell 5.1 exact-descriptor DSC
+    integration tests remain constructible after LCM acceptance

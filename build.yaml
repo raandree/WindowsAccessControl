@@ -102,7 +102,7 @@ Pester:
       CoveragePercentTarget: 80
       OutputPath: JaCoCo_coverage.xml
       OutputEncoding: ascii
-      UseBreakpoints: false
+      UseBreakpoints: true
     TestResult:
       OutputFormat: NUnitXML
       OutputEncoding: ascii

@@ -331,3 +331,12 @@ Normative record: [ADR 0011](../specs/decisions/0011-limit-release-to-local-obje
     without duplicating credentials or introducing remote target semantics.
     Direct `SecureString` marshaling, zeroing, and safe-handle disposal bound
     password and token lifetime to the operation.
+
+### Decision 33: Use breakpoint coverage across PowerShell editions
+
+- Choice: Keep Pester `CodeCoverage.UseBreakpoints` enabled for the module test
+    gate in both supported PowerShell editions.
+- Rationale: Pester 5.7.1 marks profiler-tracer coverage as experimental. On
+    Windows PowerShell 5.1 it corrupts class-based DSC construction after
+    Desktop LCM acceptance, while breakpoint coverage preserves the same tests
+    and clears the coverage threshold in both editions.

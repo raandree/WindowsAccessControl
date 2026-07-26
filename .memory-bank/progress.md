@@ -155,6 +155,11 @@ signed DSC resources are complete.
     secret-like artifacts.
 - 2026-07-26: Completed independent impersonation security review and
     re-review with no Blocker or Major findings and explicit APPROVE verdicts.
+- 2026-07-26: Reproduced six Windows PowerShell 5.1 exact-descriptor DSC
+    failures under Pester's experimental profiler-tracer coverage, restored
+    breakpoint coverage, and passed 770 Desktop tests at 87.79 percent coverage
+    plus 797 PowerShell 7 tests at 88.19 percent coverage with zero failures or
+    skips.
 
 ## Stable capabilities
 

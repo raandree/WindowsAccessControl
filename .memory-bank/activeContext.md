@@ -9,11 +9,9 @@ source: current task evidence
 
 ## Current focus
 
-The signed `WindowsAccessControl` release is complete on
-`ai/windows-access-control`. All command families, ten DSC resources, local
-credential impersonation, cross-edition validation, package inspection, and
-independent security review are complete. Remote publication remains under
-explicit user control.
+The Windows PowerShell 5.1 build-test regression is fixed on
+`ai/fix-ps5-exact-dsc-tests`. Pester now uses breakpoint coverage across both
+supported editions. Remote publication remains under explicit user control.
 
 ## Evidence
 
@@ -136,8 +134,15 @@ explicit user control.
     explicit approval; their tracked renamed equivalents remain. The full
     PowerShell 7 gate is now fully green at 797 passed, 0 failed, 0 skipped,
     88.06 percent coverage.
+- Pester 5.7.1 profiler-tracer coverage reproduced six Windows PowerShell 5.1
+    exact-descriptor DSC failures after Desktop LCM acceptance. The same
+    covered nine-test sequence passed with breakpoint coverage and the original
+    fixture.
+- The final breakpoint-coverage gates pass 770 Windows PowerShell 5.1 tests at
+    87.79 percent coverage and 797 PowerShell 7 tests at 88.19 percent coverage,
+    with zero failures or skips in either edition.
 
 ## Next step
 
-Retain the green local milestones on `ai/windows-access-control`. Do not push or
+Retain the green local milestone on `ai/fix-ps5-exact-dsc-tests`. Do not push or
 publish without an explicit request.

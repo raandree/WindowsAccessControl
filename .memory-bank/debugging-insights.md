@@ -321,3 +321,16 @@ with `& $script:module { param(...) ... } $args` (the pattern the DSC contract
 test uses). This avoids `InModuleScope`'s `Get-CompatibleModule` resolution and
 is robust to cross-file load/remove ordering. A green isolated run is not
 sufficient evidence for a private-function test; confirm it in the full suite.
+
+## Desktop Pester coverage and PowerShell classes
+
+Pester 5.7.1 `CodeCoverage.UseBreakpoints: false` selects its experimental
+profiler tracer. Under Windows PowerShell 5.1, tracer-instrumented class-based
+DSC construction can throw `ArgumentOutOfRangeException` after Desktop LCM
+acceptance. The same LCM-plus-resource sequence passes without coverage and
+with breakpoint coverage, using the original `Activator.CreateInstance`
+fixture.
+
+Keep `UseBreakpoints: true`. Prove the fix with the covered nine-test sequence
+and the complete test workflow in both editions; do not skip the resource tests
+or replace their constructor fixture to hide the tracer defect.
