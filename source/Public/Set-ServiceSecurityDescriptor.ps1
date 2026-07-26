@@ -13,6 +13,9 @@ function Set-ServiceSecurityDescriptor {
         A structurally valid SDDL document containing every selected section.
     .PARAMETER Sections
         Selects the descriptor sections to persist from the SDDL document.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns the stored selected descriptor sections after persistence.
     .EXAMPLE
@@ -46,6 +49,13 @@ function Set-ServiceSecurityDescriptor {
             [WindowsSecurityDescriptorSection]::All,
 
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -66,6 +76,17 @@ function Set-ServiceSecurityDescriptor {
     }
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsServiceCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Name $Name `
+                -ServiceControlManager:$ServiceControlManager `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         $targets = if ($ServiceControlManager) {
             @(Resolve-WindowsServiceTarget -ServiceControlManager)
         } else {

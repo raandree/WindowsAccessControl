@@ -26,6 +26,10 @@ function Enable-NTFSItemInheritance {
     .PARAMETER PassThru
         Returns the updated inheritance state for each changed item.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical paths. One requests
+        deterministic sequential execution.
+
     .EXAMPLE
         Get-ChildItem -LiteralPath C:\Data | Enable-NTFSItemInheritance
 
@@ -59,10 +63,28 @@ function Enable-NTFSItemInheritance {
         [switch]$RemoveExplicitRules,
 
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+
+        [Parameter()]
         [switch]$PassThru
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact Medium
+            return
+        }
         $resolveParameters = @{}
         if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
             $resolveParameters.LiteralPath = $LiteralPath

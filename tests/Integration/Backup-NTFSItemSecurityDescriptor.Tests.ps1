@@ -32,6 +32,39 @@ Describe 'Backup-NTFSItemSecurityDescriptor' -Tag 'Integration', 'WindowsOnly' {
         $backup.Records[1].Sddl | Should -Not -BeNullOrEmpty
     }
 
+    It 'Should read a deduplicated batch and write one backup envelope' {
+        $first = Join-Path -Path $TestDrive -ChildPath 'batch-first.txt'
+        $second = Join-Path -Path $TestDrive -ChildPath 'batch-second.txt'
+        $backupPath = Join-Path -Path $TestDrive -ChildPath 'batch-permissions.json'
+        Set-Content -LiteralPath $first -Value 'first'
+        Set-Content -LiteralPath $second -Value 'second'
+        $wildcard = Join-Path -Path $TestDrive -ChildPath 'batch-*.txt'
+        $before = Get-WindowsAccessControlMetric `
+            -CommandName 'Backup-NTFSItemSecurityDescriptor' `
+            -ObjectFamily 'FileSystem'
+        $beforeOperations = if ($before) { $before.OperationCount } else { 0 }
+        $beforeTargets = if ($before) { $before.TargetCount } else { 0 }
+        $beforeSuccesses = if ($before) { $before.SuccessCount } else { 0 }
+
+        $records = @(Backup-NTFSItemSecurityDescriptor `
+            -Path @($first, $wildcard) `
+            -DestinationPath $backupPath `
+            -ThrottleLimit 2 `
+            -PassThru)
+        $backup = Get-Content -LiteralPath $backupPath -Raw | ConvertFrom-Json
+        $after = Get-WindowsAccessControlMetric `
+            -CommandName 'Backup-NTFSItemSecurityDescriptor' `
+            -ObjectFamily 'FileSystem'
+
+        $records | Should -HaveCount 2
+        $backup.Records | Should -HaveCount 2
+        @($backup.Records.CanonicalTarget | Sort-Object -Unique) | Should -HaveCount 2
+        $after.OperationCount - $beforeOperations | Should -Be 1
+        $after.TargetCount - $beforeTargets | Should -Be 2
+        $after.SuccessCount - $beforeSuccesses | Should -Be 2
+        $after.FailureCount | Should -Be 0
+    }
+
     It 'Should refuse to overwrite an existing backup without Force' {
         $testFile = Join-Path -Path $TestDrive -ChildPath 'no-clobber.txt'
         $backupPath = Join-Path -Path $TestDrive -ChildPath 'existing.json'

@@ -35,6 +35,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     output, and objects with `SID`, `Account`, or `IdentityReference` properties
 - Add numbered source-of-truth specifications, stable requirement identifiers,
     ADRs, open issues, and automated specification conformance checks
+- Add bounded target-array execution across filesystem, registry, service/SCM,
+    and process commands with configurable `ThrottleLimit`, canonical target
+    deduplication, and process-wide same-target write serialization
+- Add `Get-WindowsAccessControlMetric` for redacted in-process operation,
+    target, success, failure, and elapsed counters by command and object family
+- Add a repeatable NTFS batch benchmark that records sequential and parallel
+    throughput without a timing-based pass threshold
 
 ### Changed
 
@@ -49,6 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     access or audit inheritance
 - Automatically scope and restore `SeSecurityPrivilege` for SACL operations and
     `SeRestorePrivilege` for owner/group writes when the token contains them
+- Read deduplicated NTFS backup targets with bounded parallelism while retaining
+    one complete atomic envelope write
 
 ### Security
 
@@ -81,3 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Write completed backup envelopes through atomic same-directory replacement,
     defer signing-key access until `ShouldProcess`, and preserve absent SACLs
     through explicit `S:NO_ACCESS_CONTROL` records
+- Preserve single-target canonical batches on Windows PowerShell 5.1 and share
+    target locks across isolated module instances to prevent concurrent alias
+    writes

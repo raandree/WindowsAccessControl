@@ -11,6 +11,9 @@ function Get-RegistryKeyInheritance {
         Selects access inheritance, audit inheritance, or both ACLs.
     .PARAMETER RegistryView
         Selects the default, 32-bit, or 64-bit registry view explicitly.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .EXAMPLE
         Get-RegistryKeyInheritance -Path HKCU:\Software -Section All
 
@@ -31,10 +34,25 @@ function Get-RegistryKeyInheritance {
         [ValidateSet('Access', 'Audit', 'All')]
         [string]$Section = 'Access',
         [Parameter()]
-        [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default
+        [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsRegistryCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -RegistryView $RegistryView `
+                -ThrottleLimit $ThrottleLimit
+            return
+        }
         foreach ($pathValue in $Path) {
             $target = Resolve-RegistryKeyTarget -Path $pathValue -RegistryView $RegistryView
             $sections = switch ($Section) {

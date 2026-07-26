@@ -15,6 +15,9 @@ function Get-ServiceAuditRule {
         Excludes inherited ACEs; service descriptors normally contain explicit ACEs only.
     .PARAMETER ExcludeExplicit
         Excludes explicit ACEs; service descriptors do not support inheritance.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .EXAMPLE
         Get-ServiceAuditRule -Name BITS -Account 'S-1-1-0'
 
@@ -44,10 +47,26 @@ function Get-ServiceAuditRule {
         [switch]$ExcludeInherited,
 
         [Parameter()]
-        [switch]$ExcludeExplicit
+        [switch]$ExcludeExplicit,
+
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsServiceCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Name $Name `
+                -ServiceControlManager:$ServiceControlManager `
+                -ThrottleLimit $ThrottleLimit
+            return
+        }
         $targets = if ($ServiceControlManager) {
             @(Resolve-WindowsServiceTarget -ServiceControlManager)
         } else {

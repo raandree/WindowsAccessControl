@@ -11,6 +11,9 @@ function Clear-ProcessAccessRule {
         One or more caller-owned process handles that the module never closes.
     .PARAMETER Account
         Optional accounts or SIDs whose explicit access rules are removed.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed pinned targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns the rules selected for removal after successful persistence.
     .EXAMPLE
@@ -36,6 +39,12 @@ function Clear-ProcessAccessRule {
         [Alias('IdentityReference')]
         [object[]]$Account,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -51,6 +60,17 @@ function Clear-ProcessAccessRule {
         )
     }
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsProcessCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -InputObject $InputObject `
+                -Handle $Handle `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         $targets = if ($PSCmdlet.ParameterSetName -eq 'Handle') {
             @($Handle | ForEach-Object { Resolve-WindowsProcessTarget -Handle $_ })
         } else {

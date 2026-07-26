@@ -15,6 +15,10 @@ function Get-NTFSItemOwner {
         One or more filesystem paths used exactly as supplied. FileSystem
         objects bind to this parameter through their PSPath property.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical paths. One requests
+        deterministic sequential execution.
+
     .EXAMPLE
         Get-ChildItem -LiteralPath C:\Data | Get-NTFSItemOwner
 
@@ -37,10 +41,27 @@ function Get-NTFSItemOwner {
 
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = 'LiteralPath')]
         [Alias('PSPath')]
-        [string[]]$LiteralPath
+        [string[]]$LiteralPath,
+
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -ConfirmationImpact None
+            return
+        }
         $resolveParameters = @{}
         if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
             $resolveParameters.LiteralPath = $LiteralPath

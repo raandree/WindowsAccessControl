@@ -51,6 +51,7 @@ is not reported as a successful live write.
 | NFR-8 | Backup schema, no-clobber, malformed-document, and restore tests |
 | NFR-9 | Token inventory test and mutator `WhatIf` safety tests |
 | NFR-10 | Sampler build, package inspection, changelog QA, and GitVersion config |
+| ADR-0013 | Dispatcher Unit tests, family command contracts, live canonical deduplication and metric tests, cross-edition focused runs, and the repeatable NTFS benchmark |
 
 ## Public command evidence
 
@@ -58,7 +59,7 @@ is not reported as a successful live write.
 | --- | ---: | --- | --- |
 | `Add-NTFSAccessRule` | 5 | Live NTFS | Not required |
 | `Add-NTFSAuditRule` | 3 | Unit descriptor | Live SACL add/query |
-| `Backup-NTFSItemSecurityDescriptor` | 3 | Live NTFS DACL | Live SACL backup |
+| `Backup-NTFSItemSecurityDescriptor` | 4 | Live NTFS DACL and aggregate bounded reads | Live SACL backup |
 | `Backup-WindowsSecurityDescriptor` | 6 | Live NTFS, registry, service/SCM, and process | SHA-256, X.509, atomic replacement, duplicate rejection, and absent SACL |
 | `Clear-NTFSAccessRule` | 1 | Live NTFS | Not required |
 | `Clear-NTFSAuditRule` | 1 | Unit descriptor | Live SACL clear |
@@ -71,7 +72,7 @@ is not reported as a successful live write.
 | `Get-NTFSAuditRule` | 2 | Unit descriptor | Live SACL add/query |
 | `Get-NTFSItemEffectiveAccess` | 1 | Live NTFS Authz | Not required |
 | `Get-NTFSItemInheritance` | 1 | Live NTFS DACL | Audit inheritance workflow |
-| `Get-NTFSItemOwner` | 1 | Live NTFS | Not required; also read back by arbitrary-owner acceptance |
+| `Get-NTFSItemOwner` | 3 | Live NTFS plus canonical batch deduplication and prevalidation | Not required; also read back by arbitrary-owner acceptance |
 | `Get-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Live SACL backup |
 | `Get-WindowsPrivilege` | 1 | Token integration | Not required |
 | `New-NTFSAccessRule` | 1 | Unit descriptor | Not required |
@@ -86,7 +87,7 @@ is not reported as a successful live write.
 | `Set-NTFSItemOwner` | 1 | Live current owner | Arbitrary-owner workflow |
 | `Test-NTFSItemAcl` | 2 | Live and synthetic DACL | Not required |
 | `Test-WindowsPrivilege` | 1 | Token integration | Not required |
-| `Get-RegistryKeySecurityDescriptor` | 2 | Live registry | SACL path included in registry acceptance |
+| `Get-RegistryKeySecurityDescriptor` | 3 | Live registry plus canonical batch deduplication and metrics | SACL path included in registry acceptance |
 | `Set-RegistryKeySecurityDescriptor` | 1 | Live registry | SACL path included in registry acceptance |
 | `Get-RegistryKeyAccessRule` | 1 | Live registry | Not required |
 | `Add-RegistryKeyAccessRule` | 1 | Live registry | Not required |
@@ -125,8 +126,9 @@ is not reported as a successful live write.
 | `Set-ProcessAuditRule` | 1 | Live process SACL | Audit-flag isolation |
 | `Remove-ProcessAuditRule` | 1 | Live process SACL | Exact native ACE removal |
 | `Clear-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
+| `Get-WindowsAccessControlMetric` | 1 | Thread-safe aggregate snapshot Unit test | Redacted output contract |
 
-The direct command total is 99 specifications across 67 exported commands.
+The direct command total is 118 specifications across 70 exported commands.
 Cross-cutting checks add 20 Unit-level mutator `WhatIf` specifications in
 `tests/Unit/MutatorSafety.Tests.ps1` and the QA specification contract in
 `tests/QA/Specifications.Tests.ps1`.
@@ -138,6 +140,20 @@ fixed test-run snapshot. Current run counts and review outcomes are recorded in
 `.memory-bank/progress.md`, while executable artifacts are written under
 `output/testResults`. The build enforces an 80 percent merged-module coverage
 threshold.
+
+`NtfsBatchPermissions.Tests.ps1` proves canonical wildcard/explicit-path
+deduplication, metric deltas, complete prevalidation before dispatch, bounded
+multi-target mutation, and parallel `WhatIf` safety.
+`Invoke-WindowsAccessControlBatch.Tests.ps1` proves bounded overlap,
+single-throttle ordering, independent target failure, canonical deduplication,
+consistent nonterminating-error metrics, single-target behavior, and
+cross-module write serialization. The same focused gate runs under PowerShell
+7 and Windows PowerShell 5.1.
+
+`tests/Performance/Measure-NtfsBatchPerformance.ps1` measures alternating
+sequential and bounded-parallel NTFS owner reads over disposable targets. It
+emits elapsed time and throughput plus optional JSON evidence without a flaky
+hard timing assertion.
 
 ## Privileged release evidence
 

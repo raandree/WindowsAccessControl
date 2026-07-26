@@ -17,6 +17,9 @@ function Set-ServiceAuditRule {
         Replacement rights stored in each Service Control Manager audit rule.
     .PARAMETER AuditFlags
         Selects successful access, failed access, or both for auditing.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns each stored replacement rule after persistence.
     .EXAMPLE
@@ -51,6 +54,12 @@ function Set-ServiceAuditRule {
         [System.Security.AccessControl.AuditFlags]$AuditFlags =
             [System.Security.AccessControl.AuditFlags]::Success,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -71,6 +80,17 @@ function Set-ServiceAuditRule {
         }
     }
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsServiceCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Name $Name `
+                -ServiceControlManager:$ServiceControlManager `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         $targets = if ($ServiceControlManager) {
             @(Resolve-WindowsServiceTarget -ServiceControlManager)
         } else {

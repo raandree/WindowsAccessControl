@@ -38,6 +38,11 @@ function Remove-NTFSAccessRule {
     .PARAMETER PassThru
         Returns the rule object representing the requested removal.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical paths for path-based calls.
+        One requests deterministic sequential execution. Piped rule objects
+        remain scalar.
+
     .EXAMPLE
         Get-NTFSAccessRule -LiteralPath C:\Data -ExcludeInherited | Remove-NTFSAccessRule
 
@@ -98,6 +103,13 @@ function Remove-NTFSAccessRule {
         [string]$RemovalMode = 'Exact',
 
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -110,6 +122,18 @@ function Remove-NTFSAccessRule {
     }
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value -and
+            $PSCmdlet.ParameterSetName -ne 'Rule') {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         if ($PSCmdlet.ParameterSetName -eq 'Rule') {
             if ($InputObject.PSObject.TypeNames -notcontains 'WindowsAccessControl.AccessRule' -or
                 -not $InputObject.NativeRule -or

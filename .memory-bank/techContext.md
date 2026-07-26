@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-25
+last-verified: 2026-07-26
 owner: active-agent
 source: repository evidence
 ---
@@ -33,6 +33,8 @@ source: repository evidence
 - Pin process instances by handle and creation identity.
 - Keep caller-owned handles open and close every module-owned native resource.
 - Bound parallel target execution and serialize same-target writes.
+- Import one isolated module instance per worker runspace and keep shared
+    coordination in the parent/application domain.
 - Run Pester and Sampler only through the detached PowerShell launcher.
 
 ## Validation
@@ -45,3 +47,4 @@ source: repository evidence
 - An 80 percent executable coverage threshold on the merged module.
 - NUnit, environment/privilege inventory, benchmark, and cleanup evidence for
     privileged release acceptance.
+- Repeatable benchmark evidence without hard timing assertions.

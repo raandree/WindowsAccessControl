@@ -10,9 +10,9 @@ source: repository evidence
 ## Current status
 
 The NTFS, registry, service/SCM, and pinned live-process command families are
-complete with unified cross-domain portability, independently approved, and
-green on both supported PowerShell editions. Bounded execution and DSC remain
-open.
+complete with unified cross-domain portability, bounded execution, canonical
+write serialization, and metrics. They are independently approved and green on
+both supported PowerShell editions. DSC remains open.
 
 ## Recent milestones
 
@@ -89,6 +89,19 @@ open.
     exports, exact privilege restoration, and zero scratch-resource leaks.
 - 2026-07-26: Completed independent portability security re-review with no
     Blocker or Major findings and an explicit APPROVE verdict.
+- 2026-07-26: Added bounded target-array execution across filesystem, registry,
+    service/SCM, and pinned process commands with canonical deduplication,
+    isolated worker modules, and application-domain same-target locks.
+- 2026-07-26: Added redacted aggregate metrics as the 70th export and bounded
+    aggregate NTFS backup reads followed by one atomic envelope write.
+- 2026-07-26: Added deterministic dispatcher, live NTFS mutation/`WhatIf`,
+    cross-module lock, cross-edition single-target, and parallel error-stream
+    regression coverage plus a repeatable NTFS throughput benchmark.
+- 2026-07-26: Passed 670 PowerShell 7 tests at 86.35 percent coverage and 37
+    focused Windows PowerShell 5.1 tests with zero failures or skips; static,
+    parse, encoding, and whitespace gates are clean.
+- 2026-07-26: Completed two independent concurrency reviews with no Blocker or
+    Major findings and explicit APPROVE verdicts.
 
 ## Stable capabilities
 
@@ -109,10 +122,12 @@ open.
 - Unified schema-versioned descriptor backup and restore with section-scoped
     cross-family dispatch, SHA-256 integrity, optional X.509 authenticity, and
     atomic file replacement.
+- Bounded target-array execution with canonical deduplication, process-wide
+    same-target write serialization, deterministic sequential mode, and
+    redacted in-process metrics.
 
 ## Open work
 
-- Add bounded target execution, same-target serialization, and metrics.
 - Decide and implement optional local credential impersonation if retained.
 - Add class-based DSC exact-descriptor and rule-presence resources for every
     current object family.

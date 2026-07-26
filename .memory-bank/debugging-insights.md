@@ -185,3 +185,30 @@ Windows rejects. Use a unique same-directory rollback path, remove it in
 `finally`, and keep cleanup warnings nonterminating so they cannot mask the
 primary write outcome. Sign only after `ShouldProcess` approves the operation,
 because hardware-backed keys can prompt or count usage under `WhatIf`.
+
+## Isolated runspaces and shared target locks
+
+One `PSModuleInfo` session state cannot be entered concurrently from multiple
+runspaces; it can fail with `Stack empty`. Import an isolated module instance
+through `InitialSessionState.ImportPSModule` for each worker. Module-local lock
+registries are then insufficient for concurrent callers, so place only the
+reference-counted canonical target lock state in an application-domain data
+slot. Keep metrics module-local and recursion state in `ThreadLocal[bool]`.
+
+PowerShell 5.1 can unwrap a one-item `if` expression even when each branch uses
+array syntax. Wrap the complete normalization expression in `@(...)` before
+using `.Count`; otherwise a one-target parallel throttle can calculate a zero
+runspace-pool size.
+
+`PowerShell.EndInvoke()` can wrap a terminating worker error in a
+`MethodInvocationException`. Prefer the inner runtime exception's original
+`ErrorRecord` when present, and retain the wrapper only as a fallback. Count
+nonterminating error-stream records as target failures in both sequential and
+parallel paths so metrics do not depend on throttle mode.
+
+## PowerShell-relative evidence paths
+
+`System.IO.Path.GetFullPath()` resolves relative paths against the process
+working directory, which can differ from PowerShell's current provider
+location. Join relative benchmark output to `(Get-Location).ProviderPath`
+before normalization so a bare filename follows PowerShell location semantics.

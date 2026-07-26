@@ -17,6 +17,9 @@ function Add-ServiceAccessRule {
         Rights added to each Service Control Manager access rule.
     .PARAMETER AccessControlType
         Creates an Allow rule by default or an explicit Deny rule.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns each stored explicit access rule after persistence.
     .EXAMPLE
@@ -50,6 +53,12 @@ function Add-ServiceAccessRule {
         [System.Security.AccessControl.AccessControlType]$AccessControlType =
             [System.Security.AccessControl.AccessControlType]::Allow,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -70,6 +79,17 @@ function Add-ServiceAccessRule {
         }
     }
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsServiceCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Name $Name `
+                -ServiceControlManager:$ServiceControlManager `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact Medium
+            return
+        }
         $targets = if ($ServiceControlManager) {
             @(Resolve-WindowsServiceTarget -ServiceControlManager)
         } else {

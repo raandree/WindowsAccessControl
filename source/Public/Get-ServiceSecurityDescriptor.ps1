@@ -11,6 +11,9 @@ function Get-ServiceSecurityDescriptor {
         Selects the local Service Control Manager instead of a named service.
     .PARAMETER Sections
         Selects owner, group, access, audit, or any combination to retrieve.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .EXAMPLE
         Get-Service BITS | Get-ServiceSecurityDescriptor -Sections Access
 
@@ -34,10 +37,26 @@ function Get-ServiceSecurityDescriptor {
 
         [Parameter()]
         [WindowsSecurityDescriptorSection]$Sections =
-            [WindowsSecurityDescriptorSection]::All
+            [WindowsSecurityDescriptorSection]::All,
+
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsServiceCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Name $Name `
+                -ServiceControlManager:$ServiceControlManager `
+                -ThrottleLimit $ThrottleLimit
+            return
+        }
         $targets = if ($ServiceControlManager) {
             @(Resolve-WindowsServiceTarget -ServiceControlManager)
         } else {

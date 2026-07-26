@@ -24,6 +24,10 @@ function Copy-NTFSItemSecurityDescriptor {
     .PARAMETER PassThru
         Returns each destination security descriptor after the copy completes.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical destinations. One requests
+        deterministic sequential execution.
+
     .EXAMPLE
         Get-ChildItem C:\Target | Copy-NTFSItemSecurityDescriptor -SourceLiteralPath C:\Template -Sections Access
 
@@ -60,6 +64,13 @@ function Copy-NTFSItemSecurityDescriptor {
         ),
 
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -73,6 +84,17 @@ function Copy-NTFSItemSecurityDescriptor {
     }
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         $resolveParameters = @{}
         if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
             $resolveParameters.LiteralPath = $LiteralPath

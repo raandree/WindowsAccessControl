@@ -15,6 +15,9 @@ function Get-RegistryKeyAccessRule {
         Excludes inherited rules and returns only explicit registry ACEs.
     .PARAMETER ExcludeExplicit
         Excludes explicit rules and returns only inherited registry ACEs.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .EXAMPLE
         Get-RegistryKeyAccessRule -Path HKCU:\Software -ExcludeInherited
 
@@ -43,10 +46,26 @@ function Get-RegistryKeyAccessRule {
         [switch]$ExcludeInherited,
 
         [Parameter()]
-        [switch]$ExcludeExplicit
+        [switch]$ExcludeExplicit,
+
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsRegistryCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -RegistryView $RegistryView `
+                -ThrottleLimit $ThrottleLimit
+            return
+        }
         foreach ($pathValue in $Path) {
             $target = Resolve-RegistryKeyTarget -Path $pathValue -RegistryView $RegistryView
             $parameters = @{

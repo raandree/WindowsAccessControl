@@ -268,6 +268,12 @@ buffers. Representative batch benchmarks must show no material regression from
 the current NTFS implementation; correctness and section preservation remain
 hard gates.
 
+`tests/Performance/Measure-NtfsBatchPerformance.ps1` is the repeatable
+benchmark harness. It alternates sequential and bounded-parallel run order,
+uses disposable local files, verifies the complete result count, and records
+elapsed milliseconds plus targets per second. Timing is retained as evidence,
+not enforced as a flaky test threshold.
+
 ## Observability
 
 Commands provide structured error identifiers, verbose decision traces, and

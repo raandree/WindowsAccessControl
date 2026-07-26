@@ -27,6 +27,10 @@ function Get-NTFSAuditRule {
     .PARAMETER Orphaned
         Returns only rules whose SID cannot be translated to an account name.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical paths. One requests
+        deterministic sequential execution.
+
     .EXAMPLE
         Get-NTFSAuditRule -LiteralPath C:\Data -ExcludeInherited
 
@@ -62,6 +66,13 @@ function Get-NTFSAuditRule {
         [switch]$ExcludeExplicit,
 
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+
+        [Parameter()]
         [switch]$Orphaned
     )
 
@@ -77,6 +88,16 @@ function Get-NTFSAuditRule {
     }
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -ConfirmationImpact None
+            return
+        }
         $resolveParameters = @{}
         if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
             $resolveParameters.LiteralPath = $LiteralPath

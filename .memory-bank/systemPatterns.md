@@ -161,9 +161,14 @@ Normative record: [ADR 0012](../specs/decisions/0012-use-object-specific-command
 Normative record: [ADR 0013](../specs/decisions/0013-use-bounded-parallel-target-execution.md).
 
 - Choice: Prevalidate and deduplicate before bounded parallel dispatch;
-    serialize aliases of one canonical target.
+    serialize aliases of one canonical target. Import an isolated module into
+    each worker runspace, keep recursion state thread-local, retain metrics in
+    the parent module, and share the reference-counted lock registry across
+    module instances in the hosting application domain.
 - Rationale: Enterprise-size batches need throughput without lost updates or
-    unbounded native resource use.
+    unbounded native resource use. A single `PSModuleInfo` cannot be entered
+    concurrently, while module-local lock stores cannot coordinate independent
+    imports.
 
 ### Decision 17: Normalize and verify registry targets before native calls
 
@@ -263,3 +268,14 @@ and [ADR 0005](../specs/decisions/0005-use-versioned-validated-json-backups.md).
     same-directory move or replacement after `ShouldProcess` approval.
 - Rationale: Absence must not be confused with an empty ACL, and interrupted
     backup writes must not destroy the prior recovery artifact.
+
+### Decision 27: Keep aggregate backup writes singular
+
+Normative records: [ADR 0005](../specs/decisions/0005-use-versioned-validated-json-backups.md)
+and [ADR 0013](../specs/decisions/0013-use-bounded-parallel-target-execution.md).
+
+- Choice: For NTFS aggregate backup, normalize the complete target set and read
+    descriptors through bounded workers, then call the unified writer exactly
+    once only after every read succeeds.
+- Rationale: Descriptor reads benefit from concurrency, but recursively writing
+    one envelope per target would break atomicity and overwrite semantics.

@@ -111,6 +111,7 @@ FunctionsToExport = @(
     'Get-ServiceAccessRule'
     'Get-ServiceAuditRule'
     'Get-ServiceSecurityDescriptor'
+    'Get-WindowsAccessControlMetric'
     'Get-WindowsPrivilege'
     'New-NTFSAccessRule'
     'New-NTFSAuditRule'

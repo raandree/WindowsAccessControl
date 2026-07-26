@@ -15,6 +15,9 @@ function Add-ProcessAccessRule {
         Process rights added to each selected account rule.
     .PARAMETER AccessControlType
         Creates an Allow rule by default or an explicit Deny rule.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed pinned targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns each stored explicit process access rule after persistence.
     .EXAMPLE
@@ -45,6 +48,12 @@ function Add-ProcessAccessRule {
         [System.Security.AccessControl.AccessControlType]$AccessControlType =
             [System.Security.AccessControl.AccessControlType]::Allow,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -60,6 +69,17 @@ function Add-ProcessAccessRule {
         )
     }
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsProcessCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -InputObject $InputObject `
+                -Handle $Handle `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact Medium
+            return
+        }
         $targets = if ($PSCmdlet.ParameterSetName -eq 'Handle') {
             @($Handle | ForEach-Object { Resolve-WindowsProcessTarget -Handle $_ })
         } else {

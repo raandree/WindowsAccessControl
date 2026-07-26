@@ -13,6 +13,9 @@ function Set-ProcessSecurityDescriptor {
         A structurally valid SDDL document containing every selected section.
     .PARAMETER Sections
         Selects the descriptor sections to persist from the SDDL document.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed pinned targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns the stored selected descriptor sections after persistence.
     .EXAMPLE
@@ -42,6 +45,12 @@ function Set-ProcessSecurityDescriptor {
         [WindowsSecurityDescriptorSection]$Sections =
             [WindowsSecurityDescriptorSection]::All,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -61,6 +70,17 @@ function Set-ProcessSecurityDescriptor {
         $rawDescriptor.GetBinaryForm($descriptorBytes, 0)
     }
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsProcessCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -InputObject $InputObject `
+                -Handle $Handle `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         $targets = if ($PSCmdlet.ParameterSetName -eq 'Handle') {
             @($Handle | ForEach-Object { Resolve-WindowsProcessTarget -Handle $_ })
         } else {

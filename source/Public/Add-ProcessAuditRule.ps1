@@ -15,6 +15,9 @@ function Add-ProcessAuditRule {
         Process rights audited by each selected account rule.
     .PARAMETER AuditFlags
         Selects successful access, failed access, or both for auditing.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed pinned targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns each stored explicit process audit rule after persistence.
     .EXAMPLE
@@ -46,6 +49,12 @@ function Add-ProcessAuditRule {
         [System.Security.AccessControl.AuditFlags]$AuditFlags =
             [System.Security.AccessControl.AuditFlags]::Success,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -61,6 +70,17 @@ function Add-ProcessAuditRule {
         )
     }
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsProcessCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -InputObject $InputObject `
+                -Handle $Handle `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact Medium
+            return
+        }
         $targets = if ($PSCmdlet.ParameterSetName -eq 'Handle') {
             @($Handle | ForEach-Object { Resolve-WindowsProcessTarget -Handle $_ })
         } else {

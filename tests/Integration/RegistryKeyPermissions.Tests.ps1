@@ -37,6 +37,30 @@ Describe 'Registry key security descriptors' -Tag 'Integration', 'WindowsOnly' {
         $result.BinarySecurityDescriptor.Length | Should -BeGreaterThan 0
     }
 
+    It 'Get-RegistryKeySecurityDescriptor should deduplicate batches and record metrics' {
+        $before = Get-WindowsAccessControlMetric `
+            -CommandName 'Get-RegistryKeySecurityDescriptor' `
+            -ObjectFamily 'RegistryKey'
+        $beforeOperations = if ($before) { $before.OperationCount } else { 0 }
+        $beforeTargets = if ($before) { $before.TargetCount } else { 0 }
+        $beforeSuccesses = if ($before) { $before.SuccessCount } else { 0 }
+
+        $result = @(Get-RegistryKeySecurityDescriptor `
+            -Path @($script:keyPath, $script:keyPath, $script:childPath) `
+            -Sections Access `
+            -ThrottleLimit 2)
+        $after = Get-WindowsAccessControlMetric `
+            -CommandName 'Get-RegistryKeySecurityDescriptor' `
+            -ObjectFamily 'RegistryKey'
+
+        $result | Should -HaveCount 2
+        @($result.CanonicalTarget | Sort-Object -Unique) | Should -HaveCount 2
+        $after.OperationCount - $beforeOperations | Should -Be 1
+        $after.TargetCount - $beforeTargets | Should -Be 2
+        $after.SuccessCount - $beforeSuccesses | Should -Be 2
+        $after.FailureCount | Should -Be 0
+    }
+
     It 'Set-RegistryKeySecurityDescriptor should round-trip a selected DACL' {
         $before = Get-RegistryKeySecurityDescriptor -Path $script:keyPath -Sections Access
 

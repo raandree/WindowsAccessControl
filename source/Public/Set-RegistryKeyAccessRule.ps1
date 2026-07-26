@@ -17,6 +17,9 @@ function Set-RegistryKeyAccessRule {
         Controls whether the ACE applies to this key, subkeys, or one level.
     .PARAMETER RegistryView
         Selects the default, 32-bit, or 64-bit registry view explicitly.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns each stored replacement rule after persistence.
     .EXAMPLE
@@ -50,6 +53,12 @@ function Set-RegistryKeyAccessRule {
         [Parameter()]
         [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -67,6 +76,17 @@ function Set-RegistryKeyAccessRule {
     }
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsRegistryCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -RegistryView $RegistryView `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         foreach ($pathValue in $Path) {
             $target = Resolve-RegistryKeyTarget -Path $pathValue -RegistryView $RegistryView
             if ($PSCmdlet.ShouldProcess($target.Path, "Replace $AccessControlType registry access rules")) {

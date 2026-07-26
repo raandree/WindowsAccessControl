@@ -15,6 +15,9 @@ function Get-ProcessAuditRule {
         Excludes inherited ACEs; process descriptors normally contain explicit ACEs only.
     .PARAMETER ExcludeExplicit
         Excludes explicit ACEs; process descriptors do not support inheritance.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed pinned targets. One requests
+        deterministic sequential execution.
     .EXAMPLE
         Get-ProcessAuditRule -ProcessId $PID -Account 'S-1-1-0'
 
@@ -39,10 +42,25 @@ function Get-ProcessAuditRule {
         [Parameter()]
         [switch]$ExcludeInherited,
         [Parameter()]
-        [switch]$ExcludeExplicit
+        [switch]$ExcludeExplicit,
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsProcessCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -InputObject $InputObject `
+                -Handle $Handle `
+                -ThrottleLimit $ThrottleLimit
+            return
+        }
         $targets = if ($PSCmdlet.ParameterSetName -eq 'Handle') {
             @($Handle | ForEach-Object { Resolve-WindowsProcessTarget -Handle $_ })
         } else {

@@ -10,8 +10,9 @@ source: current task evidence
 ## Current focus
 
 Continue the signed `WindowsAccessControl` expansion on
-`ai/windows-access-control`. Unified cross-domain descriptor portability is
-complete; the next milestone is bounded execution and metrics.
+`ai/windows-access-control`. Bounded cross-family execution, canonical target
+serialization, metrics, and aggregate NTFS backup reads are complete. The next
+signed milestone is class-based DSC resources for every supported family.
 
 ## Evidence
 
@@ -22,8 +23,7 @@ complete; the next milestone is bounded execution and metrics.
     object-specific cmdlet and DSC surfaces, and bounded parallel execution.
 - NTFS, registry-key, named-service, and Service Control Manager families are
     complete and green in PowerShell 7 and Windows PowerShell 5.1.
-- The live-process family adds 12 descriptor and access/audit rule commands,
-    bringing the module to 67 exported commands.
+- The live-process family adds 12 descriptor and access/audit rule commands.
 - Process commands accept `Process`, PID, pinned module output, or borrowed raw
     handles. PID operations verify creation `FILETIME` and use one handle for the
     complete read, comparison, mutation, and write operation.
@@ -34,20 +34,9 @@ complete; the next milestone is bounded execution and metrics.
     `SeRestorePrivilege`. An access-denied PID open retries with
     `SeDebugPrivilege` only when the token already contains it, then restores the
     exact initial enabled state.
-- The authoritative PowerShell 7 gate passes 596 tests with zero failures or
-    skips at 84.21 percent coverage against the 80 percent threshold.
-- The 14 live process scenarios and 12 exact-name command contracts pass in
-    Windows PowerShell 5.1 with zero failures or skips.
-- A focused process rerun asserts exact before/after state for all three scoped
-    privileges; all 14 scenarios pass and no `WacProcessTest` child remains.
-- PSScriptAnalyzer is clean across 39 changed scripts, workspace diagnostics
-    are clean, and changed-file encoding and whitespace checks pass.
-- Independent security review returned APPROVE with no Blocker or Major
-    findings. Residual risk is limited to caller misuse of stale output from a
-    borrowed handle and defensive native cleanup/dead-code follow-ups.
 - `Backup-WindowsSecurityDescriptor` and `Restore-WindowsSecurityDescriptor`
     provide one schema-versioned envelope for filesystem, registry, service/SCM,
-    and pinned process descriptors, bringing the module to 69 exports.
+    and pinned process descriptors.
 - Every record carries a deterministic SHA-256 digest over restore-relevant
     fields. Optional RSA X.509 signatures are thumbprint-pinned to the supplied
     certificate and verified before target preparation.
@@ -59,17 +48,34 @@ complete; the next milestone is bounded execution and metrics.
     SACLs and all null DACLs fail closed.
 - Historical unmarked NTFS schema-version 1 files remain readable. The legacy
     NTFS restore command rejects unified records from other object families.
-- The authoritative PowerShell 7 gate passes 629 tests with zero failures or
-    skips at 85.39 percent coverage. The focused Windows PowerShell 5.1 gate
-    passes 76 tests with zero failures or skips.
-- Independent security re-review returned APPROVE with no Blocker or Major
-    findings after adversarial recomputed-digest, mixed-signature, atomic-write,
-    absent-SACL, and cross-edition hash-vector coverage.
-- Final out-of-band checks report 69 exports, exact privilege-state restoration,
-    and zero leaked processes, services, or registry roots.
+- All ordinary target-array commands expose `ThrottleLimit` from 1 through 64,
+    defaulting to the smaller of eight and the logical processor count.
+- Complete target normalization and case-insensitive canonical deduplication
+    precede dispatch. Mutations of the same canonical target serialize across
+    isolated module instances through an application-domain lock registry.
+- Worker runspaces import isolated module instances; the parent module owns
+    target locks and aggregate metrics. `ThreadLocal[bool]` prevents recursive
+    single-target command entry.
+- `Get-WindowsAccessControlMetric` is the 70th export and reports redacted
+    operation, target, success, failure, and elapsed aggregates.
+- `Backup-NTFSItemSecurityDescriptor` performs bounded descriptor reads and one
+    complete atomic envelope write only after every read succeeds.
+- The reusable NTFS benchmark alternates sequential and parallel runs without a
+    timing assertion. The retained 512-target sample averaged 407.94 targets/s
+    sequential and 431.45 targets/s at throttle 8.
+- The authoritative PowerShell 7 gate passes 670 tests with zero failures or
+    skips at 86.35 percent coverage. The focused Windows PowerShell 5.1
+    concurrency gate passes 37 tests with zero failures or skips.
+- PSScriptAnalyzer is clean across 75 changed PowerShell files; all 75 parse,
+    `git diff --check` passes, and 81 changed files satisfy encoding/newline
+    rules.
+- Two independent concurrency reviews returned APPROVE with no Blocker or
+    Major findings. Live tests cover canonical deduplication, prevalidation,
+    bounded mutation, parallel `WhatIf`, and aggregate backup behavior.
 
 ## Next step
 
-Implement bounded target execution, same-target serialization, and metrics,
-then optional local impersonation if retained and class-based DSC resources. Do
-not push or publish without an explicit request.
+Implement class-based exact-descriptor and rule-presence DSC resources for
+filesystem, registry key, service/SCM, and pinned-process contracts. Revisit
+optional local impersonation only if the signed scope retains it. Do not push
+or publish without an explicit request.

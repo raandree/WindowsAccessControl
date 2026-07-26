@@ -15,6 +15,9 @@ function Set-ProcessAccessRule {
         Replacement process rights stored in each selected account rule.
     .PARAMETER AccessControlType
         Replaces Allow rules by default or explicit Deny rules.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed pinned targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns each stored replacement rule after persistence.
     .EXAMPLE
@@ -45,6 +48,12 @@ function Set-ProcessAccessRule {
         [System.Security.AccessControl.AccessControlType]$AccessControlType =
             [System.Security.AccessControl.AccessControlType]::Allow,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -60,6 +69,17 @@ function Set-ProcessAccessRule {
         )
     }
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsProcessCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -InputObject $InputObject `
+                -Handle $Handle `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         $targets = if ($PSCmdlet.ParameterSetName -eq 'Handle') {
             @($Handle | ForEach-Object { Resolve-WindowsProcessTarget -Handle $_ })
         } else {

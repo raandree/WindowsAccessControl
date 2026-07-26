@@ -24,6 +24,10 @@ function Get-NTFSItemEffectiveAccess {
         Optional rights to test against the granted mask. IsAllowed is null
         when no requested rights are supplied.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical paths. One requests
+        deterministic sequential execution.
+
     .EXAMPLE
         Get-NTFSItemEffectiveAccess -LiteralPath C:\Data -Account 'CONTOSO\Alice' -AccessRights Modify
 
@@ -53,7 +57,14 @@ function Get-NTFSItemEffectiveAccess {
         [string]$Account,
 
         [Parameter()]
-        [System.Security.AccessControl.FileSystemRights]$AccessRights
+        [System.Security.AccessControl.FileSystemRights]$AccessRights,
+
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     begin {
@@ -75,6 +86,16 @@ function Get-NTFSItemEffectiveAccess {
     }
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -ConfirmationImpact None
+            return
+        }
         $resolveParameters = @{}
         if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
             $resolveParameters.LiteralPath = $LiteralPath

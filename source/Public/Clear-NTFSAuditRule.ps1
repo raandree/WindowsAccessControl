@@ -16,6 +16,10 @@ function Clear-NTFSAuditRule {
     .PARAMETER PassThru
         Returns each explicit audit rule that the command removed.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical paths. One requests
+        deterministic sequential execution.
+
     .EXAMPLE
         Clear-NTFSAuditRule -LiteralPath C:\Data -Confirm:$false
 
@@ -42,10 +46,28 @@ function Clear-NTFSAuditRule {
         [string[]]$LiteralPath,
 
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+
+        [Parameter()]
         [switch]$PassThru
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         $resolveParameters = @{}
         if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
             $resolveParameters.LiteralPath = $LiteralPath

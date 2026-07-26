@@ -11,6 +11,9 @@ function Clear-ServiceAuditRule {
         Selects the local Service Control Manager instead of a named service.
     .PARAMETER Account
         Optional accounts or SIDs whose explicit audit rules are removed.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns the rules selected for removal after successful persistence.
     .EXAMPLE
@@ -37,6 +40,12 @@ function Clear-ServiceAuditRule {
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -52,6 +61,17 @@ function Clear-ServiceAuditRule {
         )
     }
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsServiceCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Name $Name `
+                -ServiceControlManager:$ServiceControlManager `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         $targets = if ($ServiceControlManager) {
             @(Resolve-WindowsServiceTarget -ServiceControlManager)
         } else {

@@ -59,8 +59,30 @@ through `Get-Help` (ADR 0001).
   where output is useful.
 - Remove, clear, owner, copy, restore, and privilege operations use confirmation
   impact appropriate to their destructive reach.
-- Whole-operation validation errors terminate before mutation. Rule queries and
-  path pipelines process one target at a time.
+- Whole-operation validation errors terminate before mutation. Target arrays
+  are normalized and deduplicated before bounded dispatch.
+
+### Bounded execution and observability
+
+- Ordinary target-array commands accept `ThrottleLimit` from 1 through 64.
+- The default is $\max(1, \min(8, \text{ProcessorCount}))$.
+- `ThrottleLimit 1` preserves deterministic input order. Parallel commands
+  emit output and target-local errors in completion order.
+- With `ErrorAction Stop`, already-dispatched parallel targets can finish before
+  the batch terminates; no transactional rollback is implied.
+- Targets bound together in one array share a batch. Pipeline records preserve
+  streaming behavior and enter separate batches; callers collect them before
+  invocation when bounded concurrency is required.
+- Case-insensitive canonical target deduplication precedes dispatch. Mutations
+  of the same canonical target are serialized across module instances in one
+  hosting process (ADR 0013).
+- Interactive confirmation forces sequential dispatch so prompts do not
+  overlap. `WhatIf` continues to flow to every target operation.
+- `Get-WindowsAccessControlMetric` returns redacted aggregate operation,
+  target, success, failure, and elapsed counters by command and object family.
+  Metrics never include SDDL or account secrets.
+- Exact rule-object removals remain scalar because each input object already
+  identifies one native ACE. Path-based NTFS removals use bounded dispatch.
 
 ### Output types
 
@@ -89,6 +111,7 @@ Stable PowerShell type names identify module output:
 - `WindowsAccessControl.ProcessAccessRule`
 - `WindowsAccessControl.ProcessAuditRule`
 - `WindowsAccessControl.ProcessSecurityDescriptor`
+- `WindowsAccessControl.Metric`
 
 Native .NET rule or descriptor objects remain available as properties where a
 caller needs exact Windows semantics.
@@ -185,6 +208,10 @@ Backup signs only after `ShouldProcess` approves the operation and atomically
 moves or replaces the completed envelope. Selected absent SACLs use the
 explicit `S:NO_ACCESS_CONTROL` representation; omission of a selected SACL and
 all null DACLs are rejected.
+
+`Backup-NTFSItemSecurityDescriptor` reads a deduplicated target set with
+bounded execution, aborts on any descriptor-read failure, and submits the
+complete descriptor array to one atomic envelope write.
 
 ## Registry-key commands
 
@@ -285,6 +312,16 @@ privileges already present in the current process token. Disabling a privilege
 absent from the token is an idempotent no-op; enabling it fails explicitly.
 Commands that require SACL, restore, or arbitrary-owner authority use scoped
 automatic privilege leases rather than requiring caller choreography.
+
+## Metric command
+
+| Command | Pipeline input | Returns |
+| --- | --- | --- |
+| `Get-WindowsAccessControlMetric` | none | `Metric` |
+
+Metrics are snapshots from the current module instance. Filters use exact
+command and object-family names. Removing the module or ending the hosting
+process resets the counters.
 
 ## See also
 

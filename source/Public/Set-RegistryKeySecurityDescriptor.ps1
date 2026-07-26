@@ -15,6 +15,9 @@ function Set-RegistryKeySecurityDescriptor {
         Selects the default, 32-bit, or 64-bit registry view explicitly.
     .PARAMETER Sections
         Selects the descriptor sections to persist from the SDDL document.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns the updated selected descriptor sections after persistence.
     .EXAMPLE
@@ -47,6 +50,13 @@ function Set-RegistryKeySecurityDescriptor {
             [WindowsSecurityDescriptorSection]::All,
 
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+
+        [Parameter()]
         [switch]$PassThru
     )
 
@@ -69,6 +79,17 @@ function Set-RegistryKeySecurityDescriptor {
     }
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsRegistryCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -RegistryView $RegistryView `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact High
+            return
+        }
         foreach ($pathValue in $Path) {
             $target = Resolve-RegistryKeyTarget -Path $pathValue -RegistryView $RegistryView
             if ($PSCmdlet.ShouldProcess($target.Path, "Set $Sections registry security")) {

@@ -1,8 +1,8 @@
 # WindowsAccessControl
 
 `WindowsAccessControl` is a Windows PowerShell module for pipeline-first
-management of Windows security descriptors. Its current filesystem,
-registry-key, and service/SCM commands turn common DACL, SACL, owner,
+management of Windows security descriptors. Its filesystem, registry-key,
+service/SCM, and live-process commands turn common DACL, SACL, owner,
 inheritance, backup, and effective-access operations into composable commands
 without requiring callers to manipulate .NET access-control objects directly.
 
@@ -47,6 +47,13 @@ $accounts = 'CONTOSO\Analysts', 'CONTOSO\Auditors'
 Add-NTFSAccessRule -LiteralPath 'C:\Data' -Account $accounts -AccessRights Read
 ```
 
+Process independent target arrays with bounded parallelism:
+
+```powershell
+$paths = Get-ChildItem -LiteralPath 'C:\Data' -File | Select-Object -ExpandProperty FullName
+Get-NTFSItemOwner -LiteralPath $paths -ThrottleLimit 8
+```
+
 Preview any mutation before applying it:
 
 ```powershell
@@ -65,6 +72,41 @@ Add-RegistryKeyAccessRule -Path 'HKLM:\Software\Contoso' `
 
 Get-Item -LiteralPath 'HKLM:\Software\Contoso' |
     Get-RegistryKeyAccessRule -ExcludeInherited
+```
+
+## Bounded batches and metrics
+
+Ordinary target-array commands across filesystem, registry, service/SCM, and
+process families accept `ThrottleLimit` from 1 through 64. The default is the
+smaller of eight and the logical processor count. A value of 1 requests
+deterministic sequential execution; parallel output is emitted in completion
+order.
+
+Targets bound together in one array share a batch. PowerShell pipeline records
+retain streaming semantics and are dispatched separately, so collect pipeline
+output into an array before invoking a command when concurrency is required.
+
+Each array is normalized and case-insensitively deduplicated by canonical
+target before dispatch. Mutations of the same canonical target are serialized
+across concurrent module instances in the hosting process. Interactive
+confirmation also forces sequential execution so prompts do not overlap.
+
+Inspect redacted, in-process aggregate counters without exposing descriptors:
+
+```powershell
+Get-WindowsAccessControlMetric -ObjectFamily FileSystem
+Get-WindowsAccessControlMetric -CommandName Get-RegistryKeySecurityDescriptor
+```
+
+Metrics include operation, target, success, failure, and elapsed totals for the
+current module instance. Run the repeatable NTFS read benchmark without a
+flaky timing assertion:
+
+```powershell
+.\tests\Performance\Measure-NtfsBatchPerformance.ps1 `
+    -TargetCount 512 `
+    -Iterations 3 `
+    -OutputPath .\output\testResults\NtfsBatchBenchmark.json
 ```
 
 ## Registry keys
@@ -317,6 +359,10 @@ canonical targets, signs only after `ShouldProcess` approves the operation, and
 atomically moves or replaces the completed envelope. A selected absent SACL is
 encoded explicitly as `S:NO_ACCESS_CONTROL`; selected DACLs must remain
 non-null.
+
+`Backup-NTFSItemSecurityDescriptor` accepts `ThrottleLimit` for bounded
+descriptor reads, but still writes exactly one complete atomic envelope after
+every selected target succeeds.
 
 The NTFS-specific commands remain available and use the same unified envelope:
 

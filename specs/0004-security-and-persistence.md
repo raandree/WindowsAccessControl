@@ -101,6 +101,24 @@ layouts:
 - Authz contexts and resource managers are freed even when access evaluation
   fails.
 
+## Bounded execution and target serialization
+
+Target arrays are normalized and case-insensitively deduplicated by canonical
+identity before worker dispatch (ADR 0013). Mutating commands acquire a
+reference-counted `SemaphoreSlim` for that canonical identity. The lock
+registry is scoped to the hosting application domain so concurrent isolated
+module instances cannot race writes to one descriptor. Locks are released in
+`finally` and removed when their reference count reaches zero.
+
+Worker runspaces import isolated module instances rather than concurrently
+entering one `PSModuleInfo` session state. Parent module state owns target-lock
+references and metric publication. Target-local failures are nonterminating;
+global normalization and validation failures remain terminating.
+
+Metrics contain command name, object family, counts, elapsed duration, and an
+update timestamp. They never contain SDDL, identity secrets, signing material,
+or native buffers.
+
 ## Backup and restore trust model
 
 Backups use schema version 1 and contain:

@@ -21,6 +21,10 @@ function Backup-NTFSItemSecurityDescriptor {
     .PARAMETER Sections
         Selects the descriptor sections stored in each backup record.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently read canonical paths. One requests deterministic
+        sequential execution. The destination is still written exactly once.
+
     .PARAMETER Force
         Allows an existing backup file to be overwritten. Without Force, the
         command refuses to replace an existing file.
@@ -65,6 +69,13 @@ function Backup-NTFSItemSecurityDescriptor {
         ),
 
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+
+        [Parameter()]
         [switch]$Force,
 
         [Parameter()]
@@ -72,7 +83,10 @@ function Backup-NTFSItemSecurityDescriptor {
     )
 
     begin {
-        $descriptors = [System.Collections.Generic.List[object]]::new()
+        $targets = [System.Collections.Generic.List[object]]::new()
+        $canonicalTargets = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
     }
 
     process {
@@ -83,12 +97,14 @@ function Backup-NTFSItemSecurityDescriptor {
             $resolveParameters.Path = $Path
         }
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
-            $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections $Sections
-            $descriptor = ConvertTo-NTFSSecurityDescriptorObject `
-                -Item $item `
-                -Security $security `
-                -Sections $Sections
-            $descriptors.Add($descriptor)
+            $canonicalTarget = 'FileSystem:{0}' -f
+                $item.FullName.ToUpperInvariant()
+            if ($canonicalTargets.Add($canonicalTarget)) {
+                $targets.Add([pscustomobject]@{
+                    CanonicalTarget = $canonicalTarget
+                    LiteralPath     = $item.FullName
+                })
+            }
         }
     }
 
@@ -106,13 +122,46 @@ function Backup-NTFSItemSecurityDescriptor {
             throw "Backup destination already exists: $resolvedDestination. Use Force to overwrite it."
         }
         $action = if ($destinationExists) {
-            "Overwrite with $($descriptors.Count) security descriptor records"
+            "Overwrite with $($targets.Count) security descriptor records"
         } else {
-            "Write $($descriptors.Count) security descriptor records"
+            "Write $($targets.Count) security descriptor records"
         }
         if ($PSCmdlet.ShouldProcess($resolvedDestination, $action)) {
+            Initialize-WindowsAccessControlNativeType
+            $worker = {
+                param($Target, $SectionsValue)
+
+                $items = @(Resolve-NTFSPath -LiteralPath $Target.LiteralPath)
+                $item = $items[0]
+                $security = Get-NTFSSecurityDescriptorForItem `
+                    -Item $item `
+                    -Sections $SectionsValue
+                ConvertTo-NTFSSecurityDescriptorObject `
+                    -Item $item `
+                    -Security $security `
+                    -Sections $SectionsValue
+            }
+            $readErrors = @()
+            $batchParameters = @{
+                InputObject             = $targets.ToArray()
+                ScriptBlock             = $worker
+                ArgumentList            = $Sections
+                CanonicalTargetProperty = 'CanonicalTarget'
+                ThrottleLimit           = $ThrottleLimit
+                CommandName             = $MyInvocation.MyCommand.Name
+                ObjectFamily            = 'FileSystem'
+                OwningModule            = $MyInvocation.MyCommand.Module
+                ErrorAction             = 'Continue'
+                ErrorVariable           = 'readErrors'
+            }
+            $descriptors = @(Invoke-WindowsAccessControlBatch @batchParameters)
+            if ($readErrors.Count -gt 0) {
+                throw [System.InvalidOperationException]::new(
+                    "The backup was not written because $($readErrors.Count) descriptor read failed."
+                )
+            }
             $backupParameters = @{
-                InputObject     = $descriptors.ToArray()
+                InputObject     = $descriptors
                 DestinationPath = $resolvedDestination
                 Force           = $Force
                 PassThru        = $PassThru

@@ -13,6 +13,9 @@ function Get-RegistryKeySecurityDescriptor {
         Selects the default, 32-bit, or 64-bit registry view explicitly.
     .PARAMETER Sections
         Selects owner, group, access, audit, or any combination to retrieve.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .EXAMPLE
         Get-Item HKCU:\Software | Get-RegistryKeySecurityDescriptor
 
@@ -35,10 +38,26 @@ function Get-RegistryKeySecurityDescriptor {
 
         [Parameter()]
         [WindowsSecurityDescriptorSection]$Sections =
-            [WindowsSecurityDescriptorSection]::All
+            [WindowsSecurityDescriptorSection]::All,
+
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsRegistryCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -RegistryView $RegistryView `
+                -ThrottleLimit $ThrottleLimit
+            return
+        }
         foreach ($pathValue in $Path) {
             $target = Resolve-RegistryKeyTarget -Path $pathValue -RegistryView $RegistryView
             $descriptorParameters = @{

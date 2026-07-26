@@ -19,6 +19,10 @@ function Get-NTFSItemInheritance {
         Selects access inheritance, audit inheritance, or both. Reading audit
         inheritance can require SeSecurityPrivilege.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical paths. One requests
+        deterministic sequential execution.
+
     .EXAMPLE
         Get-NTFSItemInheritance -LiteralPath C:\Data -Section Access
 
@@ -45,10 +49,27 @@ function Get-NTFSItemInheritance {
 
         [Parameter()]
         [ValidateSet('Access', 'Audit', 'All')]
-        [string]$Section = 'Access'
+        [string]$Section = 'Access',
+
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -ConfirmationImpact None
+            return
+        }
         $resolveParameters = @{}
         if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
             $resolveParameters.LiteralPath = $LiteralPath

@@ -36,6 +36,13 @@
                 $command.Parameters.ContainsKey($parameterName) |
                     Should -BeTrue -Because "$Name requires the $parameterName parameter"
             }
+            if ($Name -notin @(
+                'Remove-RegistryKeyAccessRule'
+                'Remove-RegistryKeyAuditRule'
+            )) {
+                $command.Parameters.ContainsKey('ThrottleLimit') |
+                    Should -BeTrue -Because "$Name accepts target arrays"
+            }
             $command.Parameters.ContainsKey('WhatIf') | Should -Be $SupportsShouldProcess
         }
     }

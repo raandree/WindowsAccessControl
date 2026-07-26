@@ -13,6 +13,9 @@ function Disable-RegistryKeyInheritance {
         Converts inherited ACEs to explicit entries when true or discards them when false.
     .PARAMETER RegistryView
         Selects the default, 32-bit, or 64-bit registry view explicitly.
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical targets. One requests
+        deterministic sequential execution.
     .PARAMETER PassThru
         Returns the updated registry inheritance state after persistence.
     .EXAMPLE
@@ -40,10 +43,27 @@ function Disable-RegistryKeyInheritance {
         [Parameter()]
         [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
         [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
+        ),
+        [Parameter()]
         [switch]$PassThru
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsRegistryCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -RegistryView $RegistryView `
+                -ThrottleLimit $ThrottleLimit `
+                -SerializeByCanonicalTarget `
+                -ConfirmationImpact Medium
+            return
+        }
         foreach ($pathValue in $Path) {
             $target = Resolve-RegistryKeyTarget -Path $pathValue -RegistryView $RegistryView
             $sections = switch ($Section) {

@@ -19,6 +19,10 @@ function Get-NTFSItemSecurityDescriptor {
         Selects owner, primary group, DACL, SACL, or any combination to return.
         Reading the Audit section can require SeSecurityPrivilege.
 
+    .PARAMETER ThrottleLimit
+        Limits concurrently processed canonical paths. One requests
+        deterministic sequential execution.
+
     .EXAMPLE
         Get-ChildItem -LiteralPath C:\Data | Get-NTFSItemSecurityDescriptor -Sections Access
 
@@ -48,10 +52,27 @@ function Get-NTFSItemSecurityDescriptor {
             [System.Security.AccessControl.AccessControlSections]::Owner -bor
             [System.Security.AccessControl.AccessControlSections]::Group -bor
             [System.Security.AccessControl.AccessControlSections]::Access
+        ),
+
+        [Parameter()]
+        [ValidateRange(1, 64)]
+        [int]$ThrottleLimit = [Math]::Max(
+            1,
+            [Math]::Min(8, [Environment]::ProcessorCount)
         )
     )
 
     process {
+        if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName $MyInvocation.MyCommand.Name `
+                -BoundParameters $PSBoundParameters `
+                -Path $Path `
+                -LiteralPath $LiteralPath `
+                -ThrottleLimit $ThrottleLimit `
+                -ConfirmationImpact None
+            return
+        }
         $resolveParameters = @{}
         if ($PSCmdlet.ParameterSetName -eq 'LiteralPath') {
             $resolveParameters.LiteralPath = $LiteralPath
