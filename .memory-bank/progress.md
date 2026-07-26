@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-25
+last-verified: 2026-07-26
 owner: active-agent
 source: repository evidence
 ---
@@ -9,8 +9,9 @@ source: repository evidence
 
 ## Current status
 
-The 0.1.0 follow-up is complete, independently approved, packaged, and green on
-both supported PowerShell editions within the available token privileges.
+The NTFS, registry, service/SCM, and pinned live-process command families are
+complete, independently approved, and green on both supported PowerShell
+editions. Cross-domain portability, bounded execution, and DSC remain open.
 
 ## Recent milestones
 
@@ -68,6 +69,14 @@ both supported PowerShell editions within the available token privileges.
 - 2026-07-25: Passed 497 PowerShell 7 tests at 85.02 percent coverage and 25
     Windows PowerShell 5.1 service/contract tests with zero failures or skips;
     verified no `WacTest*` service leaks and restored privilege state.
+- 2026-07-26: Added 12 pinned live-process commands for selected descriptors
+    and typed access/audit rule CRUD over PID, `Process`, module-output, and
+    caller-owned handle targets.
+- 2026-07-26: Passed 596 PowerShell 7 tests at 84.21 percent coverage and 26
+    Windows PowerShell 5.1 process/contract tests with zero failures or skips;
+    verified exact privilege-state restoration and zero controlled-child leaks.
+- 2026-07-26: Completed independent process security review with no Blocker or
+    Major findings and an explicit APPROVE verdict.
 
 ## Stable capabilities
 
@@ -83,10 +92,15 @@ both supported PowerShell editions within the available token privileges.
     workflows across the default, 32-bit, and 64-bit registry views.
 - Local named-service and explicit Service Control Manager descriptor and
     typed rule workflows without inheritance semantics.
+- Pinned live-process descriptor and typed rule workflows with PID-reuse
+    protection and caller-owned handle support.
 
 ## Open work
 
-- Add the pinned live-process security descriptor command family.
+- Add unified cross-domain descriptor backup and restore with optional
+    integrity protection.
+- Add bounded target execution, same-target serialization, and metrics.
+- Decide and implement optional local credential impersonation if retained.
 - Add class-based DSC exact-descriptor and rule-presence resources for every
     current object family.
 - Remote publication remains user-controlled.

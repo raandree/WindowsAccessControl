@@ -552,6 +552,7 @@ namespace WindowsAccessControl
             {
                 if (write)
                 {
+                    desiredAccess |= ReadControl;
                     if ((sections & (OwnerSecurityInformation | GroupSecurityInformation)) != 0)
                     {
                         desiredAccess |= WriteOwner;
@@ -577,6 +578,34 @@ namespace WindowsAccessControl
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
             return handle;
+        }
+
+        public static IntPtr OpenProcessSecurityHandle(
+            Int32 processId,
+            Int64 expectedCreationTime,
+            UInt32 sections,
+            bool write)
+        {
+            IntPtr processHandle = OpenProcessForSecurity(processId, sections, write);
+            try
+            {
+                VerifyProcessCreationTime(processHandle, expectedCreationTime);
+                return processHandle;
+            }
+            catch
+            {
+                CloseHandle(processHandle);
+                throw;
+            }
+        }
+
+        public static void CloseProcessSecurityHandle(IntPtr processHandle)
+        {
+            ValidateHandle(processHandle);
+            if (!CloseHandle(processHandle))
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
         }
 
         private static IntPtr OpenServiceControlManagerForSecurity(
@@ -836,15 +865,18 @@ namespace WindowsAccessControl
             Int64 expectedCreationTime,
             UInt32 sections)
         {
-            IntPtr processHandle = OpenProcessForSecurity(processId, sections, false);
+            IntPtr processHandle = OpenProcessSecurityHandle(
+                processId,
+                expectedCreationTime,
+                sections,
+                false);
             try
             {
-                VerifyProcessCreationTime(processHandle, expectedCreationTime);
                 return GetHandleSecurityDescriptor(processHandle, KernelObject, sections);
             }
             finally
             {
-                CloseHandle(processHandle);
+                CloseProcessSecurityHandle(processHandle);
             }
         }
 
@@ -854,10 +886,13 @@ namespace WindowsAccessControl
             UInt32 sections,
             byte[] securityDescriptor)
         {
-            IntPtr processHandle = OpenProcessForSecurity(processId, sections, true);
+            IntPtr processHandle = OpenProcessSecurityHandle(
+                processId,
+                expectedCreationTime,
+                sections,
+                true);
             try
             {
-                VerifyProcessCreationTime(processHandle, expectedCreationTime);
                 SetHandleSecurityDescriptor(
                     processHandle,
                     KernelObject,
@@ -866,7 +901,7 @@ namespace WindowsAccessControl
             }
             finally
             {
-                CloseHandle(processHandle);
+                CloseProcessSecurityHandle(processHandle);
             }
         }
 

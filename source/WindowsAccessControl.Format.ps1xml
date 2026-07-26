@@ -239,5 +239,57 @@
         </TableRowEntries>
       </TableControl>
     </View>
+    <View>
+      <Name>WindowsAccessControl.ProcessAccessRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.ProcessAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>PID</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Process</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>ProcessId</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>ProcessName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>WindowsAccessControl.ProcessAuditRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.ProcessAuditRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>PID</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Process</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Audit</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>ProcessId</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>ProcessName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AuditFlags</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
   </ViewDefinitions>
 </Configuration>

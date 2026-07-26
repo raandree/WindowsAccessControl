@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-25
+last-verified: 2026-07-26
 owner: active-agent
 source: repository evidence
 ---
@@ -211,3 +211,25 @@ Normative record: [ADR 0010](../specs/decisions/0010-use-shared-binary-security-
     named services and `WindowsServiceControlManagerRights` for the SCM.
 - Rationale: One public noun keeps workflows discoverable while parameter-set
     typing prevents applying rights from the wrong Windows object contract.
+
+### Decision 22: Pin one live process handle per PID operation
+
+Normative records: [ADR 0010](../specs/decisions/0010-use-shared-binary-security-descriptor-engine.md)
+and [ADR 0011](../specs/decisions/0011-limit-release-to-local-object-families.md).
+
+- Choice: Normalize PID, `Process`, and module output to a positive PID plus
+    creation `FILETIME`; verify both when opening one operation-scoped handle,
+    then perform the complete read, comparison, mutation, and write through that
+    handle. Treat caller handles as borrowed and never close them.
+- Rationale: A PID can be reused between separate opens. Pinning and operating
+    on one verified handle closes that race while preserving caller ownership.
+
+### Decision 23: Retry process access without broadening token authority
+
+Normative record: [ADR 0008](../specs/decisions/0008-use-scoped-automatic-privilege-enablement.md).
+
+- Choice: Retry a denied PID handle open with `SeDebugPrivilege` only when the
+    first failure is access denied and the current token already contains the
+    privilege. Restore its exact initial state after the retry scope.
+- Rationale: Protected processes may require debug authority, but unrelated
+    errors and caller-owned handles must not trigger privilege escalation.

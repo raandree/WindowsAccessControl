@@ -30,7 +30,13 @@ function Get-WindowsAclRule {
     } else {
         [WindowsSecurityDescriptorSection]::Access
     }
-    if ($Target.ObjectType -in @('Service', 'ServiceControlManager')) {
+    if ($Target.ObjectType -eq 'Process') {
+        $getDescriptorParameters = @{
+            Target   = $Target
+            Sections = $sections
+        }
+        $descriptorBytes = Get-WindowsProcessTargetSecurityDescriptor @getDescriptorParameters
+    } elseif ($Target.ObjectType -in @('Service', 'ServiceControlManager')) {
         $getDescriptorParameters = @{
             Target   = $Target
             Sections = $sections
@@ -95,6 +101,7 @@ function Get-WindowsAclRule {
             RightsType = switch ($Target.ObjectType) {
                 Service { [WindowsServiceRights] }
                 ServiceControlManager { [WindowsServiceControlManagerRights] }
+                Process { [WindowsProcessRights] }
                 default { [System.Security.AccessControl.RegistryRights] }
             }
             SupportsInheritance = $Target.ObjectType -eq 'RegistryKey'

@@ -85,6 +85,9 @@ Stable PowerShell type names identify module output:
 - `WindowsAccessControl.ServiceControlManagerAccessRule`
 - `WindowsAccessControl.ServiceControlManagerAuditRule`
 - `WindowsAccessControl.ServiceControlManagerSecurityDescriptor`
+- `WindowsAccessControl.ProcessAccessRule`
+- `WindowsAccessControl.ProcessAuditRule`
+- `WindowsAccessControl.ProcessSecurityDescriptor`
 
 Native .NET rule or descriptor objects remain available as properties where a
 caller needs exact Windows semantics.
@@ -213,6 +216,30 @@ explicit parameter set, and rule mutations use `WindowsServiceRights` or
 `WindowsServiceControlManagerRights` respectively. Service objects do not
 support ACL inheritance, so this family exports no inheritance commands and
 rule outputs leave inheritance scope empty.
+
+## Process commands
+
+| Command | Primary parameter sets | Pipeline input | Returns |
+| --- | --- | --- | --- |
+| `Get-ProcessSecurityDescriptor` | Process, Handle | PID, `Process`, module output | `ProcessSecurityDescriptor` |
+| `Set-ProcessSecurityDescriptor` | Process, Handle | PID, `Process`, module output | none / `ProcessSecurityDescriptor` |
+| `Get-ProcessAccessRule` | Process, Handle | PID, `Process`, module output | `ProcessAccessRule` |
+| `Add-ProcessAccessRule` | Process, Handle | PID, `Process`, module output | none / `ProcessAccessRule` |
+| `Set-ProcessAccessRule` | Process, Handle | PID, `Process`, module output | none / `ProcessAccessRule` |
+| `Remove-ProcessAccessRule` | Rule | path-bound `ProcessAccessRule` | none / removed rule |
+| `Clear-ProcessAccessRule` | Process, Handle | PID, `Process`, module output | none / removed rules |
+| `Get-ProcessAuditRule` | Process, Handle | PID, `Process`, module output | `ProcessAuditRule` |
+| `Add-ProcessAuditRule` | Process, Handle | PID, `Process`, module output | none / `ProcessAuditRule` |
+| `Set-ProcessAuditRule` | Process, Handle | PID, `Process`, module output | none / `ProcessAuditRule` |
+| `Remove-ProcessAuditRule` | Rule | path-bound `ProcessAuditRule` | none / removed rule |
+| `Clear-ProcessAuditRule` | Process, Handle | PID, `Process`, module output | none / removed rules |
+
+PID and `Process` targets are pinned by PID plus creation `FILETIME`; module
+output preserves that instance identity for later operations. A mismatched or
+missing creation identity fails closed. Explicit caller-owned handles are never
+closed by the module and identify the process instance through the handle
+lifetime. Process rules use `WindowsProcessRights`, do not support inheritance,
+and cease to be meaningful when the process instance exits.
 
 ## Identity, diagnostics, and effective access
 

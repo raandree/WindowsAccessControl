@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-25
+last-verified: 2026-07-26
 owner: software-engineer
 source: implementation and test evidence
 ---
@@ -138,3 +138,22 @@ Plausible names such as `SCManager` and `ServicesActive` fail through
 `GetNamedSecurityInfoW` as nonexistent services. Open the SCM explicitly with
 `OpenSCManagerW`; close the returned service handle with `CloseServiceHandle`,
 not `CloseHandle`.
+
+## Process writes require read access
+
+A process descriptor mutation reads the current selected sections and compares
+the result before writing through the same pinned handle. A write handle that
+contains only `WRITE_DAC`, `WRITE_OWNER`, or `ACCESS_SYSTEM_SECURITY` fails that
+read. Include `READ_CONTROL` on every process write handle while retaining only
+the section-specific write rights.
+
+## Process privilege checks need a baseline
+
+An elevated host can start with `SeDebugPrivilege` enabled even when the token
+marks it as disabled by default. A final assertion that all scoped privileges
+are disabled therefore reports a false leak. Capture each privilege's initial
+enabled state before process operations and assert exact restoration afterward.
+
+For PID targets, open and verify one handle against the expected creation
+`FILETIME`, then reuse it for the complete operation. Do not re-open by PID for
+the write because the original process may exit and the PID may be reused.

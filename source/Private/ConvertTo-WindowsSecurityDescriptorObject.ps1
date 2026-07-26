@@ -24,6 +24,15 @@ function ConvertTo-WindowsSecurityDescriptorObject {
         ObjectType               = $Target.ObjectType
         Path                     = $Target.Path
         ServiceName              = $Target.ServiceName
+        ProcessId                = $Target.ProcessId
+        ProcessName              = $Target.ProcessName
+        CreationTime             = $Target.CreationTime
+        CreationTimeFileTime     = $Target.CreationTimeFileTime
+        Handle                   = if ($Target.DescriptorSource -eq 'Handle') {
+            $Target.Handle
+        } else {
+            [IntPtr]::Zero
+        }
         NativePath               = $Target.NativePath
         CanonicalTarget          = $Target.CanonicalTarget
         RegistryView             = $Target.RegistryView

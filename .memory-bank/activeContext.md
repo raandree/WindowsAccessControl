@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-25
+last-verified: 2026-07-26
 owner: active-agent
 source: current task evidence
 ---
@@ -9,82 +9,46 @@ source: current task evidence
 
 ## Current focus
 
-Expand and rename the unpublished module to `WindowsAccessControl` on
-`ai/windows-access-control`, following the signed one-round design interview.
+Continue the signed `WindowsAccessControl` expansion on
+`ai/windows-access-control`. The pinned live-process family is complete; the
+next milestone is unified cross-domain descriptor portability.
 
 ## Evidence
 
-- Microsoft documentation confirms distinct add, set, reset, and remove ACL
-    semantics, Windows-only support, and canonical ACE ordering requirements.
-- Sampler 0.120.0, Pester 5.7.1, PowerShell 7.6.1, and Windows PowerShell 5.1
-    are available locally.
-- The module exports 28 commands, has 50 direct command specifications, and has
-    no third-party runtime dependency.
-- Full cross-edition QA runs covered 244 tests at 84.5 percent before the final
-    two deduplication guards were added. Final behavior reruns in each edition
-    discovered 73 tests: 67 passed, zero failed, and six privilege-gated tests
-    skipped with explicit reasons.
-- The elevated token contains `SeSecurityPrivilege`, `SeRestorePrivilege`, and
-    `SeTakeOwnershipPrivilege`; all seven live SACL, descriptor-copy, and
-    arbitrary-owner scenarios pass with zero skips.
-- PowerShell 7 did not persist an unprotected SACL control flag through
-    `FileSystemAclExtensions.SetAccessControl`; section-scoped
-    `SetNamedSecurityInfoW` persistence with the selected ACL pointer fixed it.
-- Independent security and quality review returned APPROVE with no Blocker or
-    Major findings; all concrete Minor and Nit findings were resolved.
-- The current package is `output/NTFSPermission.0.1.0.nupkg`.
-- `specs/` now owns six accepted numbered specifications, 27 stable
-    requirements, 14 indexed ADRs, open issues, and executable conformance
-    checks. Comment-based help remains the per-command reference.
-- Specification 0006 and ADRs 0008 through 0013 define the signed
-    `WindowsAccessControl` expansion, automatic scoped privileges, shared
-    binary descriptor engine, local object boundary, public/DSC shape, and
-    bounded parallel execution.
-- A disposable local native-API probe returned nonempty descriptors for a
-    registry key, service, and process and cleaned up its scratch targets.
-- The package, source files, format data, help topic, output type prefix, and
-    cross-domain identity/privilege commands are hard-renamed to
-    `WindowsAccessControl`; the GUID remains unchanged.
-- The renamed artifact passes 259 tests with zero failures or skips in both
-    PowerShell 7 and Windows PowerShell 5.1. PowerShell 7 coverage is 86.72
-    percent against the 80 percent gate.
-- The shared Unicode named/handle descriptor engine, pinned-process checks,
-    richer SID conversion, public rights enums, and reference-counted automatic
-    privilege scopes are implemented and independently approved with no
-    Blocker or Major findings.
-- The hardened core passes 277 PowerShell 7 tests with zero skips at 87.4
-    percent coverage. Its 15 engine and privilege tests also pass unchanged in
-    Windows PowerShell 5.1.
-- Full QA with the specification contract passes 181 tests with zero failures;
-    its eight conformance checks cover structure, status, requirement identity,
-    traceability, exports, local links, format views, and ADR indexing.
-- The local registry-key family exports 15 descriptor, access-rule, audit-rule,
-    and inheritance commands, bringing the module to 43 exported commands.
-- Sixteen disposable `HKCU` scenarios pass with zero failures or skips in both
-    PowerShell 7 and Windows PowerShell 5.1. They cover descriptor round trips,
-    access/audit CRUD, audit-flag isolation, inheritance, registry views,
-    provider objects, remote path/object rejection, and `WhatIf`.
-- The authoritative PowerShell 7 gate passes 399 tests with zero failures or
-    skips at 86.13 percent coverage. Fifteen exact-name registry command
-    contracts also pass with the live registry suite in Windows PowerShell 5.1
-    for a 31-test focused cross-edition gate.
-- Registry operations use the shared named-descriptor engine, persist only the
-    selected sections, scope `SeSecurityPrivilege` for SACL work, reject remote
-    `RegistryKey` objects before name normalization, and restore token state.
-- The service/SCM family exports 12 descriptor and access/audit rule commands,
-    bringing the module to 55 exported commands. Named services use the shared
-    named engine; the SCM uses a least-privilege `OpenSCManagerW` handle closed
-    through `CloseServiceHandle` in `finally`.
-- Thirteen disposable-service scenarios pass with zero failures or skips in
-    both PowerShell 7 and Windows PowerShell 5.1. They cover descriptor reads,
-    no-op writes, typed service/SCM rights, access/audit CRUD, qualifier and
-    audit-flag isolation, local-only target validation, and pipeline input.
-- The authoritative PowerShell 7 gate passes 497 tests with zero failures or
-    skips at 85.02 percent coverage. The 13 live service scenarios and 12
-    exact-name command contracts also pass in Windows PowerShell 5.1.
+- The package is hard-renamed to `WindowsAccessControl`, retains its GUID, and
+    has no third-party runtime dependency.
+- Accepted specifications and ADRs define automatic scoped privileges, one
+    shared binary descriptor engine, a local-only object boundary,
+    object-specific cmdlet and DSC surfaces, and bounded parallel execution.
+- NTFS, registry-key, named-service, and Service Control Manager families are
+    complete and green in PowerShell 7 and Windows PowerShell 5.1.
+- The live-process family adds 12 descriptor and access/audit rule commands,
+    bringing the module to 67 exported commands.
+- Process commands accept `Process`, PID, pinned module output, or borrowed raw
+    handles. PID operations verify creation `FILETIME` and use one handle for the
+    complete read, comparison, mutation, and write operation.
+- Process writes include `READ_CONTROL`; module-owned handles close in
+    `finally`, caller-owned handles remain open, and operation plus cleanup
+    failures are aggregated.
+- SACL and owner/group work scopes `SeSecurityPrivilege` and
+    `SeRestorePrivilege`. An access-denied PID open retries with
+    `SeDebugPrivilege` only when the token already contains it, then restores the
+    exact initial enabled state.
+- The authoritative PowerShell 7 gate passes 596 tests with zero failures or
+    skips at 84.21 percent coverage against the 80 percent threshold.
+- The 14 live process scenarios and 12 exact-name command contracts pass in
+    Windows PowerShell 5.1 with zero failures or skips.
+- A focused process rerun asserts exact before/after state for all three scoped
+    privileges; all 14 scenarios pass and no `WacProcessTest` child remains.
+- PSScriptAnalyzer is clean across 39 changed scripts, workspace diagnostics
+    are clean, and changed-file encoding and whitespace checks pass.
+- Independent security review returned APPROVE with no Blocker or Major
+    findings. Residual risk is limited to caller misuse of stale output from a
+    borrowed handle and defensive native cleanup/dead-code follow-ups.
 
 ## Next step
 
-Implement the pinned live-process command family over the shared handle engine,
-then add cross-domain portability and class-based DSC resources. Do not push or
-publish without an explicit request.
+Implement unified cross-domain descriptor backup and restore with optional
+SHA-256 and X.509 integrity, then bounded execution and metrics, optional local
+impersonation if retained, and class-based DSC resources. Do not push or publish
+without an explicit request.

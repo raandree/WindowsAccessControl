@@ -12,6 +12,7 @@ mapping, command coverage, and remaining privileged release gate for
 | Live NTFS | Real files/directories and descriptor reads or writes on the host NTFS volume |
 | Live registry | Disposable local keys and descriptor reads or writes in `HKCU` |
 | Live service | Disposable local services plus read-only/no-op SCM descriptor workflows |
+| Live process | Controlled child processes pinned by creation identity or caller handles |
 | Token integration | Real current-process token inventory or mutation in an isolated process |
 | Privilege-gated acceptance | Real SACL or arbitrary-owner workflow, run only when its privilege exists |
 | QA | Export, help, analysis, manifest, formatting, specs, and changelog contracts |
@@ -110,9 +111,21 @@ is not reported as a successful live write.
 | `Set-ServiceAuditRule` | 1 | Live service SACL | Audit-flag isolation |
 | `Remove-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
 | `Clear-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
+| `Get-ProcessSecurityDescriptor` | 4 | Live process | Process, PID, module output, and handle targets |
+| `Set-ProcessSecurityDescriptor` | 2 | Live process | Pinned and caller-handle no-op round trips |
+| `Get-ProcessAccessRule` | 1 | Live process | Typed process rights |
+| `Add-ProcessAccessRule` | 1 | Live process | Not required |
+| `Set-ProcessAccessRule` | 1 | Live process | Opposite qualifier preservation |
+| `Remove-ProcessAccessRule` | 1 | Live process | Exact native ACE removal |
+| `Clear-ProcessAccessRule` | 1 | Live process | Account-scoped clear |
+| `Get-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
+| `Add-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
+| `Set-ProcessAuditRule` | 1 | Live process SACL | Audit-flag isolation |
+| `Remove-ProcessAuditRule` | 1 | Live process SACL | Exact native ACE removal |
+| `Clear-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
 
-The direct command total is 83 specifications across 55 exported commands.
-Cross-cutting checks add 19 Unit-level mutator `WhatIf` specifications in
+The direct command total is 99 specifications across 67 exported commands.
+Cross-cutting checks add 20 Unit-level mutator `WhatIf` specifications in
 `tests/Unit/MutatorSafety.Tests.ps1` and the QA specification contract in
 `tests/QA/Specifications.Tests.ps1`.
 
@@ -167,6 +180,18 @@ access/audit add/set/remove/clear, qualifier isolation, audit-flag isolation,
 `WhatIf`, and the explicit SCM target.
 
 The service suite passed with 13 tests, zero failures, and zero skips in
+separate PowerShell 7 and Windows PowerShell 5.1 processes on 2026-07-25.
+
+## Process evidence
+
+`ProcessPermissions.Tests.ps1` starts a controlled sleeping child process for
+each live case and terminates it in `AfterEach` plus a final cleanup sweep.
+Fourteen scenarios cover Process/PID/module/handle targeting, stale creation
+identity rejection, caller-handle reuse, descriptor round trips, typed process
+rights, access/audit add/set/remove/clear, qualifier isolation, audit-flag
+isolation, and `WhatIf`.
+
+The process suite passed with 14 tests, zero failures, and zero skips in
 separate PowerShell 7 and Windows PowerShell 5.1 processes on 2026-07-25.
 
 ## See also

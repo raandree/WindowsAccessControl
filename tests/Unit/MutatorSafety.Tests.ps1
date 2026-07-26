@@ -20,6 +20,8 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
         Mock -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence
         Mock -ModuleName WindowsAccessControl -CommandName Set-WindowsNamedSecurityDescriptor
         Mock -ModuleName WindowsAccessControl -CommandName Set-WindowsServiceTargetSecurityDescriptor
+        Mock -ModuleName WindowsAccessControl -CommandName Set-WindowsProcessTargetSecurityDescriptor
+        Mock -ModuleName WindowsAccessControl -CommandName Invoke-WindowsProcessAclRuleMutation
     }
 
     It 'Should expose WhatIf on every state-changing command' {
@@ -60,6 +62,15 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             'Remove-ServiceAuditRule'
             'Clear-ServiceAuditRule'
             'Set-ServiceSecurityDescriptor'
+            'Add-ProcessAccessRule'
+            'Set-ProcessAccessRule'
+            'Remove-ProcessAccessRule'
+            'Clear-ProcessAccessRule'
+            'Add-ProcessAuditRule'
+            'Set-ProcessAuditRule'
+            'Remove-ProcessAuditRule'
+            'Clear-ProcessAuditRule'
+            'Set-ProcessSecurityDescriptor'
         )
 
         foreach ($commandName in $mutators) {
@@ -301,5 +312,65 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
 
         Should -Invoke -ModuleName WindowsAccessControl `
             -CommandName Set-WindowsServiceTargetSecurityDescriptor -Times 0 -Exactly
+    }
+
+    It 'Should not persist process descriptor changes under WhatIf' {
+        $sid = [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0')
+        $creationTime = (Get-Process -Id $PID).StartTime.ToFileTimeUtc()
+        $target = [pscustomobject]@{
+            ObjectType           = 'Process'
+            ProcessId            = $PID
+            ProcessName          = 'pwsh'
+            CreationTimeFileTime = $creationTime
+            Handle               = [IntPtr]::Zero
+        }
+        $accessAce = [System.Security.AccessControl.CommonAce]::new(
+            [System.Security.AccessControl.AceFlags]::None,
+            [System.Security.AccessControl.AceQualifier]::AccessAllowed,
+            4096,
+            $sid,
+            $false,
+            $null
+        )
+        $accessRule = $target.PSObject.Copy()
+        $accessRule | Add-Member NativeAce $accessAce
+        $accessRule | Add-Member SID $sid.Value
+        $accessRule.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.ProcessAccessRule')
+        $auditAce = [System.Security.AccessControl.CommonAce]::new(
+            [System.Security.AccessControl.AceFlags]::FailedAccess,
+            [System.Security.AccessControl.AceQualifier]::SystemAudit,
+            1,
+            $sid,
+            $false,
+            $null
+        )
+        $auditRule = $target.PSObject.Copy()
+        $auditRule | Add-Member NativeAce $auditAce
+        $auditRule | Add-Member SID $sid.Value
+        $auditRule.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.ProcessAuditRule')
+
+        Add-ProcessAccessRule -ProcessId $PID -Account $sid `
+            -ProcessRights QueryLimitedInformation -WhatIf
+        Set-ProcessAccessRule -ProcessId $PID -Account $sid `
+            -ProcessRights QueryLimitedInformation -WhatIf
+        Remove-ProcessAccessRule -InputObject $accessRule -WhatIf
+        Clear-ProcessAccessRule -ProcessId $PID -Account $sid -WhatIf
+        Add-ProcessAuditRule -ProcessId $PID -Account $sid `
+            -ProcessRights Terminate -AuditFlags Failure -WhatIf
+        Set-ProcessAuditRule -ProcessId $PID -Account $sid `
+            -ProcessRights Terminate -AuditFlags Failure -WhatIf
+        Remove-ProcessAuditRule -InputObject $auditRule -WhatIf
+        Clear-ProcessAuditRule -ProcessId $PID -Account $sid -WhatIf
+        Set-ProcessSecurityDescriptor -ProcessId $PID `
+            -Sddl 'D:(A;;GR;;;WD)' -Sections Access -WhatIf
+        Add-ProcessAccessRule -Handle ([IntPtr]1) -Account $sid `
+            -ProcessRights QueryLimitedInformation -WhatIf
+        Set-ProcessSecurityDescriptor -Handle ([IntPtr]1) `
+            -Sddl 'D:(A;;GR;;;WD)' -Sections Access -WhatIf
+
+        Should -Invoke -ModuleName WindowsAccessControl `
+            -CommandName Invoke-WindowsProcessAclRuleMutation -Times 0 -Exactly
+        Should -Invoke -ModuleName WindowsAccessControl `
+            -CommandName Set-WindowsProcessTargetSecurityDescriptor -Times 0 -Exactly
     }
 }

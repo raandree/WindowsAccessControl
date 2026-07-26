@@ -126,6 +126,34 @@ scope `SeSecurityPrivilege`; owner/group writes scope `SeRestorePrivilege`
 when it is present. SCM access uses a local `OpenSCManagerW` handle that is
 closed by the module after each operation.
 
+## Live processes
+
+Process commands accept local PIDs, `System.Diagnostics.Process` objects,
+module output, or explicit caller-owned handles. PID targets are pinned by PID
+plus creation `FILETIME` before every descriptor read or write; stale PID reuse
+fails closed.
+
+```powershell
+$process = Get-Process -Id $PID
+$descriptor = $process | Get-ProcessSecurityDescriptor -Sections Access
+
+Add-ProcessAccessRule -InputObject $descriptor `
+    -Account 'BUILTIN\Users' `
+    -ProcessRights QueryLimitedInformation
+```
+
+Caller-owned handles remain owned by the caller and are never closed:
+
+```powershell
+Get-ProcessSecurityDescriptor -Handle $process.Handle -Sections Access
+```
+
+The module opens PID targets once per operation, revalidates creation time, and
+uses that handle for read/compare/write. `SeDebugPrivilege` is retried only
+after access denial and only when already present in the token. Process desired
+state is ephemeral and ends when that instance exits; process ACLs do not
+support inheritance.
+
 ## Access rules
 
 `Add-NTFSAccessRule` accumulates rights. `Set-NTFSAccessRule` replaces rules for
@@ -306,6 +334,9 @@ the NTFS result.
 | Service descriptors | `Get-ServiceSecurityDescriptor`, `Set-ServiceSecurityDescriptor` |
 | Service/SCM access rules | `Get-ServiceAccessRule`, `Add-ServiceAccessRule`, `Set-ServiceAccessRule`, `Remove-ServiceAccessRule`, `Clear-ServiceAccessRule` |
 | Service/SCM audit rules | `Get-ServiceAuditRule`, `Add-ServiceAuditRule`, `Set-ServiceAuditRule`, `Remove-ServiceAuditRule`, `Clear-ServiceAuditRule` |
+| Process descriptors | `Get-ProcessSecurityDescriptor`, `Set-ProcessSecurityDescriptor` |
+| Process access rules | `Get-ProcessAccessRule`, `Add-ProcessAccessRule`, `Set-ProcessAccessRule`, `Remove-ProcessAccessRule`, `Clear-ProcessAccessRule` |
+| Process audit rules | `Get-ProcessAuditRule`, `Add-ProcessAuditRule`, `Set-ProcessAuditRule`, `Remove-ProcessAuditRule`, `Clear-ProcessAuditRule` |
 | Diagnostics | `Resolve-WindowsIdentity`, `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
 | Privileges | `Get-WindowsPrivilege`, `Test-WindowsPrivilege`, `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege` |
 
@@ -362,6 +393,11 @@ reads, no-op descriptor sets, typed rights, access/audit CRUD, local target
 validation, and `ServiceController` pipeline input. They pass unchanged in
 PowerShell 7 and Windows PowerShell 5.1 and verify service cleanup after each
 case.
+
+Fourteen controlled-child-process scenarios exercise PID, `Process`, module
+output, and caller-handle targets; creation identity mismatch; descriptor
+round trips; typed access/audit CRUD; and caller-handle reuse. They pass in
+PowerShell 7 and Windows PowerShell 5.1 with child cleanup after each case.
 
 ## Design research
 
