@@ -184,6 +184,11 @@ object-specific composite keys and prefixed reason objects. Windows-derived ACL
 auto-inherited flags are comparison metadata rather than desired state;
 protection flags and ACE content remain exact.
 
+Access-rule presence DSC resources are likewise object-specific. They manage
+one exact explicit access ACE through SID-normalized identity, typed unsigned
+rights, qualifier, scope, and `WindowsAccessControlDscEnsure`. Removal consumes
+the matching native ACE and preserves every unrelated entry.
+
 ## Failure modes
 
 - Invalid global input or a malformed backup terminates before mutation.

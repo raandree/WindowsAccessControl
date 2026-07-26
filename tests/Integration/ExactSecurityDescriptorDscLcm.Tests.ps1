@@ -92,6 +92,44 @@ Configuration WindowsAccessControlExactDescriptorConfiguration {
             Sections = 'Access'
             Sddl = 'D:(A;;0x001FFFFF;;;SY)'
         }
+        WindowsAccessControlNtfsAccessRule NtfsRule {
+            Path = 'C:\Data'
+            Account = 'S-1-1-0'
+            AccessRights = 'Read'
+            AccessControlType = 'Allow'
+            AppliesTo = 'ThisFolderOnly'
+            Ensure = 'Present'
+        }
+        WindowsAccessControlRegistryKeyAccessRule RegistryRule {
+            Path = 'HKLM:\Software\Contoso'
+            RegistryView = 'Default'
+            Account = 'S-1-1-0'
+            AccessRights = 'ReadKey'
+            AccessControlType = 'Allow'
+            AppliesTo = 'ThisKeyOnly'
+            Ensure = 'Present'
+        }
+        WindowsAccessControlServiceAccessRule ServiceRule {
+            Name = 'BITS'
+            Account = 'S-1-1-0'
+            ServiceRights = 'QueryStatus'
+            AccessControlType = 'Allow'
+            Ensure = 'Present'
+        }
+        WindowsAccessControlServiceControlManagerAccessRule ScmRule {
+            Account = 'S-1-1-0'
+            ControlManagerRights = 'Connect'
+            AccessControlType = 'Allow'
+            Ensure = 'Present'
+        }
+        WindowsAccessControlProcessAccessRule ProcessRule {
+            ProcessId = 4
+            CreationTimeFileTime = 1
+            Account = 'S-1-1-0'
+            ProcessRights = 'QueryLimitedInformation'
+            AccessControlType = 'Allow'
+            Ensure = 'Present'
+        }
     }
 }
 '@
@@ -116,6 +154,11 @@ Configuration WindowsAccessControlExactDescriptorConfiguration {
                 'WindowsAccessControlServiceSecurityDescriptor'
                 'WindowsAccessControlServiceControlManagerSecurityDescriptor'
                 'WindowsAccessControlProcessSecurityDescriptor'
+                'WindowsAccessControlNtfsAccessRule'
+                'WindowsAccessControlRegistryKeyAccessRule'
+                'WindowsAccessControlServiceAccessRule'
+                'WindowsAccessControlServiceControlManagerAccessRule'
+                'WindowsAccessControlProcessAccessRule'
             )) {
             $mof | Should -Match ([regex]::Escape($resourceName))
         }
@@ -146,5 +189,58 @@ Configuration WindowsAccessControlExactDescriptorConfiguration {
 
         $testResult.InDesiredState | Should -BeTrue
         $getResult.Sddl | Should -BeExactly $descriptor.Sddl
+    }
+
+    It 'Should invoke NTFS access-rule presence through the DSC engine' {
+        $path = Join-Path $TestDrive 'invoke-dsc-rule-resource.txt'
+        Set-Content -LiteralPath $path -Value 'test'
+        $descriptor = Get-NTFSItemSecurityDescriptor `
+            -LiteralPath $path `
+            -Sections Access
+        $moduleSpecification = @{
+            ModuleName = 'WindowsAccessControl'
+            RequiredVersion = $script:moduleVersion
+        }
+        $ruleProperties = @{
+            Path = $path
+            Account = 'S-1-5-21-4242424242-4242424242-4242424242-5299'
+            AccessRights = 'Read'
+            AccessControlType = 'Allow'
+            AppliesTo = 'ThisFolderOnly'
+            Ensure = 'Present'
+        }
+        $ruleParameters = @{
+            Name = 'WindowsAccessControlNtfsAccessRule'
+            ModuleName = $moduleSpecification
+            Property = $ruleProperties
+            ErrorAction = 'Stop'
+        }
+        try {
+            (Invoke-DscResource @ruleParameters -Method Test).InDesiredState |
+                Should -BeFalse
+            $null = Invoke-DscResource @ruleParameters -Method Set
+            (Invoke-DscResource @ruleParameters -Method Test).InDesiredState |
+                Should -BeTrue
+
+            $ruleProperties.Ensure = 'Absent'
+            (Invoke-DscResource @ruleParameters -Method Test).InDesiredState |
+                Should -BeFalse
+            $null = Invoke-DscResource @ruleParameters -Method Set
+            (Invoke-DscResource @ruleParameters -Method Test).InDesiredState |
+                Should -BeTrue
+        } finally {
+            $exactParameters = @{
+                Name = 'WindowsAccessControlNtfsSecurityDescriptor'
+                ModuleName = $moduleSpecification
+                Method = 'Set'
+                Property = @{
+                    Path = $path
+                    Sections = 'Access'
+                    Sddl = $descriptor.Sddl
+                }
+                ErrorAction = 'Stop'
+            }
+            $null = Invoke-DscResource @exactParameters
+        }
     }
 }

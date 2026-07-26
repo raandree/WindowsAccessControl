@@ -53,6 +53,7 @@ is not reported as a successful live write.
 | NFR-10 | Sampler build, package inspection, changelog QA, and GitVersion config |
 | ADR-0013 | Dispatcher Unit tests, family command contracts, live canonical deduplication and metric tests, cross-edition focused runs, and the repeatable NTFS benchmark |
 | ADR-0012 | Exact resource schema/orchestration/adapter Unit tests, live five-target convergence, Desktop MOF compilation, and `Invoke-DscResource` acceptance |
+| ADR-0012 rule presence | Rule schema/orchestration/adapter Unit tests, live five-target Present/Absent convergence, ten-resource MOF compilation, and Desktop LCM invocation |
 
 ## Public command evidence
 
@@ -173,6 +174,20 @@ Desktop-only LCM evidence compiles all five resources into one MOF and invokes
 the all-section NTFS resource through `Invoke-DscResource`. The fixture installs
 the discovered module version machine-wide only for the test, refuses
 collisions, and removes the installation afterward.
+
+## Access-rule presence DSC evidence
+
+`AccessRulePresenceResourceContract.Tests.ps1` verifies the public Ensure enum,
+five resource exports, typed composite keys, default `Present`, and read-only
+reasons. Class tests cover compliance reasons and adapter routing. Adapter tests
+cover all five families, exact mask/qualifier/scope matching, inherited-rule
+rejection, idempotence, duplicate removal, and unsigned high-bit rights.
+
+`AccessRulePresenceDscResources.Tests.ps1` converges `Present` and `Absent` on
+disposable NTFS, HKCU, and named-service targets, then performs SCM and pinned
+process convergence with exact DACL rollback in `finally`. The Desktop LCM gate
+compiles all ten class resources into one MOF and invokes NTFS rule add/remove
+through `Invoke-DscResource`, restoring the original DACL afterward.
 
 ## Privileged release evidence
 

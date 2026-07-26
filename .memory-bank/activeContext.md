@@ -12,8 +12,8 @@ source: current task evidence
 Continue the signed `WindowsAccessControl` expansion on
 `ai/windows-access-control`. Bounded cross-family execution, canonical target
 serialization, metrics, aggregate NTFS backup reads, and five exact-descriptor
-DSC resources are complete. The next signed slice is access-rule presence DSC
-resources for every supported family.
+DSC resources are complete. Five access-rule presence DSC resources are also
+complete, satisfying the signed DSC scope for every supported family.
 
 ## Evidence
 
@@ -88,10 +88,26 @@ resources for every supported family.
     gate passes 31 tests plus two LCM tests with zero failures or skips.
 - Independent exact-resource review and re-review returned APPROVE after
     fail-closed and combined DACL/SACL coverage was added.
+- Five access-rule presence resources manage one exact explicit ACE for NTFS,
+    registry key, named service, SCM, and pinned process targets. Composite keys
+    include typed rights, qualifier, scope where supported, registry view, and
+    process creation identity.
+- Exact matching normalizes account aliases to SID, 32-bit masks to unsigned
+    values, and NTFS Allow masks through `FileSystemAccessRule` so its automatic
+    `Synchronize` bit converges. `Absent` removes every duplicate exact native
+    ACE while preserving partial, inherited, opposite-qualifier/scope, and
+    unrelated rules.
+- Live tests converge `Present` and `Absent` for all five families with SCM and
+    process DACL rollback. Desktop LCM evidence compiles all ten resources and
+    invokes NTFS exact-descriptor and rule-presence resources.
+- The authoritative PowerShell 7 gate passes 766 tests with zero failures or
+    skips at 87.59 percent coverage. The focused Windows PowerShell 5.1 rule
+    gate passes 35 tests plus three LCM tests with zero failures or skips.
+- Independent rule-resource review and re-review returned APPROVE with no
+    remaining Blocker, Major, or Minor findings.
 
 ## Next step
 
-Implement class-based access-rule presence DSC resources for filesystem,
-registry key, named service, SCM, and pinned-process contracts. Revisit optional
-local impersonation only if the signed scope retains it. Do not push or publish
-without an explicit request.
+Resolve the optional local impersonation decision, then run final privileged
+release closure, package inspection, and comprehensive independent review. Do
+not push or publish without an explicit request.

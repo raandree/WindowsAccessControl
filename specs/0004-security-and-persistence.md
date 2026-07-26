@@ -135,6 +135,20 @@ An explicitly absent selected SACL remains valid state; because it has no SACL
 pointer, native protection persistence skips only that SACL while still writing
 the selected Audit section and any selected DACL protection.
 
+## Access-rule presence DSC boundary
+
+Rule-presence resources own one exact explicit access ACE rather than an entire
+DACL. Account input is normalized to SID before comparison. Matching requires
+the normalized unsigned rights mask, allow/deny qualifier, and inheritance
+scope where supported; inherited and partial-right rules never satisfy the
+resource. `Absent` removes all duplicate exact matches through path-bound native
+ACE output while preserving unrelated descriptor entries.
+
+NTFS allow-rule comparison accounts for the `Synchronize` bit added by the
+.NET `FileSystemAccessRule` constructor. Service, SCM, and process high-bit
+generic rights retain their unsigned 32-bit identity across both editions.
+Process operations remain pinned by PID plus creation `FILETIME`.
+
 ## Backup and restore trust model
 
 Backups use schema version 1 and contain:

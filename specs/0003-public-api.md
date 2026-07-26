@@ -354,6 +354,30 @@ reconverge only while the pinned instance remains alive.
 An absent SACL (`S:NO_ACCESS_CONTROL`) remains distinct from a protected empty
 SACL (`S:P`); use the latter when inherited audit ACEs must remain absent.
 
+## Access-rule presence DSC resources
+
+| Resource | Composite keys | Configurable state |
+| --- | --- | --- |
+| `WindowsAccessControlNtfsAccessRule` | `Path`, `Account`, `AccessRights`, `AccessControlType`, `AppliesTo` | `Ensure` |
+| `WindowsAccessControlRegistryKeyAccessRule` | `Path`, `RegistryView`, `Account`, `AccessRights`, `AccessControlType`, `AppliesTo` | `Ensure` |
+| `WindowsAccessControlServiceAccessRule` | `Name`, `Account`, `ServiceRights`, `AccessControlType` | `Ensure` |
+| `WindowsAccessControlServiceControlManagerAccessRule` | `Account`, `ControlManagerRights`, `AccessControlType` | `Ensure` |
+| `WindowsAccessControlProcessAccessRule` | `ProcessId`, `CreationTimeFileTime`, `Account`, `ProcessRights`, `AccessControlType` | `Ensure` |
+
+`WindowsAccessControlDscEnsure` exposes `Absent` and `Present`; the resource
+default is `Present`. Exact identity is SID, normalized unsigned 32-bit rights
+mask, allow/deny qualifier, explicit origin, and inheritance scope where the
+target supports inheritance. `Absent` removes every duplicate exact ACE and
+does not purge partial rights, inherited rules, opposite qualifiers, other
+scopes, or unrelated accounts.
+
+NTFS matching normalizes desired rights through `FileSystemAccessRule` so the
+automatic `Synchronize` bit on allowed ACEs does not cause permanent drift.
+Registry view and process creation `FILETIME` remain part of target identity.
+Because Windows can merge same-account, qualifier, and scope ACEs, a narrower
+exact `Present` rule cannot converge beside an existing rights superset; callers
+model the superset or use an exact-descriptor resource.
+
 ## See also
 
 - [Requirements](0002-requirements.md)

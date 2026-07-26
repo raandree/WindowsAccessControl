@@ -242,3 +242,16 @@ documented account grants, preserve the original SACL, validate the full service
 suite in both editions, and remove every scheduled-task/file backup artifact.
 Retain a live `WhatIf` regression asserting that the restrictive sample never
 changes the SCM descriptor.
+
+## NTFS rule-presence mask normalization
+
+The `FileSystemAccessRule` constructor adds `Synchronize` to allowed `Read`
+rules but not denied rules. Exact desired-state matching must construct the
+same .NET rule and compare its normalized mask. Raw requested masks otherwise
+never converge for common allowed rules.
+
+Windows can merge same-account, qualifier, and scope ACEs. A narrower exact
+`Present` resource cannot coexist with an existing rights superset; document
+that callers model the superset or use an exact-descriptor resource. Never
+remove the superset when enforcing the narrower resource, because that would
+destroy unrelated rights.

@@ -300,3 +300,22 @@ Normative record: [ADR 0012](../specs/decisions/0012-use-object-specific-command
 - Rationale: Windows can add auto-inherited flags after persistence, causing an
     endless DSC loop, while ignoring protection or ACE differences would weaken
     desired-state ownership.
+
+### Decision 30: Give rule-presence DSC exact ACE identity
+
+Normative record: [ADR 0012](../specs/decisions/0012-use-object-specific-commands-and-dsc-resources.md).
+
+- Choice: Identify a managed access rule by canonical target, SID, unsigned
+    rights mask, allow/deny qualifier, explicit origin, and inheritance scope
+    where supported. `Absent` removes every duplicate exact native ACE.
+- Rationale: Presence resources must preserve partial rights, inherited ACEs,
+    opposite qualifiers/scopes, and unrelated identities rather than behaving
+    like account purge or descriptor replacement.
+
+### Decision 31: Normalize NTFS rule masks through .NET
+
+- Choice: Construct the desired `FileSystemAccessRule` before comparison so
+    allowed rights include .NET's automatic `Synchronize` bit while denied
+    rights retain their requested mask.
+- Rationale: Comparing the raw requested mask to the materialized ACE causes
+    permanent drift for allowed NTFS rules.

@@ -13,6 +13,11 @@ enum WindowsRegistryView {
     Registry64 = 64
 }
 
+enum WindowsAccessControlDscEnsure {
+    Absent = 0
+    Present = 1
+}
+
 enum WindowsSecurityObjectType {
     File = 1
     Service = 2
@@ -98,6 +103,7 @@ enum WindowsProcessRights {
 $windowsAccessControlEnums = @{
     WindowsSecurityDescriptorSection   = [WindowsSecurityDescriptorSection]
     WindowsRegistryView                = [WindowsRegistryView]
+    WindowsAccessControlDscEnsure      = [WindowsAccessControlDscEnsure]
     WindowsSecurityObjectType          = [WindowsSecurityObjectType]
     WindowsServiceRights               = [WindowsServiceRights]
     WindowsServiceControlManagerRights = [WindowsServiceControlManagerRights]

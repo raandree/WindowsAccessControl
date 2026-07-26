@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add five class-based exact selected-section DSC resources for NTFS, registry
     keys, named services, the Service Control Manager, and pinned processes,
     including prefixed compliance reasons and Desktop LCM acceptance
+- Add five class-based exact access-rule presence DSC resources with typed
+    rights, SID-normalized matching, `Present`/`Absent` convergence, duplicate
+    exact-ACE cleanup, and ten-resource MOF/LCM acceptance
 
 ### Changed
 

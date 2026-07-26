@@ -12,8 +12,8 @@ source: repository evidence
 The NTFS, registry, service/SCM, and pinned live-process command families are
 complete with unified cross-domain portability, bounded execution, canonical
 write serialization, metrics, and exact-descriptor DSC resources. They are
-independently approved and green on both supported PowerShell editions.
-Access-rule presence DSC resources remain open.
+independently approved and green on both supported PowerShell editions. All ten
+signed DSC resources are complete.
 
 ## Recent milestones
 
@@ -114,6 +114,17 @@ Access-rule presence DSC resources remain open.
     compile/invoke tests with zero failures or skips.
 - 2026-07-26: Completed independent exact-resource review and re-review with no
     remaining Blocker, Major, or Minor findings and an explicit APPROVE verdict.
+- 2026-07-26: Added five class-based exact access-rule presence DSC resources
+    with typed composite keys, SID-normalized matching, `Present`/`Absent`
+    convergence, duplicate exact-ACE cleanup, and unsigned rights handling.
+- 2026-07-26: Added five-family live convergence with unrelated-rule
+    preservation and SCM/process rollback; Desktop LCM now compiles all ten
+    resources and invokes NTFS descriptor and rule resources.
+- 2026-07-26: Passed 766 PowerShell 7 tests at 87.59 percent coverage, 35
+    focused Windows PowerShell 5.1 rule-resource tests, and three Desktop LCM
+    tests with zero failures or skips.
+- 2026-07-26: Completed independent rule-resource review and re-review with no
+    remaining Blocker, Major, or Minor findings and an explicit APPROVE verdict.
 
 ## Stable capabilities
 
@@ -139,10 +150,12 @@ Access-rule presence DSC resources remain open.
     redacted in-process metrics.
 - Exact selected-section DSC resources for every current target family,
     including Desktop MOF compilation and SYSTEM LCM invocation evidence.
+- Exact access-rule presence DSC resources for every current target family,
+    including duplicate cleanup, live rollback, and SYSTEM LCM invocation.
 
 ## Open work
 
-- Add class-based DSC access-rule presence resources for every current object
-    family.
 - Decide and implement optional local credential impersonation if retained.
+- Run final privileged release closure, package inspection, and comprehensive
+    independent review.
 - Remote publication remains user-controlled.

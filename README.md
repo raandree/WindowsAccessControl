@@ -375,6 +375,14 @@ target type:
 - `WindowsAccessControlServiceControlManagerSecurityDescriptor`
 - `WindowsAccessControlProcessSecurityDescriptor`
 
+It also exports exact access-rule presence resources:
+
+- `WindowsAccessControlNtfsAccessRule`
+- `WindowsAccessControlRegistryKeyAccessRule`
+- `WindowsAccessControlServiceAccessRule`
+- `WindowsAccessControlServiceControlManagerAccessRule`
+- `WindowsAccessControlProcessAccessRule`
+
 Each resource owns only its selected owner, group, DACL, or SACL sections.
 System-maintained DACL/SACL `AUTO_INHERITED` flags are ignored during
 comparison, while protection flags and every ACE remain exact. Registry view
@@ -406,6 +414,31 @@ Configuration ContosoFilePermissions {
 The module must be installed in a module path visible to the Windows LCM, such
 as `C:\Program Files\WindowsPowerShell\Modules`. A workspace-only path visible
 to the calling shell is not automatically visible to the SYSTEM LCM process.
+
+Rule resources use `Ensure = Present` by default. Their composite keys identify
+one exact explicit ACE by target, account, rights, allow/deny qualifier, and
+inheritance scope where supported. `Absent` removes every duplicate exact ACE
+without purging unrelated rights or the opposite qualifier. Account aliases are
+normalized by SID and rights masks remain unsigned across both PowerShell
+editions. For NTFS allow rules, comparison includes the `Synchronize` bit that
+.NET adds when it materializes the ACE.
+
+Windows can merge same-account, qualifier, and scope ACEs. If a broader
+superset ACE already exists, a narrower exact `Present` rule cannot coexist and
+will remain noncompliant; model the desired superset explicitly or manage the
+whole DACL with an exact-descriptor resource. Process rule resources are
+intended for long-lived pinned process instances.
+
+```powershell
+WindowsAccessControlNtfsAccessRule AnalystsRead {
+    Path = 'C:\Data'
+    Account = 'CONTOSO\Analysts'
+    AccessRights = 'Read'
+    AccessControlType = 'Allow'
+    AppliesTo = 'ThisFolderSubfoldersAndFiles'
+    Ensure = 'Present'
+}
+```
 
 The NTFS-specific commands remain available and use the same unified envelope:
 
