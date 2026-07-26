@@ -122,8 +122,18 @@ explicit user control.
 - Final AST, PSScriptAnalyzer, whitespace, archive inventory, manifest, and
     cleanup checks are green. Independent impersonation review and re-review
     returned APPROVE with no Blocker or Major findings.
+- The NTFS and registry DSC `AppliesTo` key properties now carry a `ValidateSet`
+    matching the cmdlet surface, so `Get-DscResource -Syntax` advertises the
+    allowed values and invalid values fail at compile time. A contract test
+    keeps each set equal to its cmdlet parameter set.
+- Two untracked pre-rename stale files remain in the working tree
+    (`source/Private/Initialize-NTFSNativeType.ps1` and
+    `tests/Integration/Elevated-NTFSPermission.Tests.ps1`); the latter imports
+    the removed `NTFSPermission` module and fails discovery. The tracked
+    renamed equivalents already exist. Removal awaits an explicit user decision.
 
 ## Next step
 
-Retain the green local milestone on `ai/windows-access-control`. Do not push or
-publish without an explicit request.
+Retain the green local milestones on `ai/windows-access-control`. Decide whether
+to remove the two untracked pre-rename stale files. Do not push or publish
+without an explicit request.

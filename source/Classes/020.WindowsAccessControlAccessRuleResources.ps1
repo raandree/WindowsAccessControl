@@ -4,7 +4,20 @@ class WindowsAccessControlNtfsAccessRule {
     [DscProperty(Key)] [string]$Account
     [DscProperty(Key)] [System.Security.AccessControl.FileSystemRights]$AccessRights
     [DscProperty(Key)] [System.Security.AccessControl.AccessControlType]$AccessControlType
-    [DscProperty(Key)] [string]$AppliesTo
+    [DscProperty(Key)]
+    [ValidateSet(
+        'ThisFolderOnly',
+        'ThisFolderSubfoldersAndFiles',
+        'ThisFolderAndSubfolders',
+        'ThisFolderAndFiles',
+        'SubfoldersAndFilesOnly',
+        'SubfoldersOnly',
+        'FilesOnly',
+        'ThisFolderSubfoldersAndFilesOneLevel',
+        'ThisFolderAndSubfoldersOneLevel',
+        'ThisFolderAndFilesOneLevel'
+    )]
+    [string]$AppliesTo
     [DscProperty()] [WindowsAccessControlDscEnsure]$Ensure =
         [WindowsAccessControlDscEnsure]::Present
     [DscProperty(NotConfigurable)] [WindowsAccessControlDscReason[]]$Reasons
@@ -54,7 +67,15 @@ class WindowsAccessControlRegistryKeyAccessRule {
     [DscProperty(Key)] [string]$Account
     [DscProperty(Key)] [System.Security.AccessControl.RegistryRights]$AccessRights
     [DscProperty(Key)] [System.Security.AccessControl.AccessControlType]$AccessControlType
-    [DscProperty(Key)] [string]$AppliesTo
+    [DscProperty(Key)]
+    [ValidateSet(
+        'ThisKeyOnly',
+        'ThisKeyAndSubkeys',
+        'SubkeysOnly',
+        'ThisKeyAndSubkeysOneLevel',
+        'SubkeysOnlyOneLevel'
+    )]
+    [string]$AppliesTo
     [DscProperty()] [WindowsAccessControlDscEnsure]$Ensure =
         [WindowsAccessControlDscEnsure]::Present
     [DscProperty(NotConfigurable)] [WindowsAccessControlDscReason[]]$Reasons

@@ -66,6 +66,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `SeRestorePrivilege` for owner/group writes when the token contains them
 - Read deduplicated NTFS backup targets with bounded parallelism while retaining
     one complete atomic envelope write
+- Constrain the `AppliesTo` key of the `WindowsAccessControlNtfsAccessRule` and
+    `WindowsAccessControlRegistryKeyAccessRule` DSC resources with a
+    `ValidateSet` that matches the cmdlet surface, so `Get-DscResource -Syntax`
+    advertises the allowed values and invalid values fail at compile time
 
 ### Security
 

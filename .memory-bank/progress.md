@@ -130,6 +130,11 @@ signed DSC resources are complete.
 - 2026-07-26: Passed argument, nested-scope, exception, and invalid-credential
     impersonation acceptance in both PowerShell editions with zero failures or
     skips.
+- 2026-07-26: Constrained the NTFS and registry DSC `AppliesTo` key properties
+    with a `ValidateSet` matching the cmdlet surface and added a contract test
+    that keeps them in sync; `Get-DscResource -Syntax` now advertises the
+    allowed values. Full PowerShell 7 gate passed 781 tests at 87.47 percent
+    coverage, with the only failures in an untracked pre-rename stale test file.
 - 2026-07-26: Closed the release with 779 PowerShell 7 tests at 87.53 percent
     coverage and a 450-test Windows PowerShell 5.1 QA/impersonation gate, all
     with zero failures or skips.

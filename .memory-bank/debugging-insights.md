@@ -280,3 +280,32 @@ value and pass it to ModuleBuilder even though `build.yaml` specifies the valid
 `UTF8` scalar. Run every Sampler workflow through the clean detached launcher;
 the same package workflow then receives `UTF8` and succeeds without a
 configuration change.
+
+## DSC class property value advertising
+
+`Get-DscResource -Syntax` renders a `[string]{ a | b }` value list only for a
+class property that is a real .NET enum or carries a `[ValidateSet()]`. A bare
+`[string]` property such as `AppliesTo` shows only `[string]`. `AppliesTo` is a
+friendly label over the `InheritanceFlags` and `PropagationFlags` pair (plus a
+read-only `Custom`), so it has no single enum type; add a `ValidateSet` matching
+the cmdlet surface to advertise and validate it. Single-file AST parsing and
+`Invoke-ScriptAnalyzer` on one class file report `TypeNotFound` and
+`DscResourceInvalidKeyProperty` for sibling-file types; the authoritative gate
+is the ModuleBuilder compile plus `Get-DscResource`.
+
+## Changelog QA test timing and git phantoms
+
+The QA `Changelog has been updated` test compares `git diff HEAD --name-only`,
+so update `CHANGELOG.md` before launching `-Tasks test`; editing it after the
+run starts makes the test fail even though the entry exists. After a build, git
+can mark many source files modified in `git status` while `git diff` is empty
+(stat cache touched, content identical); trust `git diff --name-only` for the
+true change set and stage only real changes.
+
+## Untracked pre-rename stale files
+
+Untracked pre-rename leftovers such as `Initialize-NTFSNativeType.ps1` and
+`Elevated-NTFSPermission.Tests.ps1` can shadow the tracked renamed files and
+fail the suite at discovery by importing the removed `NTFSPermission` module.
+They are untracked, so they carry no git history; confirm the tracked renamed
+equivalent exists and get an explicit decision before deleting them.

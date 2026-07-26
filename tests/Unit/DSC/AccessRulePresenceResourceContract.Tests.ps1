@@ -92,4 +92,21 @@ Describe 'Access-rule presence DSC resource contract' -Tag 'Unit', 'WindowsOnly'
         $instance = [System.Activator]::CreateInstance($resourceType)
         $instance.Ensure.ToString() | Should -Be Present
     }
+
+    It 'Should constrain the DSC AppliesTo values to the <Cmdlet> cmdlet set for <Name>' -ForEach @(
+        @{ Name = 'WindowsAccessControlNtfsAccessRule'; Cmdlet = 'New-NTFSAccessRule' }
+        @{ Name = 'WindowsAccessControlRegistryKeyAccessRule'; Cmdlet = 'Add-RegistryKeyAccessRule' }
+    ) {
+        $resourceType = & $script:module ([scriptblock]::Create("[$Name]"))
+        $appliesToProperty = $resourceType.GetProperty('AppliesTo')
+        $dscValues = @(@($appliesToProperty.GetCustomAttributes($true) | Where-Object {
+            $_ -is [System.Management.Automation.ValidateSetAttribute]
+        }).ValidValues)
+        $cmdletValues = @(@((Get-Command -Name $Cmdlet).Parameters['AppliesTo'].Attributes |
+            Where-Object { $_ -is [System.Management.Automation.ValidateSetAttribute] }).ValidValues)
+
+        $dscValues |
+            Should -Not -BeNullOrEmpty -Because 'the DSC AppliesTo property must advertise its allowed values'
+        @($dscValues | Sort-Object) | Should -Be @($cmdletValues | Sort-Object)
+    }
 }
