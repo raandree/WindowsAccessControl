@@ -130,14 +130,14 @@ explicit user control.
     single-level values (`SubfoldersAndFilesOnlyOneLevel`, `SubfoldersOnlyOneLevel`,
     `FilesOnlyOneLevel`), matching full NTFSSecurity `ApplyTo` coverage; a
     converter round-trip test guards all thirteen labels.
-- Two untracked pre-rename stale files remain in the working tree
+- The two untracked pre-rename stale files
     (`source/Private/Initialize-NTFSNativeType.ps1` and
-    `tests/Integration/Elevated-NTFSPermission.Tests.ps1`); the latter imports
-    the removed `NTFSPermission` module and fails discovery. The tracked
-    renamed equivalents already exist. Removal awaits an explicit user decision.
+    `tests/Integration/Elevated-NTFSPermission.Tests.ps1`) were removed with
+    explicit approval; their tracked renamed equivalents remain. The full
+    PowerShell 7 gate is now fully green at 797 passed, 0 failed, 0 skipped,
+    88.06 percent coverage.
 
 ## Next step
 
-Retain the green local milestones on `ai/windows-access-control`. Decide whether
-to remove the two untracked pre-rename stale files. Do not push or publish
-without an explicit request.
+Retain the green local milestones on `ai/windows-access-control`. Do not push or
+publish without an explicit request.

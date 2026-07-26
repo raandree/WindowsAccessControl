@@ -142,6 +142,10 @@ signed DSC resources are complete.
     `ApplyTo` coverage. Added a converter round-trip test. Full PowerShell 7
     gate passed 797 tests at 88.06 percent coverage, with the only failures in
     the untracked pre-rename stale test file.
+- 2026-07-26: Removed the two untracked pre-rename stale files
+    (`Initialize-NTFSNativeType.ps1`, `Elevated-NTFSPermission.Tests.ps1`) with
+    explicit approval. The full PowerShell 7 gate is now fully green at 797
+    passed, 0 failed, 0 skipped, 88.06 percent coverage.
 - 2026-07-26: Closed the release with 779 PowerShell 7 tests at 87.53 percent
     coverage and a 450-test Windows PowerShell 5.1 QA/impersonation gate, all
     with zero failures or skips.
