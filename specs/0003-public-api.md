@@ -298,6 +298,24 @@ and cease to be meaningful when the process instance exits.
 descriptor automatically. Effective access uses a SID-derived Authz context and
 does not include share permissions or every logon-specific group (0004).
 
+## Local impersonation
+
+| Command | Primary parameters | Pipeline input | Returns |
+| --- | --- | --- | --- |
+| `Invoke-WindowsAccessControl` | `Credential`, `ScriptBlock`, `ArgumentList` | none | script-block output |
+
+`Invoke-WindowsAccessControl` creates an opt-in local interactive logon scope.
+It restores the caller identity after success or failure and disposes the logon
+token before returning. The command does not accept remote target parameters,
+serialize credentials, or write passwords to output, errors, logs, metrics, or
+backup documents. Commands invoked inside the script block retain their normal
+parameter, pipeline, `ShouldProcess`, and output contracts.
+The caller must hold the Windows authority required to impersonate, and the
+supplied identity must have the local interactive logon right. Windows
+PowerShell 5.1 requires .NET Framework 4.6 or later for the managed scoped
+impersonation API. Impersonation is thread-scoped; work dispatched to another
+job, runspace, or thread does not inherit this command's identity.
+
 ## Privilege commands
 
 | Command | Pipeline input | Returns |

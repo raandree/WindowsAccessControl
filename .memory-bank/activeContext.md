@@ -9,11 +9,11 @@ source: current task evidence
 
 ## Current focus
 
-Continue the signed `WindowsAccessControl` expansion on
-`ai/windows-access-control`. Bounded cross-family execution, canonical target
-serialization, metrics, aggregate NTFS backup reads, and five exact-descriptor
-DSC resources are complete. Five access-rule presence DSC resources are also
-complete, satisfying the signed DSC scope for every supported family.
+The signed `WindowsAccessControl` release is complete on
+`ai/windows-access-control`. All command families, ten DSC resources, local
+credential impersonation, cross-edition validation, package inspection, and
+independent security review are complete. Remote publication remains under
+explicit user control.
 
 ## Evidence
 
@@ -105,9 +105,25 @@ complete, satisfying the signed DSC scope for every supported family.
     gate passes 35 tests plus three LCM tests with zero failures or skips.
 - Independent rule-resource review and re-review returned APPROVE with no
     remaining Blocker, Major, or Minor findings.
+- `Invoke-WindowsAccessControl` provides one explicit local impersonation scope
+    over existing command calls without adding remote target syntax.
+- `LogonUserW` receives password data through temporary unmanaged memory that
+    is zeroed in `finally`; `WindowsIdentity.RunImpersonated` restores the
+    caller identity and the safe token handle is disposed before return.
+- Disposable-local-user acceptance passes argument, nested-scope, exception,
+    and invalid-credential cases in both PowerShell 7 and Windows PowerShell
+    5.1 with zero failures or skips and no leaked test accounts.
+- The final PowerShell 7 gate passes 779 tests with zero failures or skips at
+    87.53 percent coverage. The combined Windows PowerShell 5.1 QA and
+    impersonation gate passes 450 tests with zero failures or skips.
+- `WindowsAccessControl.0.2.0-windows.nupkg` builds in a clean detached host
+    with 71 functions, ten DSC resources, the local impersonation export, and
+    only the eight expected package entries.
+- Final AST, PSScriptAnalyzer, whitespace, archive inventory, manifest, and
+    cleanup checks are green. Independent impersonation review and re-review
+    returned APPROVE with no Blocker or Major findings.
 
 ## Next step
 
-Resolve the optional local impersonation decision, then run final privileged
-release closure, package inspection, and comprehensive independent review. Do
-not push or publish without an explicit request.
+Retain the green local milestone on `ai/windows-access-control`. Do not push or
+publish without an explicit request.

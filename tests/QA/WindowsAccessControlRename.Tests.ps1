@@ -27,7 +27,7 @@ Describe 'WindowsAccessControl package rename' -Tag 'QA' {
     }
 
     It 'Should export renamed cross-domain commands only' {
-        $manifestData = Import-PowerShellDataFile -Path $script:newManifestPath
+        $manifestData = Microsoft.PowerShell.Utility\Import-PowerShellDataFile -Path $script:newManifestPath
         $expectedCommands = @(
             'Resolve-WindowsIdentity'
             'Get-WindowsPrivilege'

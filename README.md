@@ -61,6 +61,24 @@ Get-ChildItem -LiteralPath 'C:\Data' -Recurse |
     Clear-NTFSAccessRule -WhatIf
 ```
 
+Run one or more local operations under an explicitly supplied Windows identity:
+
+```powershell
+Invoke-WindowsAccessControl -Credential $credential -ScriptBlock {
+    Get-NTFSAccessRule -LiteralPath 'C:\Data' -ExcludeInherited
+}
+```
+
+The credential creates only a local interactive impersonation scope. It does
+not enable remote target syntax. The caller identity is restored after success
+or failure, and the credential password is never written to module output,
+logs, metrics, or backup documents. The calling token must be permitted to
+impersonate, and the supplied identity must be permitted to log on locally.
+Windows PowerShell 5.1 requires .NET Framework 4.6 or later; every supported
+Windows 11 and Windows Server 2025 installation meets that runtime floor.
+Impersonation is scoped to the current thread. Work started in a job, runspace,
+or another thread uses that execution context's identity.
+
 Manage a local registry key with provider paths or `RegistryKey` pipeline
 objects:
 
@@ -511,6 +529,7 @@ the NTFS result.
 | Process audit rules | `Get-ProcessAuditRule`, `Add-ProcessAuditRule`, `Set-ProcessAuditRule`, `Remove-ProcessAuditRule`, `Clear-ProcessAuditRule` |
 | Diagnostics | `Resolve-WindowsIdentity`, `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
 | Privileges | `Get-WindowsPrivilege`, `Test-WindowsPrivilege`, `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege` |
+| Local impersonation | `Invoke-WindowsAccessControl` |
 
 Use `Get-Help <command> -Full` for parameter semantics and examples.
 
@@ -526,6 +545,8 @@ Use `Get-Help <command> -Full` for parameter semantics and examples.
   the parent rule instead.
 - SACL operations and arbitrary ownership changes scope required privileges
     already present in the token and restore their original state.
+- Local impersonation uses an explicit `PSCredential`, restores the caller
+    identity in all paths, and does not expand the local-only target boundary.
 - FileSystem provider resolution follows reparse points such as symbolic links
     and junctions. A path can change between resolution and descriptor
     persistence, so do not accept untrusted path input for privileged operations.

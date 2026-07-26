@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add five class-based exact access-rule presence DSC resources with typed
     rights, SID-normalized matching, `Present`/`Absent` convergence, duplicate
     exact-ACE cleanup, and ten-resource MOF/LCM acceptance
+- Add `Invoke-WindowsAccessControl` for explicit, local-only credential
+    impersonation across Windows PowerShell 5.1 and PowerShell 7
 
 ### Changed
 
@@ -77,6 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     changes during DACL operations
 - Reject remote `RegistryKey` objects before their local-looking names can be
     normalized to local targets
+- Zero unmanaged password memory, restore the caller identity after every
+    impersonation path, and dispose local logon tokens before returning
 
 ### Fixed
 

@@ -125,6 +125,20 @@ signed DSC resources are complete.
     tests with zero failures or skips.
 - 2026-07-26: Completed independent rule-resource review and re-review with no
     remaining Blocker, Major, or Minor findings and an explicit APPROVE verdict.
+- 2026-07-26: Added explicit local-only credential impersonation with secure
+    password marshaling, managed identity restoration, and safe-token cleanup.
+- 2026-07-26: Passed argument, nested-scope, exception, and invalid-credential
+    impersonation acceptance in both PowerShell editions with zero failures or
+    skips.
+- 2026-07-26: Closed the release with 779 PowerShell 7 tests at 87.53 percent
+    coverage and a 450-test Windows PowerShell 5.1 QA/impersonation gate, all
+    with zero failures or skips.
+- 2026-07-26: Built and inspected
+    `WindowsAccessControl.0.2.0-windows.nupkg`; verified 71 functions, ten DSC
+    resources, eight expected archive entries, and no source/test or
+    secret-like artifacts.
+- 2026-07-26: Completed independent impersonation security review and
+    re-review with no Blocker or Major findings and explicit APPROVE verdicts.
 
 ## Stable capabilities
 
@@ -155,7 +169,4 @@ signed DSC resources are complete.
 
 ## Open work
 
-- Decide and implement optional local credential impersonation if retained.
-- Run final privileged release closure, package inspection, and comprehensive
-    independent review.
 - Remote publication remains user-controlled.

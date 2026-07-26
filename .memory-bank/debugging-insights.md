@@ -255,3 +255,28 @@ Windows can merge same-account, qualifier, and scope ACEs. A narrower exact
 that callers model the superset or use an exact-descriptor resource. Never
 remove the superset when enforcing the narrower resource, because that would
 destroy unrelated rights.
+
+## Desktop secure-string test fixtures
+
+In a standalone Windows PowerShell 5.1 Pester host, calling
+`ConvertTo-SecureString` after module discovery can attempt to autoload
+`Microsoft.PowerShell.Security` after its type data is already present. The
+autoload then fails with duplicate `ObjectSecurity` members before the test
+runs. For an ephemeral test credential, construct `SecureString` directly with
+`AppendChar()` and `MakeReadOnly()` so the fixture does not depend on module
+autoload. Production credential input remains a normal `PSCredential`.
+
+Desktop Pester discovery can also lose ambient access to
+`Import-PowerShellDataFile` after repository dependency paths are prepended.
+Module-qualify it as
+`Microsoft.PowerShell.Utility\Import-PowerShellDataFile` in QA tests, and
+supply Sampler's `ProjectName` explicitly when running framework QA outside the
+build.
+
+## Sampler session contamination
+
+A reused PowerShell session can retain a typed `System.Text.UTF8Encoding`
+value and pass it to ModuleBuilder even though `build.yaml` specifies the valid
+`UTF8` scalar. Run every Sampler workflow through the clean detached launcher;
+the same package workflow then receives `UTF8` and succeeds without a
+configuration change.

@@ -10,7 +10,10 @@ function Initialize-WindowsAccessControlNativeType {
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using Microsoft.Win32.SafeHandles;
 using System.Runtime.InteropServices;
+using System.Security;
+using System.Security.Principal;
 using System.Text;
 using System.Threading;
 
@@ -148,6 +151,8 @@ namespace WindowsAccessControl
         private const UInt32 FileObject = 1;
         private const UInt32 ServiceObject = 2;
         private const UInt32 KernelObject = 6;
+        private const UInt32 Logon32LogonInteractive = 2;
+        private const UInt32 Logon32ProviderDefault = 0;
 
         [DllImport("kernel32.dll")]
         private static extern IntPtr GetCurrentProcess();
@@ -183,6 +188,16 @@ namespace WindowsAccessControl
             IntPtr processHandle,
             UInt32 desiredAccess,
             out IntPtr tokenHandle);
+
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, EntryPoint = "LogonUserW", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool NativeLogonUser(
+            string userName,
+            string domain,
+            IntPtr password,
+            UInt32 logonType,
+            UInt32 logonProvider,
+            out SafeAccessTokenHandle tokenHandle);
 
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode, EntryPoint = "OpenSCManagerW", SetLastError = true)]
         private static extern IntPtr OpenServiceControlManager(
@@ -502,6 +517,107 @@ namespace WindowsAccessControl
         {
             UInt64 result = ((UInt64)value.HighDateTime << 32) | value.LowDateTime;
             return unchecked((Int64)result);
+        }
+
+        public static SafeAccessTokenHandle LogonUser(
+            string userName,
+            SecureString password)
+        {
+            if (String.IsNullOrWhiteSpace(userName))
+            {
+                throw new ArgumentException("A user name is required.", "userName");
+            }
+            if (password == null)
+            {
+                throw new ArgumentNullException("password");
+            }
+
+            string accountName = userName;
+            string domainName = ".";
+            Int32 separatorIndex = userName.IndexOf('\\');
+            if (separatorIndex >= 0)
+            {
+                if (separatorIndex == 0 || separatorIndex == userName.Length - 1)
+                {
+                    throw new ArgumentException(
+                        "The user name must use the form domain\\user.",
+                        "userName");
+                }
+                domainName = userName.Substring(0, separatorIndex);
+                accountName = userName.Substring(separatorIndex + 1);
+            }
+            else if (userName.IndexOf('@') >= 0)
+            {
+                domainName = null;
+            }
+
+            IntPtr passwordPointer = IntPtr.Zero;
+            SafeAccessTokenHandle tokenHandle = null;
+            try
+            {
+                passwordPointer = Marshal.SecureStringToGlobalAllocUnicode(password);
+                if (!NativeLogonUser(
+                    accountName,
+                    domainName,
+                    passwordPointer,
+                    Logon32LogonInteractive,
+                    Logon32ProviderDefault,
+                    out tokenHandle))
+                {
+                    Int32 errorCode = Marshal.GetLastWin32Error();
+                    if (tokenHandle != null)
+                    {
+                        tokenHandle.Dispose();
+                    }
+                    throw new Win32Exception(errorCode);
+                }
+                return tokenHandle;
+            }
+            finally
+            {
+                if (passwordPointer != IntPtr.Zero)
+                {
+                    Marshal.ZeroFreeGlobalAllocUnicode(passwordPointer);
+                }
+            }
+        }
+
+        public static object RunImpersonated(
+            SafeAccessTokenHandle tokenHandle,
+            Func<object> operation)
+        {
+            if (tokenHandle == null || tokenHandle.IsInvalid || tokenHandle.IsClosed)
+            {
+                throw new ArgumentException("A valid access token is required.", "tokenHandle");
+            }
+            if (operation == null)
+            {
+                throw new ArgumentNullException("operation");
+            }
+
+            SecurityIdentifier expectedUser;
+            using (WindowsIdentity tokenIdentity =
+                new WindowsIdentity(tokenHandle.DangerousGetHandle()))
+            {
+                expectedUser = tokenIdentity.User;
+            }
+            return WindowsIdentity.RunImpersonated<object>(
+                tokenHandle,
+                delegate
+                {
+                    SecurityIdentifier currentUser;
+                    using (WindowsIdentity currentIdentity = WindowsIdentity.GetCurrent())
+                    {
+                        currentUser = currentIdentity.User;
+                    }
+                    if (expectedUser == null || currentUser == null ||
+                        !expectedUser.Equals(currentUser))
+                    {
+                        throw new SecurityException(
+                            "The requested Windows identity was not applied.");
+                    }
+                    return operation();
+                });
         }
 
         private static void VerifyProcessCreationTime(

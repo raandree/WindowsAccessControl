@@ -319,3 +319,15 @@ Normative record: [ADR 0012](../specs/decisions/0012-use-object-specific-command
     rights retain their requested mask.
 - Rationale: Comparing the raw requested mask to the materialized ACE causes
     permanent drift for allowed NTFS rules.
+
+### Decision 32: Scope explicit credentials to local impersonation
+
+Normative record: [ADR 0011](../specs/decisions/0011-limit-release-to-local-object-families.md).
+
+- Choice: Expose one `Invoke-WindowsAccessControl` script-block scope, acquire
+    an interactive local token with `LogonUserW`, and execute through
+    `WindowsIdentity.RunImpersonated` in both supported PowerShell editions.
+- Rationale: One explicit scope composes with every object-specific command
+    without duplicating credentials or introducing remote target semantics.
+    Direct `SecureString` marshaling, zeroing, and safe-handle disposal bound
+    password and token lifetime to the operation.
