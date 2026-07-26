@@ -11,8 +11,9 @@ source: repository evidence
 
 The NTFS, registry, service/SCM, and pinned live-process command families are
 complete with unified cross-domain portability, bounded execution, canonical
-write serialization, and metrics. They are independently approved and green on
-both supported PowerShell editions. DSC remains open.
+write serialization, metrics, and exact-descriptor DSC resources. They are
+independently approved and green on both supported PowerShell editions.
+Access-rule presence DSC resources remain open.
 
 ## Recent milestones
 
@@ -102,6 +103,17 @@ both supported PowerShell editions. DSC remains open.
     parse, encoding, and whitespace gates are clean.
 - 2026-07-26: Completed two independent concurrency reviews with no Blocker or
     Major findings and explicit APPROVE verdicts.
+- 2026-07-26: Added five class-based exact selected-section DSC resources for
+    NTFS, registry keys, named services, SCM, and pinned processes with
+    prefixed reasons and object-specific composite keys.
+- 2026-07-26: Added fail-closed selected-section validation, canonical
+    comparison that excludes only system-derived auto-inherited flags, combined
+    DACL/SACL protection coverage, and explicit absent-SACL convergence.
+- 2026-07-26: Passed 716 PowerShell 7 tests at 86.69 percent coverage, 31
+    focused Windows PowerShell 5.1 exact-resource tests, and two Desktop LCM
+    compile/invoke tests with zero failures or skips.
+- 2026-07-26: Completed independent exact-resource review and re-review with no
+    remaining Blocker, Major, or Minor findings and an explicit APPROVE verdict.
 
 ## Stable capabilities
 
@@ -125,10 +137,12 @@ both supported PowerShell editions. DSC remains open.
 - Bounded target-array execution with canonical deduplication, process-wide
     same-target write serialization, deterministic sequential mode, and
     redacted in-process metrics.
+- Exact selected-section DSC resources for every current target family,
+    including Desktop MOF compilation and SYSTEM LCM invocation evidence.
 
 ## Open work
 
+- Add class-based DSC access-rule presence resources for every current object
+    family.
 - Decide and implement optional local credential impersonation if retained.
-- Add class-based DSC exact-descriptor and rule-presence resources for every
-    current object family.
 - Remote publication remains user-controlled.

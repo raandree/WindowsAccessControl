@@ -134,6 +134,10 @@ Describe 'Service security descriptors' -Tag 'Integration', 'WindowsOnly', 'Requ
         $audit.BinarySecurityDescriptor.Length | Should -BeGreaterThan 0
         Set-ServiceSecurityDescriptor -ServiceControlManager -Sddl $before.Sddl `
             -Sections Access -Confirm:$false
+        Set-ServiceSecurityDescriptor -ServiceControlManager `
+            -Sddl 'D:(A;;CC;;;WD)' `
+            -Sections Access `
+            -WhatIf
         (Get-ServiceSecurityDescriptor -ServiceControlManager -Sections Access).Sddl |
             Should -BeExactly $before.Sddl
     }

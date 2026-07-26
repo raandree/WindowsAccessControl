@@ -42,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     target, success, failure, and elapsed counters by command and object family
 - Add a repeatable NTFS batch benchmark that records sequential and parallel
     throughput without a timing-based pass threshold
+- Add five class-based exact selected-section DSC resources for NTFS, registry
+    keys, named services, the Service Control Manager, and pinned processes,
+    including prefixed compliance reasons and Desktop LCM acceptance
 
 ### Changed
 

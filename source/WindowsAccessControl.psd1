@@ -152,7 +152,13 @@ VariablesToExport = @()
 AliasesToExport = @()
 
 # DSC resources to export from this module
-DscResourcesToExport = @()
+DscResourcesToExport = @(
+    'WindowsAccessControlNtfsSecurityDescriptor'
+    'WindowsAccessControlRegistryKeySecurityDescriptor'
+    'WindowsAccessControlServiceSecurityDescriptor'
+    'WindowsAccessControlServiceControlManagerSecurityDescriptor'
+    'WindowsAccessControlProcessSecurityDescriptor'
+)
 
 # List of all modules packaged with this module
 # ModuleList = @()

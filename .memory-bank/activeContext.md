@@ -11,8 +11,9 @@ source: current task evidence
 
 Continue the signed `WindowsAccessControl` expansion on
 `ai/windows-access-control`. Bounded cross-family execution, canonical target
-serialization, metrics, and aggregate NTFS backup reads are complete. The next
-signed milestone is class-based DSC resources for every supported family.
+serialization, metrics, aggregate NTFS backup reads, and five exact-descriptor
+DSC resources are complete. The next signed slice is access-rule presence DSC
+resources for every supported family.
 
 ## Evidence
 
@@ -72,10 +73,25 @@ signed milestone is class-based DSC resources for every supported family.
 - Two independent concurrency reviews returned APPROVE with no Blocker or
     Major findings. Live tests cover canonical deduplication, prevalidation,
     bounded mutation, parallel `WhatIf`, and aggregate backup behavior.
+- Five class-based exact-descriptor resources cover NTFS, registry key, named
+    service, SCM, and pinned process targets with object-specific composite
+    keys, selected-section SDDL, and prefixed compliance reasons.
+- Exact comparison ignores only Windows-derived DACL/SACL `AUTO_INHERITED`
+    flags. Protection state and every selected ACE remain exact; omitted
+    selected sections and null DACLs fail closed.
+- Live tests reconverge NTFS DACL and all-section state plus registry DACL state;
+    named service, SCM, and pinned process resources query real descriptors.
+    Desktop evidence compiles all five resources into one MOF and invokes the
+    all-section NTFS resource through the SYSTEM LCM.
+- The authoritative PowerShell 7 gate passes 716 tests with zero failures or
+    skips at 86.69 percent coverage. The focused Windows PowerShell 5.1 exact
+    gate passes 31 tests plus two LCM tests with zero failures or skips.
+- Independent exact-resource review and re-review returned APPROVE after
+    fail-closed and combined DACL/SACL coverage was added.
 
 ## Next step
 
-Implement class-based exact-descriptor and rule-presence DSC resources for
-filesystem, registry key, service/SCM, and pinned-process contracts. Revisit
-optional local impersonation only if the signed scope retains it. Do not push
-or publish without an explicit request.
+Implement class-based access-rule presence DSC resources for filesystem,
+registry key, named service, SCM, and pinned-process contracts. Revisit optional
+local impersonation only if the signed scope retains it. Do not push or publish
+without an explicit request.

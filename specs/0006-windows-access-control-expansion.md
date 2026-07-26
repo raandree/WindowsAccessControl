@@ -178,6 +178,12 @@ In-process metrics are exposed as structured snapshots: operation count,
 success/failure count, target count, and elapsed duration by command and object
 family. SDDL is not included in metrics.
 
+Exact selected-section DSC resources are exported separately for NTFS,
+registry key, named service, SCM, and pinned process targets. Their schemas use
+object-specific composite keys and prefixed reason objects. Windows-derived ACL
+auto-inherited flags are comparison metadata rather than desired state;
+protection flags and ACE content remain exact.
+
 ## Failure modes
 
 - Invalid global input or a malformed backup terminates before mutation.

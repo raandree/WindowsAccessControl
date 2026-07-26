@@ -279,3 +279,24 @@ and [ADR 0013](../specs/decisions/0013-use-bounded-parallel-target-execution.md)
     once only after every read succeeds.
 - Rationale: Descriptor reads benefit from concurrency, but recursively writing
     one envelope per target would break atomicity and overwrite semantics.
+
+### Decision 28: Make exact DSC identity object-specific
+
+Normative record: [ADR 0012](../specs/decisions/0012-use-object-specific-commands-and-dsc-resources.md).
+
+- Choice: Export separate exact selected-section resources for NTFS, registry
+    key, named service, SCM, and pinned process targets. Include registry view
+    and process creation `FILETIME` in composite identity and use a prefixed
+    reason class.
+- Rationale: Target identity and rights semantics differ by family. Process
+    reuse and registry view must fail closed rather than converge the wrong
+    object.
+
+### Decision 29: Normalize only system-derived ACL flags in DSC
+
+- Choice: Compare canonical selected-section SDDL after clearing only DACL/SACL
+    `AUTO_INHERITED` flags on cloned descriptors. Preserve protection flags,
+    selected ACL presence, and every ACE exactly.
+- Rationale: Windows can add auto-inherited flags after persistence, causing an
+    endless DSC loop, while ignoring protection or ACE differences would weaken
+    desired-state ownership.

@@ -119,6 +119,22 @@ Metrics contain command name, object family, counts, elapsed duration, and an
 update timestamp. They never contain SDDL, identity secrets, signing material,
 or native buffers.
 
+## Exact descriptor DSC boundary
+
+Exact DSC resources persist only their selected descriptor sections and route
+all errors as terminating failures from `Set()`. NTFS DACL/SACL protection is
+persisted through the native section-scoped boundary. Registry view and process
+creation identity are part of target identity; process exit or PID reuse fails
+closed.
+
+Windows can add DACL/SACL `AUTO_INHERITED` control flags after persistence.
+DSC comparison excludes only those system-derived flags so convergence is
+stable. It still compares protected/unprotected state and every selected ACE.
+Null DACLs and omitted selected owner, group, DACL, or SACL data are rejected.
+An explicitly absent selected SACL remains valid state; because it has no SACL
+pointer, native protection persistence skips only that SACL while still writing
+the selected Audit section and any selected DACL protection.
+
 ## Backup and restore trust model
 
 Backups use schema version 1 and contain:

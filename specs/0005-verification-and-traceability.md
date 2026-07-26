@@ -52,6 +52,7 @@ is not reported as a successful live write.
 | NFR-9 | Token inventory test and mutator `WhatIf` safety tests |
 | NFR-10 | Sampler build, package inspection, changelog QA, and GitVersion config |
 | ADR-0013 | Dispatcher Unit tests, family command contracts, live canonical deduplication and metric tests, cross-edition focused runs, and the repeatable NTFS benchmark |
+| ADR-0012 | Exact resource schema/orchestration/adapter Unit tests, live five-target convergence, Desktop MOF compilation, and `Invoke-DscResource` acceptance |
 
 ## Public command evidence
 
@@ -154,6 +155,24 @@ cross-module write serialization. The same focused gate runs under PowerShell
 sequential and bounded-parallel NTFS owner reads over disposable targets. It
 emits elapsed time and throughput plus optional JSON evidence without a flaky
 hard timing assertion.
+
+## Exact descriptor DSC evidence
+
+`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies five manifest
+exports, `Get-DscResource` discovery, composite keys, mandatory SDDL, and
+read-only prefixed reasons. `ExactSecurityDescriptorResource.Tests.ps1` covers
+class orchestration and canonical mismatch reasons in PowerShell 7. Private
+adapter tests cover every object-family route in both editions.
+
+`ExactSecurityDescriptorDscResources.Tests.ps1` reconverges disposable NTFS
+and HKCU DACLs, reconverges all NTFS sections including explicit absent-SACL
+state, then exercises named-service, SCM, and pinned-process exact query paths
+over real descriptors in both editions. Unit tests reject omitted selected
+owner, group, DACL, and SACL data and cover present/absent combined protection.
+Desktop-only LCM evidence compiles all five resources into one MOF and invokes
+the all-section NTFS resource through `Invoke-DscResource`. The fixture installs
+the discovered module version machine-wide only for the test, refuses
+collisions, and removes the installation afterward.
 
 ## Privileged release evidence
 

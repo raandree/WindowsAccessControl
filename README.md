@@ -364,6 +364,49 @@ non-null.
 descriptor reads, but still writes exactly one complete atomic envelope after
 every selected target succeeds.
 
+## Desired State Configuration
+
+The module exports class-based exact-descriptor resources for every supported
+target type:
+
+- `WindowsAccessControlNtfsSecurityDescriptor`
+- `WindowsAccessControlRegistryKeySecurityDescriptor`
+- `WindowsAccessControlServiceSecurityDescriptor`
+- `WindowsAccessControlServiceControlManagerSecurityDescriptor`
+- `WindowsAccessControlProcessSecurityDescriptor`
+
+Each resource owns only its selected owner, group, DACL, or SACL sections.
+System-maintained DACL/SACL `AUTO_INHERITED` flags are ignored during
+comparison, while protection flags and every ACE remain exact. Registry view
+is part of registry resource identity. Process resources require both PID and
+creation `FILETIME`, so PID reuse fails closed.
+
+Capture desired SDDL from the corresponding `Get-*SecurityDescriptor` command.
+When a resource owns an access ACL, prefer a protected (`D:P`) descriptor so
+parent inheritance cannot add ACEs after convergence. Declare at most one SCM
+exact-descriptor resource per node. Process desired state is intentionally
+ephemeral and is valid only while the pinned process instance remains alive.
+Likewise, use a protected empty SACL (`S:P`) when audit inheritance must remain
+empty; `S:NO_ACCESS_CONTROL` represents an absent SACL that can inherit later.
+
+```powershell
+Configuration ContosoFilePermissions {
+    Import-DscResource -ModuleName WindowsAccessControl
+
+    Node localhost {
+        WindowsAccessControlNtfsSecurityDescriptor DataDacl {
+            Path = 'C:\Data'
+            Sections = 'Access'
+            Sddl = 'D:P(A;;FA;;;SY)(A;;0x1301BF;;;BA)'
+        }
+    }
+}
+```
+
+The module must be installed in a module path visible to the Windows LCM, such
+as `C:\Program Files\WindowsPowerShell\Modules`. A workspace-only path visible
+to the calling shell is not automatically visible to the SYSTEM LCM process.
+
 The NTFS-specific commands remain available and use the same unified envelope:
 
 ```powershell

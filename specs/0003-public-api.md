@@ -323,6 +323,37 @@ Metrics are snapshots from the current module instance. Filters use exact
 command and object-family names. Removing the module or ending the hosting
 process resets the counters.
 
+## Exact descriptor DSC resources
+
+| Resource | Composite keys | Mandatory state |
+| --- | --- | --- |
+| `WindowsAccessControlNtfsSecurityDescriptor` | `Path`, `Sections` | `Sddl` |
+| `WindowsAccessControlRegistryKeySecurityDescriptor` | `Path`, `RegistryView`, `Sections` | `Sddl` |
+| `WindowsAccessControlServiceSecurityDescriptor` | `Name`, `Sections` | `Sddl` |
+| `WindowsAccessControlServiceControlManagerSecurityDescriptor` | `Sections` | `Sddl` |
+| `WindowsAccessControlProcessSecurityDescriptor` | `ProcessId`, `CreationTimeFileTime`, `Sections` | `Sddl` |
+
+Every resource is class-based, has `Get()`, `Test()`, and `Set()` methods, and
+returns `WindowsAccessControlDscReason` entries for selected-section SDDL
+drift. Methods are thin adapters over the corresponding commands and private
+NTFS persistence boundary. `Set()` converts command errors to terminating DSC
+errors and never prompts for confirmation.
+
+Exact comparison includes every selected ACE plus protected/unprotected ACL
+state. It excludes only `DiscretionaryAclAutoInherited` and
+`SystemAclAutoInherited`, which Windows derives and can add after persistence.
+Process keys include creation `FILETIME`; an exited or reused PID fails closed
+instead of applying state to a different process.
+
+Desired SDDL should come from the matching descriptor query. A DACL that must
+remain exact should normally be protected, because inherited ACEs can be added
+after persistence. A node declares at most one SCM exact-descriptor resource;
+separate instances with overlapping section keys would express conflicting
+ownership of the singleton descriptor. Process resources are ephemeral and
+reconverge only while the pinned instance remains alive.
+An absent SACL (`S:NO_ACCESS_CONTROL`) remains distinct from a protected empty
+SACL (`S:P`); use the latter when inherited audit ACEs must remain absent.
+
 ## See also
 
 - [Requirements](0002-requirements.md)

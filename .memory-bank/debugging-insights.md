@@ -212,3 +212,33 @@ parallel paths so metrics do not depend on throttle mode.
 working directory, which can differ from PowerShell's current provider
 location. Join relative benchmark output to `(Get-Location).ProviderPath`
 before normalization so a bare filename follows PowerShell location semantics.
+
+## Exact DSC and system-derived ACL flags
+
+Windows can add `DiscretionaryAclAutoInherited` or `SystemAclAutoInherited`
+after an exact descriptor write. Comparing raw SDDL then reports permanent
+drift even when ACEs and protection state match. Clone each descriptor, clear
+only those two system-derived flags, and compare the selected canonical SDDL.
+
+An explicitly absent selected SACL (`S:NO_ACCESS_CONTROL`) sets
+`SystemAclPresent` but has no SACL pointer. Persist the selected Audit section,
+but do not request native SACL protection; native protection persistence must
+target only ACLs that are present.
+
+## Desktop DSC module visibility
+
+`Invoke-DscResource` delegates class-resource execution to the SYSTEM LCM,
+whose module path does not inherit a workspace-only `PSModulePath`. Acceptance
+tests temporarily install the exact built version under Program Files, refuse
+to overwrite an existing installation, hide the duplicate workspace path from
+DSC discovery, and remove the installation in `AfterAll`.
+
+## SCM descriptor recovery
+
+A previous restrictive sample (`D:(A;;CC;;;WD)`) had been persisted to the
+singleton SCM and removed Administrators/SYSTEM control. Back up owner, group,
+DACL, and SACL as SYSTEM before repair. Restore only the DACL from Microsoft's
+documented account grants, preserve the original SACL, validate the full service
+suite in both editions, and remove every scheduled-task/file backup artifact.
+Retain a live `WhatIf` regression asserting that the restrictive sample never
+changes the SCM descriptor.
