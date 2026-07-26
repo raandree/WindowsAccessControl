@@ -21,6 +21,9 @@ function ConvertTo-NTFSAppliesTo {
         '3:1' = 'ThisFolderSubfoldersAndFilesOneLevel'
         '1:1' = 'ThisFolderAndSubfoldersOneLevel'
         '2:1' = 'ThisFolderAndFilesOneLevel'
+        '3:3' = 'SubfoldersAndFilesOnlyOneLevel'
+        '1:3' = 'SubfoldersOnlyOneLevel'
+        '2:3' = 'FilesOnlyOneLevel'
     }
 
     if ($appliesTo.ContainsKey($key)) {

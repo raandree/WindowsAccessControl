@@ -126,6 +126,10 @@ explicit user control.
     matching the cmdlet surface, so `Get-DscResource -Syntax` advertises the
     allowed values and invalid values fail at compile time. A contract test
     keeps each set equal to its cmdlet parameter set.
+- The NTFS `AppliesTo` vocabulary now includes the three inherit-only
+    single-level values (`SubfoldersAndFilesOnlyOneLevel`, `SubfoldersOnlyOneLevel`,
+    `FilesOnlyOneLevel`), matching full NTFSSecurity `ApplyTo` coverage; a
+    converter round-trip test guards all thirteen labels.
 - Two untracked pre-rename stale files remain in the working tree
     (`source/Private/Initialize-NTFSNativeType.ps1` and
     `tests/Integration/Elevated-NTFSPermission.Tests.ps1`); the latter imports

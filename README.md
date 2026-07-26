@@ -266,6 +266,9 @@ The `AppliesTo` parameter uses Windows Explorer-style values:
 | `ThisFolderSubfoldersAndFilesOneLevel` | Current directory and one child level |
 | `ThisFolderAndSubfoldersOneLevel` | Current directory and one directory level |
 | `ThisFolderAndFilesOneLevel` | Current directory and one file level |
+| `SubfoldersAndFilesOnlyOneLevel` | Immediate child directories and files only |
+| `SubfoldersOnlyOneLevel` | Immediate child directories only |
+| `FilesOnlyOneLevel` | Immediate child files only |
 
 Files default to `ThisFolderOnly`. Directories default to
 `ThisFolderSubfoldersAndFiles`.

@@ -60,7 +60,10 @@ function New-NTFSAuditRule {
             'FilesOnly',
             'ThisFolderSubfoldersAndFilesOneLevel',
             'ThisFolderAndSubfoldersOneLevel',
-            'ThisFolderAndFilesOneLevel'
+            'ThisFolderAndFilesOneLevel',
+            'SubfoldersAndFilesOnlyOneLevel',
+            'SubfoldersOnlyOneLevel',
+            'FilesOnlyOneLevel'
         )]
         [string]$AppliesTo = 'ThisFolderSubfoldersAndFiles'
     )

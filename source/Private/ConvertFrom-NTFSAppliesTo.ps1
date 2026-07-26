@@ -13,7 +13,10 @@ function ConvertFrom-NTFSAppliesTo {
             'FilesOnly',
             'ThisFolderSubfoldersAndFilesOneLevel',
             'ThisFolderAndSubfoldersOneLevel',
-            'ThisFolderAndFilesOneLevel'
+            'ThisFolderAndFilesOneLevel',
+            'SubfoldersAndFilesOnlyOneLevel',
+            'SubfoldersOnlyOneLevel',
+            'FilesOnlyOneLevel'
         )]
         [string]$AppliesTo
     )
@@ -53,6 +56,15 @@ function ConvertFrom-NTFSAppliesTo {
         }
         'ThisFolderAndFilesOneLevel' {
             @{ InheritanceFlags = $objectInherit; PropagationFlags = $oneLevel }
+        }
+        'SubfoldersAndFilesOnlyOneLevel' {
+            @{ InheritanceFlags = $containerInherit -bor $objectInherit; PropagationFlags = $inheritOnly -bor $oneLevel }
+        }
+        'SubfoldersOnlyOneLevel' {
+            @{ InheritanceFlags = $containerInherit; PropagationFlags = $inheritOnly -bor $oneLevel }
+        }
+        'FilesOnlyOneLevel' {
+            @{ InheritanceFlags = $objectInherit; PropagationFlags = $inheritOnly -bor $oneLevel }
         }
     }
 }

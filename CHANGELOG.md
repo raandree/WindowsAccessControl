@@ -50,6 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     exact-ACE cleanup, and ten-resource MOF/LCM acceptance
 - Add `Invoke-WindowsAccessControl` for explicit, local-only credential
     impersonation across Windows PowerShell 5.1 and PowerShell 7
+- Add three inherit-only single-level NTFS `AppliesTo` values
+    (`SubfoldersAndFilesOnlyOneLevel`, `SubfoldersOnlyOneLevel`,
+    `FilesOnlyOneLevel`) across the NTFS access and audit cmdlets and the NTFS
+    DSC resource, matching the full NTFSSecurity `ApplyTo` coverage
 
 ### Changed
 

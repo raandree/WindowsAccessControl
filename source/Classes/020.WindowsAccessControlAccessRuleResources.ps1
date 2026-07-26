@@ -15,7 +15,10 @@ class WindowsAccessControlNtfsAccessRule {
         'FilesOnly',
         'ThisFolderSubfoldersAndFilesOneLevel',
         'ThisFolderAndSubfoldersOneLevel',
-        'ThisFolderAndFilesOneLevel'
+        'ThisFolderAndFilesOneLevel',
+        'SubfoldersAndFilesOnlyOneLevel',
+        'SubfoldersOnlyOneLevel',
+        'FilesOnlyOneLevel'
     )]
     [string]$AppliesTo
     [DscProperty()] [WindowsAccessControlDscEnsure]$Ensure =

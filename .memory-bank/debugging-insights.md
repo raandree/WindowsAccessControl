@@ -309,3 +309,15 @@ Untracked pre-rename leftovers such as `Initialize-NTFSNativeType.ps1` and
 fail the suite at discovery by importing the removed `NTFSPermission` module.
 They are untracked, so they carry no git history; confirm the tracked renamed
 equivalent exists and get an explicit decision before deleting them.
+
+## Private-function tests must load the module at run phase
+
+Importing the built module only in `BeforeDiscovery` can pass a private-function
+test in isolation but fail it in the full suite with `No modules named
+'WindowsAccessControl' are currently loaded`, because another file's `AfterAll`
+removes the module before the run phase. Import in `BeforeAll`, capture
+`$script:module = Get-Module WindowsAccessControl`, and invoke private functions
+with `& $script:module { param(...) ... } $args` (the pattern the DSC contract
+test uses). This avoids `InModuleScope`'s `Get-CompatibleModule` resolution and
+is robust to cross-file load/remove ordering. A green isolated run is not
+sufficient evidence for a private-function test; confirm it in the full suite.

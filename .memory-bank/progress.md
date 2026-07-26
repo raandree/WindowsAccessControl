@@ -135,6 +135,13 @@ signed DSC resources are complete.
     that keeps them in sync; `Get-DscResource -Syntax` now advertises the
     allowed values. Full PowerShell 7 gate passed 781 tests at 87.47 percent
     coverage, with the only failures in an untracked pre-rename stale test file.
+- 2026-07-26: Extended the NTFS `AppliesTo` vocabulary with the three
+    inherit-only single-level values (`SubfoldersAndFilesOnlyOneLevel`,
+    `SubfoldersOnlyOneLevel`, `FilesOnlyOneLevel`) across both converters, the
+    eight NTFS cmdlets, and the DSC resource, matching full NTFSSecurity
+    `ApplyTo` coverage. Added a converter round-trip test. Full PowerShell 7
+    gate passed 797 tests at 88.06 percent coverage, with the only failures in
+    the untracked pre-rename stale test file.
 - 2026-07-26: Closed the release with 779 PowerShell 7 tests at 87.53 percent
     coverage and a 450-test Windows PowerShell 5.1 QA/impersonation gate, all
     with zero failures or skips.

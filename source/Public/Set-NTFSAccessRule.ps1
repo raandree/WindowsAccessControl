@@ -82,7 +82,10 @@ function Set-NTFSAccessRule {
             'FilesOnly',
             'ThisFolderSubfoldersAndFilesOneLevel',
             'ThisFolderAndSubfoldersOneLevel',
-            'ThisFolderAndFilesOneLevel'
+            'ThisFolderAndFilesOneLevel',
+            'SubfoldersAndFilesOnlyOneLevel',
+            'SubfoldersOnlyOneLevel',
+            'FilesOnlyOneLevel'
         )]
         [string]$AppliesTo,
 
