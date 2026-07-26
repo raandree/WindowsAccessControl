@@ -105,19 +105,43 @@ layouts:
 
 Backups use schema version 1 and contain:
 
-- canonical target path
-- item type (`File` or `Directory`)
-- selected section bitmask
+- object family, target, and canonical target identity
+- object-specific metadata such as filesystem item type, registry view, or
+  process PID and creation `FILETIME`
+- selected native section bitmask
 - SDDL for those sections
+- SHA-256 integrity metadata
 
 JSON is parsed as data and never evaluated. Restore validates schema, required
-fields, section range, unique targets, target existence, item type, and SDDL for
-every record before the first write (ADR 0005). This prevents a malformed later
-record from causing a partial restore.
+fields, section range, digest, unique canonical targets, target existence,
+object-family metadata, canonical identity, and SDDL for every record before
+the first write (ADR 0005). This prevents a malformed later record from causing
+a partial restore. Process validation rechecks PID plus creation `FILETIME`.
 
-A validated restore can still stop after an earlier successful write if the
-filesystem fails during persistence. The same backup can be rerun after the I/O
-condition is corrected.
+SHA-256 detects modification only when the expected digest is itself protected.
+When an RSA X.509 signing certificate is supplied, each record hash is signed.
+Signed records require an explicit matching verification certificate, and all
+signatures are verified before target preparation. The supplied certificate is
+the trust anchor; the module checks thumbprint, validity period, and signature
+but does not build an operating-system certificate trust chain.
+
+Signatures bind individual records but not the envelope record set. Record
+omission and replay of an older record signed by the same certificate are not
+detected. Verification requires the certificate to be within its validity
+period at restore time. Workflows that require set completeness, freshness, or
+long-term archival must protect an external manifest and retain an appropriate
+certificate lifecycle.
+
+Signing occurs only after `ShouldProcess` approves the destination operation.
+The completed JSON is written to the destination directory and atomically moved
+or replaced, with temporary and rollback files removed in `finally`. Selected
+absent SACLs are normalized to `S:NO_ACCESS_CONTROL`; a selected but omitted
+SACL and every null DACL fail before persistence.
+
+A validated restore can still stop after an earlier successful write if a
+target exits, disappears, or fails during persistence. The same backup can be
+rerun after the runtime condition is corrected; process records remain valid
+only while the pinned instance exists.
 
 Backup files control restore paths. They are trusted administrative input and
 must not be accepted from an untrusted source without review.

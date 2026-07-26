@@ -1,4 +1,4 @@
-# Versioned backup prevalidation and restore safety (FR-10, NFR-6, NFR-8, ADR 0005).
+﻿# Versioned backup prevalidation and restore safety (FR-10, NFR-6, NFR-8, ADR 0005).
 BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
@@ -23,6 +23,44 @@ Describe 'Restore-NTFSItemSecurityDescriptor' -Tag 'Integration', 'WindowsOnly' 
         Restore-NTFSItemSecurityDescriptor -BackupPath $backupPath -Confirm:$false
 
         Get-NTFSAccessRule -LiteralPath $testFile -Account 'S-1-1-0' -ExcludeInherited |
+            Should -HaveCount 1
+    }
+
+    It 'Should restore a valid historical schema one document' {
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'historical-restore.txt'
+        $backupPath = Join-Path -Path $TestDrive -ChildPath 'historical-restore.json'
+        Set-Content -LiteralPath $testFile -Value 'historical'
+        Add-NTFSAccessRule -LiteralPath $testFile `
+            -Account 'S-1-1-0' `
+            -AccessRights Read
+        $sddl = (Get-NTFSItemSecurityDescriptor `
+            -LiteralPath $testFile `
+            -Sections Access).Sddl
+        @{
+            SchemaVersion = 1
+            CreatedUtc    = [DateTime]::UtcNow.ToString('o')
+            Records       = @(
+                @{
+                    Path     = [System.IO.Path]::GetFullPath($testFile)
+                    ItemType = 'File'
+                    Sections = 2
+                    Sddl     = $sddl
+                }
+            )
+        } | ConvertTo-Json -Depth 5 |
+            Set-Content -LiteralPath $backupPath -Encoding utf8
+        Get-NTFSAccessRule -LiteralPath $testFile `
+            -Account 'S-1-1-0' `
+            -ExcludeInherited |
+            Remove-NTFSAccessRule -Confirm:$false
+
+        Restore-NTFSItemSecurityDescriptor `
+            -BackupPath $backupPath `
+            -Confirm:$false
+
+        Get-NTFSAccessRule -LiteralPath $testFile `
+            -Account 'S-1-1-0' `
+            -ExcludeInherited |
             Should -HaveCount 1
     }
 

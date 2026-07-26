@@ -268,8 +268,57 @@ present but disabled from privileges absent from the token.
 
 ## Backup, restore, and copy
 
-Backups use a versioned, non-executable JSON format containing path, item type,
-selected section bitmask, and SDDL:
+Unified backups accept descriptor objects from every supported family and write
+one versioned, non-executable JSON envelope. Each record contains the object
+family, canonical target, selected native section mask, SDDL, and a SHA-256
+digest. Process records also contain the PID and creation `FILETIME`:
+
+```powershell
+@(
+    Get-NTFSItemSecurityDescriptor -LiteralPath 'C:\Data' -Sections Access
+    Get-RegistryKeySecurityDescriptor -Path 'HKCU:\Software\Contoso' -Sections Access
+    Get-ServiceSecurityDescriptor -Name 'BITS' -Sections Access
+    Get-ProcessSecurityDescriptor -ProcessId $PID -Sections Access
+) | Backup-WindowsSecurityDescriptor `
+    -DestinationPath 'C:\Backup\windows-permissions.json'
+
+Restore-WindowsSecurityDescriptor `
+    -BackupPath 'C:\Backup\windows-permissions.json' `
+    -Confirm:$false
+```
+
+Supplying an RSA X.509 certificate with a private key signs every record. A
+signed backup requires the matching certificate during restore:
+
+```powershell
+$descriptor | Backup-WindowsSecurityDescriptor `
+    -DestinationPath 'C:\Backup\signed-permissions.json' `
+    -SigningCertificate $signingCertificate
+
+Restore-WindowsSecurityDescriptor `
+    -BackupPath 'C:\Backup\signed-permissions.json' `
+    -VerificationCertificate $verificationCertificate `
+    -Confirm:$false
+```
+
+SHA-256 detects accidental or untrusted modification only when the expected
+digest is protected separately. X.509 signing adds authenticity by pinning
+restore to the supplied certificate; the module does not infer trust from the
+certificate store.
+
+Signatures protect individual records, not the envelope's record set. Removing
+a signed record or replaying an older record signed by the same certificate is
+not detected. Verification also requires the certificate to be within its
+validity period at restore time. Retain trusted backup manifests and certificate
+lifecycle records when omission, replay, or long-term archival matters.
+
+Backup validates every descriptor before file creation, rejects duplicate
+canonical targets, signs only after `ShouldProcess` approves the operation, and
+atomically moves or replaces the completed envelope. A selected absent SACL is
+encoded explicitly as `S:NO_ACCESS_CONTROL`; selected DACLs must remain
+non-null.
+
+The NTFS-specific commands remain available and use the same unified envelope:
 
 ```powershell
 Get-ChildItem -LiteralPath 'C:\Data' -Recurse |
@@ -282,10 +331,11 @@ Restore-NTFSItemSecurityDescriptor `
 ```
 
 Restore validates every record and changes only the sections recorded in the
-backup. It validates and prepares all records before the first descriptor is
-persisted, so malformed later records cannot cause a partial restore. A later
-filesystem I/O failure can still stop a restore after earlier records were
-written; rerun the same validated backup after correcting the I/O failure.
+backup. It validates all integrity proofs and prepares every target before the
+first descriptor is persisted, so a malformed later record cannot cause a
+partial restore. A later runtime failure can still stop restore after earlier
+independent targets were written. Process restore succeeds only while the same
+pinned process instance remains alive.
 
 Backups refuse to overwrite an existing file unless `-Force` is supplied. A
 backup controls the target paths it restores, so review backup files from
@@ -326,7 +376,7 @@ the NTFS result.
 | Audit rules | `New-NTFSAuditRule`, `Get-NTFSAuditRule`, `Add-NTFSAuditRule`, `Set-NTFSAuditRule`, `Remove-NTFSAuditRule`, `Clear-NTFSAuditRule` |
 | Owner | `Get-NTFSItemOwner`, `Set-NTFSItemOwner` |
 | Inheritance | `Get-NTFSItemInheritance`, `Enable-NTFSItemInheritance`, `Disable-NTFSItemInheritance` |
-| Descriptor portability | `Get-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor` |
+| Descriptor portability | `Get-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor`, `Backup-WindowsSecurityDescriptor`, `Restore-WindowsSecurityDescriptor` |
 | Registry descriptors | `Get-RegistryKeySecurityDescriptor`, `Set-RegistryKeySecurityDescriptor` |
 | Registry access rules | `Get-RegistryKeyAccessRule`, `Add-RegistryKeyAccessRule`, `Set-RegistryKeyAccessRule`, `Remove-RegistryKeyAccessRule`, `Clear-RegistryKeyAccessRule` |
 | Registry audit rules | `Get-RegistryKeyAuditRule`, `Add-RegistryKeyAuditRule`, `Set-RegistryKeyAuditRule`, `Remove-RegistryKeyAuditRule`, `Clear-RegistryKeyAuditRule` |

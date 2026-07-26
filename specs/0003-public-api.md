@@ -21,7 +21,8 @@ through `Get-Help` (ADR 0001).
 
 - Filesystem commands use approved verbs and singular `NTFS`-prefixed nouns.
 - Registry commands use approved verbs and singular `RegistryKey`-prefixed nouns.
-- Cross-domain identity and privilege commands use `Windows`-prefixed nouns.
+- Cross-domain identity, privilege, backup, and restore commands use
+  `Windows`-prefixed nouns.
 - Every public function uses `CmdletBinding` and declares `OutputType`.
 - Every public function has synopsis, description, parameter, example, input,
   and output help where applicable.
@@ -162,11 +163,28 @@ Arbitrary owner assignment can require `SeRestorePrivilege`.
 | `Copy-NTFSItemSecurityDescriptor` | Path, LiteralPath | destination paths/objects | none / `SecurityDescriptor` |
 | `Backup-NTFSItemSecurityDescriptor` | Path, LiteralPath | paths, filesystem objects | none / backup records |
 | `Restore-NTFSItemSecurityDescriptor` | (single) | none | none / `SecurityDescriptor` |
+| `Backup-WindowsSecurityDescriptor` | InputObject | descriptor objects | none / backup records |
+| `Restore-WindowsSecurityDescriptor` | (single) | none | none / family descriptor objects |
 
 The `Sections` value selects any combination of owner, group, DACL, and SACL.
 Copy, backup, and restore preserve sections outside that selection (ADR 0003).
-Restore reads the target paths from the trusted backup document and validates
-every record before the first write (ADR 0005).
+The unified backup accepts descriptor output from filesystem, registry,
+service/SCM, and pinned process commands. Schema-version 1 records contain
+object family, target and canonical identity, native section mask, SDDL, and a
+SHA-256 digest. Process records include PID and creation `FILETIME`.
+
+`SigningCertificate` signs every record hash with RSA/SHA-256. Signed records
+require the matching `VerificationCertificate`; supplying a verification
+certificate also requires every record to be signed. Restore validates every
+record and signature, rejects duplicate canonical targets, and prepares all
+targets before the first write (ADR 0005). The NTFS-specific commands emit the
+same envelope, while restore retains read compatibility with historical NTFS
+schema-version 1 files.
+
+Backup signs only after `ShouldProcess` approves the operation and atomically
+moves or replaces the completed envelope. Selected absent SACLs use the
+explicit `S:NO_ACCESS_CONTROL` representation; omission of a selected SACL and
+all null DACLs are rejected.
 
 ## Registry-key commands
 

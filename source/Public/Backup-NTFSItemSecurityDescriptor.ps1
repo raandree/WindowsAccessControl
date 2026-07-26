@@ -72,7 +72,7 @@ function Backup-NTFSItemSecurityDescriptor {
     )
 
     begin {
-        $records = [System.Collections.Generic.List[object]]::new()
+        $descriptors = [System.Collections.Generic.List[object]]::new()
     }
 
     process {
@@ -84,14 +84,11 @@ function Backup-NTFSItemSecurityDescriptor {
         }
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
             $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections $Sections
-            $record = [pscustomobject][ordered]@{
-                Path     = $item.FullName
-                ItemType = if ($item.PSIsContainer) { 'Directory' } else { 'File' }
-                Sections = [int]$Sections
-                Sddl     = $security.GetSecurityDescriptorSddlForm($Sections)
-            }
-            $record.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.SecurityDescriptorBackupRecord')
-            $records.Add($record)
+            $descriptor = ConvertTo-NTFSSecurityDescriptorObject `
+                -Item $item `
+                -Security $security `
+                -Sections $Sections
+            $descriptors.Add($descriptor)
         }
     }
 
@@ -109,24 +106,19 @@ function Backup-NTFSItemSecurityDescriptor {
             throw "Backup destination already exists: $resolvedDestination. Use Force to overwrite it."
         }
         $action = if ($destinationExists) {
-            "Overwrite with $($records.Count) security descriptor records"
+            "Overwrite with $($descriptors.Count) security descriptor records"
         } else {
-            "Write $($records.Count) security descriptor records"
+            "Write $($descriptors.Count) security descriptor records"
         }
         if ($PSCmdlet.ShouldProcess($resolvedDestination, $action)) {
-            $backup = [ordered]@{
-                SchemaVersion = 1
-                CreatedUtc    = [DateTime]::UtcNow.ToString('o')
-                Records       = $records.ToArray()
+            $backupParameters = @{
+                InputObject     = $descriptors.ToArray()
+                DestinationPath = $resolvedDestination
+                Force           = $Force
+                PassThru        = $PassThru
+                Confirm         = $false
             }
-            $json = $backup | ConvertTo-Json -Depth 5
-            $encoding = [System.Text.UTF8Encoding]::new($false)
-            [System.IO.File]::WriteAllText($resolvedDestination, $json, $encoding)
-            if ($PassThru) {
-                foreach ($record in $records) {
-                    $record
-                }
-            }
+            Backup-WindowsSecurityDescriptor @backupParameters
         }
     }
 }

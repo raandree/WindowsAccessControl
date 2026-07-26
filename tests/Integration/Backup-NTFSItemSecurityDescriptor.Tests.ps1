@@ -1,4 +1,4 @@
-BeforeAll {
+﻿BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
@@ -22,7 +22,12 @@ Describe 'Backup-NTFSItemSecurityDescriptor' -Tag 'Integration', 'WindowsOnly' {
 
         $backup = Get-Content -LiteralPath $backupPath -Raw | ConvertFrom-Json
         $backup.SchemaVersion | Should -Be 1
+        $backup.Format | Should -Be 'WindowsAccessControl.SecurityDescriptorBackup'
         $backup.Records | Should -HaveCount 2
+        $backup.Records[0].ObjectFamily | Should -Be 'FileSystem'
+        $backup.Records[0].Sections | Should -Be 7
+        $backup.Records[0].Integrity.Algorithm | Should -Be 'SHA256'
+        $backup.Records[0].Integrity.Digest | Should -Match '^[0-9A-F]{64}$'
         $backup.Records[0].Sddl | Should -Not -BeNullOrEmpty
         $backup.Records[1].Sddl | Should -Not -BeNullOrEmpty
     }

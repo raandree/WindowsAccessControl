@@ -55,8 +55,10 @@ function Set-ServiceSecurityDescriptor {
             -not $rawDescriptor.DiscretionaryAcl) {
             throw 'The supplied SDDL does not contain a non-null DACL.'
         }
+        $systemAclPresent = ([int]$rawDescriptor.ControlFlags -band
+            [int][System.Security.AccessControl.ControlFlags]::SystemAclPresent) -ne 0
         if (($Sections -band [WindowsSecurityDescriptorSection]::Audit) -ne 0 -and
-            -not $rawDescriptor.SystemAcl) {
+            -not $systemAclPresent) {
             throw 'The supplied SDDL does not contain a SACL.'
         }
         $descriptorBytes = [byte[]]::new($rawDescriptor.BinaryLength)

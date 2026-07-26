@@ -39,7 +39,9 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             'Disable-NTFSItemInheritance'
             'Copy-NTFSItemSecurityDescriptor'
             'Backup-NTFSItemSecurityDescriptor'
+            'Backup-WindowsSecurityDescriptor'
             'Restore-NTFSItemSecurityDescriptor'
+            'Restore-WindowsSecurityDescriptor'
             'Enable-WindowsPrivilege'
             'Disable-WindowsPrivilege'
             'Add-RegistryKeyAccessRule'
@@ -177,6 +179,34 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             -DestinationPath $backupPath -Force -WhatIf
 
         Get-Content -LiteralPath $backupPath -Raw | Should -Match '^original backup'
+    }
+
+    It 'Should not create or overwrite a unified backup under WhatIf' {
+        $backupPath = Join-Path -Path $TestDrive -ChildPath 'unified-backup-whatif.json'
+        Set-Content -LiteralPath $backupPath -Value 'original backup'
+        $descriptor = Get-NTFSItemSecurityDescriptor `
+            -LiteralPath $script:targetFile `
+            -Sections Access
+
+        $descriptor | Backup-WindowsSecurityDescriptor `
+            -DestinationPath $backupPath `
+            -Force `
+            -WhatIf
+
+        Get-Content -LiteralPath $backupPath -Raw | Should -Match '^original backup'
+    }
+
+    It 'Should not restore a unified descriptor under WhatIf' {
+        $backupPath = Join-Path -Path $TestDrive -ChildPath 'unified-restore-whatif.json'
+        Get-NTFSItemSecurityDescriptor `
+            -LiteralPath $script:targetFile `
+            -Sections Access |
+            Backup-WindowsSecurityDescriptor -DestinationPath $backupPath
+
+        Restore-WindowsSecurityDescriptor -BackupPath $backupPath -WhatIf
+
+        Should -Invoke -ModuleName WindowsAccessControl `
+            -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 0 -Exactly
     }
 
     It 'Should not enable a token privilege under WhatIf' {

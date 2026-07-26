@@ -41,6 +41,21 @@ function Restore-NTFSItemSecurityDescriptor {
     if ($backup.SchemaVersion -ne 1 -or $null -eq $backup.Records) {
         throw 'The backup document is not a supported WindowsAccessControl schema.'
     }
+    if ([string]$backup.Format -ceq
+        'WindowsAccessControl.SecurityDescriptorBackup') {
+        foreach ($record in @($backup.Records)) {
+            if ([string]$record.ObjectFamily -ne 'FileSystem') {
+                throw 'Restore-NTFSItemSecurityDescriptor accepts only filesystem backup records.'
+            }
+        }
+        $restoreParameters = @{
+            BackupPath = $BackupPath
+            PassThru   = $PassThru
+            WhatIf     = $WhatIfPreference
+        }
+        Restore-WindowsSecurityDescriptor @restoreParameters
+        return
+    }
 
     $validatedRecords = [System.Collections.Generic.List[object]]::new()
     $validatedPaths = [System.Collections.Generic.HashSet[string]]::new(

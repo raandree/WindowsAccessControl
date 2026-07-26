@@ -10,8 +10,9 @@ source: repository evidence
 ## Current status
 
 The NTFS, registry, service/SCM, and pinned live-process command families are
-complete, independently approved, and green on both supported PowerShell
-editions. Cross-domain portability, bounded execution, and DSC remain open.
+complete with unified cross-domain portability, independently approved, and
+green on both supported PowerShell editions. Bounded execution and DSC remain
+open.
 
 ## Recent milestones
 
@@ -77,6 +78,17 @@ editions. Cross-domain portability, bounded execution, and DSC remain open.
     verified exact privilege-state restoration and zero controlled-child leaks.
 - 2026-07-26: Completed independent process security review with no Blocker or
     Major findings and an explicit APPROVE verdict.
+- 2026-07-26: Added unified descriptor backup and restore across filesystem,
+    registry, service/SCM, and pinned process targets with deterministic SHA-256
+    records and optional RSA X.509 signing and verification.
+- 2026-07-26: Hardened portability with all-record prevalidation, atomic backup
+    replacement, explicit absent-SACL encoding, historical NTFS compatibility,
+    duplicate-target rejection, and adversarial signature/downgrade coverage.
+- 2026-07-26: Passed 629 PowerShell 7 tests at 85.39 percent coverage and 76
+    focused Windows PowerShell 5.1 tests with zero failures or skips; verified 69
+    exports, exact privilege restoration, and zero scratch-resource leaks.
+- 2026-07-26: Completed independent portability security re-review with no
+    Blocker or Major findings and an explicit APPROVE verdict.
 
 ## Stable capabilities
 
@@ -94,11 +106,12 @@ editions. Cross-domain portability, bounded execution, and DSC remain open.
     typed rule workflows without inheritance semantics.
 - Pinned live-process descriptor and typed rule workflows with PID-reuse
     protection and caller-owned handle support.
+- Unified schema-versioned descriptor backup and restore with section-scoped
+    cross-family dispatch, SHA-256 integrity, optional X.509 authenticity, and
+    atomic file replacement.
 
 ## Open work
 
-- Add unified cross-domain descriptor backup and restore with optional
-    integrity protection.
 - Add bounded target execution, same-target serialization, and metrics.
 - Decide and implement optional local credential impersonation if retained.
 - Add class-based DSC exact-descriptor and rule-presence resources for every

@@ -157,3 +157,31 @@ enabled state before process operations and assert exact restoration afterward.
 For PID targets, open and verify one handle against the expected creation
 `FILETIME`, then reuse it for the complete operation. Do not re-open by PID for
 the write because the original process may exit and the PID may be reused.
+
+## Canonical descriptor record hashing
+
+Do not hash JSON text directly because property order, whitespace, and numeric
+representation vary by serializer and PowerShell edition. Write a domain tag,
+fixed field order, length-prefixed UTF-8 strings, and fixed-width integers to a
+binary stream. Format PID and creation `FILETIME` through `InvariantCulture`.
+Keep a fixed process-record digest test in both supported editions.
+
+An unkeyed digest detects corruption but an attacker can recompute it. The
+adversarial signature test must replace both SDDL and digest while retaining the
+old signature so it proves RSA verification, not only digest mismatch.
+
+## Explicit absent SACL persistence
+
+`RawSecurityDescriptor.GetSddlForm(Audit)` returns an empty string when the SACL
+is absent. Portability output must normalize that selected absence to
+`S:NO_ACCESS_CONTROL`. Native persistence may pass a null SACL pointer only when
+`SystemAclPresent` is explicit; a merely omitted selected SACL fails closed.
+Null DACLs remain rejected because they grant unrestricted access.
+
+## Atomic backup replacement
+
+PowerShell binds a null third argument to `File.Replace` as an empty path, which
+Windows rejects. Use a unique same-directory rollback path, remove it in
+`finally`, and keep cleanup warnings nonterminating so they cannot mask the
+primary write outcome. Sign only after `ShouldProcess` approves the operation,
+because hardware-backed keys can prompt or count usage under `WhatIf`.

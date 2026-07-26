@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     descriptors plus typed access/audit rule CRUD without inheritance semantics
 - Add 12 ephemeral live-process commands with PID/creation-time pinning,
     caller-owned handle support, typed process rights, and access/audit CRUD
+- Add unified cross-domain descriptor backup and restore with SHA-256 record
+    integrity and optional RSA X.509 signing and verification
 - Add a shared Unicode named/handle security descriptor engine with pinned
     process identity checks and caller-owned handle support
 - Allow `Resolve-WindowsIdentity` to accept native identity references, module
@@ -50,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Validate every unified backup record, digest, signature, canonical target,
+    and process instance before restoring the first descriptor
+- Reject recomputed-digest signature tampering, mixed signed/unsigned
+    envelopes, duplicate targets, omitted selected ACL sections, and null DACLs
 - Validate backup schema, record paths, item types, section masks, and SDDL
     before restoring security descriptors
 - Persist only modified descriptor sections to avoid unintended SACL or owner
@@ -72,3 +78,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Skip identical registry descriptor writes, preserve an absent SACL during a
     matchless clear, reject audit rules with `AuditFlags None`, and normalize
     provider-style forward-slash paths without changing native slash names
+- Write completed backup envelopes through atomic same-directory replacement,
+    defer signing-key access until `ShouldProcess`, and preserve absent SACLs
+    through explicit `S:NO_ACCESS_CONTROL` records

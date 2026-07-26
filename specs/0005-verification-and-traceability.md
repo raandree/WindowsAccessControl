@@ -33,7 +33,7 @@ is not reported as a successful live write.
 | FR-7 | Owner Integration tests and elevated arbitrary-owner acceptance |
 | FR-8 | Inheritance Integration tests and elevated audit-inheritance acceptance |
 | FR-9 | Security-descriptor Get and Copy Integration tests |
-| FR-10 | Backup and Restore Integration tests plus elevated SACL restore |
+| FR-10 | NTFS Backup/Restore tests, cross-family portability tests, SHA-256 and recomputed-digest tamper rejection, X.509 verification, absent-SACL restore, and elevated SACL restore |
 | FR-11 | `Resolve-WindowsIdentity.Tests.ps1` and orphan-rule tests |
 | FR-12 | `Test-NTFSItemAcl.Tests.ps1` |
 | FR-13 | `Get-NTFSItemEffectiveAccess.Tests.ps1` |
@@ -46,7 +46,7 @@ is not reported as a successful live write.
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |
 | NFR-4 | Export/help QA and specification format-view conformance |
 | NFR-5 | PSScriptAnalyzer QA and Sampler coverage threshold |
-| NFR-6 | Restore prevalidation and duplicate-identity regression tests |
+| NFR-6 | Whole-envelope integrity/target prevalidation and duplicate-identity regression tests |
 | NFR-7 | `Elevated-WindowsAccessControl.Tests.ps1` explicit skip behavior |
 | NFR-8 | Backup schema, no-clobber, malformed-document, and restore tests |
 | NFR-9 | Token inventory test and mutator `WhatIf` safety tests |
@@ -59,6 +59,7 @@ is not reported as a successful live write.
 | `Add-NTFSAccessRule` | 5 | Live NTFS | Not required |
 | `Add-NTFSAuditRule` | 3 | Unit descriptor | Live SACL add/query |
 | `Backup-NTFSItemSecurityDescriptor` | 3 | Live NTFS DACL | Live SACL backup |
+| `Backup-WindowsSecurityDescriptor` | 6 | Live NTFS, registry, service/SCM, and process | SHA-256, X.509, atomic replacement, duplicate rejection, and absent SACL |
 | `Clear-NTFSAccessRule` | 1 | Live NTFS | Not required |
 | `Clear-NTFSAuditRule` | 1 | Unit descriptor | Live SACL clear |
 | `Copy-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Live SACL copy and section preservation |
@@ -78,7 +79,8 @@ is not reported as a successful live write.
 | `Remove-NTFSAccessRule` | 4 | Live NTFS | Not required |
 | `Remove-NTFSAuditRule` | 4 | Unit descriptor | Live SACL set/remove |
 | `Resolve-WindowsIdentity` | 1 | Identity Unit | Not required |
-| `Restore-NTFSItemSecurityDescriptor` | 4 | Live NTFS DACL | Live SACL restore |
+| `Restore-NTFSItemSecurityDescriptor` | 5 | Live NTFS DACL and historical schema 1 | Live SACL restore and family isolation |
+| `Restore-WindowsSecurityDescriptor` | 7 | Live NTFS, registry, service/SCM, and process | Whole-envelope validation, mixed-signature rejection, and X.509 verification |
 | `Set-NTFSAccessRule` | 1 | Live NTFS | Not required |
 | `Set-NTFSAuditRule` | 1 | Unit descriptor | Live SACL set/remove |
 | `Set-NTFSItemOwner` | 1 | Live current owner | Arbitrary-owner workflow |

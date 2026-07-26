@@ -20,6 +20,13 @@ function ConvertTo-WindowsSecurityDescriptorObject {
         0
     )
     $managedSections = ConvertTo-WindowsAccessControlSection -Sections $Sections
+    $sddl = $rawDescriptor.GetSddlForm($managedSections)
+    $systemAclPresent = ([int]$rawDescriptor.ControlFlags -band
+        [int][System.Security.AccessControl.ControlFlags]::SystemAclPresent) -ne 0
+    if (($Sections -band [WindowsSecurityDescriptorSection]::Audit) -ne 0 -and
+        -not $rawDescriptor.SystemAcl -and -not $systemAclPresent) {
+        $sddl += 'S:NO_ACCESS_CONTROL'
+    }
     $result = [pscustomobject]@{
         ObjectType               = $Target.ObjectType
         Path                     = $Target.Path
@@ -37,7 +44,7 @@ function ConvertTo-WindowsSecurityDescriptorObject {
         CanonicalTarget          = $Target.CanonicalTarget
         RegistryView             = $Target.RegistryView
         Sections                 = $Sections
-        Sddl                     = $rawDescriptor.GetSddlForm($managedSections)
+        Sddl                     = $sddl
         OwnerSID                 = if ($rawDescriptor.Owner) { $rawDescriptor.Owner.Value } else { $null }
         GroupSID                 = if ($rawDescriptor.Group) { $rawDescriptor.Group.Value } else { $null }
         AccessRulesProtected     = ([int]$rawDescriptor.ControlFlags -band (

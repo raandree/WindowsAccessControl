@@ -233,3 +233,33 @@ Normative record: [ADR 0008](../specs/decisions/0008-use-scoped-automatic-privil
     privilege. Restore its exact initial state after the retry scope.
 - Rationale: Protected processes may require debug authority, but unrelated
     errors and caller-owned handles must not trigger privilege escalation.
+
+### Decision 24: Use one integrity-protected descriptor envelope
+
+Normative records: [ADR 0003](../specs/decisions/0003-persist-only-selected-descriptor-sections.md)
+and [ADR 0005](../specs/decisions/0005-use-versioned-validated-json-backups.md).
+
+- Choice: Normalize object-specific descriptor output into one schema-versioned
+    record carrying family, canonical target, instance metadata, native section
+    mask, SDDL, and a deterministic SHA-256 digest. Optionally sign each digest
+    with an explicitly supplied RSA X.509 certificate.
+- Rationale: One non-executable format preserves section fidelity across both
+    PowerShell editions while keeping target-specific validation and persistence
+    inside existing adapters.
+
+### Decision 25: Validate and prepare the complete restore before writing
+
+- Choice: Verify every schema field, digest, optional signature, selected
+    section, canonical target, duplicate, and live process identity, then prepare
+    every target before entering the persistence loop.
+- Rationale: A malformed or tampered later record must not mutate an earlier
+    independent target. Runtime write failures remain nontransactional and are
+    recoverable by rerunning the validated backup.
+
+### Decision 26: Make absence and backup replacement explicit
+
+- Choice: Encode a selected absent SACL as `S:NO_ACCESS_CONTROL`, reject omitted
+    selected ACLs and null DACLs, and write completed envelopes through atomic
+    same-directory move or replacement after `ShouldProcess` approval.
+- Rationale: Absence must not be confused with an empty ACL, and interrupted
+    backup writes must not destroy the prior recovery artifact.

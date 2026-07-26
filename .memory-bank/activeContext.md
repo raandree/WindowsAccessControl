@@ -10,8 +10,8 @@ source: current task evidence
 ## Current focus
 
 Continue the signed `WindowsAccessControl` expansion on
-`ai/windows-access-control`. The pinned live-process family is complete; the
-next milestone is unified cross-domain descriptor portability.
+`ai/windows-access-control`. Unified cross-domain descriptor portability is
+complete; the next milestone is bounded execution and metrics.
 
 ## Evidence
 
@@ -45,10 +45,31 @@ next milestone is unified cross-domain descriptor portability.
 - Independent security review returned APPROVE with no Blocker or Major
     findings. Residual risk is limited to caller misuse of stale output from a
     borrowed handle and defensive native cleanup/dead-code follow-ups.
+- `Backup-WindowsSecurityDescriptor` and `Restore-WindowsSecurityDescriptor`
+    provide one schema-versioned envelope for filesystem, registry, service/SCM,
+    and pinned process descriptors, bringing the module to 69 exports.
+- Every record carries a deterministic SHA-256 digest over restore-relevant
+    fields. Optional RSA X.509 signatures are thumbprint-pinned to the supplied
+    certificate and verified before target preparation.
+- Restore validates every record, integrity proof, canonical target, selected
+    section, duplicate, and process creation identity before the first write.
+- Backup signs only after `ShouldProcess`, rejects duplicate canonical targets,
+    and atomically moves or replaces a completed same-directory temporary file.
+- Selected absent SACLs use explicit `S:NO_ACCESS_CONTROL`; omitted selected
+    SACLs and all null DACLs fail closed.
+- Historical unmarked NTFS schema-version 1 files remain readable. The legacy
+    NTFS restore command rejects unified records from other object families.
+- The authoritative PowerShell 7 gate passes 629 tests with zero failures or
+    skips at 85.39 percent coverage. The focused Windows PowerShell 5.1 gate
+    passes 76 tests with zero failures or skips.
+- Independent security re-review returned APPROVE with no Blocker or Major
+    findings after adversarial recomputed-digest, mixed-signature, atomic-write,
+    absent-SACL, and cross-edition hash-vector coverage.
+- Final out-of-band checks report 69 exports, exact privilege-state restoration,
+    and zero leaked processes, services, or registry roots.
 
 ## Next step
 
-Implement unified cross-domain descriptor backup and restore with optional
-SHA-256 and X.509 integrity, then bounded execution and metrics, optional local
-impersonation if retained, and class-based DSC resources. Do not push or publish
-without an explicit request.
+Implement bounded target execution, same-target serialization, and metrics,
+then optional local impersonation if retained and class-based DSC resources. Do
+not push or publish without an explicit request.

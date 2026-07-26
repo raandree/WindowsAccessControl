@@ -456,7 +456,7 @@ namespace WindowsAccessControl
                 throw new Win32Exception(Marshal.GetLastWin32Error());
             }
             if ((sections & SaclSecurityInformation) != 0 &&
-                (!saclPresent || sacl == IntPtr.Zero))
+                !saclPresent)
             {
                 throw new InvalidOperationException(
                     "The supplied security descriptor does not contain a SACL.");
