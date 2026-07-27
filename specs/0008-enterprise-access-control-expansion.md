@@ -234,14 +234,15 @@ contain symbolic role names and secret-store references, never secret values.
 ## Sequencing
 
 1. Complete `ENT-1` through `ENT-5` and accept the security/remote contracts.
-2. Implement Task Scheduler as the lowest-risk persistent adapter.
-3. Implement software-backed CAPI and CNG key adapters.
-4. Implement SMB share management and share-only effective access.
-5. Implement Active Directory query behavior before any directory mutation.
-6. Add Active Directory mutation and replication-aware convergence.
-7. Close OI-4, then implement combined SMB, NTFS, and domain-context effective
+2. Complete `ENT-6` and `ENT-7` before releasing the first enterprise family.
+3. Implement Task Scheduler as the lowest-risk persistent adapter.
+4. Implement software-backed CAPI and CNG key adapters.
+5. Implement SMB share management and share-only effective access.
+6. Implement Active Directory query behavior before any directory mutation.
+7. Add Active Directory mutation and replication-aware convergence.
+8. Close OI-4, then implement combined SMB, NTFS, and domain-context effective
   access through the approved remote authorization contract.
-8. Run the complete enterprise release and independent security gates.
+9. Run `ENT-8` for each enterprise release candidate.
 
 Each core family remains independently releasable. Combined SMB, NTFS, and
 domain-context effective access is a later dependent increment rather than a
@@ -252,9 +253,9 @@ waive a failed gate in an earlier package.
 
 The `ENT-*`, `TASK-*`, `KEY-*`, `SMB-*`, and `AD-*` identifiers are durable
 roadmap task identifiers, not functional or non-functional requirements. Before
-this Draft becomes `Accepted`, specification 0002 receives stable `FR-*` and
-`NFR-*` identifiers and specification 0005 maps each requirement and roadmap
-task to executable evidence.
+this Draft becomes `Accepted`, specification 0002 receives additional stable
+`FR-*` and `NFR-*` identifiers and specification 0005 maps each requirement and
+roadmap task to executable evidence.
 
 ## Verification and completion
 
