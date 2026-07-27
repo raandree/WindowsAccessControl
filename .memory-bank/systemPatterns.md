@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-26
+last-verified: 2026-07-27
 owner: active-agent
 source: repository evidence
 ---
@@ -340,3 +340,12 @@ Normative record: [ADR 0011](../specs/decisions/0011-limit-release-to-local-obje
     Windows PowerShell 5.1 it corrupts class-based DSC construction after
     Desktop LCM acceptance, while breakpoint coverage preserves the same tests
     and clears the coverage threshold in both editions.
+
+### Decision 34: Align native ACE metadata with managed rule enumeration
+
+- Choice: When a Windows API returns metadata for every native DACL ACE but the
+    public contract uses .NET access rules, parse the same binary descriptor and
+    filter metadata to `CommonAce` allow/deny entries before positional pairing.
+- Rationale: `.GetAccessRules()` omits object and other nonstandard ACEs. Zipping
+    its output directly to a full native ACE array can shift provenance or make
+    valid enterprise ACLs fail enumeration.

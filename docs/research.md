@@ -47,12 +47,11 @@ The following ideas are implemented here:
   `Get-Privileges`, without enabling privileges as an import side effect.
 - Access and audit parity for rule construction, query, mutation, orphaned SID
   filtering, inheritance, and selected-section descriptor portability.
+- Inherited access-rule provenance through the Windows inheritance-source API,
+  including original-ancestor resolution through intermediate inherited ACEs.
 
 The following ideas are deliberately deferred:
 
-- Inherited-source provenance requires the Windows inheritance-source API for
-  unambiguous results. Guessing by comparing parent ACEs can report the wrong
-  ancestor when identical rules exist at multiple levels.
 - Remote effective-access evaluation changes RPC, trust, and authorization
   boundaries. The current Authz result is explicitly local and SID based.
 - In-memory descriptor mutation would create a second persistence model beside

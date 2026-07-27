@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-26
+last-verified: 2026-07-27
 owner: active-agent
 source: current task evidence
 ---
@@ -9,12 +9,26 @@ source: current task evidence
 
 ## Current focus
 
-The Windows PowerShell 5.1 build-test regression is fixed on
-`ai/fix-ps5-exact-dsc-tests`. Pester now uses breakpoint coverage across both
-supported editions. Remote publication remains under explicit user control.
+OI-3 inherited access-rule provenance is complete on
+`ai/oi-3-inherited-provenance`. Remote publication remains under explicit user
+control.
 
 ## Evidence
 
+- `Get-NTFSAccessRule` exposes `InheritedFrom` from `GetInheritanceSourceW`.
+    Explicit rules and unresolved native sources return null; no parent-rule
+    heuristic is used.
+- Native source rows are filtered from the same binary descriptor to the
+    `CommonAce` allow/deny subset emitted by .NET, preserving positional pairing
+    when unrelated object ACEs exist. Explicit-only queries skip the native walk.
+- Eight focused provenance tests pass in PowerShell 7 and Windows PowerShell
+    5.1. They cover explicit nulls, files, directories, original grandparents,
+    mixed rules, object ACE coexistence, and the explicit-only fast path.
+- Specification QA passes eight tests. The final privilege-compatible Sampler
+    profile passes 714 tests with zero failures and one skip; the complete
+    elevation/coverage gate requires a privileged token.
+- Independent native-interop re-review returned APPROVE with no Blocker or
+    Major findings after managed/native ACE alignment and fast-path repairs.
 - The package is hard-renamed to `WindowsAccessControl`, retains its GUID, and
     has no third-party runtime dependency.
 - Accepted specifications and ADRs define automatic scoped privileges, one
@@ -144,5 +158,5 @@ supported editions. Remote publication remains under explicit user control.
 
 ## Next step
 
-Retain the green local milestone on `ai/fix-ps5-exact-dsc-tests`. Do not push or
-publish without an explicit request.
+Retain the green local OI-3 milestone. Do not push or publish without an
+explicit request.

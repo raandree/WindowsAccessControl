@@ -323,7 +323,7 @@ and must receive separate specifications before implementation:
   certificate-private-key adapters
 - Active Directory ACLs
 - persistent policy that reapplies permissions to future process instances
-- heuristic inherited-ACE provenance or remote effective-access context
+- remote effective-access context
 
 ## Sign-off
 

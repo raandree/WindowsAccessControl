@@ -137,6 +137,16 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         foreach ($typeName in $requiredTypes) {
             $formattedTypes | Should -Contain $typeName
         }
+
+        $accessRuleView = @(
+            $formatData.Configuration.ViewDefinitions.View |
+                Where-Object Name -EQ 'WindowsAccessControl.AccessRule'
+        )
+        $accessRuleColumns = @(
+            $accessRuleView.TableControl.TableRowEntries.TableRowEntry.
+                TableColumnItems.TableColumnItem.PropertyName
+        )
+        $accessRuleColumns | Should -Contain 'InheritedFrom'
     }
 
     It 'Should index every architecture decision record' {

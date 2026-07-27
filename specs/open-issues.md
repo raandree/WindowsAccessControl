@@ -5,15 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-3: Report inherited-rule provenance
-
-Specifications: 0003, 0004. Requirement: FR-1.
-
-Administrators may need the ancestor from which an inherited ACE originated.
-Implement this only through the Windows inheritance-source API. Comparing
-parent rules heuristically is insufficient because identical ACEs can exist at
-multiple ancestors.
-
 ## OI-4: Evaluate remote effective-access context
 
 Specifications: 0003, 0004. Requirement: FR-13.

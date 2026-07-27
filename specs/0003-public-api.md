@@ -116,6 +116,12 @@ Stable PowerShell type names identify module output:
 Native .NET rule or descriptor objects remain available as properties where a
 caller needs exact Windows semantics.
 
+NTFS `AccessRule` objects expose `InheritedFrom`. It is null for explicit
+rules and for inherited rules whose source Windows cannot determine. Otherwise
+it contains the normalized local ancestor path returned by the Windows
+inheritance-source API. The module does not infer the source by comparing an
+ACE with rules on parent directories.
+
 Every registry, service, SCM, and process rule object exposes `AccessMask` as a
 `UInt64` containing the normalized unsigned 32-bit native mask. `AccessRights`
 uses the object family's public enum; exact removal uses the preserved native

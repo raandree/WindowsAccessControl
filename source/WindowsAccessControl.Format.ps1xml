@@ -13,6 +13,7 @@
           <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
           <TableColumnHeader><Label>Type</Label></TableColumnHeader>
           <TableColumnHeader><Label>Inherited</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Inherited From</Label></TableColumnHeader>
           <TableColumnHeader><Label>AppliesTo</Label></TableColumnHeader>
         </TableHeaders>
         <TableRowEntries>
@@ -23,6 +24,7 @@
               <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>InheritedFrom</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AppliesTo</PropertyName></TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>

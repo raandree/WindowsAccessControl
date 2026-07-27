@@ -54,6 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (`SubfoldersAndFilesOnlyOneLevel`, `SubfoldersOnlyOneLevel`,
     `FilesOnlyOneLevel`) across the NTFS access and audit cmdlets and the NTFS
     DSC resource, matching the full NTFSSecurity `ApplyTo` coverage
+- Add native `InheritedFrom` provenance to NTFS access-rule results and their
+    curated table view
 
 ### Changed
 

@@ -66,6 +66,18 @@ The default preserves effective access. When enabling inheritance,
 `RemoveExplicitRules` removes only explicit ACEs from the selected ACL before
 the descriptor is persisted. Inherited ACEs are not selected for removal.
 
+Access-rule queries resolve inherited ACE provenance with
+`GetInheritanceSourceW` against the same DACL returned to the caller. Explicit
+ACEs have no source. An inherited ACE keeps its inherited state but reports a
+null source when Windows cannot determine its ancestor. Native source rows are
+filtered to the `CommonAce` allow/deny subset exposed by .NET access-rule
+enumeration, so unrelated object or other non-standard ACEs remain in the
+descriptor without breaking the query. Explicit-only queries do not enter the
+native inheritance-source path. The native name allocations are released with
+`FreeInheritedFromArray`, and a Windows failure terminates that target rather
+than falling back to heuristic parent-rule comparison. Concurrent hierarchy
+changes can make the native operation fail; no stale source is invented.
+
 ## Privilege boundary
 
 The module recognizes the Windows privilege boundary and scopes required

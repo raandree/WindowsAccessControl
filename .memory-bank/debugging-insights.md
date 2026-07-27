@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-26
+last-verified: 2026-07-27
 owner: software-engineer
 source: implementation and test evidence
 ---
@@ -334,3 +334,12 @@ fixture.
 Keep `UseBreakpoints: true`. Prove the fix with the covered nine-test sequence
 and the complete test workflow in both editions; do not skip the resource tests
 or replace their constructor fixture to hide the tracer defect.
+
+## Native and managed ACE enumeration
+
+`GetInheritanceSourceW` returns one metadata entry for every native DACL ACE,
+while `.GetAccessRules()` emits only `CommonAce` allow/deny rules. Never zip the
+unfiltered arrays. Parse the same binary descriptor, filter native metadata to
+the managed subset, retain a cardinality guard, and test object-ACE coexistence
+plus mixed explicit and inherited sources. Skip the native hierarchy walk when
+inherited rules are excluded.

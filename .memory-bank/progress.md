@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-26
+last-verified: 2026-07-27
 owner: active-agent
 source: repository evidence
 ---
@@ -13,7 +13,8 @@ The NTFS, registry, service/SCM, and pinned live-process command families are
 complete with unified cross-domain portability, bounded execution, canonical
 write serialization, metrics, and exact-descriptor DSC resources. They are
 independently approved and green on both supported PowerShell editions. All ten
-signed DSC resources are complete.
+signed DSC resources are complete. OI-3 is closed with native inherited
+access-rule provenance.
 
 ## Recent milestones
 
@@ -160,6 +161,14 @@ signed DSC resources are complete.
     breakpoint coverage, and passed 770 Desktop tests at 87.79 percent coverage
     plus 797 PowerShell 7 tests at 88.19 percent coverage with zero failures or
     skips.
+- 2026-07-27: Closed OI-3 by adding `InheritedFrom` to NTFS access-rule output
+    through `GetInheritanceSourceW`, including original-ancestor resolution,
+    native allocation cleanup, managed/native ACE alignment, and explicit-only
+    fast-path behavior.
+- 2026-07-27: Passed eight focused tests in both PowerShell editions, eight
+    specification QA tests, and a privilege-compatible Sampler gate with 714
+    passing tests, zero failures, and one skip. Independent re-review returned
+    APPROVE with no Blocker or Major findings.
 
 ## Stable capabilities
 
@@ -187,6 +196,8 @@ signed DSC resources are complete.
     including Desktop MOF compilation and SYSTEM LCM invocation evidence.
 - Exact access-rule presence DSC resources for every current target family,
     including duplicate cleanup, live rollback, and SYSTEM LCM invocation.
+- Native inherited NTFS access-rule provenance without heuristic parent-ACL
+    comparison.
 
 ## Open work
 

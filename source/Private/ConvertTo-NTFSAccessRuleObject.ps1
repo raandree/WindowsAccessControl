@@ -7,7 +7,11 @@ function ConvertTo-NTFSAccessRuleObject {
 
         [Parameter()]
         [AllowEmptyString()]
-        [string]$Path
+        [string]$Path,
+
+        [Parameter()]
+        [AllowNull()]
+        [string]$InheritedFrom
     )
 
     $securityIdentifier = [System.Security.Principal.SecurityIdentifier]$Rule.IdentityReference
@@ -25,6 +29,14 @@ function ConvertTo-NTFSAccessRuleObject {
         PropagationFlags = $Rule.PropagationFlags
     }
     $appliesTo = ConvertTo-NTFSAppliesTo @appliesToParameters
+    $inheritedFromPath = if (
+        $Rule.IsInherited -and
+        -not [string]::IsNullOrEmpty($InheritedFrom)
+    ) {
+        $InheritedFrom
+    } else {
+        $null
+    }
 
     $result = [pscustomobject]@{
         Path              = $Path
@@ -36,6 +48,7 @@ function ConvertTo-NTFSAccessRuleObject {
         InheritanceFlags  = $Rule.InheritanceFlags
         PropagationFlags  = $Rule.PropagationFlags
         IsInherited       = $Rule.IsInherited
+        InheritedFrom     = $inheritedFromPath
         IsOrphaned        = $isOrphaned
         NativeRule        = $Rule
     }

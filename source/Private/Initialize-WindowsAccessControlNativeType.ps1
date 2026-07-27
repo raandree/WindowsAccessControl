@@ -10,9 +10,11 @@ function Initialize-WindowsAccessControlNativeType {
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using Microsoft.Win32.SafeHandles;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
@@ -74,6 +76,30 @@ namespace WindowsAccessControl
         public IntPtr Error;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct AclSizeInformation
+    {
+        public UInt32 AceCount;
+        public UInt32 AclBytesInUse;
+        public UInt32 AclBytesFree;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct GenericMapping
+    {
+        public UInt32 GenericRead;
+        public UInt32 GenericWrite;
+        public UInt32 GenericExecute;
+        public UInt32 GenericAll;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct InheritedFrom
+    {
+        public Int32 GenerationGap;
+        public IntPtr AncestorName;
+    }
+
     public sealed class TokenPrivilegeInfo
     {
         public string Name { get; private set; }
@@ -89,6 +115,20 @@ namespace WindowsAccessControl
             EnabledByDefault = (attributes & 0x00000001) != 0;
             Enabled = (attributes & 0x00000002) != 0;
             UsedForAccess = (attributes & 0x80000000) != 0;
+        }
+    }
+
+    public sealed class AccessRuleInheritanceSourceInfo
+    {
+        public Int32 GenerationGap { get; private set; }
+        public string AncestorName { get; private set; }
+
+        internal AccessRuleInheritanceSourceInfo(
+            Int32 generationGap,
+            string ancestorName)
+        {
+            GenerationGap = generationGap;
+            AncestorName = ancestorName;
         }
     }
 
@@ -151,6 +191,11 @@ namespace WindowsAccessControl
         private const UInt32 FileObject = 1;
         private const UInt32 ServiceObject = 2;
         private const UInt32 KernelObject = 6;
+        private const UInt32 AclSizeInformationClass = 2;
+        private const UInt32 FileGenericRead = 0x00120089;
+        private const UInt32 FileGenericWrite = 0x00120116;
+        private const UInt32 FileGenericExecute = 0x001200A0;
+        private const UInt32 FileAllAccess = 0x001F01FF;
         private const UInt32 Logon32LogonInteractive = 2;
         private const UInt32 Logon32ProviderDefault = 0;
 
@@ -312,6 +357,33 @@ namespace WindowsAccessControl
             IntPtr group,
             IntPtr dacl,
             IntPtr sacl);
+
+        [DllImport("advapi32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetAclInformation(
+            IntPtr acl,
+            out AclSizeInformation aclInformation,
+            UInt32 aclInformationLength,
+            UInt32 aclInformationClass);
+
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetInheritanceSourceW")]
+        private static extern UInt32 NativeGetInheritanceSource(
+            string objectName,
+            UInt32 objectType,
+            UInt32 securityInformation,
+            [MarshalAs(UnmanagedType.Bool)] bool container,
+            IntPtr objectClassGuids,
+            UInt32 guidCount,
+            IntPtr acl,
+            IntPtr objectManagerFunctions,
+            ref GenericMapping genericMapping,
+            IntPtr inheritArray);
+
+        [DllImport("advapi32.dll")]
+        private static extern UInt32 FreeInheritedFromArray(
+            IntPtr inheritArray,
+            UInt16 aceCount,
+            IntPtr objectManagerFunctions);
 
         [DllImport("advapi32.dll")]
         private static extern UInt32 GetSecurityInfo(
@@ -517,6 +589,21 @@ namespace WindowsAccessControl
         {
             UInt64 result = ((UInt64)value.HighDateTime << 32) | value.LowDateTime;
             return unchecked((Int64)result);
+        }
+
+        private static string NormalizeAncestorName(string ancestorName)
+        {
+            if (String.IsNullOrEmpty(ancestorName))
+            {
+                return ancestorName;
+            }
+
+            string root = Path.GetPathRoot(ancestorName);
+            return String.Equals(ancestorName, root, StringComparison.OrdinalIgnoreCase)
+                ? ancestorName
+                : ancestorName.TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar);
         }
 
         public static SafeAccessTokenHandle LogonUser(
@@ -805,6 +892,156 @@ namespace WindowsAccessControl
                     LocalFree(securityDescriptor);
                 }
             }
+        }
+
+        public static AccessRuleInheritanceSourceInfo[] GetFileSystemAccessRuleInheritanceSources(
+            string path,
+            bool container,
+            byte[] securityDescriptor)
+        {
+            if (String.IsNullOrWhiteSpace(path))
+            {
+                throw new ArgumentException("A file-system path is required.", "path");
+            }
+            ValidateSecurityDescriptor(securityDescriptor);
+
+            IntPtr descriptorPointer = IntPtr.Zero;
+            IntPtr inheritanceArray = IntPtr.Zero;
+            bool inheritedNamesAllocated = false;
+            UInt16 aceCount = 0;
+            UInt32 freeResult = 0;
+            List<AccessRuleInheritanceSourceInfo> sources =
+                new List<AccessRuleInheritanceSourceInfo>();
+            try
+            {
+                descriptorPointer = Marshal.AllocHGlobal(securityDescriptor.Length);
+                Marshal.Copy(
+                    securityDescriptor,
+                    0,
+                    descriptorPointer,
+                    securityDescriptor.Length);
+                ValidateSecurityDescriptorPointer(descriptorPointer);
+
+                bool daclPresent;
+                bool daclDefaulted;
+                IntPtr dacl;
+                if (!GetSecurityDescriptorDacl(
+                    descriptorPointer,
+                    out daclPresent,
+                    out dacl,
+                    out daclDefaulted))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                if (!daclPresent || dacl == IntPtr.Zero)
+                {
+                    return new AccessRuleInheritanceSourceInfo[0];
+                }
+
+                AclSizeInformation aclInformation;
+                if (!GetAclInformation(
+                    dacl,
+                    out aclInformation,
+                    (UInt32)Marshal.SizeOf(typeof(AclSizeInformation)),
+                    AclSizeInformationClass))
+                {
+                    throw new Win32Exception(Marshal.GetLastWin32Error());
+                }
+                if (aclInformation.AceCount == 0)
+                {
+                    return new AccessRuleInheritanceSourceInfo[0];
+                }
+                if (aclInformation.AceCount > UInt16.MaxValue)
+                {
+                    throw new InvalidOperationException(
+                        "The DACL contains too many ACEs to resolve inheritance sources.");
+                }
+                aceCount = (UInt16)aclInformation.AceCount;
+                RawSecurityDescriptor rawDescriptor =
+                    new RawSecurityDescriptor(securityDescriptor, 0);
+                RawAcl rawAcl = rawDescriptor.DiscretionaryAcl;
+                if (rawAcl == null || rawAcl.Count != aceCount)
+                {
+                    throw new InvalidOperationException(
+                        "The managed and native DACL ACE counts do not match.");
+                }
+
+                Int32 inheritedFromSize = Marshal.SizeOf(typeof(InheritedFrom));
+                Int32 allocationSize = checked(
+                    inheritedFromSize * aceCount);
+                inheritanceArray = Marshal.AllocHGlobal(allocationSize);
+
+                GenericMapping genericMapping = new GenericMapping
+                {
+                    GenericRead = FileGenericRead,
+                    GenericWrite = FileGenericWrite,
+                    GenericExecute = FileGenericExecute,
+                    GenericAll = FileAllAccess
+                };
+                UInt32 result = NativeGetInheritanceSource(
+                    path,
+                    FileObject,
+                    DaclSecurityInformation,
+                    container,
+                    IntPtr.Zero,
+                    0,
+                    dacl,
+                    IntPtr.Zero,
+                    ref genericMapping,
+                    inheritanceArray);
+                if (result != 0)
+                {
+                    throw new Win32Exception((Int32)result);
+                }
+                inheritedNamesAllocated = true;
+
+                for (Int32 index = 0; index < aceCount; index++)
+                {
+                    CommonAce managedAce = rawAcl[index] as CommonAce;
+                    if (managedAce == null ||
+                        (managedAce.AceQualifier != AceQualifier.AccessAllowed &&
+                        managedAce.AceQualifier != AceQualifier.AccessDenied))
+                    {
+                        continue;
+                    }
+                    IntPtr entryPointer = IntPtr.Add(
+                        inheritanceArray,
+                        index * inheritedFromSize);
+                    InheritedFrom entry = (InheritedFrom)Marshal.PtrToStructure(
+                        entryPointer,
+                        typeof(InheritedFrom));
+                    string ancestorName = entry.AncestorName == IntPtr.Zero
+                        ? null
+                        : NormalizeAncestorName(
+                            Marshal.PtrToStringUni(entry.AncestorName));
+                    sources.Add(new AccessRuleInheritanceSourceInfo(
+                        entry.GenerationGap,
+                        ancestorName));
+                }
+            }
+            finally
+            {
+                if (inheritedNamesAllocated)
+                {
+                    freeResult = FreeInheritedFromArray(
+                        inheritanceArray,
+                        aceCount,
+                        IntPtr.Zero);
+                }
+                if (inheritanceArray != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(inheritanceArray);
+                }
+                if (descriptorPointer != IntPtr.Zero)
+                {
+                    Marshal.FreeHGlobal(descriptorPointer);
+                }
+            }
+            if (freeResult != 0)
+            {
+                throw new Win32Exception((Int32)freeResult);
+            }
+            return sources.ToArray();
         }
 
         public static void SetNamedSecurityDescriptor(

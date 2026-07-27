@@ -6,7 +6,10 @@ function Get-NTFSAccessRule {
     .DESCRIPTION
         Returns structured access-rule objects for each filesystem path. Rules
         can be filtered by account and by whether they are explicit or
-        inherited, and the output can be piped to other module commands.
+        inherited. InheritedFrom identifies the original ancestor reported by
+        the Windows inheritance-source API. It is empty for explicit rules or
+        when Windows cannot identify an inherited ancestor. The output can be
+        piped to other module commands.
 
     .PARAMETER Path
         One or more filesystem paths. Wildcards are expanded by the FileSystem
@@ -110,14 +113,40 @@ function Get-NTFSAccessRule {
 
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
             $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
-            $rules = $security.GetAccessRules(
-                -not $ExcludeExplicit,
+            $rules = @($security.GetAccessRules(
+                $true,
                 -not $ExcludeInherited,
                 [System.Security.Principal.SecurityIdentifier]
-            )
+            ))
+            $inheritanceSources = @()
+            if (-not $ExcludeInherited -and $rules.Count -gt 0) {
+                $inheritanceSources = @(
+                    [WindowsAccessControl.NativeMethods]::GetFileSystemAccessRuleInheritanceSources(
+                        $item.FullName,
+                        $item -is [System.IO.DirectoryInfo],
+                        $security.GetSecurityDescriptorBinaryForm()
+                    )
+                )
+                if ($rules.Count -ne $inheritanceSources.Count) {
+                    throw "Windows returned $($inheritanceSources.Count) inheritance sources for $($rules.Count) access rules on '$($item.FullName)'."
+                }
+            }
 
-            foreach ($rule in $rules) {
-                $result = ConvertTo-NTFSAccessRuleObject -Rule $rule -Path $item.FullName
+            for ($ruleIndex = 0; $ruleIndex -lt $rules.Count; $ruleIndex++) {
+                $rule = $rules[$ruleIndex]
+                if ($ExcludeExplicit -and -not $rule.IsInherited) {
+                    continue
+                }
+                $conversionParameters = @{
+                    Rule          = $rule
+                    Path          = $item.FullName
+                    InheritedFrom = if ($ExcludeInherited) {
+                        $null
+                    } else {
+                        $inheritanceSources[$ruleIndex].AncestorName
+                    }
+                }
+                $result = ConvertTo-NTFSAccessRuleObject @conversionParameters
                 if ($accountSids.Count -gt 0 -and $result.SID -notin $accountSids) {
                     continue
                 }

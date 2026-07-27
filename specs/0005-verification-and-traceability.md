@@ -24,7 +24,7 @@ is not reported as a successful live write.
 
 | Requirement | Primary executable evidence |
 | --- | --- |
-| FR-1 | `Get-NTFSAccessRule.Tests.ps1` (Integration and Unit) |
+| FR-1 | `Get-NTFSAccessRule.Tests.ps1` (Integration and Unit), including direct-parent, original-grandparent, mixed-rule, non-standard-ACE, and explicit-only provenance behavior |
 | FR-2 | `New-NTFSAccessRule.Tests.ps1` |
 | FR-3 | `Add-NTFSAccessRule.Tests.ps1` |
 | FR-4 | `Set-NTFSAccessRule.Tests.ps1` |
@@ -70,7 +70,7 @@ is not reported as a successful live write.
 | `Disable-WindowsPrivilege` | 2 | Token integration | Not required |
 | `Enable-NTFSItemInheritance` | 2 | Live NTFS DACL | Audit inheritance cleanup |
 | `Enable-WindowsPrivilege` | 1 | Token integration | Not required |
-| `Get-NTFSAccessRule` | 2 | Live NTFS and Unit | Not required |
+| `Get-NTFSAccessRule` | 8 | Live NTFS and Unit | Not required |
 | `Get-NTFSAuditRule` | 2 | Unit descriptor | Live SACL add/query |
 | `Get-NTFSItemEffectiveAccess` | 1 | Live NTFS Authz | Not required |
 | `Get-NTFSItemInheritance` | 1 | Live NTFS DACL | Audit inheritance workflow |

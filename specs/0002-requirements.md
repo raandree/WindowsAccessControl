@@ -7,7 +7,8 @@ to 0005 and the linked ADRs.
 ## Functional requirements
 
 - **FR-1**: Query access rules on files and directories, filtered by identity,
-  explicit or inherited origin, and orphaned SID state.
+  explicit or inherited origin, orphaned SID state, and the native ancestor
+  provenance of each inherited ACE.
 - **FR-2**: Construct reusable in-memory access rules with rights, allow or deny
   qualifier, and Explorer-style inheritance scope.
 - **FR-3**: Add access rules for one or more identities, deduplicated by SID,
