@@ -363,3 +363,13 @@ Normative record: [ADR 0014](../specs/decisions/0014-stage-enterprise-expansion-
 - Rationale: Provider, server, credential, LDAP, replication, and lockout
     behavior cannot be proven by mocks or inherited from the local object
     families. ADR 0011 remains the current-release boundary.
+
+### Decision 36: Build once and test the same artifact in GitHub Actions
+
+- Choice: Check out full history, calculate the module version with the pinned
+    GitVersion tool, build one Sampler output artifact on Windows, and test that
+    artifact in separate PowerShell 7 and Windows PowerShell 5.1 jobs. Keep
+    workflow permissions read-only and retain test reports as artifacts.
+- Rationale: One immutable build output keeps both supported editions aligned,
+    full history preserves semantic versioning, and least-privilege automation
+    is sufficient for continuous integration without release credentials.

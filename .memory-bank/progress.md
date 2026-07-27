@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-27
+last-verified: 2026-07-28
 owner: active-agent
 source: repository evidence
 ---
@@ -188,6 +188,10 @@ access-rule provenance.
     stages an access rule on a `SecurityDescriptor` object in memory without
     writing. Resolved the five OI-5 design questions in `specs/0007`. Focused
     unit, live round-trip, and `WhatIf` tests pass; analyzer clean.
+- 2026-07-28: Replaced the Azure Pipelines definition with a read-only GitHub
+    Actions workflow that builds one full-history Sampler artifact and tests it
+    on Windows with PowerShell 7 and Windows PowerShell 5.1. Updated GitVersion
+    branch rules from `master` to `main`.
 
 ## Stable capabilities
 
@@ -196,7 +200,7 @@ access-rule provenance.
 - Structured token privilege inventory and deduplicated multi-account additions.
 - Optional explicit-rule removal while enabling access or audit inheritance.
 - Selected-section descriptor copy and versioned JSON backup or restore.
-- Reproducible Sampler build plus a two-edition Azure Pipelines test matrix.
+- Reproducible Sampler build plus a two-edition GitHub Actions test matrix.
 - Normative numbered specifications with requirement-to-test traceability and
     immutable accepted ADRs.
 - Local registry-key descriptor, access-rule, audit-rule, and inheritance

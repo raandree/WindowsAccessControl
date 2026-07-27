@@ -66,6 +66,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Move continuous integration from Azure Pipelines to GitHub Actions while
+    preserving full-history GitVersion builds and the PowerShell 7 and Windows
+    PowerShell 5.1 test matrix
 - **Breaking:** rename the unpublished module and output type prefix from
     `NTFSPermission` to `WindowsAccessControl` while preserving its GUID
 - **Breaking:** rename cross-domain identity and privilege commands from

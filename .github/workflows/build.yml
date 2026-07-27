@@ -1,0 +1,115 @@
+---
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build module
+    runs-on: windows-latest
+    timeout-minutes: 30
+    outputs:
+      module-version: ${{ steps.calculate-version.outputs.module-version }}
+    steps:
+      - name: Check out full repository history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate module version
+        id: calculate-version
+        shell: pwsh
+        run: |
+          dotnet tool install --global GitVersion.Tool --version 5.12.0
+          $moduleVersion = dotnet-gitversion /showvariable NuGetVersionV2
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($moduleVersion)) {
+              throw 'GitVersion did not return a module version.'
+          }
+
+          $moduleVersion = $moduleVersion.Trim()
+          "module-version=$moduleVersion" |
+              Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Resolve dependencies and build module
+        shell: pwsh
+        env:
+          ModuleVersion: ${{ steps.calculate-version.outputs.module-version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./build.ps1 -ResolveDependency -Tasks build
+
+      - name: Upload Sampler output
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sampler-output
+          path: output/
+          if-no-files-found: error
+          retention-days: 7
+
+  test:
+    name: Test with ${{ matrix.name }}
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: PowerShell 7
+            edition: pwsh
+            artifact-suffix: pwsh
+          - name: Windows PowerShell 5.1
+            edition: powershell-5.1
+            artifact-suffix: powershell-5.1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Download Sampler output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: sampler-output
+          path: output
+
+      - name: Run Sampler tests with PowerShell 7
+        if: matrix.edition == 'pwsh'
+        shell: pwsh
+        env:
+          ModuleVersion: ${{ needs.build.outputs.module-version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./build.ps1 -Tasks test
+
+      - name: Run Sampler tests with Windows PowerShell 5.1
+        if: matrix.edition == 'powershell-5.1'
+        shell: powershell
+        env:
+          ModuleVersion: ${{ needs.build.outputs.module-version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./build.ps1 -Tasks test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results-${{ matrix.artifact-suffix }}
+          path: |
+            output/testResults/NUnitXml_*.xml
+            output/testResults/JaCoCo_coverage.xml
+          if-no-files-found: warn
+          retention-days: 7

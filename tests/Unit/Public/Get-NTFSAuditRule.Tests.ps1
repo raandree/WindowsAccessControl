@@ -41,8 +41,19 @@ Describe 'Get-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
             )
         }
 
-        {
-            Get-NTFSAuditRule -LiteralPath $script:testFile
-        } | Should -Throw -ExceptionType ([System.Security.AccessControl.PrivilegeNotHeldException])
+        InModuleScope WindowsAccessControl -Parameters @{
+            TestFile = $script:testFile
+        } {
+            $script:WindowsAccessControlBatchWorker.Value = $true
+            try {
+                {
+                    Get-NTFSAuditRule -LiteralPath $TestFile
+                } | Should -Throw -ExceptionType (
+                    [System.Security.AccessControl.PrivilegeNotHeldException]
+                )
+            } finally {
+                $script:WindowsAccessControlBatchWorker.Value = $false
+            }
+        }
     }
 }

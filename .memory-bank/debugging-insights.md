@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-27
+last-verified: 2026-07-28
 owner: software-engineer
 source: implementation and test evidence
 ---
@@ -205,6 +205,19 @@ runspace-pool size.
 `ErrorRecord` when present, and retain the wrapper only as a fallback. Count
 nonterminating error-stream records as target failures in both sequential and
 parallel paths so metrics do not depend on throttle mode.
+
+## Batch worker error tests
+
+Pester mocks scoped to the module under test do not cross into the isolated
+module instance imported by a batch worker. To test direct worker logic with a
+module-scoped mock, set `WindowsAccessControlBatchWorker.Value` to true inside
+`InModuleScope` and restore it in `finally`.
+
+Public batch commands intentionally re-emit target-local failures as
+nonterminating errors so independent targets continue. When an integration test
+uses `Should -Throw` for one of those failures, pass `-ErrorAction Stop` on the
+command under test. Do not make production errors terminating merely to satisfy
+an assertion.
 
 ## PowerShell-relative evidence paths
 

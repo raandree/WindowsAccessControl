@@ -11,6 +11,8 @@ source: repository evidence
 
 - PowerShell module built with Sampler 0.120.0, ModuleBuilder 3.2.18,
   InvokeBuild 5.14.23, Pester 5.7.1, and PSScriptAnalyzer 1.25.0.
+- GitHub Actions builds one Sampler artifact on Windows and tests it with
+    PowerShell 7 and Windows PowerShell 5.1.
 - In-box `Microsoft.PowerShell.Security` commands and
     `System.Security.AccessControl` types at runtime, plus narrowly scoped
     Unicode `advapi32` and `kernel32` interop.
@@ -20,8 +22,8 @@ source: repository evidence
 - Windows development host.
 - Build orchestration runs in PowerShell 7.
 - PowerShell 7.6.1 and Windows PowerShell 5.1 are available.
-- Git default branch is `master`; implementation branch is
-    `ai/windows-access-control`.
+- Git default branch is `main`; the CI migration branch is
+    `ai/github-actions-build`.
 
 ## Constraints
 

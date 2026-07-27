@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-27
+last-verified: 2026-07-28
 owner: active-agent
 source: current task evidence
 ---
@@ -9,17 +9,24 @@ source: current task evidence
 
 ## Current focus
 
-OI-3 provenance and the OI-5 Draft contract (`specs/0007`) are on pushed
-`main`. OI-5 phase 1 is implemented on `ai/oi-5-in-memory-descriptor-mutation`:
-`Set-NTFSItemSecurityDescriptor` persists an edited filesystem descriptor with
-one write, and `Add-NTFSAccessRule` stages an access rule on a descriptor in
-memory without writing. In parallel, specification 0008 records a Draft,
-domain-lab-gated expansion for scheduled tasks/task folders, certificate
-private keys, SMB shares, and Active Directory objects. Remote push and
-publication remain under explicit user control.
+Continuous integration is moving from Azure Pipelines to GitHub Actions on
+`ai/github-actions-build`. The workflow builds one Sampler artifact from full
+Git history, then tests that artifact with PowerShell 7 and Windows PowerShell
+5.1 on Windows. GitVersion now treats `main` as the primary branch, and the
+obsolete Azure Pipelines definition is removed. OI-5 phase 1 and the Draft,
+domain-lab-gated enterprise expansion remain the next implementation tracks.
+Remote push and publication remain under explicit user control.
 
 ## Evidence
 
+- `.github/workflows/build.yml` passes actionlint 1.7.12, uses read-only
+    permissions, pins official actions to reviewed commits, and defines a
+    full-history build followed by two artifact-consuming Windows test jobs.
+- GitVersion 5.12.0 resolves `main` as `0.2.0-preview0001`; no active Azure
+    Pipelines file remains.
+- A clean CI-only clone built successfully. PowerShell 7 passed 816 tests with
+    zero failures or skips at 88.22 percent coverage; Windows PowerShell 5.1
+    passed 789 with zero failures or skips at 87.83 percent coverage.
 - Specification 0008 defines separate Task Scheduler, certificate-key, SMB,
     and Active Directory work packages plus cross-cutting `ENT-*` foundation
     tasks and a domain-lab entry gate.
@@ -173,7 +180,7 @@ publication remain under explicit user control.
 
 ## Next step
 
-Continue OI-5 independently: phase 2 adds the
+After the CI migration, continue OI-5 independently: phase 2 adds the
 `Edit-NTFSItemSecurityDescriptor` scope and the remaining filesystem mutators;
 phase 3 adds the registry family and optimistic concurrency. When the domain
 lab is available, begin enterprise work with `ENT-1`: record a secret-free

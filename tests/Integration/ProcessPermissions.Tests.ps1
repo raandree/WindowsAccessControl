@@ -113,7 +113,11 @@ Describe 'Process security descriptors' -Tag 'Integration', 'WindowsOnly' {
         $target = Get-ProcessSecurityDescriptor -ProcessId $script:process.Id -Sections Access
         $target.CreationTimeFileTime++
 
-        { $target | Get-ProcessSecurityDescriptor -Sections Access } |
+        {
+            $target | Get-ProcessSecurityDescriptor `
+                -Sections Access `
+                -ErrorAction Stop
+        } |
             Should -Throw -ExpectedMessage '*creation identity*'
     }
 

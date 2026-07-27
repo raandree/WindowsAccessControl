@@ -103,7 +103,12 @@ Describe 'Service security descriptors' -Tag 'Integration', 'WindowsOnly', 'Requ
             Set-ItResult -Skipped -Because 'Creating a disposable service requires elevation.'
             return
         }
-        { Get-ServiceSecurityDescriptor -Name $script:serviceDisplayName -Sections Access } |
+        {
+            Get-ServiceSecurityDescriptor `
+                -Name $script:serviceDisplayName `
+                -Sections Access `
+                -ErrorAction Stop
+        } |
             Should -Throw
 
         $controllerType = (Get-Service -Name $script:serviceName).GetType()
@@ -112,7 +117,11 @@ Describe 'Service security descriptors' -Tag 'Integration', 'WindowsOnly', 'Requ
             @($script:serviceName, 'remote-host')
         )
         try {
-            { $remote | Get-ServiceSecurityDescriptor -Sections Access } |
+            {
+                $remote | Get-ServiceSecurityDescriptor `
+                    -Sections Access `
+                    -ErrorAction Stop
+            } |
                 Should -Throw -ExpectedMessage '*remote*'
         } finally {
             $remote.Dispose()
