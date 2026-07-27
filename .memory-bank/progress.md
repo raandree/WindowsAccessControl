@@ -174,6 +174,11 @@ access-rule provenance.
     from the OI-5 register, and recorded that the live-process family is
     excluded because ADR 0022 pins one handle per operation. Specification
     conformance passed eight tests.
+- 2026-07-27: Passed the complete elevated cross-edition release gate at 803
+    tests, 0 failed, 0 skipped, and 88.21 percent coverage over the 80 percent
+    threshold, with every previously-skipped privileged SACL, service, owner,
+    and elevated-acceptance scenario executed. Fast-forwarded `main` to the
+    OI-3 and OI-5 commits locally; no remote push was performed.
 
 ## Stable capabilities
 
