@@ -189,6 +189,7 @@ Arbitrary owner assignment can require `SeRestorePrivilege`.
 | Command | Primary parameter sets | Pipeline input | Returns |
 | --- | --- | --- | --- |
 | `Get-NTFSItemSecurityDescriptor` | Path, LiteralPath | paths, filesystem objects | `SecurityDescriptor` |
+| `Set-NTFSItemSecurityDescriptor` | InputObject | `SecurityDescriptor` objects | none / `SecurityDescriptor` |
 | `Copy-NTFSItemSecurityDescriptor` | Path, LiteralPath | destination paths/objects | none / `SecurityDescriptor` |
 | `Backup-NTFSItemSecurityDescriptor` | Path, LiteralPath | paths, filesystem objects | none / backup records |
 | `Restore-NTFSItemSecurityDescriptor` | (single) | none | none / `SecurityDescriptor` |
@@ -218,6 +219,15 @@ all null DACLs are rejected.
 `Backup-NTFSItemSecurityDescriptor` reads a deduplicated target set with
 bounded execution, aborts on any descriptor-read failure, and submits the
 complete descriptor array to one atomic envelope write.
+
+`Get-NTFSItemSecurityDescriptor` returns a `SecurityDescriptor` whose
+`NativeSecurity` is a live, editable descriptor. Piping that object to
+`Add-NTFSAccessRule` (its `SecurityDescriptor` parameter set) stages the rule in
+memory and returns the same object without writing. `Set-NTFSItemSecurityDescriptor`
+then persists the recorded `Sections` back to the item with a single write under
+`ShouldProcess`. Path-bound commands remain the read-modify-write default; this
+round-trip is the in-memory editing model from specification 0007 and is the
+first increment of open issue OI-5.
 
 ## Registry-key commands
 

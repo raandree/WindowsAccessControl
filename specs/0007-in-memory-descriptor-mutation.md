@@ -1,11 +1,11 @@
 # In-memory descriptor mutation
 
-Status: Draft. This design contract proposes an optional detached
+Status: Draft. This design contract defines an optional detached
 descriptor-editing model for open issue OI-5. It reuses the existing access,
 audit, owner, inheritance, and descriptor requirements (FR-3 through FR-10)
-rather than defining new requirement identifiers, and it becomes `Accepted`
-only after the open questions below are resolved and its verification gates
-pass.
+rather than defining new requirement identifiers. The design decisions below
+are resolved and the model is delivered in phases; the status becomes
+`Accepted` when the phased verification gates pass.
 
 ## Context and problem statement
 
@@ -109,9 +109,9 @@ descriptor can drift from the live target.
 ## Object ownership and lifetime
 
 - The editable object is the existing
-  `WindowsAccessControl.SecurityDescriptor` family type, extended with mutable
-  state, or a clearly named detached editable descriptor. The open questions
-  decide which.
+  `WindowsAccessControl.SecurityDescriptor` family type. Its `NativeSecurity`
+  property already wraps a mutable descriptor, so no new type is introduced; the
+  object records its canonical target, item type, and selected sections.
 - The object records its canonical target, item type, and the sections it was
   read with, so a later persist knows exactly what to write.
 - The native descriptor remains available as a property for callers that need
@@ -192,21 +192,33 @@ requirements:
 - Traceability is recorded against FR-3 through FR-10 in
   [verification and traceability](0005-verification-and-traceability.md).
 
-## Open questions
+## Resolved decisions
 
-These must be resolved before the status becomes `Accepted`:
+1. Shape: adopt both. The explicit descriptor round-trip is the foundation, and
+   the bounded editing scope is sugar layered on top of it.
+2. Editable type: reuse the existing `WindowsAccessControl.SecurityDescriptor`
+   object, whose `NativeSecurity` is already mutable. No new type is added.
+3. Concurrency: last-writer-wins by default, with opt-in optimistic concurrency
+   in a later phase.
+4. Families: filesystem first, then registry key. Named service and SCM stay
+   deferred; the live-process family stays excluded.
+5. Naming: `Set-*SecurityDescriptor` persists an edited descriptor and
+   `Edit-*SecurityDescriptor` is the bounded scope. Both use approved verbs.
 
-1. Primary shape: adopt the bounded editing scope, the explicit round-trip, or
-   both.
-2. Editable type: extend the existing `SecurityDescriptor` family types with
-   mutable state, or introduce a distinct detached editable descriptor type.
-3. Concurrency default: last-writer-wins with opt-in optimistic concurrency, or
-   optimistic concurrency by default.
-4. First-release families: filesystem only, or filesystem and registry
-   together.
-5. Command naming: `Edit-*SecurityDescriptor` for the scope and
-   `Set-*SecurityDescriptor` for the write, or an alternative that the
-   maintainer prefers.
+## Delivery status
+
+- Phase 1 (delivered): `Set-NTFSItemSecurityDescriptor` persists an edited
+  filesystem descriptor with one write, and `Add-NTFSAccessRule` stages an
+  access rule on a descriptor in memory without writing. Covered by unit and
+  live integration tests including `WhatIf` non-persistence.
+- Phase 2 (planned): the `Edit-NTFSItemSecurityDescriptor` bounded scope and the
+  remaining filesystem access, audit, owner, and inheritance mutators accepting
+  a descriptor.
+- Phase 3 (planned): the registry-key family and opt-in optimistic concurrency.
+
+Full requirement traceability rows are added to
+[verification and traceability](0005-verification-and-traceability.md) as each
+phase lands.
 
 ## See also
 
