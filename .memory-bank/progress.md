@@ -189,6 +189,13 @@ access-rule provenance.
     writing. Resolved the five OI-5 design questions in `specs/0007`. Focused
     unit, live round-trip, and `WhatIf` tests pass; analyzer clean.
 
+- 2026-07-28: Added a task-oriented usage guide covering common NTFS,
+    registry, service/SCM, process, backup/restore, diagnostics, batching,
+    impersonation, remote-session, and DSC workflows. Verified 41 PowerShell
+    examples and complete help/catalog coverage for all 72 packaged commands.
+    The generated package exports `Set-NTFSItemSecurityDescriptor`, but the
+    static source manifest export list still omits it.
+
 ## Stable capabilities
 
 - Access and audit rule construction, query, mutation, filtering, and clearing.
@@ -221,6 +228,8 @@ access-rule provenance.
 ## Open work
 
 - Complete and validate the uncommitted OI-5 phase-one implementation.
+- Align the static source manifest export list with the generated 72-command
+    package by adding `Set-NTFSItemSecurityDescriptor`.
 - Inventory and prepare the supplied domain lab under ENT-1 and ENT-2.
 - Resolve the remote-security, credential, backup-schema, and effective-access
     contracts before implementing OI-7 through OI-10.

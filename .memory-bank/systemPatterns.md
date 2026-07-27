@@ -99,9 +99,11 @@ Normative record: [ADR 0007](../specs/decisions/0007-keep-privilege-changes-expl
 Normative record: [ADR 0001](../specs/decisions/0001-document-api-contract-in-specs-and-help.md).
 
 - Choice: Numbered specifications own requirements and holistic API/security
-    contracts; comment-based help owns exhaustive per-command detail.
-- Rationale: The design remains reviewable without duplicating parameter
-    reference that belongs next to implementation.
+    contracts; comment-based help owns exhaustive per-command detail; the
+    README owns the overview and command catalog; the usage guide owns
+    task-oriented cross-command workflows.
+- Rationale: Each user question has one documentation layer without duplicating
+    parameter reference that belongs next to implementation.
 
 ### Decision 10: Persist ACL protection with the selected ACL
 

@@ -13,6 +13,10 @@ The unpublished package was renamed from `NTFSPermission`. See the
 [migration map](docs/migration-from-ntfspermission.md) for package, command, and
 output type changes.
 
+For task-oriented installation, safety, NTFS, registry, service, process,
+backup, diagnostics, batching, impersonation, and DSC examples, see the
+[usage guide](docs/usage-guide.md).
+
 ## Quick start
 
 Build the module, then import the generated manifest:
@@ -64,6 +68,8 @@ Get-ChildItem -LiteralPath 'C:\Data' -Recurse |
 Run one or more local operations under an explicitly supplied Windows identity:
 
 ```powershell
+$credential = Get-Credential
+
 Invoke-WindowsAccessControl -Credential $credential -ScriptBlock {
     Get-NTFSAccessRule -LiteralPath 'C:\Data' -ExcludeInherited
 }
@@ -524,7 +530,7 @@ the NTFS result.
 | Audit rules | `New-NTFSAuditRule`, `Get-NTFSAuditRule`, `Add-NTFSAuditRule`, `Set-NTFSAuditRule`, `Remove-NTFSAuditRule`, `Clear-NTFSAuditRule` |
 | Owner | `Get-NTFSItemOwner`, `Set-NTFSItemOwner` |
 | Inheritance | `Get-NTFSItemInheritance`, `Enable-NTFSItemInheritance`, `Disable-NTFSItemInheritance` |
-| Descriptor portability | `Get-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor`, `Backup-WindowsSecurityDescriptor`, `Restore-WindowsSecurityDescriptor` |
+| Descriptor portability | `Get-NTFSItemSecurityDescriptor`, `Set-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor`, `Backup-WindowsSecurityDescriptor`, `Restore-WindowsSecurityDescriptor` |
 | Registry descriptors | `Get-RegistryKeySecurityDescriptor`, `Set-RegistryKeySecurityDescriptor` |
 | Registry access rules | `Get-RegistryKeyAccessRule`, `Add-RegistryKeyAccessRule`, `Set-RegistryKeyAccessRule`, `Remove-RegistryKeyAccessRule`, `Clear-RegistryKeyAccessRule` |
 | Registry audit rules | `Get-RegistryKeyAuditRule`, `Add-RegistryKeyAuditRule`, `Set-RegistryKeyAuditRule`, `Remove-RegistryKeyAuditRule`, `Clear-RegistryKeyAuditRule` |
@@ -538,6 +544,7 @@ the NTFS result.
 | Diagnostics | `Resolve-WindowsIdentity`, `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
 | Privileges | `Get-WindowsPrivilege`, `Test-WindowsPrivilege`, `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege` |
 | Local impersonation | `Invoke-WindowsAccessControl` |
+| Metrics | `Get-WindowsAccessControlMetric` |
 
 Use `Get-Help <command> -Full` for parameter semantics and examples.
 
