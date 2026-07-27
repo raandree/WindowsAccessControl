@@ -169,6 +169,11 @@ access-rule provenance.
     specification QA tests, and a privilege-compatible Sampler gate with 714
     passing tests, zero failures, and one skip. Independent re-review returned
     APPROVE with no Blocker or Major findings.
+- 2026-07-27: Added a Draft design contract for OI-5 in-memory descriptor
+    mutation (`specs/0007`), indexed it in the specification README, linked it
+    from the OI-5 register, and recorded that the live-process family is
+    excluded because ADR 0022 pins one handle per operation. Specification
+    conformance passed eight tests.
 
 ## Stable capabilities
 

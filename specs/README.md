@@ -18,6 +18,7 @@ them.
 4. [Security and persistence](0004-security-and-persistence.md)
 5. [Verification and traceability](0005-verification-and-traceability.md)
 6. [WindowsAccessControl expansion](0006-windows-access-control-expansion.md)
+7. [In-memory descriptor mutation](0007-in-memory-descriptor-mutation.md)
 
 ## Status
 
@@ -29,11 +30,13 @@ them.
 | 0004 | Security and persistence | Accepted |
 | 0005 | Verification and traceability | Accepted |
 | 0006 | WindowsAccessControl expansion | Accepted |
+| 0007 | In-memory descriptor mutation | Draft |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the signed design contract for the current expansion and
-becomes implemented only when its verification gates pass. A future change
-starts as `Draft` and becomes `Accepted` when approved.
+becomes implemented only when its verification gates pass. Specification 0007
+is a Draft design contract for open issue OI-5 and is not yet implemented. A
+future change starts as `Draft` and becomes `Accepted` when approved.
 
 ## Architecture decisions
 

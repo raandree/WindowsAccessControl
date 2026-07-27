@@ -23,6 +23,10 @@ filesystem persistence. Adding that model here would create a second command
 contract beside path-bound operations. Specify object ownership, section state,
 `ShouldProcess`, and explicit persistence before implementation.
 
+A Draft design contract exists in
+[0007-in-memory-descriptor-mutation.md](0007-in-memory-descriptor-mutation.md).
+This item remains open until the Draft is accepted, implemented, and verified.
+
 ## See also
 
 - [Specification index](README.md)

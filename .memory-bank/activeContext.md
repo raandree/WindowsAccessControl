@@ -10,8 +10,11 @@ source: current task evidence
 ## Current focus
 
 OI-3 inherited access-rule provenance is complete on
-`ai/oi-3-inherited-provenance`. Remote publication remains under explicit user
-control.
+`ai/oi-3-inherited-provenance`. A Draft design contract for OI-5 in-memory
+descriptor mutation is added on `ai/oi-5-in-memory-descriptor-mutation`
+(`specs/0007`). The complete elevated cross-edition coverage gate and the OI-3
+merge to `main` remain pending an elevated session. Remote publication remains
+under explicit user control.
 
 ## Evidence
 
@@ -158,5 +161,7 @@ control.
 
 ## Next step
 
-Retain the green local OI-3 milestone. Do not push or publish without an
-explicit request.
+Run the complete elevated cross-edition coverage gate in an elevated session,
+then merge OI-3 to `main`. Resolve the five OI-5 open questions in `specs/0007`
+before implementing in-memory descriptor mutation. Do not push or publish
+without an explicit request.
