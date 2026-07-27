@@ -349,3 +349,17 @@ Normative record: [ADR 0011](../specs/decisions/0011-limit-release-to-local-obje
 - Rationale: `.GetAccessRules()` omits object and other nonstandard ACEs. Zipping
     its output directly to a full native ACE array can shift provenance or make
     valid enterprise ACLs fail enumeration.
+
+### Decision 35: Gate enterprise expansion on a disposable domain lab
+
+Normative record: [ADR 0014](../specs/decisions/0014-stage-enterprise-expansion-behind-domain-lab.md).
+
+- Choice: Plan Task Scheduler, certificate private-key, SMB-share, and Active
+    Directory adapters as separate work packages, but block implementation on
+    lab inventory, disposable setup/teardown, API probes, threat models, remote
+    contracts, and rollback evidence. Require an isolated non-production forest,
+    protected remote channels, direct authentication, and explicit target-token
+    privilege behavior; prohibit CredSSP and unconstrained delegation.
+- Rationale: Provider, server, credential, LDAP, replication, and lockout
+    behavior cannot be proven by mocks or inherited from the local object
+    families. ADR 0011 remains the current-release boundary.

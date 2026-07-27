@@ -56,6 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     DSC resource, matching the full NTFSSecurity `ApplyTo` coverage
 - Add native `InheritedFrom` provenance to NTFS access-rule results and their
     curated table view
+- Document the Draft, domain-lab-gated roadmap and tracked work packages for
+    scheduled tasks/task folders, certificate private keys, SMB shares, and
+    Active Directory objects
+- Add in-memory NTFS descriptor editing: `Set-NTFSItemSecurityDescriptor`
+    persists an edited descriptor object with one write, and `Add-NTFSAccessRule`
+    can stage an access rule on a descriptor from `Get-NTFSItemSecurityDescriptor`
+    without writing until it is persisted
 
 ### Changed
 

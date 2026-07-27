@@ -22,6 +22,7 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0011 | [Limit the release to local object families](0011-limit-release-to-local-object-families.md) | Accepted |
 | 0012 | [Use object-specific commands and DSC resources](0012-use-object-specific-commands-and-dsc-resources.md) | Accepted |
 | 0013 | [Use bounded parallel target execution](0013-use-bounded-parallel-target-execution.md) | Accepted |
+| 0014 | [Stage enterprise expansion behind a domain lab](0014-stage-enterprise-expansion-behind-domain-lab.md) | Accepted |
 
 ## See also
 

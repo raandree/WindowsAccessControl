@@ -9,15 +9,27 @@ source: current task evidence
 
 ## Current focus
 
-OI-3 inherited access-rule provenance is complete and OI-5 has a Draft design
-contract (`specs/0007`). The complete elevated release gate passed: 803 tests,
-0 failed, 0 skipped, and 88.21 percent coverage over the 80 percent threshold,
-with every previously-skipped privileged scenario executed. `main`
-fast-forwards to the OI-5 branch tip locally this session; remote push and
+OI-3 provenance and the OI-5 Draft contract (`specs/0007`) are on pushed
+`main`. OI-5 phase 1 is implemented on `ai/oi-5-in-memory-descriptor-mutation`:
+`Set-NTFSItemSecurityDescriptor` persists an edited filesystem descriptor with
+one write, and `Add-NTFSAccessRule` stages an access rule on a descriptor in
+memory without writing. In parallel, specification 0008 records a Draft,
+domain-lab-gated expansion for scheduled tasks/task folders, certificate
+private keys, SMB shares, and Active Directory objects. Remote push and
 publication remain under explicit user control.
 
 ## Evidence
 
+- Specification 0008 defines separate Task Scheduler, certificate-key, SMB,
+    and Active Directory work packages plus cross-cutting `ENT-*` foundation
+    tasks and a domain-lab entry gate.
+- Open issues OI-6 through OI-10 track the lab/security foundation and four
+    independently closable domain implementations.
+- ADR 0014 records that no production implementation or remote public API
+    begins before the lab and security contracts exist; ADR 0011 remains the
+    current-release boundary.
+- Specification conformance passes eight tests after indexing specification
+    0008 and ADR 0014 and resolving every local link.
 - `Get-NTFSAccessRule` exposes `InheritedFrom` from `GetInheritanceSourceW`.
     Explicit rules and unresolved native sources return null; no parent-rule
     heuristic is used.
@@ -161,6 +173,10 @@ publication remain under explicit user control.
 
 ## Next step
 
-Push `main` when you choose; the merged commits are local only. Resolve the
-five OI-5 open questions in `specs/0007` before implementing in-memory
-descriptor mutation. Do not push or publish without an explicit request.
+Continue OI-5 independently: phase 2 adds the
+`Edit-NTFSItemSecurityDescriptor` scope and the remaining filesystem mutators;
+phase 3 adds the registry family and optimistic concurrency. When the domain
+lab is available, begin enterprise work with `ENT-1`: record a secret-free
+machine/role/topology inventory and prove reset, disposable setup, and teardown
+before implementing a new domain adapter. Do not push or publish without an
+explicit request.

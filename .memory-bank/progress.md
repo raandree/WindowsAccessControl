@@ -179,6 +179,15 @@ access-rule provenance.
     threshold, with every previously-skipped privileged SACL, service, owner,
     and elevated-acceptance scenario executed. Fast-forwarded `main` to the
     OI-3 and OI-5 commits locally; no remote push was performed.
+- 2026-07-28: Added Draft specification 0008 for domain-lab-gated Task
+    Scheduler, certificate private-key, SMB-share, and Active Directory access
+    control; indexed ADR 0014 and open issues OI-6 through OI-10. Specification
+    conformance passed eight tests.
+- 2026-07-28: Delivered OI-5 phase 1: `Set-NTFSItemSecurityDescriptor` persists
+    an edited filesystem descriptor with one write, and `Add-NTFSAccessRule`
+    stages an access rule on a `SecurityDescriptor` object in memory without
+    writing. Resolved the five OI-5 design questions in `specs/0007`. Focused
+    unit, live round-trip, and `WhatIf` tests pass; analyzer clean.
 
 ## Stable capabilities
 
@@ -211,4 +220,8 @@ access-rule provenance.
 
 ## Open work
 
+- Complete and validate the uncommitted OI-5 phase-one implementation.
+- Inventory and prepare the supplied domain lab under ENT-1 and ENT-2.
+- Resolve the remote-security, credential, backup-schema, and effective-access
+    contracts before implementing OI-7 through OI-10.
 - Remote publication remains user-controlled.

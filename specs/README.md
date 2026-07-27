@@ -19,6 +19,7 @@ them.
 5. [Verification and traceability](0005-verification-and-traceability.md)
 6. [WindowsAccessControl expansion](0006-windows-access-control-expansion.md)
 7. [In-memory descriptor mutation](0007-in-memory-descriptor-mutation.md)
+8. [Enterprise access-control expansion](0008-enterprise-access-control-expansion.md)
 
 ## Status
 
@@ -31,12 +32,17 @@ them.
 | 0005 | Verification and traceability | Accepted |
 | 0006 | WindowsAccessControl expansion | Accepted |
 | 0007 | In-memory descriptor mutation | Draft |
+| 0008 | Enterprise access-control expansion | Draft |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
-Specification 0006 is the signed design contract for the current expansion and
-becomes implemented only when its verification gates pass. Specification 0007
-is a Draft design contract for open issue OI-5 and is not yet implemented. A
-future change starts as `Draft` and becomes `Accepted` when approved.
+Specification 0006 is the accepted contract for the implemented and verified
+registry-key, service/SCM, pinned-process, portability, bounded-execution, and
+DSC expansion. Specification 0007 remains a Draft design contract for open
+issue OI-5; its first filesystem round-trip increment is under implementation
+and is not yet part of the accepted contract. Specification 0008 plans the
+domain-lab-gated Task Scheduler, certificate private-key, SMB-share, and Active
+Directory expansion. A future change starts as `Draft` and becomes `Accepted`
+when approved.
 
 ## Architecture decisions
 

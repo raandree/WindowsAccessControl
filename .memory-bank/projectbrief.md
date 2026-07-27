@@ -19,15 +19,20 @@ or .NET access-control classes directly.
 
 ## Scope
 
-- In scope: local NTFS files/directories, registry keys, named services, the
-    Service Control Manager, and pinned live processes; owner, group, DACL,
+- Current scope: local NTFS files/directories, registry keys, named services,
+    the Service Control Manager, and pinned live processes; owner, group, DACL,
     SACL, descriptor portability, identity, privileges, effective access,
     metrics, and supported inheritance workflows.
-- Deferred: scheduled tasks, printers, WMI namespaces, SMB shares, event-log
-    channels, and certificate private keys.
-- Out of scope: registry-value ACLs, native remote APIs, Active Directory,
-    POSIX ACLs, cloud IAM, Group Policy authoring, Central Access Policy,
-    operating-system audit policy, and graphical tooling.
+- Planned enterprise expansion: scheduled tasks and task folders, CAPI/CNG
+    certificate private keys, SMB shares, and Active Directory objects. This
+    work is gated on a disposable domain lab, remote-security contracts, API
+    probes, and separate executable evidence for each family.
+- Deferred: printers, WMI namespaces, event-log channels, mandatory integrity
+    labels, HTTP.sys URL reservations, Remote Desktop Services listeners, named
+    pipes, PowerShell/WinRM endpoints, MSMQ queues, and device ACLs.
+- Out of scope: registry-value ACLs, POSIX ACLs, cloud IAM, Group Policy
+    authoring, Central Access Policy, operating-system audit policy, and
+    graphical tooling.
 
 ## Stakeholders
 
@@ -50,6 +55,9 @@ or .NET access-control classes directly.
     every current object family.
 7. A PowerShell 7 Sampler build, cross-edition Pester/live tests, static
     analysis, package inspection, and user documentation prove the behavior.
+8. Planned enterprise families do not claim implementation until their
+    domain-lab, security, rollback, cross-edition, and independent-review gates
+    pass.
 
 Stable requirement identifiers and their executable evidence are maintained in
 [requirements](../specs/0002-requirements.md) and
