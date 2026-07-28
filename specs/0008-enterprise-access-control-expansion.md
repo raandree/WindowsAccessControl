@@ -10,6 +10,10 @@ descriptor/rule increment. This broader roadmap remains Draft because SACL,
 backup, DSC, effective-access, schema-resolution, and replication packages are
 not complete.
 
+Specification 0010 accepts the first local Task Scheduler folder and
+registered-task DACL descriptor increment. Typed rules, portability, DSC, SACL,
+and direct remote APIs remain outside that accepted slice.
+
 ## Purpose
 
 Extend `WindowsAccessControl` from local operating-system objects into the

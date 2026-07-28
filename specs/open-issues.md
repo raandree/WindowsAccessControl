@@ -5,15 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-7: Add scheduled-task and task-folder access control
-
-Specification: 0008. Tasks: TASK-1 to TASK-7.
-
-Add object-specific descriptor, access/audit rule, backup/restore, and supported
-DSC workflows for registered tasks and task folders. Prove folder inheritance,
-Task Scheduler COM cleanup, required service access, local/remote identity, and
-disposable rollback in both PowerShell editions.
-
 ## OI-8: Add certificate private-key access control
 
 Specification: 0008. Tasks: KEY-1 to KEY-8.
@@ -89,6 +80,25 @@ Add rename, move, domain-controller switch, replication, and convergence
 evidence when a second writable domain controller exists. The current
 two-machine topology leaves this issue externally blocked; do not repurpose the
 member server that hosts SMB, Task Scheduler, and software-key fixtures.
+
+## OI-19: Add typed Task Scheduler access-rule commands
+
+Specifications: 0008, 0010. Tasks: TASK-1 and TASK-4.
+
+Build and verify an object-specific rights model for task folders and registered
+tasks before exposing access-rule query or mutation commands. Preserve
+inheritance and service-required ACEs without treating filesystem rights as
+Task Scheduler rights. Define broader deny-group evaluation for the Task
+Scheduler service token and verify ACL-revision normalization for object or
+compound ACEs.
+
+## OI-20: Add Task Scheduler portability and desired state
+
+Specifications: 0008, 0010. Tasks: TASK-5 to TASK-7.
+
+Add schema-version-2 backup/restore, target locking evidence, and exact
+descriptor/rule DSC resources where convergence is safe. SACL and direct remote
+APIs remain separately gated.
 
 ## See also
 

@@ -45,12 +45,12 @@ domain-controller switch, or failover evidence.
 | --- | --- | --- | --- | --- | --- |
 | Management host | Installed | 7.6.3 | Available | Available | Not evaluated |
 | Domain controller | 5.1.20348.4294 | Installed | Available | Available | Directory service running |
-| Member server | 5.1.20348.4294 | Not installed | Not installed | Available | Task Scheduler, SMB server, and WinRM running |
+| Member server | 5.1.20348.4294 | 7.6.3 | Not installed | Available | Task Scheduler, SMB server, and WinRM running |
 
-The member server can host Windows PowerShell 5.1 Task Scheduler, certificate
-provider, SMB, and local-object probes. PowerShell 7 must be installed there or
-provided on another equivalent member server before cross-edition live
-acceptance can pass.
+The member server hosts Windows PowerShell 5.1 and a Microsoft-signed
+PowerShell 7.6.3 payload copied from the management host over Kerberos after the
+isolated member could not resolve the official download host. The remote
+`pwsh.exe` signature and version were independently verified before use.
 
 ## Disposable fixture lifecycle
 
@@ -88,6 +88,10 @@ Live evidence proved:
   while the final deterministic fixture key remained available
 - the final setup left all ten marked directory objects and all member-server
   fixtures ready
+- Task Scheduler DACL acceptance passed against the marked folder and a
+  disposable disabled task in Windows PowerShell 5.1 and PowerShell 7.6.3,
+  with exact semantic rollback, task-definition preservation, zero leaked
+  tasks, and the complete fixture remaining ready
 
 Five focused unit tests and four explicit live tests retain this behavior. The
 live suite is outside the default CI paths and requires the member-server role
@@ -147,8 +151,6 @@ The present two-machine, three-role topology is sufficient for the entry-gate
 design, disposable fixtures, and read-only probes. The following additions or
 changes are required by later gates:
 
-- Install PowerShell 7 on the member server, or provide an equivalent member
-  server with both supported PowerShell editions.
 - Add a second writable domain controller before `AD-6` replication,
   domain-controller switch, or failover tests.
 - Add a certification authority or another domain or forest only when a later

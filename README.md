@@ -2,9 +2,10 @@
 
 `WindowsAccessControl` is a Windows PowerShell module for pipeline-first
 management of Windows security descriptors. Its filesystem, registry-key,
-service/SCM, live-process, SMB-share, and Active Directory commands turn common DACL, SACL, owner,
-inheritance, backup, and effective-access operations into composable commands
-without requiring callers to manipulate .NET access-control objects directly.
+service/SCM, live-process, SMB-share, Active Directory, and Task Scheduler
+commands turn common DACL, SACL, owner, inheritance, backup, and
+effective-access operations into composable commands without requiring callers
+to manipulate .NET access-control objects directly.
 
 The module has no third-party runtime dependency. It supports Windows
 PowerShell 5.1 and PowerShell 7 on Windows.
@@ -204,6 +205,30 @@ Add-ADObjectAccessRule -Server $server `
 
 The first increment is DACL-only. It excludes SACLs, owner/group mutation,
 backup/restore, DSC, effective access, and replication convergence.
+
+## Task Scheduler folders and tasks
+
+Task Scheduler commands run locally on the computer that owns the folder or
+registered task. Descriptor setters require an explicit non-system
+`AllowedRootPath`, preserve current literal Local System ACEs, reject explicit
+Local System deny ACEs, and reject root or `\Microsoft` writes:
+
+```powershell
+$taskPath = '\Operations'
+
+$folderDescriptor = Get-TaskFolderSecurityDescriptor -Path $taskPath
+Set-TaskFolderSecurityDescriptor -Path $taskPath `
+    -AllowedRootPath $taskPath `
+    -Sddl $folderDescriptor.Sddl `
+    -WhatIf
+
+Get-ScheduledTaskSecurityDescriptor `
+    -TaskPath $taskPath `
+    -TaskName 'Cleanup'
+```
+
+The first increment is DACL descriptor-only. It does not expose typed rules,
+SACLs, backup/restore, DSC, or direct remote target parameters.
 
 ## Services and the SCM
 

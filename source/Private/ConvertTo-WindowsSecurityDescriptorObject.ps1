@@ -34,6 +34,8 @@ function ConvertTo-WindowsSecurityDescriptorObject {
         Server                   = $Target.Server
         DistinguishedName        = $Target.DistinguishedName
         ObjectGuid               = $Target.ObjectGuid
+        TaskPath                 = $Target.TaskPath
+        TaskName                 = $Target.TaskName
         ServiceName              = $Target.ServiceName
         ProcessId                = $Target.ProcessId
         ProcessName              = $Target.ProcessName

@@ -21,6 +21,7 @@ them.
 7. [In-memory descriptor mutation](0007-in-memory-descriptor-mutation.md)
 8. [Enterprise access-control expansion](0008-enterprise-access-control-expansion.md)
 9. [SMB share and Active Directory DACL management](0009-smb-share-and-active-directory-dacl-management.md)
+10. [Task Scheduler DACL management](0010-task-scheduler-dacl-management.md)
 
 ## Status
 
@@ -35,6 +36,7 @@ them.
 | 0007 | In-memory descriptor mutation | Accepted |
 | 0008 | Enterprise access-control expansion | Draft |
 | 0009 | SMB share and Active Directory DACL management | Accepted |
+| 0010 | Task Scheduler DACL management | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
@@ -45,7 +47,9 @@ remaining bounded-scope and registry work. Specification 0008 plans the
 domain-lab-gated Task Scheduler, certificate private-key, SMB-share, and Active
 Directory expansion. Specification 0009 accepts the first SMB-share and Active
 Directory DACL-management increment without claiming later backup, DSC,
-effective-access, or replication work. A future change starts as `Draft` and
+effective-access, or replication work. Specification 0010 accepts local
+Task Scheduler folder and registered-task DACL descriptor management without
+claiming typed rules, portability, DSC, SACL, or direct remote APIs. A future change starts as `Draft` and
 becomes `Accepted` when approved.
 
 ## Architecture decisions

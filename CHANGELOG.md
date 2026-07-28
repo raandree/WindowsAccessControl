@@ -73,6 +73,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add explicit-DC Active Directory object DACL descriptor and object-specific
     access-rule query, add, set, and exact-remove workflows over signed and
     sealed LDAP with allowed-OU and immutable-GUID enforcement
+- Add local Task Scheduler folder and registered-task DACL descriptor get/set
+    commands with allowed-root containment, Local System ACE preservation,
+    COM cleanup, canonical verification, rollback, and disposable live evidence
 - Add in-memory NTFS descriptor editing: `Set-NTFSItemSecurityDescriptor`
     persists an edited descriptor object with one write, and `Add-NTFSAccessRule`
     can stage an access rule on a descriptor from `Get-NTFSItemSecurityDescriptor`

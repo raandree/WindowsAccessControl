@@ -52,6 +52,7 @@ mutation. Prefer `LiteralPath` when a path can contain wildcard characters.
 | Manage another supported object family | `Get-RegistryKeyAccessRule`, `Get-ServiceAccessRule`, `Get-ProcessAccessRule` |
 | Manage SMB share permissions | `Get-SmbShareAccessRule`, `Add-SmbShareAccessRule` |
 | Delegate Active Directory object access | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule` |
+| Manage Task Scheduler DACLs | `Get-TaskFolderSecurityDescriptor`, `Get-ScheduledTaskSecurityDescriptor` |
 | Enforce desired state | The class-based DSC resources |
 
 ## Preview every mutation
@@ -123,6 +124,40 @@ Add-ADObjectAccessRule `
 
 Use `ObjectType` and `InheritedObjectType` GUIDs for property, extended-right,
 or child-object-specific ACEs. The output retains those GUIDs for exact removal.
+
+## Manage Task Scheduler DACLs
+
+Run these commands on the computer that owns the task folder. Use absolute
+Task Scheduler paths, and select the allowed write boundary explicitly:
+
+```powershell
+$taskPath = '\Operations'
+$folder = Get-TaskFolderSecurityDescriptor -Path $taskPath
+$task = Get-ScheduledTaskSecurityDescriptor `
+    -TaskPath $taskPath `
+    -TaskName 'Cleanup'
+
+Set-TaskFolderSecurityDescriptor `
+    -Path $taskPath `
+    -AllowedRootPath $taskPath `
+    -Sddl $folder.Sddl `
+    -WhatIf
+
+Set-ScheduledTaskSecurityDescriptor `
+    -TaskPath $taskPath `
+    -TaskName 'Cleanup' `
+    -AllowedRootPath $taskPath `
+    -Sddl $task.Sddl `
+    -WhatIf
+```
+
+Writes to the scheduler root and `\Microsoft` tree are rejected. Candidate
+DACLs must retain the current literal Local System ACEs and cannot add an
+explicit Local System deny ACE. Broader group-based deny effects remain the
+operator's responsibility. Task Scheduler may reorder ACEs and add its derived
+auto-inherited flag; the module verifies the native ACE set and caller-controlled
+protection state after persistence. Typed rules, SACLs, backup/restore, DSC, and
+direct remote targets are not part of this increment.
 
 ## Inspect file and directory access
 

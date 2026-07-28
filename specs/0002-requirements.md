@@ -51,6 +51,9 @@ to 0005 and the linked ADRs.
 - **FR-19**: Query and set Active Directory object DACL descriptors through an
   explicit domain controller, add typed common or object-specific ACEs, and
   remove exact path-bound ACEs while preserving GUID and inheritance metadata.
+- **FR-20**: Query and set DACL descriptors for local Task Scheduler folders and
+  registered tasks inside an explicit allowed-root boundary while preserving
+  required Local System access and task definitions.
 
 ## Non-functional requirements
 
@@ -81,6 +84,10 @@ to 0005 and the linked ADRs.
 - **NFR-12**: Enterprise DACL writes revalidate target identity immediately
   before persistence, reject protected or out-of-bound targets, and retain
   executable rollback evidence from disposable resources.
+- **NFR-13**: Task Scheduler operations release every COM object in reverse
+  ownership order, use no direct remote target syntax, and compare stored DACLs
+  without treating service-derived ACE order or `DACL_AUTO_INHERITED` state as
+  caller-controlled drift.
 
 ## Traceability
 

@@ -67,6 +67,8 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             'Add-SmbShareAccessRule'
             'Remove-SmbShareAccessRule'
             'Set-SmbShareSecurityDescriptor'
+            'Set-TaskFolderSecurityDescriptor'
+            'Set-ScheduledTaskSecurityDescriptor'
             'Add-ADObjectAccessRule'
             'Remove-ADObjectAccessRule'
             'Set-ADObjectSecurityDescriptor'

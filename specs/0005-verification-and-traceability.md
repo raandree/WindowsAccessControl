@@ -43,6 +43,7 @@ is not reported as a successful live write.
 | FR-17 | `MutatorSafety.Tests.ps1` |
 | FR-18 | SMB command-contract Unit tests plus disposable share DACL round-trip, add, exact-remove, `WhatIf`, unrelated-ACE preservation, and rollback tests |
 | FR-19 | AD command-contract and LDAP-adapter Unit tests plus disposable-OU signed/sealed read, delegated add, object-ACE exact-remove, `WhatIf`, GUID revalidation, and rollback tests |
+| FR-20 | Task Scheduler command-contract and COM-boundary Unit tests plus disposable folder/task DACL reads, `WhatIf`, containment rejection, round trip, task-definition preservation, rollback, and cleanup tests |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |
@@ -55,6 +56,7 @@ is not reported as a successful live write.
 | NFR-10 | Sampler build, package inspection, changelog QA, and GitVersion config |
 | NFR-11 | SMB remote-syntax rejection, explicit Kerberos remoting acceptance, and AD signed/sealed LDAP connection/downgrade tests |
 | NFR-12 | SMB special-share rejection, AD allowed-OU/protected-target/GUID mismatch tests, live rollback, cleanup ledger, and independent security review |
+| NFR-13 | Task Scheduler path/COM Unit tests, duplicate-sensitive DACL canonicalization tests, and zero-leak domain-lab acceptance |
 | ADR-0013 | Dispatcher Unit tests, family command contracts, live canonical deduplication and metric tests, cross-edition focused runs, and the repeatable NTFS benchmark |
 | ADR-0012 | Exact resource schema/orchestration/adapter Unit tests, live five-target convergence, Desktop MOF compilation, and `Invoke-DscResource` acceptance |
 | ADR-0012 rule presence | Rule schema/orchestration/adapter Unit tests, live five-target Present/Absent convergence, ten-resource MOF compilation, and Desktop LCM invocation |
@@ -143,6 +145,10 @@ is not reported as a successful live write.
 | `Get-ADObjectAccessRule` | 1 | Common/object ACE enumeration in disposable OU | GUID and inheritance preservation |
 | `Add-ADObjectAccessRule` | 1 | Delegated object-specific ACE add | Non-Domain-Admin, idempotence, prevalidation, rollback |
 | `Remove-ADObjectAccessRule` | 1 | Exact object-ACE removal | GUID revalidation and stale-target rejection |
+| `Get-TaskFolderSecurityDescriptor` | 1 | Disposable local task-folder DACL | Local path and system-tree rejection |
+| `Set-TaskFolderSecurityDescriptor` | 2 | Disposable local task-folder DACL round trip | `WhatIf`, allowed-root containment, SYSTEM preservation, rollback |
+| `Get-ScheduledTaskSecurityDescriptor` | 1 | Disposable local registered-task DACL | Exact parent path and task-name binding |
+| `Set-ScheduledTaskSecurityDescriptor` | 2 | Disposable local registered-task DACL round trip | `WhatIf`, principal-ACE flag, task-definition preservation, rollback |
 
 Cross-cutting checks add Unit-level mutator `WhatIf` specifications in
 `tests/Unit/MutatorSafety.Tests.ps1` and the QA specification contract in

@@ -231,7 +231,7 @@ memory and returns the same object without writing. `Set-NTFSItemSecurityDescrip
 then persists the recorded `Sections` back to the item with a single write under
 `ShouldProcess`. Path-bound commands remain the read-modify-write default; this
 round-trip is the in-memory editing model from specification 0007 and is the
-first increment of open issue OI-5.
+accepted first increment; OI-12 and OI-13 track its focused follow-up work.
 
 ## Registry-key commands
 
@@ -333,6 +333,28 @@ contains `Read`, `Change`, and `Full`. The descriptor setter accepts DACL SDDL;
 the add command accepts one or more accounts plus allow/deny; removal is exact.
 The commands never modify or claim to evaluate the backing NTFS DACL.
 Exact removal is idempotent when the path-bound ACE is already absent.
+
+## Task Scheduler commands
+
+| Command | Pipeline input | Returns |
+| --- | --- | --- |
+| `Get-TaskFolderSecurityDescriptor` | local task-folder paths | `TaskFolderSecurityDescriptor` |
+| `Set-TaskFolderSecurityDescriptor` | local task-folder paths | none / `TaskFolderSecurityDescriptor` |
+| `Get-ScheduledTaskSecurityDescriptor` | local parent-folder paths | `ScheduledTaskSecurityDescriptor` |
+| `Set-ScheduledTaskSecurityDescriptor` | local parent-folder paths | none / `ScheduledTaskSecurityDescriptor` |
+
+Task Scheduler commands use absolute local paths and expose no direct remote
+or credential parameter. Registered tasks bind an exact `TaskName` beneath each
+`TaskPath`. Every setter requires an explicit `AllowedRootPath`, rejects root
+and `\Microsoft` system-tree writes, parses DACL SDDL as data, preserves current
+literal Local System ACEs, rejects explicit Local System deny ACEs, and
+participates in high-impact `ShouldProcess`.
+
+The first increment is DACL descriptor-only. Task Scheduler can reorder ACEs
+and add `DACL_AUTO_INHERITED`; stored-state verification ignores only those
+system-derived differences while retaining duplicate-sensitive native ACE and
+caller-controlled flag comparison. Typed rules, SACL, backup/restore, DSC, and
+direct remote APIs remain outside this contract.
 
 ## Active Directory object commands
 
