@@ -54,6 +54,9 @@ to 0005 and the linked ADRs.
 - **FR-20**: Query and set DACL descriptors for local Task Scheduler folders and
   registered tasks inside an explicit allowed-root boundary while preserving
   required Local System access and task definitions.
+- **FR-21**: Evaluate an ordinary local SMB share DACL for a user SID through
+  Windows Authz and expose the granted mask, typed share rights, optional
+  requested-rights result, and explicit exclusion of the backing NTFS DACL.
 
 ## Non-functional requirements
 
@@ -88,6 +91,9 @@ to 0005 and the linked ADRs.
   ownership order, use no direct remote target syntax, and compare stored DACLs
   without treating service-derived ACE order or `DACL_AUTO_INHERITED` state as
   caller-controlled drift.
+- **NFR-14**: SMB effective-access output identifies its authorization context
+  as local and SID-derived, never claims backing-NTFS or remote evaluation, and
+  uses the existing bounded native-resource cleanup contract.
 
 ## Traceability
 

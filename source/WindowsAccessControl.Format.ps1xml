@@ -164,6 +164,36 @@
       </TableControl>
     </View>
     <View>
+      <Name>WindowsAccessControl.SmbShareEffectiveAccess</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.SmbShareEffectiveAccess</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>Share</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>EffectiveRights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>RequestedRights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Allowed</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Context</Label></TableColumnHeader>
+          <TableColumnHeader><Label>BackingNTFS</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>ShareName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>EffectiveRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>RequestedRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>IsAllowed</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AuthorizationContext</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>IncludesBackingNtfs</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
       <Name>WindowsAccessControl.ServiceAccessRule</Name>
       <ViewSelectedBy>
         <TypeName>WindowsAccessControl.ServiceAccessRule</TypeName>

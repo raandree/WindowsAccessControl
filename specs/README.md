@@ -22,6 +22,7 @@ them.
 8. [Enterprise access-control expansion](0008-enterprise-access-control-expansion.md)
 9. [SMB share and Active Directory DACL management](0009-smb-share-and-active-directory-dacl-management.md)
 10. [Task Scheduler DACL management](0010-task-scheduler-dacl-management.md)
+11. [SMB share-only effective access](0011-smb-share-only-effective-access.md)
 
 ## Status
 
@@ -37,6 +38,7 @@ them.
 | 0008 | Enterprise access-control expansion | Draft |
 | 0009 | SMB share and Active Directory DACL management | Accepted |
 | 0010 | Task Scheduler DACL management | Accepted |
+| 0011 | SMB share-only effective access | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
@@ -49,7 +51,9 @@ Directory expansion. Specification 0009 accepts the first SMB-share and Active
 Directory DACL-management increment without claiming later backup, DSC,
 effective-access, or replication work. Specification 0010 accepts local
 Task Scheduler folder and registered-task DACL descriptor management without
-claiming typed rules, portability, DSC, SACL, or direct remote APIs. A future change starts as `Draft` and
+claiming typed rules, portability, DSC, SACL, or direct remote APIs.
+Specification 0011 accepts a bounded local SID-derived SMB share-only result
+without a backing-NTFS, remote, or network-token claim. A future change starts as `Draft` and
 becomes `Accepted` when approved.
 
 ## Architecture decisions

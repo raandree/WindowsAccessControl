@@ -14,6 +14,9 @@ Specification 0010 accepts the first local Task Scheduler folder and
 registered-task DACL descriptor increment. Typed rules, portability, DSC, SACL,
 and direct remote APIs remain outside that accepted slice.
 
+Specification 0011 accepts SMB-5 as a bounded local SID-derived share-only
+result. SMB-6 remains deferred by ADR 0017.
+
 ## Purpose
 
 Extend `WindowsAccessControl` from local operating-system objects into the

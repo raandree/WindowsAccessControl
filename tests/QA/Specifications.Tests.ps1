@@ -133,12 +133,24 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             'WindowsAccessControl.ProcessAccessRule'
             'WindowsAccessControl.ProcessAuditRule'
             'WindowsAccessControl.SmbShareAccessRule'
+            'WindowsAccessControl.SmbShareEffectiveAccess'
             'WindowsAccessControl.ADObjectAccessRule'
         )
 
         foreach ($typeName in $requiredTypes) {
             $formattedTypes | Should -Contain $typeName
         }
+
+        $smbEffectiveView = @(
+            $formatData.Configuration.ViewDefinitions.View |
+                Where-Object Name -EQ 'WindowsAccessControl.SmbShareEffectiveAccess'
+        )
+        $smbEffectiveColumns = @(
+            $smbEffectiveView.TableControl.TableRowEntries.TableRowEntry.
+                TableColumnItems.TableColumnItem.PropertyName
+        )
+        $smbEffectiveColumns | Should -Contain 'AuthorizationContext'
+        $smbEffectiveColumns | Should -Contain 'IncludesBackingNtfs'
 
         $accessRuleView = @(
             $formatData.Configuration.ViewDefinitions.View |
@@ -204,9 +216,10 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         foreach ($closedIssue in 5, 6, 9, 10) {
             $openIssues | Should -Not -Match "(?m)^## OI-$closedIssue`:"
         }
-        foreach ($focusedIssue in 12..18) {
+        foreach ($focusedIssue in 12, 13, 14, 16, 17, 18, 19, 20) {
             $openIssues | Should -Match "(?m)^## OI-$focusedIssue`:"
         }
+        $openIssues | Should -Not -Match '(?m)^## OI-15:'
         $editingContract | Should -Match '(?m)^Status: Accepted\.'
         $labInventory | Should -Match '(?m)^Status: Verified'
         $labInventory | Should -Match 'Production network route isolation \| Verified'

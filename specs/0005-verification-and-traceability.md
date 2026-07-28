@@ -44,6 +44,7 @@ is not reported as a successful live write.
 | FR-18 | SMB command-contract Unit tests plus disposable share DACL round-trip, add, exact-remove, `WhatIf`, unrelated-ACE preservation, and rollback tests |
 | FR-19 | AD command-contract and LDAP-adapter Unit tests plus disposable-OU signed/sealed read, delegated add, object-ACE exact-remove, `WhatIf`, GUID revalidation, and rollback tests |
 | FR-20 | Task Scheduler command-contract and COM-boundary Unit tests plus disposable folder/task DACL reads, `WhatIf`, containment rejection, round trip, task-definition preservation, rollback, and cleanup tests |
+| FR-21 | SMB effective-access contract/behavior Unit tests plus delegated local share Authz, canonical deduplication, context-label, and backing-NTFS exclusion live evidence |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |
@@ -57,6 +58,7 @@ is not reported as a successful live write.
 | NFR-11 | SMB remote-syntax rejection, explicit Kerberos remoting acceptance, and AD signed/sealed LDAP connection/downgrade tests |
 | NFR-12 | SMB special-share rejection, AD allowed-OU/protected-target/GUID mismatch tests, live rollback, cleanup ledger, and independent security review |
 | NFR-13 | Task Scheduler path/COM Unit tests, duplicate-sensitive DACL canonicalization tests, and zero-leak domain-lab acceptance |
+| NFR-14 | SMB complete-descriptor section regression, existing Authz native cleanup tests, and explicit local/share-only output assertions |
 | ADR-0013 | Dispatcher Unit tests, family command contracts, live canonical deduplication and metric tests, cross-edition focused runs, and the repeatable NTFS benchmark |
 | ADR-0012 | Exact resource schema/orchestration/adapter Unit tests, live five-target convergence, Desktop MOF compilation, and `Invoke-DscResource` acceptance |
 | ADR-0012 rule presence | Rule schema/orchestration/adapter Unit tests, live five-target Present/Absent convergence, ten-resource MOF compilation, and Desktop LCM invocation |
@@ -136,6 +138,7 @@ is not reported as a successful live write.
 | `Clear-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
 | `Get-WindowsAccessControlMetric` | 1 | Thread-safe aggregate snapshot Unit test | Redacted output contract |
 | `Get-SmbShareSecurityDescriptor` | 1 | Disposable local share DACL plus canonical deduplication | Remote and special-share rejection |
+| `Get-SmbShareEffectiveAccess` | 2 | Disposable local share SID-derived Authz | Explicit local context and backing-NTFS exclusion |
 | `Set-SmbShareSecurityDescriptor` | 1 | Disposable local share DACL no-op/rollback | `WhatIf`, section and description preservation |
 | `Get-SmbShareAccessRule` | 1 | Disposable local share native ACE enumeration | Typed mask and unrelated-ACE preservation |
 | `Add-SmbShareAccessRule` | 1 | Disposable local share delegated add | `WhatIf`, exact mask, metadata preservation |

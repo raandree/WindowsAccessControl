@@ -61,6 +61,16 @@ enum WindowsSecurityObjectType {
 
 [Flags()]
 enum WindowsSmbShareRights {
+    Delete = 0x00010000
+    ReadControl = 0x00020000
+    WriteDac = 0x00040000
+    WriteOwner = 0x00080000
+    Synchronize = 0x00100000
+    AccessSystemSecurity = 0x01000000
+    GenericAll = 0x10000000
+    GenericExecute = 0x20000000
+    GenericWrite = 0x40000000
+    GenericRead = -2147483648
     Read = 0x001200A9
     Change = 0x001301BF
     Full = 0x001F01FF

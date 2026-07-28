@@ -325,6 +325,7 @@ does not include share permissions or every logon-specific group (0004).
 | `Get-SmbShareSecurityDescriptor` | local share names | `SmbShareSecurityDescriptor` |
 | `Set-SmbShareSecurityDescriptor` | local share names | none / `SmbShareSecurityDescriptor` |
 | `Get-SmbShareAccessRule` | local share names | `SmbShareAccessRule` |
+| `Get-SmbShareEffectiveAccess` | local share names | `SmbShareEffectiveAccess` |
 | `Add-SmbShareAccessRule` | local share names | none / `SmbShareAccessRule` |
 | `Remove-SmbShareAccessRule` | path-bound `SmbShareAccessRule` | none / removed rule |
 
@@ -333,6 +334,12 @@ contains `Read`, `Change`, and `Full`. The descriptor setter accepts DACL SDDL;
 the add command accepts one or more accounts plus allow/deny; removal is exact.
 The commands never modify or claim to evaluate the backing NTFS DACL.
 Exact removal is idempotent when the path-bound ACE is already absent.
+
+`Get-SmbShareEffectiveAccess` evaluates only the local share descriptor through
+a SID-derived Authz context. Output includes `AuthorizationContext` set to
+`LocalSidDerived` and `IncludesBackingNtfs` set to false. The command does not
+model a network logon token, a remote resource manager, or the backing NTFS
+DACL; ADR 0017 continues to prohibit remote and combined claims.
 
 ## Task Scheduler commands
 

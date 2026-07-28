@@ -119,11 +119,11 @@ backup/restore. Version 1 cannot bind explicit server authority plus immutable
 directory object identity without changing its replay and canonical-target
 contract. This increment therefore exports no backup integration.
 
-SMB remote APIs, share-only effective access, combined share/NTFS effective
-access, AD schema-name resolution, broader mutation modes, replication, DSC,
-and SACL workflows remain tracked by specification 0008 and focused open issues
-OI-11 and OI-14 through OI-18. ADR 0017 explicitly defers remote and combined
-effective access.
+Specification 0011 later admits bounded local share-only effective access. SMB
+remote APIs, combined share/NTFS effective access, AD schema-name resolution,
+broader mutation modes, replication, DSC, and SACL workflows remain tracked by
+specification 0008 and focused open issues OI-11 and OI-14 through OI-18. ADR
+0017 explicitly defers remote and combined effective access.
 
 ## Verification
 

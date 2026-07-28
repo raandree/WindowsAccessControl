@@ -70,6 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add local SMB-share DACL descriptor and typed access-rule query, add, set,
     and exact-remove workflows with bounded execution and share-description
     preservation
+- Add bounded local SMB share-only effective access with explicit SID-derived
+    context and backing-NTFS exclusion
 - Add explicit-DC Active Directory object DACL descriptor and object-specific
     access-rule query, add, set, and exact-remove workflows over signed and
     sealed LDAP with allowed-OU and immutable-GUID enforcement

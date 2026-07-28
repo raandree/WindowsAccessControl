@@ -51,6 +51,7 @@ mutation. Prefer `LiteralPath` when a path can contain wildcard characters.
 | Copy, back up, or restore descriptors | `Copy-NTFSItemSecurityDescriptor`, `Backup-WindowsSecurityDescriptor` |
 | Manage another supported object family | `Get-RegistryKeyAccessRule`, `Get-ServiceAccessRule`, `Get-ProcessAccessRule` |
 | Manage SMB share permissions | `Get-SmbShareAccessRule`, `Add-SmbShareAccessRule` |
+| Evaluate a local SMB share DACL only | `Get-SmbShareEffectiveAccess` |
 | Delegate Active Directory object access | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule` |
 | Manage Task Scheduler DACLs | `Get-TaskFolderSecurityDescriptor`, `Get-ScheduledTaskSecurityDescriptor` |
 | Enforce desired state | The class-based DSC resources |
@@ -97,6 +98,20 @@ Remove one exact rule by piping the path-bound query result:
 Get-SmbShareAccessRule -Name 'Data$' -Account $account |
     Remove-SmbShareAccessRule -WhatIf
 ```
+
+Evaluate only the local share DACL with a SID-derived Authz context:
+
+```powershell
+Get-SmbShareEffectiveAccess -Name 'Data$' `
+    -Account $account `
+    -AccessRights Read
+```
+
+This result does not include the backing NTFS DACL and does not reproduce a
+remote network logon token. Inspect `AuthorizationContext` and
+`IncludesBackingNtfs` before consuming it in automation. Authz reports an error
+instead of a partial result when the executing process cannot contact the
+selected SID's account authority.
 
 ## Delegate Active Directory object access
 

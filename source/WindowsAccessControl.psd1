@@ -117,6 +117,7 @@ FunctionsToExport = @(
     'Get-ServiceAuditRule'
     'Get-ServiceSecurityDescriptor'
     'Get-SmbShareAccessRule'
+    'Get-SmbShareEffectiveAccess'
     'Get-SmbShareSecurityDescriptor'
     'Get-ScheduledTaskSecurityDescriptor'
     'Get-TaskFolderSecurityDescriptor'

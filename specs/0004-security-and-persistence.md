@@ -225,6 +225,12 @@ SMB-plus-NTFS result requires a separately accepted server-side token and
 authorization contract; a local SID-derived mask must never be relabeled as
 remote evidence (ADR 0017).
 
+`Get-SmbShareEffectiveAccess` is a separate bounded share-only result. It runs
+on the share owner, reads owner/group/DACL for Authz completeness, labels its
+context `LocalSidDerived`, and sets `IncludesBackingNtfs` to false. It can omit
+network-logon groups, and context initialization can fail when the SID authority
+is unavailable. It does not weaken the remote/combined prohibition.
+
 ## Enterprise DACL boundary
 
 The first SMB and AD increment persists only DACLs. SMB share commands execute

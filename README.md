@@ -171,6 +171,10 @@ secure session when the share belongs to another computer.
 ```powershell
 Get-SmbShareAccessRule -Name 'Data$'
 
+Get-SmbShareEffectiveAccess -Name 'Data$' `
+    -Account 'CONTOSO\Analysts' `
+    -AccessRights Read
+
 Add-SmbShareAccessRule -Name 'Data$' `
     -Account 'CONTOSO\Analysts' `
     -AccessRights Read `
@@ -179,7 +183,9 @@ Add-SmbShareAccessRule -Name 'Data$' `
 
 Administrative, drive, IPC, print, clustered, and continuously available
 shares are rejected. Share DACL writes preserve the share description and do
-not claim effective access to files under the backing path.
+not claim effective access to files under the backing path. The share-only
+effective-access result is labeled `LocalSidDerived`, excludes backing NTFS,
+and can omit network-logon-specific groups.
 
 ## Active Directory objects
 

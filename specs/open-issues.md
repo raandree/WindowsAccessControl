@@ -48,14 +48,6 @@ Add schema-version-2 SMB backup/restore, server-qualified canonical locking,
 and exact-descriptor/rule DSC resources for the accepted local-on-target share
 boundary. Direct remote APIs remain excluded by ADR 0015.
 
-## OI-15: Decide share-only effective access
-
-Specifications: 0004, 0008. Task: SMB-5.
-
-Determine whether a bounded local-on-target share-only result can model the
-server access check defensibly. Remote and combined SMB-plus-NTFS claims remain
-deferred by ADR 0017 regardless of this decision.
-
 ## OI-16: Add AD schema resolution and broader DACL mutation
 
 Specifications: 0008, 0009. Tasks: AD-2, AD-4, and AD-5.

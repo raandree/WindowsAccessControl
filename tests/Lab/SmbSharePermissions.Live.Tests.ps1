@@ -217,6 +217,31 @@ Describe 'SMB share DACL commands' -Tag 'DomainLab', 'WindowsOnly', 'RequiresEle
         $result.BinarySecurityDescriptor.Count | Should -BeGreaterThan 0
     }
 
+    It 'Should report bounded share-only effective access without an NTFS claim' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName `
+            -ScriptBlock {
+                param($ShareName)
+
+                Invoke-WindowsAccessControl `
+                    -Credential $script:WacSmbCredential `
+                    -ScriptBlock {
+                        param($Name)
+                        Get-SmbShareEffectiveAccess `
+                            -Name @($Name, $Name.ToUpperInvariant())
+                    } `
+                    -ArgumentList $ShareName
+            }
+
+        @($result) | Should -HaveCount 1
+        $result.PSObject.TypeNames |
+            Should -Contain 'Deserialized.WindowsAccessControl.SmbShareEffectiveAccess'
+        $result.AccessMask | Should -BeGreaterThan 0
+        $result.AuthorizationContext | Should -BeExactly 'LocalSidDerived'
+        $result.IncludesBackingNtfs | Should -BeFalse
+    }
+
     It 'Should honor WhatIf for descriptor and rule writes' {
         $before = Invoke-Command `
             -Session $script:session `
