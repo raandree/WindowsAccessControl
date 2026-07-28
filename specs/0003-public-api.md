@@ -193,6 +193,7 @@ Arbitrary owner assignment can require `SeRestorePrivilege`.
 | Command | Primary parameter sets | Pipeline input | Returns |
 | --- | --- | --- | --- |
 | `Get-NTFSItemSecurityDescriptor` | Path, LiteralPath | paths, filesystem objects | `SecurityDescriptor` |
+| `Edit-NTFSItemSecurityDescriptor` | Path, LiteralPath | paths, filesystem objects | none / `SecurityDescriptor` |
 | `Set-NTFSItemSecurityDescriptor` | InputObject | `SecurityDescriptor` objects | none / `SecurityDescriptor` |
 | `Copy-NTFSItemSecurityDescriptor` | Path, LiteralPath | destination paths/objects | none / `SecurityDescriptor` |
 | `Backup-NTFSItemSecurityDescriptor` | Path, LiteralPath | paths, filesystem objects | none / backup records |
@@ -231,7 +232,20 @@ memory and returns the same object without writing. `Set-NTFSItemSecurityDescrip
 then persists the recorded `Sections` back to the item with a single write under
 `ShouldProcess`. Path-bound commands remain the read-modify-write default; this
 round-trip is the in-memory editing model from specification 0007 and is the
-accepted first increment; OI-12 and OI-13 track its focused follow-up work.
+accepted first increment.
+
+`Edit-NTFSItemSecurityDescriptor` bounds that round trip to one command. It
+reads the selected sections once, supplies the detached descriptor as the first
+script-block argument, appends `ArgumentList`, suppresses callback output,
+rejects unloaded-section expansion, and persists at most once under
+`ShouldProcess`. `PassThru` refreshes output from the edited in-memory native
+descriptor without a second read. OI-21 tracks descriptor-input support for the
+remaining mutators; OI-13 tracks registry editing.
+
+The command accepts `ThrottleLimit` for target-array contract consistency but
+executes caller callbacks sequentially to preserve script-block runspace
+affinity. `WhatIf` skips descriptor persistence; it cannot suppress raw side
+effects performed directly by trusted callback code.
 
 ## Registry-key commands
 

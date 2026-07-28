@@ -30,6 +30,16 @@ A DACL operation must not request SACL privileges or overwrite SACL, owner, or
 group state. An owner-only operation must not rewrite access rules. Copy and
 restore write exactly the recorded section set.
 
+The bounded NTFS editing scope reads one detached descriptor under the
+same-target lock, invokes trusted caller code, and writes only the originally
+selected sections at most once. Callback output is not command output. A
+callback exception, invalid native descriptor, or selection of an unloaded
+section fails before persistence. External writers remain a last-writer-wins
+race until the separately tracked optimistic-concurrency contract ships.
+Caller callbacks are dispatched sequentially and are never invoked concurrently
+from multiple runspaces. `WhatIf` gates only the descriptor write; trusted
+callback code remains responsible for its own non-descriptor side effects.
+
 ## Access and audit mutation semantics
 
 The managed ACL methods are not interchangeable (ADR 0004):

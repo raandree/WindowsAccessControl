@@ -57,6 +57,9 @@ to 0005 and the linked ADRs.
 - **FR-21**: Evaluate an ordinary local SMB share DACL for a user SID through
   Windows Authz and expose the granted mask, typed share rights, optional
   requested-rights result, and explicit exclusion of the backing NTFS DACL.
+- **FR-22**: Edit selected NTFS descriptor sections in a bounded script-block
+  scope with one detached read, at most one serialized persistence operation,
+  optional positional arguments, and opt-in pass-through output.
 
 ## Non-functional requirements
 
@@ -94,6 +97,9 @@ to 0005 and the linked ADRs.
 - **NFR-14**: SMB effective-access output identifies its authorization context
   as local and SID-derived, never claims backing-NTFS or remote evaluation, and
   uses the existing bounded native-resource cleanup contract.
+- **NFR-15**: Bounded NTFS descriptor editing executes the callback under
+  `WhatIf` but never persists it, suppresses callback output, rejects unloaded-
+  section expansion, and never writes after callback failure.
 
 ## Traceability
 

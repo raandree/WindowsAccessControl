@@ -94,6 +94,7 @@ FunctionsToExport = @(
     'Disable-NTFSItemInheritance'
     'Disable-RegistryKeyInheritance'
     'Disable-WindowsPrivilege'
+    'Edit-NTFSItemSecurityDescriptor'
     'Enable-NTFSItemInheritance'
     'Enable-RegistryKeyInheritance'
     'Enable-WindowsPrivilege'

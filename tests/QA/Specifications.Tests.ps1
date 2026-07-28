@@ -216,9 +216,10 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         foreach ($closedIssue in 5, 6, 9, 10) {
             $openIssues | Should -Not -Match "(?m)^## OI-$closedIssue`:"
         }
-        foreach ($focusedIssue in 12, 13, 14, 16, 17, 18, 19, 20) {
+        foreach ($focusedIssue in 13, 14, 16, 17, 18, 19, 20, 21) {
             $openIssues | Should -Match "(?m)^## OI-$focusedIssue`:"
         }
+        $openIssues | Should -Not -Match '(?m)^## OI-12:'
         $openIssues | Should -Not -Match '(?m)^## OI-15:'
         $editingContract | Should -Match '(?m)^Status: Accepted\.'
         $labInventory | Should -Match '(?m)^Status: Verified'

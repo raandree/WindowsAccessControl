@@ -82,6 +82,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     persists an edited descriptor object with one write, and `Add-NTFSAccessRule`
     can stage an access rule on a descriptor from `Get-NTFSItemSecurityDescriptor`
     without writing until it is persisted
+- Add `Edit-NTFSItemSecurityDescriptor` for a bounded one-read, at-most-one-write
+    callback scope with `ArgumentList`, loaded-section enforcement, `WhatIf`,
+    and pass-through output
 
 ### Changed
 

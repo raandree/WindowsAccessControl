@@ -363,6 +363,31 @@ The descriptor records its selected sections, and only those sections are
 written. The current in-memory mutation surface stages `Add-NTFSAccessRule`;
 use the path-based commands for other mutations.
 
+Keep the read, in-memory callback, and write in one same-target lock with the
+bounded scope:
+
+```powershell
+Edit-NTFSItemSecurityDescriptor `
+    -LiteralPath $path `
+    -Sections Access `
+    -ScriptBlock {
+        param($descriptor, $identity)
+        $descriptor | Add-NTFSAccessRule `
+            -Account $identity `
+            -AccessRights Read | Out-Null
+    } `
+    -ArgumentList $account `
+    -WhatIf
+```
+
+The callback runs against a detached descriptor even under `WhatIf`; only the
+final descriptor persistence is skipped. Raw side effects performed directly
+inside the trusted callback are not covered by this `WhatIf` guarantee. Callback
+output is suppressed, and errors or an attempt to add an unloaded section
+prevent the descriptor write. Use `PassThru` to receive the edited descriptor.
+Targets run sequentially so one caller script block is never invoked
+concurrently across runspaces; pass explicit values through `ArgumentList`.
+
 ## Configure auditing
 
 SACL reads and writes require `SeSecurityPrivilege`. Inspect the current token

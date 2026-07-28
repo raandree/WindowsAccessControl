@@ -43,9 +43,9 @@ them.
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
 registry-key, service/SCM, pinned-process, portability, bounded-execution, and
-DSC expansion. Specification 0007 accepts the implemented first filesystem
-descriptor-editing increment; focused issues OI-12 and OI-13 track its
-remaining bounded-scope and registry work. Specification 0008 plans the
+DSC expansion. Specification 0007 accepts the implemented explicit and bounded
+filesystem descriptor-editing increments; focused issues OI-21 and OI-13 track
+its remaining mutator and registry work. Specification 0008 plans the
 domain-lab-gated Task Scheduler, certificate private-key, SMB-share, and Active
 Directory expansion. Specification 0009 accepts the first SMB-share and Active
 Directory DACL-management increment without claiming later backup, DSC,

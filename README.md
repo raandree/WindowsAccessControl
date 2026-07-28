@@ -605,7 +605,7 @@ the NTFS result.
 | Audit rules | `New-NTFSAuditRule`, `Get-NTFSAuditRule`, `Add-NTFSAuditRule`, `Set-NTFSAuditRule`, `Remove-NTFSAuditRule`, `Clear-NTFSAuditRule` |
 | Owner | `Get-NTFSItemOwner`, `Set-NTFSItemOwner` |
 | Inheritance | `Get-NTFSItemInheritance`, `Enable-NTFSItemInheritance`, `Disable-NTFSItemInheritance` |
-| Descriptor portability | `Get-NTFSItemSecurityDescriptor`, `Set-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor`, `Backup-WindowsSecurityDescriptor`, `Restore-WindowsSecurityDescriptor` |
+| Descriptor portability and editing | `Get-NTFSItemSecurityDescriptor`, `Edit-NTFSItemSecurityDescriptor`, `Set-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor`, `Backup-WindowsSecurityDescriptor`, `Restore-WindowsSecurityDescriptor` |
 | Registry descriptors | `Get-RegistryKeySecurityDescriptor`, `Set-RegistryKeySecurityDescriptor` |
 | Registry access rules | `Get-RegistryKeyAccessRule`, `Add-RegistryKeyAccessRule`, `Set-RegistryKeyAccessRule`, `Remove-RegistryKeyAccessRule`, `Clear-RegistryKeyAccessRule` |
 | Registry audit rules | `Get-RegistryKeyAuditRule`, `Add-RegistryKeyAuditRule`, `Set-RegistryKeyAuditRule`, `Remove-RegistryKeyAuditRule`, `Clear-RegistryKeyAuditRule` |

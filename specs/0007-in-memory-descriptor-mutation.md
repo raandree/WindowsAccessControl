@@ -3,9 +3,9 @@
 Status: Accepted. This contract defines an optional detached descriptor-editing
 model. It reuses the existing access, audit, owner, inheritance, and descriptor
 requirements (FR-3 through FR-10) rather than defining new requirement
-identifiers. The explicit filesystem round-trip is implemented and verified;
-the bounded filesystem scope and registry expansion remain focused follow-up
-issues OI-12 and OI-13.
+identifiers. The explicit filesystem round-trip and bounded filesystem scope
+are implemented and verified; descriptor-aware mutator expansion and registry
+editing remain focused follow-up issues OI-21 and OI-13.
 
 ## Context and problem statement
 
@@ -31,8 +31,8 @@ contract so the second model is explicit, section-scoped, and testable.
 
 - Provide a detached, editable descriptor object whose mutations do not touch
   the target until an explicit persist step.
-- Track which sections are loaded and which are dirty so persistence writes
-  only the intended sections, consistent with
+- Track which sections are loaded so persistence writes only the caller-selected
+  sections, consistent with
   [security and persistence](0004-security-and-persistence.md).
 - Reuse the existing explicit mutation semantics (add, set, exact removal,
   rights subtraction, account purge, clear) from
@@ -68,8 +68,8 @@ model is implemented.
 
 ## Accepted model
 
-The model has two composable shapes. The explicit descriptor round-trip is the
-implemented foundation; a bounded editing scope remains planned sugar over that
+The model has two composable implemented shapes. The explicit descriptor
+round-trip is the foundation; the bounded editing scope is sugar over that
 foundation.
 
 ### Recommended: bounded editing scope
@@ -79,10 +79,11 @@ caller script block that mutates the in-memory descriptor, then persists once
 under `ShouldProcess`:
 
 ```powershell
-Edit-NTFSItemSecurityDescriptor -LiteralPath 'C:\Data' -Section Access {
+Edit-NTFSItemSecurityDescriptor -LiteralPath 'C:\Data' -Sections Access {
     param($descriptor)
-    $descriptor | Add-NTFSAccessRule -Account 'CONTOSO\Analysts' -AccessRights Read
-    $descriptor | Remove-NTFSAccessRule -Account 'CONTOSO\Temp' -RemovalMode All
+  $descriptor | Add-NTFSAccessRule `
+    -Account 'CONTOSO\Analysts' `
+    -AccessRights Read | Out-Null
 }
 ```
 
@@ -120,8 +121,10 @@ descriptor can drift from the live target.
 
 ## Section state and persistence
 
-- A detached descriptor tracks its loaded sections and, separately, its dirty
-  sections. Persistence writes only dirty sections that were also loaded.
+- A detached descriptor tracks its loaded sections. The bounded scope writes
+  exactly that selected set at most once and rejects a callback that expands
+  `Sections` beyond what was loaded. Fine-grained dirty-section tracking remains
+  outside the current object contract.
 - Persistence uses the same runtime-specific, section-scoped path as
   path-bound commands, so a DACL edit never rewrites an unselected SACL, owner,
   or group. ADR 0003 and ADR 0004 continue to govern this behavior.
@@ -135,7 +138,8 @@ descriptor can drift from the live target.
 - Only the persist step participates in `ShouldProcess`, `WhatIf`, and
   `Confirm`. Under `WhatIf`, the scope runs the mutation script block against a
   clone and reports the intended write without persisting.
-- `PassThru` on the persist step returns the persisted descriptor.
+- `PassThru` on the persist step returns the edited descriptor regenerated from
+  its in-memory native object without a second filesystem read.
 
 ## Stale-target and concurrency behavior
 
@@ -176,6 +180,13 @@ longer describe the same process instance.
   ADR 0011, and only at persist time.
 - The detached descriptor carries no secret material beyond the SDDL a caller
   could already read through `Get-*SecurityDescriptor`.
+- `ScriptBlock` is trusted administrative code supplied by the caller. Its
+  pipeline output is suppressed by the scope. Bounded edits dispatch targets
+  sequentially so the caller block is never shared concurrently across
+  runspaces; `ArgumentList` remains the explicit way to pass callback values.
+- `WhatIf` prevents descriptor persistence only. Raw filesystem, network, or
+  other side effects performed directly by trusted callback code are outside
+  the command's `ShouldProcess` boundary.
 
 ## Verification approach
 
@@ -211,9 +222,13 @@ requirements:
   filesystem descriptor with one write, and `Add-NTFSAccessRule` stages an
   access rule on a descriptor in memory without writing. Covered by unit and
   live integration tests including `WhatIf` non-persistence.
-- Phase 2 (tracked by OI-12): the `Edit-NTFSItemSecurityDescriptor` bounded scope and the
-  remaining filesystem access, audit, owner, and inheritance mutators accepting
-  a descriptor.
+- Phase 2a (delivered): `Edit-NTFSItemSecurityDescriptor` performs one read,
+  invokes a trusted callback on the detached descriptor, enforces the loaded
+  section boundary, and performs at most one serialized write. Unit and live
+  tests cover `WhatIf`, callback failure, `ArgumentList`, and `PassThru`.
+- Phase 2b (tracked by OI-21): remaining filesystem access, audit, owner, and
+  inheritance mutators accept a descriptor directly; live-process input remains
+  excluded by its pinned-handle contract.
 - Phase 3 (tracked by OI-13): the registry-key family and opt-in optimistic concurrency.
 
 Full requirement traceability rows are added to

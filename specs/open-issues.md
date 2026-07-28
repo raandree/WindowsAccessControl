@@ -23,15 +23,6 @@ locking, and the domain-lab runner as each family is implemented. The enterprise
 foundation is accepted; ENT-6 and ENT-7 still block the first family release,
 and ENT-8 blocks every enterprise release candidate.
 
-## OI-12: Complete bounded NTFS descriptor editing
-
-Specification: 0007. Requirements: FR-3 to FR-9.
-
-Add the bounded `Edit-NTFSItemSecurityDescriptor` scope and descriptor-input
-support for the remaining NTFS access, audit, owner, and inheritance mutators.
-Prove one persistence operation, section preservation, `WhatIf`, and explicit
-process-family rejection.
-
 ## OI-13: Add registry descriptor editing and optimistic concurrency
 
 Specification: 0007. Requirements: FR-3 to FR-10.
@@ -91,6 +82,15 @@ Specifications: 0008, 0010. Tasks: TASK-5 to TASK-7.
 Add schema-version-2 backup/restore, target locking evidence, and exact
 descriptor/rule DSC resources where convergence is safe. SACL and direct remote
 APIs remain separately gated.
+
+## OI-21: Extend descriptor-aware NTFS mutators
+
+Specification: 0007. Requirements: FR-3 to FR-9.
+
+Add descriptor-input parameter sets for NTFS access set/remove/clear, audit,
+owner, and inheritance mutators. Preserve explicit mutation semantics and
+loaded-section enforcement. Live-process descriptors remain excluded because
+their read and write must stay on one pinned handle.
 
 ## See also
 

@@ -28,6 +28,7 @@ SEE ALSO
     Get-NTFSAccessRule
     Get-NTFSAuditRule
     Get-NTFSItemSecurityDescriptor
+    Edit-NTFSItemSecurityDescriptor
     Get-NTFSItemEffectiveAccess
     Get-TaskFolderSecurityDescriptor
     Get-ScheduledTaskSecurityDescriptor

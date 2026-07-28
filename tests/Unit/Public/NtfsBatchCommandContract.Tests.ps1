@@ -19,6 +19,7 @@ Describe 'NTFS array-target command contract' -Tag 'Unit', 'WindowsOnly' {
         @{ Name = 'Copy-NTFSItemSecurityDescriptor' }
         @{ Name = 'Disable-NTFSItemInheritance' }
         @{ Name = 'Enable-NTFSItemInheritance' }
+        @{ Name = 'Edit-NTFSItemSecurityDescriptor' }
         @{ Name = 'Get-NTFSAccessRule' }
         @{ Name = 'Get-NTFSAuditRule' }
         @{ Name = 'Get-NTFSItemEffectiveAccess' }
