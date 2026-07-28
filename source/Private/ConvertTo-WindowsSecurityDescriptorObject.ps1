@@ -30,6 +30,10 @@ function ConvertTo-WindowsSecurityDescriptorObject {
     $result = [pscustomobject]@{
         ObjectType               = $Target.ObjectType
         Path                     = $Target.Path
+        ShareName                = $Target.ShareName
+        Server                   = $Target.Server
+        DistinguishedName        = $Target.DistinguishedName
+        ObjectGuid               = $Target.ObjectGuid
         ServiceName              = $Target.ServiceName
         ProcessId                = $Target.ProcessId
         ProcessName              = $Target.ProcessName

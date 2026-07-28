@@ -5,6 +5,11 @@ tasks and task folders, certificate private keys, SMB shares, and Active
 Directory objects. It does not describe implemented behavior. Implementation
 starts only after the domain-lab and security entry gates below pass.
 
+Specification 0009 accepts the first SMB-share and Active Directory DACL
+descriptor/rule increment. This broader roadmap remains Draft because SACL,
+backup, DSC, effective-access, schema-resolution, and replication packages are
+not complete.
+
 ## Purpose
 
 Extend `WindowsAccessControl` from local operating-system objects into the

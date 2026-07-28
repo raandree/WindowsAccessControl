@@ -13,6 +13,37 @@ enum WindowsRegistryView {
     Registry64 = 64
 }
 
+[Flags()]
+enum WindowsActiveDirectoryRights {
+    CreateChild = 0x00000001
+    DeleteChild = 0x00000002
+    ListChildren = 0x00000004
+    Self = 0x00000008
+    ReadProperty = 0x00000010
+    WriteProperty = 0x00000020
+    DeleteTree = 0x00000040
+    ListObject = 0x00000080
+    ExtendedRight = 0x00000100
+    Delete = 0x00010000
+    ReadControl = 0x00020000
+    WriteDacl = 0x00040000
+    WriteOwner = 0x00080000
+    Synchronize = 0x00100000
+    AccessSystemSecurity = 0x01000000
+    GenericExecute = 0x00020004
+    GenericWrite = 0x00020028
+    GenericRead = 0x00020094
+    GenericAll = 0x000F01FF
+}
+
+enum WindowsActiveDirectoryInheritance {
+    None = 0
+    All = 1
+    Descendents = 2
+    SelfAndChildren = 3
+    Children = 4
+}
+
 enum WindowsAccessControlDscEnsure {
     Absent = 0
     Present = 1
@@ -22,9 +53,17 @@ enum WindowsSecurityObjectType {
     File = 1
     Service = 2
     RegistryKey = 4
+    SmbShare = 5
     Kernel = 6
     Registry32 = 12
     Registry64 = 13
+}
+
+[Flags()]
+enum WindowsSmbShareRights {
+    Read = 0x001200A9
+    Change = 0x001301BF
+    Full = 0x001F01FF
 }
 
 [Flags()]
@@ -103,8 +142,11 @@ enum WindowsProcessRights {
 $windowsAccessControlEnums = @{
     WindowsSecurityDescriptorSection   = [WindowsSecurityDescriptorSection]
     WindowsRegistryView                = [WindowsRegistryView]
+    WindowsActiveDirectoryRights       = [WindowsActiveDirectoryRights]
+    WindowsActiveDirectoryInheritance  = [WindowsActiveDirectoryInheritance]
     WindowsAccessControlDscEnsure      = [WindowsAccessControlDscEnsure]
     WindowsSecurityObjectType          = [WindowsSecurityObjectType]
+    WindowsSmbShareRights              = [WindowsSmbShareRights]
     WindowsServiceRights               = [WindowsServiceRights]
     WindowsServiceControlManagerRights = [WindowsServiceControlManagerRights]
     WindowsProcessRights               = [WindowsProcessRights]

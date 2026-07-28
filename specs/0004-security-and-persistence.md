@@ -219,6 +219,32 @@ must not be accepted from an untrusted source without review.
 The command therefore does not claim to reproduce every access check made by a
 live logon token or SMB server.
 
+## Enterprise DACL boundary
+
+The first SMB and AD increment persists only DACLs. SMB share commands execute
+locally through `SE_LMSHARE` and reject remote syntax. A caller that manages a
+different server establishes a separately approved secure session and runs the
+command on that target.
+
+AD commands connect directly to an explicit DC with LDAP Kerberos
+authentication, signing, and sealing. They disable referral chasing and reject simple bind, implicit discovery, IP
+authority, and channel fallback. Credential objects remain input-only and are
+disposed by the caller; the module does not serialize or log their contents.
+
+AD reads are restricted to the default domain naming context. Writes require
+an explicit allowed OU and reject domain root, `AdminSDHolder`, Domain
+Controllers, System, Group Policy, configuration, and schema targets. The
+adapter binds output to `objectGUID` and rechecks that GUID immediately before
+modifying `nTSecurityDescriptor` with the LDAP DACL control.
+
+SMB and AD setters reject null DACLs. Rule addition and exact removal modify a
+binary descriptor in memory, preserve unrelated and unknown ACEs, then persist
+the access section only. Object ACE GUIDs are never converted to common ACEs.
+
+Unified backup remains schema version 1 for existing local families. ADR 0016
+requires schema version 2 before SMB or AD records are accepted, so this
+increment cannot restore enterprise targets from a version 1 document.
+
 ## Paths and time-of-check/time-of-use
 
 `Path` follows FileSystem-provider wildcard and reparse-point behavior.

@@ -67,6 +67,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     directory identities and groups, an SMB share, a Task Scheduler folder, and
     a software CNG certificate key, with idempotent setup/teardown, compensating
     cleanup, and explicit private-key deletion evidence
+- Add local SMB-share DACL descriptor and typed access-rule query, add, set,
+    and exact-remove workflows with bounded execution and share-description
+    preservation
+- Add explicit-DC Active Directory object DACL descriptor and object-specific
+    access-rule query, add, set, and exact-remove workflows over signed and
+    sealed LDAP with allowed-OU and immutable-GUID enforcement
 - Add in-memory NTFS descriptor editing: `Set-NTFSItemSecurityDescriptor`
     persists an edited descriptor object with one write, and `Add-NTFSAccessRule`
     can stage an access rule on a descriptor from `Get-NTFSItemSecurityDescriptor`

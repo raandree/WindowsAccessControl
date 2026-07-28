@@ -41,6 +41,8 @@ is not reported as a successful live write.
 | FR-15 | Public command tests and pipeline cases across Integration tests |
 | FR-16 | Path/LiteralPath help QA and filesystem-object pipeline tests |
 | FR-17 | `MutatorSafety.Tests.ps1` |
+| FR-18 | SMB command-contract Unit tests plus disposable share DACL round-trip, add, exact-remove, `WhatIf`, unrelated-ACE preservation, and rollback tests |
+| FR-19 | AD command-contract and LDAP-adapter Unit tests plus disposable-OU signed/sealed read, delegated add, object-ACE exact-remove, `WhatIf`, GUID revalidation, and rollback tests |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |
@@ -51,6 +53,8 @@ is not reported as a successful live write.
 | NFR-8 | Backup schema, no-clobber, malformed-document, and restore tests |
 | NFR-9 | Token inventory test and mutator `WhatIf` safety tests |
 | NFR-10 | Sampler build, package inspection, changelog QA, and GitVersion config |
+| NFR-11 | SMB remote-syntax rejection, explicit Kerberos remoting acceptance, and AD signed/sealed LDAP connection/downgrade tests |
+| NFR-12 | SMB special-share rejection, AD allowed-OU/protected-target/GUID mismatch tests, live rollback, cleanup ledger, and independent security review |
 | ADR-0013 | Dispatcher Unit tests, family command contracts, live canonical deduplication and metric tests, cross-edition focused runs, and the repeatable NTFS benchmark |
 | ADR-0012 | Exact resource schema/orchestration/adapter Unit tests, live five-target convergence, Desktop MOF compilation, and `Invoke-DscResource` acceptance |
 | ADR-0012 rule presence | Rule schema/orchestration/adapter Unit tests, live five-target Present/Absent convergence, ten-resource MOF compilation, and Desktop LCM invocation |
@@ -129,9 +133,18 @@ is not reported as a successful live write.
 | `Remove-ProcessAuditRule` | 1 | Live process SACL | Exact native ACE removal |
 | `Clear-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
 | `Get-WindowsAccessControlMetric` | 1 | Thread-safe aggregate snapshot Unit test | Redacted output contract |
+| `Get-SmbShareSecurityDescriptor` | 1 | Disposable local share DACL plus canonical deduplication | Remote and special-share rejection |
+| `Set-SmbShareSecurityDescriptor` | 1 | Disposable local share DACL no-op/rollback | `WhatIf`, section and description preservation |
+| `Get-SmbShareAccessRule` | 1 | Disposable local share native ACE enumeration | Typed mask and unrelated-ACE preservation |
+| `Add-SmbShareAccessRule` | 1 | Disposable local share delegated add | `WhatIf`, exact mask, metadata preservation |
+| `Remove-SmbShareAccessRule` | 1 | Disposable local share exact native removal | Canonical target validation and rollback |
+| `Get-ADObjectSecurityDescriptor` | 1 | Signed/sealed LDAP disposable-OU read | Explicit DC and immutable GUID binding |
+| `Set-ADObjectSecurityDescriptor` | 1 | Delegated disposable-OU DACL round trip | `WhatIf`, allowed-OU and protected-target rejection |
+| `Get-ADObjectAccessRule` | 1 | Common/object ACE enumeration in disposable OU | GUID and inheritance preservation |
+| `Add-ADObjectAccessRule` | 1 | Delegated object-specific ACE add | Non-Domain-Admin, idempotence, prevalidation, rollback |
+| `Remove-ADObjectAccessRule` | 1 | Exact object-ACE removal | GUID revalidation and stale-target rejection |
 
-The direct command total is 118 specifications across 70 exported commands.
-Cross-cutting checks add 20 Unit-level mutator `WhatIf` specifications in
+Cross-cutting checks add Unit-level mutator `WhatIf` specifications in
 `tests/Unit/MutatorSafety.Tests.ps1` and the QA specification contract in
 `tests/QA/Specifications.Tests.ps1`.
 

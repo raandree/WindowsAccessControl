@@ -44,6 +44,12 @@ to 0005 and the linked ADRs.
   reparse-point and path replacement create time-of-check/time-of-use risk.
 - **FR-17**: Every state-changing command honors `WhatIf` and `Confirm`; useful
   mutation results are available only through `PassThru`.
+- **FR-18**: Query and set local SMB-share DACL descriptors, add typed allow or
+  deny share ACEs, and remove exact path-bound share ACEs without changing the
+  backing NTFS descriptor or unrelated share ACEs.
+- **FR-19**: Query and set Active Directory object DACL descriptors through an
+  explicit domain controller, add typed common or object-specific ACEs, and
+  remove exact path-bound ACEs while preserving GUID and inheritance metadata.
 
 ## Non-functional requirements
 
@@ -68,6 +74,12 @@ to 0005 and the linked ADRs.
   and never seize ownership as an authorization fallback.
 - **NFR-10**: Build, versioning, packaging, changelog, and tests use the Sampler
   project workflow and Semantic Versioning.
+- **NFR-11**: SMB commands reject remote syntax and execute on the target
+  computer; AD commands use direct LDAP Kerberos authentication with signing,
+  sealing, no referral chasing, explicit DC authority, and bounded timeouts.
+- **NFR-12**: Enterprise DACL writes revalidate target identity immediately
+  before persistence, reject protected or out-of-bound targets, and retain
+  executable rollback evidence from disposable resources.
 
 ## Traceability
 

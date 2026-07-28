@@ -102,6 +102,7 @@ function Get-WindowsAclRule {
                 Service { [WindowsServiceRights] }
                 ServiceControlManager { [WindowsServiceControlManagerRights] }
                 Process { [WindowsProcessRights] }
+                SmbShare { [WindowsSmbShareRights] }
                 default { [System.Security.AccessControl.RegistryRights] }
             }
             SupportsInheritance = $Target.ObjectType -eq 'RegistryKey'

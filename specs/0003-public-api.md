@@ -111,6 +111,10 @@ Stable PowerShell type names identify module output:
 - `WindowsAccessControl.ProcessAccessRule`
 - `WindowsAccessControl.ProcessAuditRule`
 - `WindowsAccessControl.ProcessSecurityDescriptor`
+- `WindowsAccessControl.SmbShareAccessRule`
+- `WindowsAccessControl.SmbShareSecurityDescriptor`
+- `WindowsAccessControl.ADObjectAccessRule`
+- `WindowsAccessControl.ADObjectSecurityDescriptor`
 - `WindowsAccessControl.Metric`
 
 Native .NET rule or descriptor objects remain available as properties where a
@@ -313,6 +317,43 @@ and cease to be meaningful when the process instance exits.
 `Test-NTFSItemAcl` reports preferred Windows ACE order and never repairs the
 descriptor automatically. Effective access uses a SID-derived Authz context and
 does not include share permissions or every logon-specific group (0004).
+
+## SMB-share commands
+
+| Command | Pipeline input | Returns |
+| --- | --- | --- |
+| `Get-SmbShareSecurityDescriptor` | local share names | `SmbShareSecurityDescriptor` |
+| `Set-SmbShareSecurityDescriptor` | local share names | none / `SmbShareSecurityDescriptor` |
+| `Get-SmbShareAccessRule` | local share names | `SmbShareAccessRule` |
+| `Add-SmbShareAccessRule` | local share names | none / `SmbShareAccessRule` |
+| `Remove-SmbShareAccessRule` | path-bound `SmbShareAccessRule` | none / removed rule |
+
+SMB commands accept unqualified local share names only. `WindowsSmbShareRights`
+contains `Read`, `Change`, and `Full`. The descriptor setter accepts DACL SDDL;
+the add command accepts one or more accounts plus allow/deny; removal is exact.
+The commands never modify or claim to evaluate the backing NTFS DACL.
+Exact removal is idempotent when the path-bound ACE is already absent.
+
+## Active Directory object commands
+
+| Command | Pipeline input | Returns |
+| --- | --- | --- |
+| `Get-ADObjectSecurityDescriptor` | distinguished names | `ADObjectSecurityDescriptor` |
+| `Set-ADObjectSecurityDescriptor` | distinguished names | none / `ADObjectSecurityDescriptor` |
+| `Get-ADObjectAccessRule` | distinguished names | `ADObjectAccessRule` |
+| `Add-ADObjectAccessRule` | distinguished names | none / `ADObjectAccessRule` |
+| `Remove-ADObjectAccessRule` | path-bound `ADObjectAccessRule` | none / removed rule |
+
+Every AD command requires an explicit `Server`. Mutators additionally require
+`AllowedBaseDistinguishedName`. Query output includes `Server`, current
+`DistinguishedName`, immutable `ObjectGuid`, SID/account state, unsigned access
+mask, `WindowsActiveDirectoryRights`, allow/deny qualifier, inheritance,
+`ObjectTypeGuid`, `InheritedObjectTypeGuid`, and the exact native ACE.
+
+An optional credential binds directly to the selected DC. It is never emitted.
+The first increment operates on DACLs only and exposes no implicit DC discovery,
+SACL, backup, DSC, replication, or effective-access contract.
+Exact removal is idempotent when the path-bound ACE is already absent.
 
 ## Local impersonation
 

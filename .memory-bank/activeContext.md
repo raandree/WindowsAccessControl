@@ -9,227 +9,46 @@ source: current task evidence
 
 ## Current focus
 
-The `ENT-2` disposable fixture lifecycle is implemented and verified on
-`ai/domain-lab-inventory`. The two-machine lab has one writable domain
-controller that also serves as the management host and one member server.
-Snapshots and RID-500 teardown are proven; all marked directory, share, task,
-and CNG-key fixtures are currently ready. Production-route isolation, the
-remote-security contracts, and member-server PowerShell 7 remain open. Remote
-push and publication remain under explicit user control.
+The first SMB-share and Active Directory DACL management slice is complete on
+`ai/domain-lab-inventory`. The accepted specification, ten public commands,
+focused and live tests, documentation, package validation, and independent
+security review are ready for local handoff. The disposable lab is restored to
+its ready state. Remote push and publication remain under explicit user control.
 
 ## Evidence
 
-- `tests/Lab/WindowsAccessControl.DomainLab.psm1` provides deterministic plan,
-    setup, status, and teardown commands with exact ownership markers,
-    `ShouldProcess`, and compensating cleanup across the DC and member server.
-- The fixture owns one root plus three child OUs, four disabled users, two
-    groups, nested membership, a marked SMB share, a task folder, and one
-    deterministic non-exportable CNG certificate key. RID-500 remains outside
-    the fixture and was not modified.
-- Five unit tests pass for the secret-free plan, lifecycle exports, `WhatIf`,
-    setup compensation, and root-inclusive readiness counting. Four explicit
-    live tests pass setup and teardown idempotence, missing-key and
-    missing-selector repair, and CNG key deletion; their finalizer restores the
-    ready fixture set.
-- A live member-setup failure proved clean compensation. Certificate-only
-    removal was shown to leak its CNG key; teardown now calls `CngKey.Delete`,
-    and the three attributable red-cycle orphan keys were removed without
-    touching the final deterministic key.
-- Ownership markers prevent accidental collisions in the trusted disposable
-    lab; they are not an adversarial authorization boundary.
-- The operator confirmed that the environment is unused and snapshotted. The
-    forest has no trusts, but a routable path to production has not been
-    independently excluded.
-- The complete Sampler profile reached 818 passing tests at 88.01 percent
-    coverage. Its three failures are the existing local-impersonation live
-    cases: this host is a domain controller, so ordinary disposable accounts do
-    not hold the interactive logon right required by `LogonUser`.
-- Complete repository QA passes 449 tests with zero failures or skips. Focused
-    analyzer and cross-edition parse checks are clean. Independent destructive-
-    boundary review and final certificate-recovery re-review both returned
-    APPROVE with no unresolved Blocker or Major findings.
-- `docs/domain-lab-inventory.md` records symbolic roles and capabilities
-    without machine names, domain names, addresses, credentials, or recovery
-    material.
-- The member server is domain joined, runs Windows Server 2022, accepts an
-    explicit Kerberos WinRM session, and exposes Task Scheduler, SMB server,
-    WinRM, and the LDAP protocol API through Windows PowerShell 5.1.
-- The management host and writable domain controller provide both supported
-    PowerShell editions needed for read-only LDAP probes. The member server
-    still needs PowerShell 7 or an equivalent cross-edition replacement.
-- Signed and sealed Negotiate LDAP probes in PowerShell 7.6.3 and Windows
-    PowerShell 5.1 selected a writable domain controller, read RootDSE naming
-    contexts, retrieved the domain DACL, and parsed its binary descriptor.
-- The member-server WinRM service permits Basic, CredSSP, and unencrypted
-    traffic. Explicit Kerberos succeeded, but `ENT-4` remains blocked until the
-    approved encrypted transport and downgrade-rejection contract is defined.
-- One writable domain controller is sufficient for entry-gate and read-only
-    work but not `AD-6` replication, domain-controller switch, or failover
-    evidence.
-- `.github/workflows/build.yml` passes actionlint 1.7.12, uses read-only
-    permissions, pins official actions to reviewed commits, and defines a
-    full-history build followed by two artifact-consuming Windows test jobs.
-- GitVersion 5.12.0 resolves `main` as `0.2.0-preview0001`; no active Azure
-    Pipelines file remains.
-- A clean CI-only clone built successfully. PowerShell 7 passed 816 tests with
-    zero failures or skips at 88.22 percent coverage; Windows PowerShell 5.1
-    passed 789 with zero failures or skips at 87.83 percent coverage.
-- Specification 0008 defines separate Task Scheduler, certificate-key, SMB,
-    and Active Directory work packages plus cross-cutting `ENT-*` foundation
-    tasks and a domain-lab entry gate.
-- Open issues OI-6 through OI-10 track the lab/security foundation and four
-    independently closable domain implementations.
-- ADR 0014 records that no production implementation or remote public API
-    begins before the lab and security contracts exist; ADR 0011 remains the
-    current-release boundary.
-- Specification conformance passes eight tests after indexing specification
-    0008 and ADR 0014 and resolving every local link.
-- `Get-NTFSAccessRule` exposes `InheritedFrom` from `GetInheritanceSourceW`.
-    Explicit rules and unresolved native sources return null; no parent-rule
-    heuristic is used.
-- Native source rows are filtered from the same binary descriptor to the
-    `CommonAce` allow/deny subset emitted by .NET, preserving positional pairing
-    when unrelated object ACEs exist. Explicit-only queries skip the native walk.
-- Eight focused provenance tests pass in PowerShell 7 and Windows PowerShell
-    5.1. They cover explicit nulls, files, directories, original grandparents,
-    mixed rules, object ACE coexistence, and the explicit-only fast path.
-- Specification QA passes eight tests. The final privilege-compatible Sampler
-    profile passes 714 tests with zero failures and one skip; the complete
-    elevation/coverage gate requires a privileged token.
-- Independent native-interop re-review returned APPROVE with no Blocker or
-    Major findings after managed/native ACE alignment and fast-path repairs.
-- The package is hard-renamed to `WindowsAccessControl`, retains its GUID, and
-    has no third-party runtime dependency.
-- Accepted specifications and ADRs define automatic scoped privileges, one
-    shared binary descriptor engine, a local-only object boundary,
-    object-specific cmdlet and DSC surfaces, and bounded parallel execution.
-- NTFS, registry-key, named-service, and Service Control Manager families are
-    complete and green in PowerShell 7 and Windows PowerShell 5.1.
-- The live-process family adds 12 descriptor and access/audit rule commands.
-- Process commands accept `Process`, PID, pinned module output, or borrowed raw
-    handles. PID operations verify creation `FILETIME` and use one handle for the
-    complete read, comparison, mutation, and write operation.
-- Process writes include `READ_CONTROL`; module-owned handles close in
-    `finally`, caller-owned handles remain open, and operation plus cleanup
-    failures are aggregated.
-- SACL and owner/group work scopes `SeSecurityPrivilege` and
-    `SeRestorePrivilege`. An access-denied PID open retries with
-    `SeDebugPrivilege` only when the token already contains it, then restores the
-    exact initial enabled state.
-- `Backup-WindowsSecurityDescriptor` and `Restore-WindowsSecurityDescriptor`
-    provide one schema-versioned envelope for filesystem, registry, service/SCM,
-    and pinned process descriptors.
-- Every record carries a deterministic SHA-256 digest over restore-relevant
-    fields. Optional RSA X.509 signatures are thumbprint-pinned to the supplied
-    certificate and verified before target preparation.
-- Restore validates every record, integrity proof, canonical target, selected
-    section, duplicate, and process creation identity before the first write.
-- Backup signs only after `ShouldProcess`, rejects duplicate canonical targets,
-    and atomically moves or replaces a completed same-directory temporary file.
-- Selected absent SACLs use explicit `S:NO_ACCESS_CONTROL`; omitted selected
-    SACLs and all null DACLs fail closed.
-- Historical unmarked NTFS schema-version 1 files remain readable. The legacy
-    NTFS restore command rejects unified records from other object families.
-- All ordinary target-array commands expose `ThrottleLimit` from 1 through 64,
-    defaulting to the smaller of eight and the logical processor count.
-- Complete target normalization and case-insensitive canonical deduplication
-    precede dispatch. Mutations of the same canonical target serialize across
-    isolated module instances through an application-domain lock registry.
-- Worker runspaces import isolated module instances; the parent module owns
-    target locks and aggregate metrics. `ThreadLocal[bool]` prevents recursive
-    single-target command entry.
-- `Get-WindowsAccessControlMetric` is the 70th export and reports redacted
-    operation, target, success, failure, and elapsed aggregates.
-- `Backup-NTFSItemSecurityDescriptor` performs bounded descriptor reads and one
-    complete atomic envelope write only after every read succeeds.
-- The reusable NTFS benchmark alternates sequential and parallel runs without a
-    timing assertion. The retained 512-target sample averaged 407.94 targets/s
-    sequential and 431.45 targets/s at throttle 8.
-- The authoritative PowerShell 7 gate passes 670 tests with zero failures or
-    skips at 86.35 percent coverage. The focused Windows PowerShell 5.1
-    concurrency gate passes 37 tests with zero failures or skips.
-- PSScriptAnalyzer is clean across 75 changed PowerShell files; all 75 parse,
-    `git diff --check` passes, and 81 changed files satisfy encoding/newline
-    rules.
-- Two independent concurrency reviews returned APPROVE with no Blocker or
-    Major findings. Live tests cover canonical deduplication, prevalidation,
-    bounded mutation, parallel `WhatIf`, and aggregate backup behavior.
-- Five class-based exact-descriptor resources cover NTFS, registry key, named
-    service, SCM, and pinned process targets with object-specific composite
-    keys, selected-section SDDL, and prefixed compliance reasons.
-- Exact comparison ignores only Windows-derived DACL/SACL `AUTO_INHERITED`
-    flags. Protection state and every selected ACE remain exact; omitted
-    selected sections and null DACLs fail closed.
-- Live tests reconverge NTFS DACL and all-section state plus registry DACL state;
-    named service, SCM, and pinned process resources query real descriptors.
-    Desktop evidence compiles all five resources into one MOF and invokes the
-    all-section NTFS resource through the SYSTEM LCM.
-- The authoritative PowerShell 7 gate passes 716 tests with zero failures or
-    skips at 86.69 percent coverage. The focused Windows PowerShell 5.1 exact
-    gate passes 31 tests plus two LCM tests with zero failures or skips.
-- Independent exact-resource review and re-review returned APPROVE after
-    fail-closed and combined DACL/SACL coverage was added.
-- Five access-rule presence resources manage one exact explicit ACE for NTFS,
-    registry key, named service, SCM, and pinned process targets. Composite keys
-    include typed rights, qualifier, scope where supported, registry view, and
-    process creation identity.
-- Exact matching normalizes account aliases to SID, 32-bit masks to unsigned
-    values, and NTFS Allow masks through `FileSystemAccessRule` so its automatic
-    `Synchronize` bit converges. `Absent` removes every duplicate exact native
-    ACE while preserving partial, inherited, opposite-qualifier/scope, and
-    unrelated rules.
-- Live tests converge `Present` and `Absent` for all five families with SCM and
-    process DACL rollback. Desktop LCM evidence compiles all ten resources and
-    invokes NTFS exact-descriptor and rule-presence resources.
-- The authoritative PowerShell 7 gate passes 766 tests with zero failures or
-    skips at 87.59 percent coverage. The focused Windows PowerShell 5.1 rule
-    gate passes 35 tests plus three LCM tests with zero failures or skips.
-- Independent rule-resource review and re-review returned APPROVE with no
-    remaining Blocker, Major, or Minor findings.
-- `Invoke-WindowsAccessControl` provides one explicit local impersonation scope
-    over existing command calls without adding remote target syntax.
-- `LogonUserW` receives password data through temporary unmanaged memory that
-    is zeroed in `finally`; `WindowsIdentity.RunImpersonated` restores the
-    caller identity and the safe token handle is disposed before return.
-- Disposable-local-user acceptance passes argument, nested-scope, exception,
-    and invalid-credential cases in both PowerShell 7 and Windows PowerShell
-    5.1 with zero failures or skips and no leaked test accounts.
-- The final PowerShell 7 gate passes 779 tests with zero failures or skips at
-    87.53 percent coverage. The combined Windows PowerShell 5.1 QA and
-    impersonation gate passes 450 tests with zero failures or skips.
-- `WindowsAccessControl.0.2.0-windows.nupkg` builds in a clean detached host
-    with 71 functions, ten DSC resources, the local impersonation export, and
-    only the eight expected package entries.
-- Final AST, PSScriptAnalyzer, whitespace, archive inventory, manifest, and
-    cleanup checks are green. Independent impersonation review and re-review
-    returned APPROVE with no Blocker or Major findings.
-- The NTFS and registry DSC `AppliesTo` key properties now carry a `ValidateSet`
-    matching the cmdlet surface, so `Get-DscResource -Syntax` advertises the
-    allowed values and invalid values fail at compile time. A contract test
-    keeps each set equal to its cmdlet parameter set.
-- The NTFS `AppliesTo` vocabulary now includes the three inherit-only
-    single-level values (`SubfoldersAndFilesOnlyOneLevel`, `SubfoldersOnlyOneLevel`,
-    `FilesOnlyOneLevel`), matching full NTFSSecurity `ApplyTo` coverage; a
-    converter round-trip test guards all thirteen labels.
-- The two untracked pre-rename stale files
-    (`source/Private/Initialize-NTFSNativeType.ps1` and
-    `tests/Integration/Elevated-NTFSPermission.Tests.ps1`) were removed with
-    explicit approval; their tracked renamed equivalents remain. The full
-    PowerShell 7 gate is now fully green at 797 passed, 0 failed, 0 skipped,
-    88.06 percent coverage.
-- Pester 5.7.1 profiler-tracer coverage reproduced six Windows PowerShell 5.1
-    exact-descriptor DSC failures after Desktop LCM acceptance. The same
-    covered nine-test sequence passed with breakpoint coverage and the original
-    fixture.
-- The final breakpoint-coverage gates pass 770 Windows PowerShell 5.1 tests at
-    87.79 percent coverage and 797 PowerShell 7 tests at 88.19 percent coverage,
-    with zero failures or skips in either edition.
+- Specification 0009 and ADRs 0015 and 0016 define the accepted SMB/AD
+    authority, transport, schema, and safety boundaries.
+- Five local SMB-share commands query and mutate DACLs through the shared
+    binary descriptor engine. Targets must resolve through the local SMB
+    provider topology; native writes preserve share descriptions.
+- Five Active Directory commands query and mutate object DACLs through direct
+    LDAP v3 to an explicit FQDN domain controller with Kerberos authentication,
+    signing, sealing, referrals disabled, and bounded timeouts.
+- Active Directory writes prevalidate every target before dispatch. Allowed-OU
+    containment, immutable object GUIDs, excluded naming contexts, protected
+    targets, and DACL-only LDAP controls fail closed.
+- The source and generated manifests export exactly 82 functions.
+- Delegated live acceptance passes 4 of 4 SMB scenarios, 5 of 5 Active
+    Directory scenarios in PowerShell 7, and 5 of 5 Active Directory scenarios
+    in Windows PowerShell 5.1. No Domain Admin credential is required.
+- Complete repository QA passes 509 tests with zero failures or skips.
+- The configured Sampler profile executes 903 tests: 900 pass and the three
+    existing local-impersonation cases fail because this domain controller
+    denies interactive logon to ordinary disposable accounts. All enterprise
+    tests pass, and coverage is 81.44 percent over the 80 percent threshold.
+- All 51 changed PowerShell files parse in PowerShell 7 and Windows PowerShell
+    5.1 with zero PSScriptAnalyzer warnings or errors. Markdown/XML diagnostics,
+    whitespace checks, and retained lab-identifier/private-key scans are clean.
+- The local validation package `WindowsAccessControl.0.0.1.nupkg` contains the
+    eight expected entries, exports 82 functions, and contains no source tree,
+    tests, lab identifiers, or private-key markers.
+- Independent security re-review returned APPROVE with no unresolved Blocker
+    or Major findings.
 
 ## Next step
 
-Turn the successful `AD-1` baseline into a repeatable read-only probe against
-the fixture OU, then complete the `ENT-3`, `ENT-4`, and `ENT-5` contracts.
-Confirm production network route isolation and add PowerShell 7 to the member
-server before claiming the full entry gate. Provide a second writable domain
-controller only when `AD-6` replication and failover work begins. Do not push
-or publish without an explicit request.
+Review or push the local commit only on explicit request. Task Scheduler and
+certificate private-key adapters remain separate enterprise work packages. A
+second writable domain controller is still required before claiming Active
+Directory replication or failover evidence.

@@ -226,13 +226,18 @@ access-rule provenance.
 - 2026-07-28: Complete repository QA passed 449 tests with zero failures or
     skips. Independent destructive-boundary review and final certificate-path
     re-review returned APPROVE with no unresolved Blocker or Major findings.
-
-- 2026-07-28: Added a task-oriented usage guide covering common NTFS,
-    registry, service/SCM, process, backup/restore, diagnostics, batching,
-    impersonation, remote-session, and DSC workflows. Verified 41 PowerShell
-    examples and complete help/catalog coverage for all 72 packaged commands.
-    The generated package exports `Set-NTFSItemSecurityDescriptor`, but the
-    static source manifest export list still omits it.
+- 2026-07-28: Accepted specification 0009 and ADRs 0015/0016, then added five
+    local SMB-share and five explicit-domain-controller Active Directory DACL
+    commands. The source and generated manifests now export 82 functions.
+- 2026-07-28: Passed delegated live acceptance for all four SMB scenarios and
+    all five Active Directory scenarios in both supported PowerShell editions.
+    Independent security re-review returned APPROVE with no unresolved Blocker
+    or Major findings.
+- 2026-07-28: Passed complete repository QA at 509 tests and the configured
+    Sampler profile at 900 of 903 tests with 81.44 percent coverage. The three
+    failures are the existing domain-controller interactive-logon policy cases;
+    every enterprise test passed. Built and inspected the eight-entry local
+    package with 82 exports and no source, test, lab-identity, or key artifacts.
 
 ## Stable capabilities
 

@@ -397,3 +397,39 @@ Normative record: [ADR 0014](../specs/decisions/0014-stage-enterprise-expansion-
 - Rationale: Idempotent names alone do not establish ownership, recursive
     teardown can otherwise delete foreign objects, and deleting a certificate
     from the Windows store does not delete its persisted CNG private key.
+
+### Decision 39: Address SMB shares through local provider authority
+
+Normative record: [ADR 0015](../specs/decisions/0015-use-local-smb-and-signed-sealed-ldap.md).
+
+- Choice: Resolve ordinary, non-special shares through the local SMB provider,
+    reject wildcard and nonlocal topology, and persist only the DACL through
+    `SE_LMSHARE`. Capture and restore the share description around native
+    descriptor writes.
+- Rationale: The provider owns local share identity and topology, while a raw
+    `SE_LMSHARE` write can clear description metadata that is outside the
+    selected security descriptor section.
+
+### Decision 40: Bind Active Directory operations to strict LDAP authority
+
+Normative record: [ADR 0015](../specs/decisions/0015-use-local-smb-and-signed-sealed-ldap.md).
+
+- Choice: Connect directly to an explicit FQDN writable domain controller with
+    LDAP v3, Kerberos authentication, signing, sealing, referrals disabled, and
+    bounded timeouts. Use DACL-only LDAP controls and prevalidate the complete
+    write batch against allowed-base, immutable-GUID, excluded-partition, and
+    protected-target rules before dispatch.
+- Rationale: `Negotiate` can fall back to NTLM, referrals can change authority,
+    and per-worker validation can allow an earlier independent target to mutate
+    before a later invalid target is discovered.
+
+### Decision 41: Require schema version 2 for enterprise targets
+
+Normative record: [ADR 0016](../specs/decisions/0016-require-schema-v2-for-enterprise-targets.md).
+
+- Choice: Keep schema version 1 limited to its canonical local target families;
+    require schema version 2 before SMB-share or Active Directory records enter
+    unified backup and restore.
+- Rationale: Extending schema version 1 would weaken its established authority
+    and target-identity guarantees for records that require server, share, base
+    DN, and immutable directory identity metadata.

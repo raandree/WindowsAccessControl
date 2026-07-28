@@ -389,3 +389,29 @@ controller security policy does not grant that account interactive logon, so
 acceptance on a member server; do not weaken domain-controller logon policy or
 change production impersonation semantics merely to make that host profile
 green.
+
+## SMB share descriptor metadata preservation
+
+`SetNamedSecurityInfoW` with `SE_LMSHARE` can clear a share description even
+when only the DACL is selected. Capture the provider description before the
+native write, restore it afterward, and aggregate restoration failure with the
+primary operation failure. A DACL round trip alone is insufficient evidence.
+
+Resolve share targets through the local SMB provider rather than accepting a
+syntactically plausible UNC or wildcard. Provider topology is the authority for
+whether an ordinary share is local and addressable by the native adapter.
+
+## LDAP attribute and naming-context boundaries
+
+PowerShell can enumerate a `DirectoryAttribute` as individual bytes instead of
+returning its byte-array value. Read values by index and decode textual LDAP
+attributes explicitly as UTF-8; do not rely on pipeline enumeration.
+
+The Configuration and Schema naming contexts at a forest root lexically end in
+the default naming-context DN. A suffix-only containment check therefore admits
+excluded partitions. Read their RootDSE naming-context values and reject them
+explicitly before applying the allowed-base check.
+
+`AuthType.Negotiate` does not prove Kerberos because it can fall back to NTLM.
+Use `AuthType.Kerberos` with an explicit FQDN server, signing, sealing, disabled
+referrals, and bounded timeouts when the contract requires strict Kerberos.

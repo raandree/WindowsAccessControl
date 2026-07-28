@@ -2,7 +2,7 @@
 
 `WindowsAccessControl` is a Windows PowerShell module for pipeline-first
 management of Windows security descriptors. Its filesystem, registry-key,
-service/SCM, and live-process commands turn common DACL, SACL, owner,
+service/SCM, live-process, SMB-share, and Active Directory commands turn common DACL, SACL, owner,
 inheritance, backup, and effective-access operations into composable commands
 without requiring callers to manipulate .NET access-control objects directly.
 
@@ -160,6 +160,50 @@ Enable-RegistryKeyInheritance -Path 'HKLM:\Software\Contoso' -Section All
 
 Registry SACL reads and writes temporarily enable `SeSecurityPrivilege` when
 it is present in the process token, then restore its original state.
+
+## SMB shares
+
+SMB commands manage the share DACL independently from the backing NTFS DACL.
+They accept unqualified local share names only; run them inside an approved
+secure session when the share belongs to another computer.
+
+```powershell
+Get-SmbShareAccessRule -Name 'Data$'
+
+Add-SmbShareAccessRule -Name 'Data$' `
+    -Account 'CONTOSO\Analysts' `
+    -AccessRights Read `
+    -WhatIf
+```
+
+Administrative, drive, IPC, print, clustered, and continuously available
+shares are rejected. Share DACL writes preserve the share description and do
+not claim effective access to files under the backing path.
+
+## Active Directory objects
+
+AD commands require an explicit DNS domain-controller name and use direct LDAP
+Kerberos authentication with signing and sealing. Mutators additionally
+require an allowed OU boundary and revalidate the immutable object GUID before
+every write.
+
+```powershell
+$server = 'dc01.example.test'
+$base = 'OU=Applications,DC=example,DC=test'
+$target = 'OU=Database,$base'
+
+Get-ADObjectAccessRule -Server $server -DistinguishedName $target
+
+Add-ADObjectAccessRule -Server $server `
+    -DistinguishedName $target `
+    -AllowedBaseDistinguishedName $base `
+    -Account 'CONTOSO\Analysts' `
+    -AccessRights ReadProperty `
+    -WhatIf
+```
+
+The first increment is DACL-only. It excludes SACLs, owner/group mutation,
+backup/restore, DSC, effective access, and replication convergence.
 
 ## Services and the SCM
 

@@ -293,5 +293,57 @@
         </TableRowEntries>
       </TableControl>
     </View>
+    <View>
+      <Name>WindowsAccessControl.SmbShareAccessRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.SmbShareAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>Share</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>ShareName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>WindowsAccessControl.ADObjectAccessRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.ADObjectAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>DistinguishedName</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Inheritance</Label></TableColumnHeader>
+          <TableColumnHeader><Label>ObjectType</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>DistinguishedName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>InheritanceType</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>ObjectTypeGuid</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
   </ViewDefinitions>
 </Configuration>

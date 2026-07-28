@@ -70,6 +70,10 @@ share DACL distinct from the backing NTFS DACL. First prove share-only effective
 access in an explicit server context; add combined share-and-NTFS results only
 after domain group expansion and remote authorization behavior are executable.
 
+Specification 0009 admits the local-to-target DACL descriptor, add, query, and
+exact-remove increment. Remote SMB APIs, backup/restore, DSC, and effective
+access remain open here.
+
 ## OI-10: Add Active Directory object access control
 
 Specification: 0008. Tasks: AD-1 to AD-9.
@@ -79,6 +83,10 @@ disposable organizational unit. Preserve GUID semantics and directory
 inheritance, define DC and LDAP security behavior, test replication and object
 renames, and prohibit writes to protected or forest-wide partitions until a
 later contract explicitly admits them.
+
+Specification 0009 admits explicit-DC signed/sealed DACL descriptor, add,
+query, and exact-remove behavior. Schema-name resolution, broader mutation,
+backup/restore, DSC, SACL, replication, and effective access remain open here.
 
 ## OI-11: Complete shared enterprise integration and release gates
 

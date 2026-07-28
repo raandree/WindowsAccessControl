@@ -20,6 +20,7 @@ them.
 6. [WindowsAccessControl expansion](0006-windows-access-control-expansion.md)
 7. [In-memory descriptor mutation](0007-in-memory-descriptor-mutation.md)
 8. [Enterprise access-control expansion](0008-enterprise-access-control-expansion.md)
+9. [SMB share and Active Directory DACL management](0009-smb-share-and-active-directory-dacl-management.md)
 
 ## Status
 
@@ -33,6 +34,7 @@ them.
 | 0006 | WindowsAccessControl expansion | Accepted |
 | 0007 | In-memory descriptor mutation | Draft |
 | 0008 | Enterprise access-control expansion | Draft |
+| 0009 | SMB share and Active Directory DACL management | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
@@ -41,8 +43,10 @@ DSC expansion. Specification 0007 remains a Draft design contract for open
 issue OI-5; its first filesystem round-trip increment is under implementation
 and is not yet part of the accepted contract. Specification 0008 plans the
 domain-lab-gated Task Scheduler, certificate private-key, SMB-share, and Active
-Directory expansion. A future change starts as `Draft` and becomes `Accepted`
-when approved.
+Directory expansion. Specification 0009 accepts the first SMB-share and Active
+Directory DACL-management increment without claiming later backup, DSC,
+effective-access, or replication work. A future change starts as `Draft` and
+becomes `Accepted` when approved.
 
 ## Architecture decisions
 

@@ -1,0 +1,324 @@
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSUseUsingScopeModifierInNewRunspaces',
+    '',
+    Justification = 'Remote parameters are supplied explicitly through Invoke-Command ArgumentList.'
+)]
+param()
+
+BeforeAll {
+    if ([string]::IsNullOrWhiteSpace($env:WAC_DOMAIN_LAB_MEMBER)) {
+        throw 'WAC_DOMAIN_LAB_MEMBER must identify the disposable member server.'
+    }
+
+    Import-Module ActiveDirectory -ErrorAction Stop
+    $script:shareName = 'WacLab$'
+    $script:testSid = (Get-ADUser -Identity 'WacLabUser' -ErrorAction Stop).SID.Value
+    $script:localUserName = 'WacSmb' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+    $script:session = New-PSSession `
+        -ComputerName $env:WAC_DOMAIN_LAB_MEMBER `
+        -Authentication Kerberos `
+        -ErrorAction Stop
+    $script:remoteModulePath = 'C:\WindowsAccessControlLab\ModuleUnderTest'
+    Invoke-Command -Session $script:session -ArgumentList $script:remoteModulePath -ScriptBlock {
+        param($ModulePath)
+
+        Remove-Item -LiteralPath $ModulePath -Recurse -Force -ErrorAction SilentlyContinue
+        $null = New-Item -Path $ModulePath -ItemType Directory -Force
+    }
+    $moduleSource = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*" |
+        Sort-Object -Property { [version]$_.Name } -Descending |
+        Select-Object -First 1
+    Copy-Item `
+        -Path (Join-Path $moduleSource.FullName '*') `
+        -Destination $script:remoteModulePath `
+        -ToSession $script:session `
+        -Recurse `
+        -Force `
+        -ErrorAction Stop
+    $script:remoteManifest = Join-Path $script:remoteModulePath 'WindowsAccessControl.psd1'
+    $script:originalDescriptor = Invoke-Command `
+        -Session $script:session `
+        -ArgumentList $script:remoteManifest, $script:shareName `
+        -ScriptBlock {
+            param($Manifest, $ShareName)
+
+            Import-Module $Manifest -Force -ErrorAction Stop
+            Get-SmbShareSecurityDescriptor -Name $ShareName
+        }
+    $script:originalDescription = Invoke-Command `
+        -Session $script:session `
+        -ArgumentList $script:shareName `
+        -ScriptBlock {
+            param($ShareName)
+
+            (Get-SmbShare -Name $ShareName -ErrorAction Stop).Description
+        }
+    $delegation = Invoke-Command `
+        -Session $script:session `
+        -ArgumentList $script:localUserName, $script:shareName `
+        -ScriptBlock {
+            param($UserName, $ShareName)
+
+            $passwordText = 'Wac!' + [guid]::NewGuid().ToString('N') + 'aA1'
+            $securePassword = [Security.SecureString]::new()
+            foreach ($character in $passwordText.ToCharArray()) {
+                $securePassword.AppendChar($character)
+            }
+            $securePassword.MakeReadOnly()
+            $passwordText = $null
+            $user = New-LocalUser `
+                -Name $UserName `
+                -Password $securePassword `
+                -AccountNeverExpires `
+                -PasswordNeverExpires `
+                -ErrorAction Stop
+            Add-LocalGroupMember `
+                -Group 'Administrators' `
+                -Member $user `
+                -ErrorAction Stop
+            $script:WacSmbCredential = [pscredential]::new(
+                ".\$UserName",
+                $securePassword
+            )
+            $module = Get-Module WindowsAccessControl
+            $target = & $module {
+                param($Name)
+                Resolve-WindowsSmbShareTarget -Name $Name
+            } $ShareName
+            $current = Get-SmbShareSecurityDescriptor -Name $ShareName
+            $updated = & $module {
+                param($Bytes, $Sid)
+                Invoke-WindowsAclRuleMutation `
+                    -SecurityDescriptor $Bytes `
+                    -RuleType Access `
+                    -Operation Add `
+                    -SecurityIdentifier $Sid `
+                    -AccessMask 0x00060000 `
+                    -AccessControlType Allow
+            } $current.BinarySecurityDescriptor $user.SID
+            & $module {
+                param($Target, $Bytes, $Current)
+                Set-WindowsSmbShareSecurityDescriptor `
+                    -Target $Target `
+                    -SecurityDescriptor $Bytes `
+                    -CurrentSecurityDescriptor $Current
+            } $target $updated $current.BinarySecurityDescriptor
+            [pscustomobject]@{ SID = $user.SID.Value }
+        }
+    $script:delegatedSid = $delegation.SID
+    $script:delegatedDescriptor = Invoke-Command `
+        -Session $script:session `
+        -ArgumentList $script:shareName `
+        -ScriptBlock {
+            param($ShareName)
+
+            Get-SmbShareSecurityDescriptor -Name $ShareName
+        }
+}
+
+AfterAll {
+    try {
+            Invoke-Command `
+                -Session $script:session `
+                -ArgumentList $script:shareName, $script:originalDescriptor.Sddl, $script:originalDescription `
+                -ScriptBlock {
+                    param($ShareName, $Sddl, $Description)
+
+                    Set-SmbShareSecurityDescriptor `
+                        -Name $ShareName `
+                        -Sddl $Sddl `
+                        -Confirm:$false
+                    Set-SmbShare `
+                        -Name $ShareName `
+                        -Description $Description `
+                        -Confirm:$false
+                }
+            $finalSddl = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName `
+            -ScriptBlock {
+                param($ShareName)
+
+                (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
+            }
+        if ($finalSddl -cne $script:originalDescriptor.Sddl) {
+            throw 'The disposable SMB share DACL was not restored.'
+        }
+        $finalDescription = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName `
+            -ScriptBlock {
+                param($ShareName)
+
+                (Get-SmbShare -Name $ShareName -ErrorAction Stop).Description
+            }
+        if ($finalDescription -cne $script:originalDescription) {
+            throw 'The disposable SMB share description was not restored.'
+        }
+    }
+    finally {
+        if ($script:session) {
+            Invoke-Command `
+                -Session $script:session `
+                -ArgumentList $script:remoteModulePath, $script:localUserName `
+                -ScriptBlock {
+                    param($ModulePath, $UserName)
+
+                    Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
+                    Remove-LocalUser -Name $UserName -ErrorAction SilentlyContinue
+                    Remove-Item -LiteralPath $ModulePath -Recurse -Force -ErrorAction SilentlyContinue
+                    $script:WacSmbCredential = $null
+                } `
+                -ErrorAction SilentlyContinue
+            Remove-PSSession $script:session
+        }
+    }
+}
+
+Describe 'SMB share DACL commands' -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    AfterEach {
+        Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:delegatedDescriptor.Sddl, $script:originalDescription `
+            -ScriptBlock {
+                param($ShareName, $Sddl, $Description)
+
+                Set-SmbShareSecurityDescriptor `
+                    -Name $ShareName `
+                    -Sddl $Sddl `
+                    -Confirm:$false
+                Set-SmbShare `
+                    -Name $ShareName `
+                    -Description $Description `
+                    -Confirm:$false
+            }
+    }
+
+    It 'Should return a typed DACL descriptor and deduplicate canonical share names' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName `
+            -ScriptBlock {
+                param($ShareName)
+
+                Invoke-WindowsAccessControl `
+                    -Credential $script:WacSmbCredential `
+                    -ScriptBlock {
+                        param($Name)
+                        Get-SmbShareSecurityDescriptor -Name @($Name, $Name.ToUpperInvariant())
+                    } `
+                    -ArgumentList $ShareName
+            }
+
+        $result | Should -HaveCount 1
+        $result.PSObject.TypeNames | Should -Contain 'Deserialized.WindowsAccessControl.SmbShareSecurityDescriptor'
+        $result.ShareName | Should -BeExactly $script:shareName
+        $result.Sections.ToString() | Should -Be 'Access'
+        $result.BinarySecurityDescriptor.Count | Should -BeGreaterThan 0
+    }
+
+    It 'Should honor WhatIf for descriptor and rule writes' {
+        $before = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:testSid `
+            -ScriptBlock {
+                param($ShareName, $TestSid)
+
+                Invoke-WindowsAccessControl `
+                    -Credential $script:WacSmbCredential `
+                    -ScriptBlock {
+                        param($Name, $Sid)
+                        $beforeSddl = (Get-SmbShareSecurityDescriptor -Name $Name).Sddl
+                        Set-SmbShareSecurityDescriptor `
+                            -Name $Name `
+                            -Sddl 'D:(A;;0x001200A9;;;WD)' `
+                            -WhatIf
+                        Add-SmbShareAccessRule `
+                            -Name $Name `
+                            -Account $Sid `
+                            -AccessRights Read `
+                            -WhatIf
+                        [pscustomobject]@{
+                            Before = $beforeSddl
+                            After = (Get-SmbShareSecurityDescriptor -Name $Name).Sddl
+                            IdentitySid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+                            IsAdministrator = [Security.Principal.WindowsPrincipal]::new(
+                                [Security.Principal.WindowsIdentity]::GetCurrent()
+                            ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                        }
+                    } `
+                    -ArgumentList $ShareName, $TestSid
+            }
+
+        $before.Before | Should -BeExactly $before.After
+        $before.IdentitySid | Should -Be $script:delegatedSid
+        $before.IsAdministrator | Should -BeTrue
+    }
+
+    It 'Should add and exactly remove a typed rule while preserving unrelated ACEs' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:testSid `
+            -ScriptBlock {
+                param($ShareName, $TestSid)
+
+                Invoke-WindowsAccessControl `
+                    -Credential $script:WacSmbCredential `
+                    -ScriptBlock {
+                        param($Name, $Sid)
+                        $original = Get-SmbShareAccessRule -Name $Name
+                        $added = Add-SmbShareAccessRule `
+                            -Name $Name `
+                            -Account $Sid `
+                            -AccessRights Read `
+                            -PassThru `
+                            -Confirm:$false
+                        $descriptionAfterAdd = (Get-SmbShare -Name $Name).Description
+                        $afterAdd = @(Get-SmbShareAccessRule -Name $Name)
+                        $removed = $added | Remove-SmbShareAccessRule -PassThru -Confirm:$false
+                        $descriptionAfterRemove = (Get-SmbShare -Name $Name).Description
+                        $afterRemove = @(Get-SmbShareAccessRule -Name $Name)
+                        [pscustomobject]@{
+                            OriginalCount = @($original).Count
+                            AddedCount = $afterAdd.Count
+                            FinalCount = $afterRemove.Count
+                            AddedSid = $added.SID
+                            AddedRights = $added.AccessRights.ToString()
+                            AddedMask = $added.AccessMask
+                            RemovedSid = $removed.SID
+                            OriginalSids = @($original).SID
+                            FinalSids = $afterRemove.SID
+                            DescriptionAfterAdd = $descriptionAfterAdd
+                            DescriptionAfterRemove = $descriptionAfterRemove
+                        }
+                    } `
+                    -ArgumentList $ShareName, $TestSid
+            }
+
+        $result.AddedCount | Should -Be ($result.OriginalCount + 1)
+        $result.FinalCount | Should -Be $result.OriginalCount
+        $result.AddedSid | Should -Be $script:testSid
+        $result.RemovedSid | Should -Be $script:testSid
+        $result.AddedRights | Should -Be 'Read'
+        $result.AddedMask | Should -Be 0x001200A9
+        @($result.FinalSids) | Should -Be @($result.OriginalSids)
+        $result.DescriptionAfterAdd | Should -BeExactly $script:originalDescription
+        $result.DescriptionAfterRemove | Should -BeExactly $script:originalDescription
+    }
+
+    It 'Should reject remote syntax and administrative shares' {
+        $messages = Invoke-Command -Session $script:session -ScriptBlock {
+            foreach ($target in '\\server\share', 'ADMIN$', 'C$', 'IPC$', 'print$') {
+                try {
+                    Get-SmbShareSecurityDescriptor -Name $target -ErrorAction Stop
+                }
+                catch {
+                    $_.Exception.GetType().FullName
+                }
+            }
+        }
+
+        $messages | Should -HaveCount 5
+        $messages | Should -Not -Contain $null
+    }
+}

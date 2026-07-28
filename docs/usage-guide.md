@@ -50,6 +50,8 @@ mutation. Prefer `LiteralPath` when a path can contain wildcard characters.
 | Check effective access or ACL order | `Get-NTFSItemEffectiveAccess`, `Test-NTFSItemAcl` |
 | Copy, back up, or restore descriptors | `Copy-NTFSItemSecurityDescriptor`, `Backup-WindowsSecurityDescriptor` |
 | Manage another supported object family | `Get-RegistryKeyAccessRule`, `Get-ServiceAccessRule`, `Get-ProcessAccessRule` |
+| Manage SMB share permissions | `Get-SmbShareAccessRule`, `Add-SmbShareAccessRule` |
+| Delegate Active Directory object access | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule` |
 | Enforce desired state | The class-based DSC resources |
 
 ## Preview every mutation
@@ -72,6 +74,55 @@ Add-NTFSAccessRule @grantParameters -Confirm:$false -PassThru
 
 Use `Confirm:$false` only when the preview has been reviewed or when established
 automation provides equivalent controls.
+
+## Manage an SMB share DACL
+
+Run SMB commands on the computer that owns the share. The share DACL and the
+backing NTFS DACL are separate authorization layers:
+
+```powershell
+Get-SmbShareSecurityDescriptor -Name 'Data$'
+Get-SmbShareAccessRule -Name 'Data$'
+
+Add-SmbShareAccessRule -Name 'Data$' `
+    -Account $account `
+    -AccessRights Change `
+    -WhatIf
+```
+
+Remove one exact rule by piping the path-bound query result:
+
+```powershell
+Get-SmbShareAccessRule -Name 'Data$' -Account $account |
+    Remove-SmbShareAccessRule -WhatIf
+```
+
+## Delegate Active Directory object access
+
+Select the DC and allowed OU explicitly. Kerberos, LDAP signing, and sealing
+are mandatory:
+
+```powershell
+$server = 'dc01.example.test'
+$baseDn = 'OU=Applications,DC=example,DC=test'
+$targetDn = "OU=Database,$baseDn"
+
+Get-ADObjectAccessRule `
+    -Server $server `
+    -DistinguishedName $targetDn
+
+Add-ADObjectAccessRule `
+    -Server $server `
+    -DistinguishedName $targetDn `
+    -AllowedBaseDistinguishedName $baseDn `
+    -Account $account `
+    -AccessRights ReadProperty `
+    -InheritanceType Children `
+    -WhatIf
+```
+
+Use `ObjectType` and `InheritedObjectType` GUIDs for property, extended-right,
+or child-object-specific ACEs. The output retains those GUIDs for exact removal.
 
 ## Inspect file and directory access
 
