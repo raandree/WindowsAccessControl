@@ -1,8 +1,7 @@
 # Verification and traceability
 
 Status: Accepted. This specification defines the evidence levels, requirement
-mapping, command coverage, and remaining privileged release gate for
-`WindowsAccessControl`.
+mapping, command coverage, and release gates for `WindowsAccessControl`.
 
 ## Evidence levels
 
@@ -189,6 +188,13 @@ zero passing tests or any skip fails the profile. Retained JSON is atomic,
 sanitizes infrastructure-shaped values, and rejects known plan identifiers. The
 completed profile passed 18 tests with five ready cleanup checks and no failures
 or skips.
+
+The complete repository profile runs on the management host in both supported
+PowerShell editions. Domain-controller policy denies interactive logon to its
+disposable ordinary accounts, so the three successful-logon impersonation
+cases are classified there by exact error and rerun from the same test file on
+the domain member. The member run passes all four cases in both editions with
+zero failures or skips and leaves no staged files or local users.
 
 `tests/Performance/Measure-NtfsBatchPerformance.ps1` measures alternating
 sequential and bounded-parallel NTFS owner reads over disposable targets. It

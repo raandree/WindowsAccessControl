@@ -94,6 +94,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Complete the cross-edition enterprise release gate with privilege, static,
+    package, cleanup, security-review, and policy-qualified impersonation
+    evidence
 - Accept the delivered first in-memory descriptor-editing contract, verify the
     enterprise lab entry gate, and split broad SMB/AD roadmap issues into
     focused follow-up work

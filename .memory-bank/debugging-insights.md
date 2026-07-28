@@ -390,6 +390,36 @@ acceptance on a member server; do not weaken domain-controller logon policy or
 change production impersonation semantics merely to make that host profile
 green.
 
+## Task Scheduler descriptor canonicalization
+
+The Task Scheduler service can reorder ACEs and add `DACL_AUTO_INHERITED` after
+a DACL write. Verify protection state and exact ACE identity rather than raw
+SDDL, but do not ignore rights, qualifier, flags, or ACE multiplicity. Release
+task, folder, and service COM objects in reverse order on every path.
+
+## Unattended Pester result gates
+
+A Pester result of `Passed` does not prove that any test was discovered or
+passed, and skipped tests can still leave a profile superficially green. Gate
+on positive total and passed counts, zero skips, exact suite result, and a
+ready cleanup ledger. Capture helper script blocks before nested suites because
+a suite can reload the harness module and replace private command visibility.
+
+## Coverage threshold arithmetic
+
+Evaluate coverage from integer covered and missed command counts, not a rounded
+display percentage. With 5,306 executable commands, an 80 percent gate requires
+at least 4,245 covered commands; 4,244 displays as 79.98 percent and remains
+below threshold. Add behavior-rich branch coverage instead of lowering the
+gate.
+
+## Transient ModuleBuilder output locks
+
+ModuleBuilder can occasionally lose a race with a generated module file in a
+fresh output directory. Confirm the failure is an exclusive generated-file
+lock, remove any module loaded from that output root, and rerun the same clean
+build once. Do not alter source or suppress the build error.
+
 ## SMB share descriptor metadata preservation
 
 `SetNamedSecurityInfoW` with `SE_LMSHARE` can clear a share description even

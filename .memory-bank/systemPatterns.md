@@ -433,3 +433,43 @@ Normative record: [ADR 0016](../specs/decisions/0016-require-schema-v2-for-enter
 - Rationale: Extending schema version 1 would weaken its established authority
     and target-identity guarantees for records that require server, share, base
     DN, and immutable directory identity metadata.
+
+### Decision 42: Verify Task Scheduler DACLs semantically
+
+- Choice: Compare persisted Task Scheduler DACLs by protection state and exact
+    ACE identity while tolerating only service-derived ACE order and
+    `DACL_AUTO_INHERITED` changes. Preserve every Local System ACE and release
+    COM objects in reverse acquisition order.
+- Rationale: The Task Scheduler service canonicalizes descriptors after a
+    write. Raw SDDL equality rejects valid persistence, while broader
+    normalization could hide a rights or protection change.
+
+### Decision 43: Keep caller callbacks in one runspace
+
+- Choice: Execute `Edit-NTFSItemSecurityDescriptor` callbacks sequentially,
+    with one read and at most one selected-section write per target. Keep
+    callback output suppressed and reject edits to unloaded sections.
+- Rationale: A caller-owned script block is not safe to invoke concurrently
+    across worker runspaces. Deterministic sequential execution preserves the
+    bounded editing contract without sharing mutable callback state.
+
+### Decision 44: Make unattended suite success explicit
+
+- Choice: Require every domain-lab suite to report `Passed`, discover and pass
+    at least one test, report zero skips, and leave both lab boundaries ready.
+    Write sanitized evidence atomically and preserve a primary suite failure
+    when cleanup or evidence finalization also fails.
+- Rationale: Pester can report a passed container with zero useful tests, and a
+    finalization error can otherwise mask the failure that changed system
+    state.
+
+### Decision 45: Separate CNG inspection from mutation
+
+- Choice: Limit the first certificate-private-key increment to DACL inspection
+    of an exact persisted RSA key in Microsoft Software Key Storage Provider.
+    Cross-check certificate, provider, and key identity; hash the canonical
+    target; retain caller certificate lifetime; and never export key material.
+- Rationale: Safe CNG writes require critical-binding detection, provider
+    implementation checks, service-ACE preservation, rollback, and separate
+    cryptographic review. Read authority can be proven without assuming those
+    mutation guarantees.

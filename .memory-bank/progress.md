@@ -9,12 +9,12 @@ source: repository evidence
 
 ## Current status
 
-The NTFS, registry, service/SCM, and pinned live-process command families are
-complete with unified cross-domain portability, bounded execution, canonical
-write serialization, metrics, and exact-descriptor DSC resources. They are
-independently approved and green on both supported PowerShell editions. All ten
-signed DSC resources are complete. OI-3 is closed with native inherited
-access-rule provenance.
+The local NTFS, registry, service/SCM, process, SMB-share, Task Scheduler, and
+bounded Active Directory command families are complete for their accepted
+increments. Bounded execution, canonical write serialization, metrics, exact
+DSC resources for the original five families, unattended domain-lab evidence,
+and read-only CNG private-key inspection are independently reviewed. OI-11 and
+ENT-8 are closed for the currently shipped enterprise families.
 
 ## Recent milestones
 
@@ -238,6 +238,22 @@ access-rule provenance.
     failures are the existing domain-controller interactive-logon policy cases;
     every enterprise test passed. Built and inspected the eight-entry local
     package with 82 exports and no source, test, lab-identity, or key artifacts.
+- 2026-07-28: Closed OI-4 by rejecting UNC effective-access targets and
+    deferring remote or combined SMB-plus-NTFS claims under ADR 0017.
+- 2026-07-28: Accepted and implemented Task Scheduler folder/task DACL get/set,
+    SMB share-only effective access, bounded NTFS callback editing, and
+    read-only Microsoft Software KSP RSA-key descriptor inspection.
+- 2026-07-28: Added the strict unattended five-suite domain-lab runner. The live
+    profile passed 18 tests with five ready cleanup checks and no failures or
+    skips; final domain and member readiness is clean.
+- 2026-07-28: Closed OI-11/ENT-8. Final Core runs 992 of 995 tests successfully
+    at 80.4561 percent coverage; final Desktop runs 965 of 968 successfully at
+    80.0226 percent. The only failures are three exact domain-controller
+    interactive-logon policy cases, and the same four-test file passes 4 of 4
+    on the domain member in both editions.
+- 2026-07-28: Built and inspected the eight-entry 89-export package. Both
+    editions import all 89 commands; archive hygiene is clean; package SHA-256
+    is `A702E507470676DF4784C2B9442D16DC036DB230552E438B0C8CAFA724312F67`.
 
 ## Stable capabilities
 
@@ -267,14 +283,29 @@ access-rule provenance.
     including duplicate cleanup, live rollback, and SYSTEM LCM invocation.
 - Native inherited NTFS access-rule provenance without heuristic parent-ACL
     comparison.
+- Local SMB-share DACL mutation and bounded share-only SID-derived effective
+    access with explicit backing-NTFS exclusion.
+- Signed/sealed explicit-DC Active Directory DACL mutation with complete-batch
+    prevalidation and immutable object identity.
+- Local Task Scheduler folder and registered-task DACL descriptor get/set with
+    containment, Local System ACE preservation, semantic verification, and
+    rollback.
+- Bounded NTFS callback editing with deterministic sequential callbacks and one
+    read/at-most-one-write per target.
+- Read-only DACL inspection of exact persisted RSA CNG keys without private-key
+    export.
+- Strict unattended domain-lab acceptance with fixed ordering, redacted atomic
+    evidence, no-skip/nonzero gates, and cleanup readiness after every suite.
 
 ## Open work
 
-- Complete and validate the uncommitted OI-5 phase-one implementation.
-- Align the static source manifest export list with the generated 72-command
-    package by adding `Set-NTFSItemSecurityDescriptor`.
-- Complete production-route isolation and the cross-edition member-server
-    portion of `ENT-1`; the `ENT-2` fixture lifecycle is verified.
-- Resolve the remote-security, credential, backup-schema, and effective-access
-    contracts before implementing OI-7 through OI-10.
+- OI-13 and OI-21 extend descriptor-aware editing and concurrency.
+- OI-14, OI-16, and OI-17 add SMB/AD portability, desired state, schema
+    resolution, broader mutation, and an AD effective-access decision.
+- OI-18 requires a second writable domain controller for replication and
+    failover evidence.
+- OI-19 and OI-20 add typed Task Scheduler rules, portability, and desired
+    state.
+- OI-22 through OI-24 add fail-closed CNG mutation, separate CAPI support, and
+    private-key portability/desired state after their security gates.
 - Remote publication remains user-controlled.

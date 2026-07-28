@@ -5,15 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-11: Complete shared enterprise integration and release gates
-
-Specification: 0008. Tasks: ENT-6 to ENT-8.
-
-ENT-6 shared dispatch/metrics/locking and the ENT-7 unattended domain-lab runner
-are complete for the currently shipped enterprise families. Run ENT-8 final
-cross-edition, privilege, static, package, security, and independent-review
-gates before closing this issue for the release candidate.
-
 ## OI-13: Add registry descriptor editing and optimistic concurrency
 
 Specification: 0007. Requirements: FR-3 to FR-10.
