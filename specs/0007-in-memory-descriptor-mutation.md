@@ -1,11 +1,11 @@
 # In-memory descriptor mutation
 
-Status: Draft. This design contract defines an optional detached
-descriptor-editing model for open issue OI-5. It reuses the existing access,
-audit, owner, inheritance, and descriptor requirements (FR-3 through FR-10)
-rather than defining new requirement identifiers. The design decisions below
-are resolved and the model is delivered in phases; the status becomes
-`Accepted` when the phased verification gates pass.
+Status: Accepted. This contract defines an optional detached descriptor-editing
+model. It reuses the existing access, audit, owner, inheritance, and descriptor
+requirements (FR-3 through FR-10) rather than defining new requirement
+identifiers. The explicit filesystem round-trip is implemented and verified;
+the bounded filesystem scope and registry expansion remain focused follow-up
+issues OI-12 and OI-13.
 
 ## Context and problem statement
 
@@ -66,11 +66,11 @@ against the existing identifiers in
 [verification and traceability](0005-verification-and-traceability.md) when the
 model is implemented.
 
-## Proposed model
+## Accepted model
 
-Two shapes are viable. The recommended primary shape is a bounded editing
-scope; the secondary shape is an explicit descriptor round-trip. A decision is
-requested in the open questions.
+The model has two composable shapes. The explicit descriptor round-trip is the
+implemented foundation; a bounded editing scope remains planned sugar over that
+foundation.
 
 ### Recommended: bounded editing scope
 
@@ -211,10 +211,10 @@ requirements:
   filesystem descriptor with one write, and `Add-NTFSAccessRule` stages an
   access rule on a descriptor in memory without writing. Covered by unit and
   live integration tests including `WhatIf` non-persistence.
-- Phase 2 (planned): the `Edit-NTFSItemSecurityDescriptor` bounded scope and the
+- Phase 2 (tracked by OI-12): the `Edit-NTFSItemSecurityDescriptor` bounded scope and the
   remaining filesystem access, audit, owner, and inheritance mutators accepting
   a descriptor.
-- Phase 3 (planned): the registry-key family and opt-in optimistic concurrency.
+- Phase 3 (tracked by OI-13): the registry-key family and opt-in optimistic concurrency.
 
 Full requirement traceability rows are added to
 [verification and traceability](0005-verification-and-traceability.md) as each

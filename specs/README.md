@@ -32,16 +32,16 @@ them.
 | 0004 | Security and persistence | Accepted |
 | 0005 | Verification and traceability | Accepted |
 | 0006 | WindowsAccessControl expansion | Accepted |
-| 0007 | In-memory descriptor mutation | Draft |
+| 0007 | In-memory descriptor mutation | Accepted |
 | 0008 | Enterprise access-control expansion | Draft |
 | 0009 | SMB share and Active Directory DACL management | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
 registry-key, service/SCM, pinned-process, portability, bounded-execution, and
-DSC expansion. Specification 0007 remains a Draft design contract for open
-issue OI-5; its first filesystem round-trip increment is under implementation
-and is not yet part of the accepted contract. Specification 0008 plans the
+DSC expansion. Specification 0007 accepts the implemented first filesystem
+descriptor-editing increment; focused issues OI-12 and OI-13 track its
+remaining bounded-scope and registry work. Specification 0008 plans the
 domain-lab-gated Task Scheduler, certificate private-key, SMB-share, and Active
 Directory expansion. Specification 0009 accepts the first SMB-share and Active
 Directory DACL-management increment without claiming later backup, DSC,

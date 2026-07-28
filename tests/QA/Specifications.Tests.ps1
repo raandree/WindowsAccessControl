@@ -184,4 +184,33 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         $openIssues | Should -Not -Match '(?m)^## OI-4:'
         $securityContract | Should -Match 'Remote and combined effective-access evaluation is unsupported'
     }
+
+    It 'Should split delivered enterprise increments into focused follow-up issues' {
+        $openIssues = Get-Content -LiteralPath (
+            Join-Path $script:specRoot 'open-issues.md'
+        ) -Raw
+        $editingContract = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0007-in-memory-descriptor-mutation.md'
+        ) -Raw
+        $labInventory = Get-Content -LiteralPath (
+            Join-Path $script:repositoryRoot 'docs\domain-lab-inventory.md'
+        ) -Raw
+        $decisionName = '0018-use-local-task-and-software-key-authority.md'
+        $decisionPath = Join-Path $script:decisionRoot $decisionName
+        $decisionIndex = Get-Content -LiteralPath (
+            Join-Path $script:decisionRoot 'README.md'
+        ) -Raw
+
+        foreach ($closedIssue in 5, 6, 9, 10) {
+            $openIssues | Should -Not -Match "(?m)^## OI-$closedIssue`:"
+        }
+        foreach ($focusedIssue in 12..18) {
+            $openIssues | Should -Match "(?m)^## OI-$focusedIssue`:"
+        }
+        $editingContract | Should -Match '(?m)^Status: Accepted\.'
+        $labInventory | Should -Match '(?m)^Status: Verified'
+        $labInventory | Should -Match 'Production network route isolation \| Verified'
+        $decisionPath | Should -Exist
+        $decisionIndex | Should -Match ([regex]::Escape($decisionName))
+    }
 }

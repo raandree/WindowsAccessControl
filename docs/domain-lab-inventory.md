@@ -1,6 +1,6 @@
 # Domain lab inventory
 
-Status: Partial (`ENT-2` fixture lifecycle verified)
+Status: Verified (`ENT-1` and `ENT-2` complete; `ENT-3` to `ENT-5` decisions accepted)
 
 Last verified: 2026-07-28
 
@@ -14,13 +14,13 @@ remain outside the repository.
 | --- | --- | --- |
 | Non-production use | Verified | The operator confirmed that the two-machine environment is unused and disposable. |
 | Trust isolation | Verified | The selected forest contains one domain and reports no trusts. |
-| Production network route isolation | Unverified | Confirm that neither machine has a routable path to a production directory before accepting the full entry gate. |
+| Production network route isolation | Verified | The operator attested that the disposable lab has no production-directory trust or routable production path. This is operator attestation, not an independent network map. |
 | Machine reset | Verified | The operator captured snapshots of both machines before fixture mutation. |
 | Recovery identity | Verified | The untouched RID-500 identity is enabled, has domain recovery authority, and performed successful teardown. |
 | Secret handling | Verified | Fixture users remain disabled; no credentials, passwords, private-key material, or recovery data were retained. |
 
-Disposable fixture mutation is enabled for this lab. Production implementation
-and remote public APIs remain blocked on the unresolved network and security
+Disposable fixture mutation and accepted local-on-target enterprise increments
+are enabled for this lab. Direct remote public APIs remain outside the accepted
 contracts.
 
 ## Topology
@@ -106,9 +106,10 @@ through `WAC_DOMAIN_LAB_MEMBER`; its `AfterAll` restores the ready fixture set.
   service traffic.
 
 The successful Kerberos probes establish connectivity only. The member-server
-WinRM baseline does not satisfy the planned downgrade policy. Enterprise tests
-must never select Basic or CredSSP, and task `ENT-4` must define and test the
-approved encrypted transport before a remote public API is implemented.
+WinRM baseline does not admit a direct remote public API. Enterprise tests must
+select explicit Kerberos and never Basic or CredSSP. ADR 0018 keeps Task
+Scheduler and software-key object adapters local-on-target; remoting is separate
+operator-controlled orchestration.
 
 ## Active Directory read probe
 
@@ -126,16 +127,19 @@ No directory object or descriptor was modified. Referral, timeout, consistency,
 downgrade-rejection, schema-resolution, and disposable-OU behavior remain open
 parts of `AD-1`.
 
-## Work now unblocked
+## Accepted foundation
 
-- Complete the production-route portion of the `ENT-1` isolation inventory.
-- Use the verified `ENT-2` fixtures for read-only and ownership-safe probes.
-- Turn the successful cross-edition `AD-1` baseline into a repeatable,
-  repository-controlled probe and extend it with the remaining connection
-  semantics.
-- Run read-only `TASK-1`, `KEY-1`, and `SMB-1` capability probes on the member
-  server.
-- Develop the `ENT-3` threat model and the `ENT-4` and `ENT-5` decisions.
+- `ENT-1`: the secret-free inventory, topology, reset capability, trust state,
+  and operator isolation attestation are recorded.
+- `ENT-2`: marked setup, status, teardown, repair, compensation, recovery, and
+  key-deletion behavior are repeatable.
+- `ENT-3`: specification 0009 and ADR 0018 record per-family data, authority,
+  outbound-channel, credential, and destructive containment boundaries.
+- `ENT-4`: ADRs 0015 and 0018 require explicit final-target authority and keep
+  first SMB, Task Scheduler, and software-key adapters local-on-target; AD uses
+  direct Kerberos LDAP.
+- `ENT-5`: ADR 0016 requires schema version 2 before enterprise targets enter
+  unified backup and restore.
 
 ## Additional environment
 
@@ -143,8 +147,6 @@ The present two-machine, three-role topology is sufficient for the entry-gate
 design, disposable fixtures, and read-only probes. The following additions or
 changes are required by later gates:
 
-- Confirm production network route isolation before accepting the full entry
-  gate.
 - Install PowerShell 7 on the member server, or provide an equivalent member
   server with both supported PowerShell editions.
 - Add a second writable domain controller before `AD-6` replication,
@@ -156,4 +158,5 @@ changes are required by later gates:
 
 - [Enterprise access-control expansion](../specs/0008-enterprise-access-control-expansion.md)
 - [Enterprise domain-lab decision](../specs/decisions/0014-stage-enterprise-expansion-behind-domain-lab.md)
+- [Task and software-key authority decision](../specs/decisions/0018-use-local-task-and-software-key-authority.md)
 - [Enterprise open-work register](../specs/open-issues.md)

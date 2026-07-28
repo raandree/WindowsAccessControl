@@ -80,6 +80,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Accept the delivered first in-memory descriptor-editing contract, verify the
+    enterprise lab entry gate, and split broad SMB/AD roadmap issues into
+    focused follow-up work
 - Reject UNC targets in `Get-NTFSItemEffectiveAccess` and explicitly defer
     remote or combined SMB-plus-NTFS effective-access claims
 - Move continuous integration from Azure Pipelines to GitHub Actions while
