@@ -206,6 +206,26 @@ access-rule provenance.
     Windows PowerShell 5.1 using explicit writable-domain-controller selection,
     Negotiate authentication, LDAP signing and sealing, RootDSE discovery, and
     binary domain-descriptor parsing. No directory object was modified.
+- 2026-07-28: Implemented the `ENT-2` test-only domain-lab harness with marked,
+    idempotent OU, identity, group, SMB-share, task-folder, and software CNG-key
+    fixtures plus read-only status, `ShouldProcess`, recovery verification, and
+    compensating cleanup.
+- 2026-07-28: Passed five focused unit tests and four explicit live lifecycle
+    tests. Setup creates no resources on its second pass and repairs either a
+    missing key or a missing selector; teardown removes every fixture, deletes
+    the CNG private key, reports already absent on its second pass, and restores
+    a final ready fixture set.
+- 2026-07-28: Reproduced and fixed certificate-only CNG key leakage, removed
+    three attributable orphan keys from the red cycles, and preserved the final
+    deterministic key. Cross-edition parsing and focused PSScriptAnalyzer are
+    clean.
+- 2026-07-28: The complete Sampler profile passed 818 tests at 88.01 percent
+    coverage and failed three pre-existing local-impersonation scenarios because
+    the domain-controller test host denies interactive logon to the disposable
+    ordinary accounts. The harness tests, QA, and all other tests passed.
+- 2026-07-28: Complete repository QA passed 449 tests with zero failures or
+    skips. Independent destructive-boundary review and final certificate-path
+    re-review returned APPROVE with no unresolved Blocker or Major findings.
 
 - 2026-07-28: Added a task-oriented usage guide covering common NTFS,
     registry, service/SCM, process, backup/restore, diagnostics, batching,
@@ -248,8 +268,8 @@ access-rule provenance.
 - Complete and validate the uncommitted OI-5 phase-one implementation.
 - Align the static source manifest export list with the generated 72-command
     package by adding `Set-NTFSItemSecurityDescriptor`.
-- Complete the isolation, reset, recovery, and cross-edition member-server
-    portions of `ENT-1`, then design idempotent `ENT-2` setup and teardown.
+- Complete production-route isolation and the cross-edition member-server
+    portion of `ENT-1`; the `ENT-2` fixture lifecycle is verified.
 - Resolve the remote-security, credential, backup-schema, and effective-access
     contracts before implementing OI-7 through OI-10.
 - Remote publication remains user-controlled.

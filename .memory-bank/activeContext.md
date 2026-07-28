@@ -9,15 +9,45 @@ source: current task evidence
 
 ## Current focus
 
-The `ENT-1` enterprise domain-lab inventory is active on
-`ai/domain-lab-inventory`. The current lab provides one writable domain
-controller, one member server, and one management host in a single-domain
-forest with no trusts. Read-only cross-edition Active Directory probes are
-unblocked; mutation remains gated on verified isolation, reset, and recovery
-boundaries. Remote push and publication remain under explicit user control.
+The `ENT-2` disposable fixture lifecycle is implemented and verified on
+`ai/domain-lab-inventory`. The two-machine lab has one writable domain
+controller that also serves as the management host and one member server.
+Snapshots and RID-500 teardown are proven; all marked directory, share, task,
+and CNG-key fixtures are currently ready. Production-route isolation, the
+remote-security contracts, and member-server PowerShell 7 remain open. Remote
+push and publication remain under explicit user control.
 
 ## Evidence
 
+- `tests/Lab/WindowsAccessControl.DomainLab.psm1` provides deterministic plan,
+    setup, status, and teardown commands with exact ownership markers,
+    `ShouldProcess`, and compensating cleanup across the DC and member server.
+- The fixture owns one root plus three child OUs, four disabled users, two
+    groups, nested membership, a marked SMB share, a task folder, and one
+    deterministic non-exportable CNG certificate key. RID-500 remains outside
+    the fixture and was not modified.
+- Five unit tests pass for the secret-free plan, lifecycle exports, `WhatIf`,
+    setup compensation, and root-inclusive readiness counting. Four explicit
+    live tests pass setup and teardown idempotence, missing-key and
+    missing-selector repair, and CNG key deletion; their finalizer restores the
+    ready fixture set.
+- A live member-setup failure proved clean compensation. Certificate-only
+    removal was shown to leak its CNG key; teardown now calls `CngKey.Delete`,
+    and the three attributable red-cycle orphan keys were removed without
+    touching the final deterministic key.
+- Ownership markers prevent accidental collisions in the trusted disposable
+    lab; they are not an adversarial authorization boundary.
+- The operator confirmed that the environment is unused and snapshotted. The
+    forest has no trusts, but a routable path to production has not been
+    independently excluded.
+- The complete Sampler profile reached 818 passing tests at 88.01 percent
+    coverage. Its three failures are the existing local-impersonation live
+    cases: this host is a domain controller, so ordinary disposable accounts do
+    not hold the interactive logon right required by `LogonUser`.
+- Complete repository QA passes 449 tests with zero failures or skips. Focused
+    analyzer and cross-edition parse checks are clean. Independent destructive-
+    boundary review and final certificate-recovery re-review both returned
+    APPROVE with no unresolved Blocker or Major findings.
 - `docs/domain-lab-inventory.md` records symbolic roles and capabilities
     without machine names, domain names, addresses, credentials, or recovery
     material.
@@ -197,8 +227,9 @@ boundaries. Remote push and publication remain under explicit user control.
 
 ## Next step
 
-Confirm the forest-isolation, machine-reset, and untouched recovery-identity
-gates. Then turn the successful `AD-1` baseline into a repeatable read-only
-probe and design idempotent `ENT-2` setup and teardown without applying it.
-Provide a second writable domain controller only when `AD-6` replication and
-failover work begins. Do not push or publish without an explicit request.
+Turn the successful `AD-1` baseline into a repeatable read-only probe against
+the fixture OU, then complete the `ENT-3`, `ENT-4`, and `ENT-5` contracts.
+Confirm production network route isolation and add PowerShell 7 to the member
+server before claiming the full entry gate. Provide a second writable domain
+controller only when `AD-6` replication and failover work begins. Do not push
+or publish without an explicit request.

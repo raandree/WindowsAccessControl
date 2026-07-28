@@ -356,3 +356,36 @@ unfiltered arrays. Parse the same binary descriptor, filter native metadata to
 the managed subset, retain a cardinality guard, and test object-ACE coexistence
 plus mixed explicit and inherited sources. Skip the native hierarchy walk when
 inherited rules are excluded.
+
+## Domain-lab absence and CNG cleanup
+
+Active Directory `-Identity` lookups for an absent OU, user, or group can emit
+or throw object-not-found errors even with a nonterminating error preference.
+Use a scoped LDAP search when absence is an expected idempotence state; keep
+typed identity lookups terminating after the fixture must exist.
+
+Task Scheduler reports a missing folder over WinRM as
+`System.IO.FileNotFoundException` with HRESULT `0x80070002`, not necessarily as
+`COMException`. Match the exact HRESULT and rethrow every other error.
+
+Removing a certificate from `Cert:\LocalMachine\My` leaves its persisted CNG
+private key openable. Assign lab keys a deterministic provider/container,
+delete the attached `RSACng.Key` explicitly, and check the known container for
+partial-cleanup recovery. Setup must also detect a matching certificate whose
+key cannot be opened, remove that stale selector, and recreate the managed key.
+When the selector is absent but the deterministic container remains,
+`New-SelfSignedCertificate` fails with `NTE_EXISTS`; delete the known container
+before creating the replacement selector. Retain live tests for both repair
+directions and for capturing the unique key, tearing down the fixture, and
+proving that `CngKey.Open` fails before restoring the ready lab.
+
+## Domain controller impersonation acceptance
+
+`New-LocalUser` on a domain controller creates an ordinary directory-backed
+account, not an independent member-server local account. The default domain
+controller security policy does not grant that account interactive logon, so
+`LogonUser` with the module's interactive logon type returns
+`ERROR_LOGON_TYPE_NOT_GRANTED`. Run disposable local-account impersonation
+acceptance on a member server; do not weaken domain-controller logon policy or
+change production impersonation semantics merely to make that host profile
+green.

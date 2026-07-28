@@ -1,6 +1,6 @@
 # Domain lab inventory
 
-Status: Partial
+Status: Partial (`ENT-2` fixture lifecycle verified)
 
 Last verified: 2026-07-28
 
@@ -12,14 +12,16 @@ remain outside the repository.
 
 | Gate | State | Evidence or required action |
 | --- | --- | --- |
-| Non-production forest isolation | Unverified | Confirm that the forest has no production trust or routable production path. |
+| Non-production use | Verified | The operator confirmed that the two-machine environment is unused and disposable. |
 | Trust isolation | Verified | The selected forest contains one domain and reports no trusts. |
-| Machine reset | Unverified | Record a snapshot, rebuild, or equivalent reset mechanism for each mutable machine. |
-| Recovery identity | Unverified | Reserve an identity that tests never modify and prove it can perform teardown. |
-| Secret handling | Verified for discovery | No credentials, domain names, host names, addresses, key material, or recovery data were retained. |
+| Production network route isolation | Unverified | Confirm that neither machine has a routable path to a production directory before accepting the full entry gate. |
+| Machine reset | Verified | The operator captured snapshots of both machines before fixture mutation. |
+| Recovery identity | Verified | The untouched RID-500 identity is enabled, has domain recovery authority, and performed successful teardown. |
+| Secret handling | Verified | Fixture users remain disabled; no credentials, passwords, private-key material, or recovery data were retained. |
 
-Remote mutation tests remain disabled until the isolation, reset, and recovery
-gates are verified.
+Disposable fixture mutation is enabled for this lab. Production implementation
+and remote public APIs remain blocked on the unresolved network and security
+contracts.
 
 ## Topology
 
@@ -30,10 +32,12 @@ gates are verified.
 | Writable domain controller | 1 | Global catalog; Windows Server 2022 Datacenter |
 | Read-only domain controller | 0 | None discovered |
 | Member server | 1 | Domain joined; Windows Server 2022 Datacenter |
-| Management host | 1 | Domain joined; Windows Server 2022 Datacenter |
+| Management host | 1 | Co-located on the writable domain controller |
 
-One writable domain controller supports inventory and read-only API probes. It
-does not satisfy replication, domain-controller switch, or failover evidence.
+The management and domain-controller roles share one machine, so the topology
+contains two unique machines. One writable domain controller supports inventory,
+fixture lifecycle, and read-only API probes. It does not satisfy replication,
+domain-controller switch, or failover evidence.
 
 ## Role capabilities
 
@@ -47,6 +51,47 @@ The member server can host Windows PowerShell 5.1 Task Scheduler, certificate
 provider, SMB, and local-object probes. PowerShell 7 must be installed there or
 provided on another equivalent member server before cross-edition live
 acceptance can pass.
+
+## Disposable fixture lifecycle
+
+The test-only harness in
+[WindowsAccessControl.DomainLab.psm1](../tests/Lab/WindowsAccessControl.DomainLab.psm1)
+owns resources through exact identities and markers. It provides plan, setup,
+status, and teardown commands with `ShouldProcess` on both mutation boundaries.
+The marker is an accidental-collision and cleanup-ownership guard inside this
+trusted disposable lab; it is not an authorization control against a malicious
+directory or machine administrator.
+
+The ready fixture contains:
+
+- one marked root OU with `Identities`, `Groups`, and `Targets` child OUs
+- four disabled fixture users and two security groups
+- direct and nested group membership for later authorization probes
+- the untouched RID-500 recovery identity outside the fixture OU
+- one marked member-server directory and SMB share
+- one Task Scheduler folder
+- one non-exportable software-backed RSA CNG key selected through a self-signed
+  certificate with a deterministic provider and container identity
+
+Live evidence proved:
+
+- first setup created 12 domain changes and five member-server resources
+- a second setup created zero resources and retained complete readiness
+- a forced member-boundary setup failure triggered clean compensating teardown
+- first teardown removed every owned resource and second teardown reported every
+  resource already absent
+- certificate teardown explicitly deleted the persisted CNG private key
+- setup detected and repaired a marked certificate whose CNG key was missing
+- setup deleted a remaining deterministic key before recreating its missing
+  certificate selector
+- three orphan keys created while reproducing the pre-fix failure were removed,
+  while the final deterministic fixture key remained available
+- the final setup left all ten marked directory objects and all member-server
+  fixtures ready
+
+Five focused unit tests and four explicit live tests retain this behavior. The
+live suite is outside the default CI paths and requires the member-server role
+through `WAC_DOMAIN_LAB_MEMBER`; its `AfterAll` restores the ready fixture set.
 
 ## Remote transport evidence
 
@@ -83,8 +128,8 @@ parts of `AD-1`.
 
 ## Work now unblocked
 
-- Complete the remaining secret-free `ENT-1` safety and reset inventory.
-- Design idempotent `ENT-2` setup and teardown without applying it yet.
+- Complete the production-route portion of the `ENT-1` isolation inventory.
+- Use the verified `ENT-2` fixtures for read-only and ownership-safe probes.
 - Turn the successful cross-edition `AD-1` baseline into a repeatable,
   repository-controlled probe and extend it with the remaining connection
   semantics.
@@ -94,11 +139,12 @@ parts of `AD-1`.
 
 ## Additional environment
 
-The present three-role topology is sufficient for the entry-gate design and
-read-only probes. The following additions are required by later gates:
+The present two-machine, three-role topology is sufficient for the entry-gate
+design, disposable fixtures, and read-only probes. The following additions or
+changes are required by later gates:
 
-- Confirm or provide reset capability and an untouched recovery identity before
-  any disposable directory or member-server mutation.
+- Confirm production network route isolation before accepting the full entry
+  gate.
 - Install PowerShell 7 on the member server, or provide an equivalent member
   server with both supported PowerShell editions.
 - Add a second writable domain controller before `AD-6` replication,

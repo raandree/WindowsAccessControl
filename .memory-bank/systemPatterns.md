@@ -386,3 +386,14 @@ Normative record: [ADR 0014](../specs/decisions/0014-stage-enterprise-expansion-
 - Rationale: Repeatable evidence does not require identifying the lab, and one
     secure client choice cannot prove that weaker server authentication or
     transport settings are unavailable.
+
+### Decision 38: Mark, compensate, and explicitly delete lab keys
+
+- Choice: Give every disposable lab resource an exact identity and ownership
+    marker, refuse unmarked collisions, compensate member-first then domain on
+    partial setup failure, and keep the untouched RID-500 identity outside the
+    fixture. Use a deterministic software CNG provider/container and call
+    `CngKey.Delete` before removing its selector certificate.
+- Rationale: Idempotent names alone do not establish ownership, recursive
+    teardown can otherwise delete foreign objects, and deleting a certificate
+    from the Windows store does not delete its persisted CNG private key.

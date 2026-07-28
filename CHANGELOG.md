@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add a secret-free domain-lab inventory with symbolic topology, remote
     transport findings, cross-edition read-only LDAP evidence, and explicit
     safety and replication gates
+- Add a test-only, ownership-marked domain-lab lifecycle harness for disposable
+    directory identities and groups, an SMB share, a Task Scheduler folder, and
+    a software CNG certificate key, with idempotent setup/teardown, compensating
+    cleanup, and explicit private-key deletion evidence
 - Add in-memory NTFS descriptor editing: `Set-NTFSItemSecurityDescriptor`
     persists an edited descriptor object with one write, and `Add-NTFSAccessRule`
     can stage an access rule on a descriptor from `Get-NTFSItemSecurityDescriptor`
