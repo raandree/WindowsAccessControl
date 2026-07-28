@@ -148,13 +148,14 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
 
         $script:invokedPaths | Should -Be @(
             'WindowsAccessControl.DomainLab.Live.Tests.ps1'
+            'CertificatePrivateKeyPermissions.Live.Tests.ps1'
             'TaskSchedulerPermissions.Live.Tests.ps1'
             'SmbSharePermissions.Live.Tests.ps1'
             'ADObjectPermissions.Live.Tests.ps1'
         )
         $result.Result | Should -BeExactly 'Passed'
-        $result.Suites | Should -HaveCount 4
-        $result.CleanupLedger | Should -HaveCount 4
+        $result.Suites | Should -HaveCount 5
+        $result.CleanupLedger | Should -HaveCount 5
         $result.CleanupLedger.Ready | Should -Not -Contain $false
         $result.Suites.StartedAtUtc | Should -Not -Contain $null
         $result.Suites.CompletedAtUtc | Should -Not -Contain $null

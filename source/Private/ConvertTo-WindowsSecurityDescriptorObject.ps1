@@ -36,6 +36,11 @@ function ConvertTo-WindowsSecurityDescriptorObject {
         ObjectGuid               = $Target.ObjectGuid
         TaskPath                 = $Target.TaskPath
         TaskName                 = $Target.TaskName
+        ProviderName             = $Target.ProviderName
+        KeyName                  = $Target.KeyName
+        UniqueName               = $Target.UniqueName
+        KeyScope                 = $Target.KeyScope
+        CertificateThumbprint    = $Target.CertificateThumbprint
         ServiceName              = $Target.ServiceName
         ProcessId                = $Target.ProcessId
         ProcessName              = $Target.ProcessName

@@ -1207,6 +1207,7 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
     }
     $suiteNames = @(
         'WindowsAccessControl.DomainLab.Live.Tests.ps1'
+        'CertificatePrivateKeyPermissions.Live.Tests.ps1'
         'TaskSchedulerPermissions.Live.Tests.ps1'
         'SmbSharePermissions.Live.Tests.ps1'
         'ADObjectPermissions.Live.Tests.ps1'

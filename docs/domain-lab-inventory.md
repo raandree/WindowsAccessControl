@@ -100,12 +100,12 @@ through `WAC_DOMAIN_LAB_MEMBER`; its `AfterAll` restores the ready fixture set.
 ## Unattended acceptance profile
 
 `Invoke-WindowsAccessControlDomainLabAcceptance` in the test harness runs the
-fixture lifecycle, Task Scheduler, SMB-share, and Active Directory suites in a
-fixed order. It requires explicit repository, domain-DN, member-server, and
-evidence-path inputs; the member-server environment variable exists only for
-the duration of the call and is restored afterward. The suites create their
-own ephemeral test credentials, so no secret-bearing environment variable is
-required.
+fixture lifecycle, CNG private-key inspection, Task Scheduler, SMB-share, and
+Active Directory suites in a fixed order. It requires explicit repository,
+domain-DN, member-server, and evidence-path inputs; the member-server
+environment variable exists only for the duration of the call and is restored
+afterward. The suites create their own ephemeral test credentials, so no
+secret-bearing environment variable is required.
 
 Each suite emits start/end heartbeat records and is followed by an independent
 domain/member readiness check. The runner stops before the next suite when a
@@ -117,8 +117,8 @@ records credential handling only as `SuiteEphemeralRuntime`. Sanitization
 applies to the persisted evidence; thrown errors remain operator-facing and
 must not be copied into a shared log that requires redaction.
 
-The first complete profile executed 17 tests across four suites with zero
-failures or skips. All four cleanup checks were ready, retained evidence
+The latest complete profile executed 18 tests across five suites with zero
+failures or skips. All five cleanup checks were ready, retained evidence
 contained no infrastructure identifiers, and a fresh harness import confirmed
 the complete lab ready afterward. The runner contract passes 13 tests in both
 PowerShell 7 and Windows PowerShell 5.1.

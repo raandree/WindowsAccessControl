@@ -377,6 +377,18 @@ system-derived differences while retaining duplicate-sensitive native ACE and
 caller-controlled flag comparison. Typed rules, SACL, backup/restore, DSC, and
 direct remote APIs remain outside this contract.
 
+## Certificate private-key commands
+
+| Command | Pipeline input | Returns |
+| --- | --- | --- |
+| `Get-CertificatePrivateKeySecurityDescriptor` | exact `X509Certificate2` | `CertificatePrivateKeySecurityDescriptor` |
+
+The read-only command requires the exact expected CNG provider and persisted
+key name in addition to the certificate selector. It supports only RSA keys in
+Microsoft Software Key Storage Provider and emits the DACL descriptor plus
+stable provider identity metadata. It never searches stores, exports key
+material, disposes the caller certificate, or exposes a mutation surface.
+
 ## Active Directory object commands
 
 | Command | Pipeline input | Returns |

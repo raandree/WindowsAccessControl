@@ -267,6 +267,19 @@ Unified backup remains schema version 1 for existing local families. ADR 0016
 requires schema version 2 before SMB or AD records are accepted, so this
 increment cannot restore enterprise targets from a version 1 document.
 
+## Certificate private-key boundary
+
+The first private-key increment is read-only. A caller-owned certificate must
+select one persistent `RSACng` key whose provider and key name match explicit
+inputs and whose provider is Microsoft Software Key Storage Provider. The
+module queries only the silent DACL security-descriptor property, disposes its
+RSA wrapper, and never exports key bytes. Canonical identity hashes provider,
+scope, and unique key identity rather than embedding them in lock keys.
+
+Descriptor writes remain prohibited until critical-service binding detection,
+software/hardware capability checks, recovery access preservation, exact
+rollback, negative fixtures, and independent cryptographic review fail closed.
+
 ## Paths and time-of-check/time-of-use
 
 `Path` follows FileSystem-provider wildcard and reparse-point behavior.

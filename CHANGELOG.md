@@ -88,6 +88,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `Edit-NTFSItemSecurityDescriptor` for a bounded one-read, at-most-one-write
     callback scope with `ArgumentList`, loaded-section enforcement, `WhatIf`,
     and pass-through output
+- Add read-only DACL inspection for an exact persisted RSA key in Microsoft
+    Software Key Storage Provider, with certificate/provider/key cross-checks,
+    hashed canonical identity, and no private-key export
 
 ### Changed
 

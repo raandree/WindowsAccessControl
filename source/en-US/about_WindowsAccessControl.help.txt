@@ -8,9 +8,9 @@ LONG DESCRIPTION
     WindowsAccessControl manages Windows identities, privileges, access rules,
     audit rules, ownership, inheritance, effective access, and portable
     security descriptors across filesystems, registry keys, services,
-    processes, SMB shares, Active Directory, and Task Scheduler. Filesystem
-    commands accept strings and FileSystemInfo objects through the pipeline.
-    State-changing commands support WhatIf and Confirm.
+    processes, SMB shares, Active Directory, Task Scheduler, and supported CNG
+    private keys. Filesystem commands accept strings and FileSystemInfo objects
+    through the pipeline. State-changing commands support WhatIf and Confirm.
 
 EXAMPLES
     PS C:\> Get-ChildItem C:\Data | Get-NTFSAccessRule -ExcludeInherited
@@ -32,8 +32,9 @@ SEE ALSO
     Get-NTFSItemEffectiveAccess
     Get-TaskFolderSecurityDescriptor
     Get-ScheduledTaskSecurityDescriptor
+    Get-CertificatePrivateKeySecurityDescriptor
 
 KEYWORDS
     Windows, NTFS, registry, service, process, SMB, Active Directory,
-    Task Scheduler, ACL, DACL, SACL, permissions, ownership, inheritance,
-    Authz, DSC
+    Task Scheduler, CNG, certificate, private key, ACL, DACL, SACL,
+    permissions, ownership, inheritance, Authz, DSC

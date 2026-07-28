@@ -236,6 +236,25 @@ Get-ScheduledTaskSecurityDescriptor `
 The first increment is DACL descriptor-only. It does not expose typed rules,
 SACLs, backup/restore, DSC, or direct remote target parameters.
 
+## Certificate private keys
+
+The first private-key increment is read-only and supports exact persisted RSA
+keys in Microsoft Software Key Storage Provider. Supply the certificate object,
+provider, and key name so the module can cross-check identity without searching
+stores or exporting key material:
+
+```powershell
+$certificate = Get-Item 'Cert:\LocalMachine\My\0123456789ABCDEF'
+
+Get-CertificatePrivateKeySecurityDescriptor `
+    -Certificate $certificate `
+    -ProviderName 'Microsoft Software Key Storage Provider' `
+    -KeyName 'WorkloadKey'
+```
+
+CAPI, hardware, ephemeral, mismatched, and mutation workflows are not part of
+this increment. The command does not dispose the caller-owned certificate.
+
 ## Services and the SCM
 
 Service commands accept local service names and `ServiceController` pipeline

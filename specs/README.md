@@ -23,6 +23,7 @@ them.
 9. [SMB share and Active Directory DACL management](0009-smb-share-and-active-directory-dacl-management.md)
 10. [Task Scheduler DACL management](0010-task-scheduler-dacl-management.md)
 11. [SMB share-only effective access](0011-smb-share-only-effective-access.md)
+12. [CNG private-key DACL inspection](0012-cng-private-key-dacl-inspection.md)
 
 ## Status
 
@@ -39,6 +40,7 @@ them.
 | 0009 | SMB share and Active Directory DACL management | Accepted |
 | 0010 | Task Scheduler DACL management | Accepted |
 | 0011 | SMB share-only effective access | Accepted |
+| 0012 | CNG private-key DACL inspection | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
@@ -53,7 +55,11 @@ effective-access, or replication work. Specification 0010 accepts local
 Task Scheduler folder and registered-task DACL descriptor management without
 claiming typed rules, portability, DSC, SACL, or direct remote APIs.
 Specification 0011 accepts a bounded local SID-derived SMB share-only result
-without a backing-NTFS, remote, or network-token claim. A future change starts as `Draft` and
+without a backing-NTFS, remote, or network-token claim. Specification 0012
+accepts read-only DACL
+inspection for an exact persisted RSA key in Microsoft Software Key Storage
+Provider without admitting mutation or broader provider support. A future
+change starts as `Draft` and
 becomes `Accepted` when approved.
 
 ## Architecture decisions

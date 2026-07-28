@@ -60,6 +60,9 @@ to 0005 and the linked ADRs.
 - **FR-22**: Edit selected NTFS descriptor sections in a bounded script-block
   scope with one detached read, at most one serialized persistence operation,
   optional positional arguments, and opt-in pass-through output.
+- **FR-23**: Inspect the DACL descriptor of an exact persisted RSA CNG private
+  key selected by a caller-owned certificate plus matching provider and key
+  identity, without exporting or serializing private-key material.
 
 ## Non-functional requirements
 
@@ -100,6 +103,10 @@ to 0005 and the linked ADRs.
 - **NFR-15**: Bounded NTFS descriptor editing executes the callback under
   `WhatIf` but never persists it, suppresses callback output, rejects unloaded-
   section expansion, and never writes after callback failure.
+- **NFR-16**: Private-key inspection supports only the explicitly allowed
+  software CNG provider, rejects CAPI/ephemeral/mismatched targets, keeps the
+  certificate caller-owned, disposes module-owned key wrappers, and uses a
+  hashed canonical target identity.
 
 ## Traceability
 

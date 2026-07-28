@@ -5,15 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-8: Add certificate private-key access control
-
-Specification: 0008. Tasks: KEY-1 to KEY-8.
-
-Add CAPI and CNG software-key capability discovery, stable provider/container
-identity, descriptor and rule workflows, descriptor-only backup/restore, and
-supported DSC convergence. Never export or serialize private key material;
-unsupported hardware or remote providers must fail explicitly.
-
 ## OI-11: Complete shared enterprise integration and release gates
 
 Specification: 0008. Tasks: ENT-6 to ENT-8.
@@ -91,6 +82,31 @@ Add descriptor-input parameter sets for NTFS access set/remove/clear, audit,
 owner, and inheritance mutators. Preserve explicit mutation semantics and
 loaded-section enforcement. Live-process descriptors remain excluded because
 their read and write must stay on one pinned handle.
+
+## OI-22: Add fail-closed CNG private-key mutation
+
+Specifications: 0008, 0012. Tasks: KEY-1, KEY-3, KEY-4, KEY-7, and KEY-8.
+
+Add provider implementation/hardware rejection, HTTP.sys/WinRM/RDP/LDAPS
+critical-binding detection, SYSTEM/Administrators/original-service-ACE
+preservation, typed add/exact-remove semantics, exact rollback, negative live
+fixtures, and independent cryptographic review before any CNG DACL write ships.
+
+## OI-23: Add CAPI private-key capability and mutation
+
+Specification: 0008. Tasks: KEY-1 to KEY-4 and KEY-7.
+
+Probe and implement the separate CAPI software-provider identity, handle,
+descriptor, and rejection boundary in both PowerShell editions. Do not infer
+CAPI key-file paths or reuse CNG assumptions.
+
+## OI-24: Add private-key portability and desired state
+
+Specification: 0008. Tasks: KEY-5 and KEY-6.
+
+After safe typed mutation exists, add schema-version-2 descriptor-only
+backup/restore and DSC only for stable supported software-key identities.
+Never store certificate or private-key material in portability records.
 
 ## See also
 

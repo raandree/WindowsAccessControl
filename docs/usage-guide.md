@@ -54,6 +54,7 @@ mutation. Prefer `LiteralPath` when a path can contain wildcard characters.
 | Evaluate a local SMB share DACL only | `Get-SmbShareEffectiveAccess` |
 | Delegate Active Directory object access | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule` |
 | Manage Task Scheduler DACLs | `Get-TaskFolderSecurityDescriptor`, `Get-ScheduledTaskSecurityDescriptor` |
+| Inspect a supported private-key DACL | `Get-CertificatePrivateKeySecurityDescriptor` |
 | Enforce desired state | The class-based DSC resources |
 
 ## Preview every mutation
@@ -173,6 +174,32 @@ operator's responsibility. Task Scheduler may reorder ACEs and add its derived
 auto-inherited flag; the module verifies the native ACE set and caller-controlled
 protection state after persistence. Typed rules, SACLs, backup/restore, DSC, and
 direct remote targets are not part of this increment.
+
+## Inspect a supported private-key DACL
+
+Use an exact certificate object plus the expected persisted CNG provider and
+key name. The first increment is read-only and supports RSA keys in Microsoft
+Software Key Storage Provider:
+
+```powershell
+$certificate = Get-Item 'Cert:\LocalMachine\My\0123456789ABCDEF'
+$privateKey = [Security.Cryptography.X509Certificates.RSACertificateExtensions]::
+    GetRSAPrivateKey($certificate)
+try {
+    Get-CertificatePrivateKeySecurityDescriptor `
+        -Certificate $certificate `
+        -ProviderName $privateKey.Key.Provider.Provider `
+        -KeyName $privateKey.Key.KeyName
+}
+finally {
+    $privateKey.Dispose()
+}
+```
+
+The module cross-checks provider and key identity, reads only the DACL with a
+silent provider query, and does not dispose the caller-owned certificate.
+Ephemeral, CAPI, hardware, mismatched, mutation, backup/restore, and DSC
+workflows remain outside this increment. No private-key bytes are returned.
 
 ## Inspect file and directory access
 

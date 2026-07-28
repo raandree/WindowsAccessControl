@@ -47,6 +47,7 @@ is not reported as a successful live write.
 | FR-20 | Task Scheduler command-contract and COM-boundary Unit tests plus disposable folder/task DACL reads, `WhatIf`, containment rejection, round trip, task-definition preservation, rollback, and cleanup tests |
 | FR-21 | SMB effective-access contract/behavior Unit tests plus delegated local share Authz, canonical deduplication, context-label, and backing-NTFS exclusion live evidence |
 | FR-22 | `Edit-NTFSItemSecurityDescriptor.Tests.ps1` Unit contract plus bounded live add, pass-through, callback-failure, and non-persistence tests |
+| FR-23 | Certificate-private-key command/identity Unit tests plus cross-edition read-only non-exportable CNG fixture acceptance |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |
@@ -62,6 +63,7 @@ is not reported as a successful live write.
 | NFR-13 | Task Scheduler path/COM Unit tests, duplicate-sensitive DACL canonicalization tests, and zero-leak domain-lab acceptance |
 | NFR-14 | SMB complete-descriptor section regression, existing Authz native cleanup tests, and explicit local/share-only output assertions |
 | NFR-15 | Bounded edit one-read/one-write mocks, `WhatIf`, unloaded-section, callback-failure, batch, and live target-state assertions |
+| NFR-16 | Provider/key mismatch rejection, hashed canonical identity, caller-certificate lifetime, RSA cleanup, no-private-key-output, and lab readiness checks |
 | ADR-0013 | Dispatcher Unit tests, family command contracts, live canonical deduplication and metric tests, cross-edition focused runs, and the repeatable NTFS benchmark |
 | ADR-0012 | Exact resource schema/orchestration/adapter Unit tests, live five-target convergence, Desktop MOF compilation, and `Invoke-DscResource` acceptance |
 | ADR-0012 rule presence | Rule schema/orchestration/adapter Unit tests, live five-target Present/Absent convergence, ten-resource MOF compilation, and Desktop LCM invocation |
@@ -156,6 +158,7 @@ is not reported as a successful live write.
 | `Set-TaskFolderSecurityDescriptor` | 2 | Disposable local task-folder DACL round trip | `WhatIf`, allowed-root containment, SYSTEM preservation, rollback |
 | `Get-ScheduledTaskSecurityDescriptor` | 1 | Disposable local registered-task DACL | Exact parent path and task-name binding |
 | `Set-ScheduledTaskSecurityDescriptor` | 2 | Disposable local registered-task DACL round trip | `WhatIf`, principal-ACE flag, task-definition preservation, rollback |
+| `Get-CertificatePrivateKeySecurityDescriptor` | 2 | Disposable non-exportable software CNG key DACL | Exact provider/key identity, certificate lifetime, no key material |
 
 Cross-cutting checks add Unit-level mutator `WhatIf` specifications in
 `tests/Unit/MutatorSafety.Tests.ps1` and the QA specification contract in
@@ -179,11 +182,12 @@ cross-module write serialization. The same focused gate runs under PowerShell
 7 and Windows PowerShell 5.1.
 
 `Invoke-WindowsAccessControlDomainLabAcceptance` runs the four live domain-lab
-suites in fixed order, records suite start/end heartbeats and exact sanitized
+suites plus the CNG inspection suite in fixed order, records suite start/end
+heartbeats and exact sanitized
 skip reasons, and verifies both lab boundaries after every suite. A suite with
 zero passing tests or any skip fails the profile. Retained JSON is atomic,
 sanitizes infrastructure-shaped values, and rejects known plan identifiers. The
-completed profile passed 17 tests with four ready cleanup checks and no failures
+completed profile passed 18 tests with five ready cleanup checks and no failures
 or skips.
 
 `tests/Performance/Measure-NtfsBatchPerformance.ps1` measures alternating

@@ -17,6 +17,11 @@ and direct remote APIs remain outside that accepted slice.
 Specification 0011 accepts SMB-5 as a bounded local SID-derived share-only
 result. SMB-6 remains deferred by ADR 0017.
 
+Specification 0012 accepts read-only inspection of an exact persisted RSA key
+in Microsoft Software Key Storage Provider. CNG/CAPI mutation, portability,
+DSC, critical-binding detection, and cryptographic review remain focused
+follow-up packages.
+
 ## Purpose
 
 Extend `WindowsAccessControl` from local operating-system objects into the
@@ -218,7 +223,7 @@ specified and protected by dedicated recovery tests.
 `ENT-6` and `ENT-7` are delivered for the currently shipped enterprise
 families. SMB, AD, and Task Scheduler use shared bounded dispatch, canonical
 deduplication, metrics, and target-lock contracts. The unattended test-harness
-runner executes four fixed live suites, emits suite heartbeats, records exact
+runner executes five fixed live suites, emits suite heartbeats, records exact
 sanitized skip reasons, rejects zero-pass or skipped suites, fails on an unready
 cleanup ledger, and writes atomic sanitized evidence. `ENT-8` remains the final
 release-candidate gate.
