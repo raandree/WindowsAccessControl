@@ -198,6 +198,14 @@ access-rule provenance.
     examples and complete help/catalog coverage for all 72 packaged commands.
     The generated package exports `Set-NTFSItemSecurityDescriptor`, but the
     static source manifest export list still omits it.
+- 2026-07-28: Began `ENT-1` with a secret-free domain-lab inventory covering
+    one writable domain controller, one member server, one management host,
+    supported PowerShell editions, role capabilities, and unresolved safety
+    and transport gates.
+- 2026-07-28: Passed read-only `AD-1` baseline probes in PowerShell 7.6.3 and
+    Windows PowerShell 5.1 using explicit writable-domain-controller selection,
+    Negotiate authentication, LDAP signing and sealing, RootDSE discovery, and
+    binary domain-descriptor parsing. No directory object was modified.
 
 - 2026-07-28: Added a task-oriented usage guide covering common NTFS,
     registry, service/SCM, process, backup/restore, diagnostics, batching,
@@ -240,7 +248,8 @@ access-rule provenance.
 - Complete and validate the uncommitted OI-5 phase-one implementation.
 - Align the static source manifest export list with the generated 72-command
     package by adding `Set-NTFSItemSecurityDescriptor`.
-- Inventory and prepare the supplied domain lab under ENT-1 and ENT-2.
+- Complete the isolation, reset, recovery, and cross-edition member-server
+    portions of `ENT-1`, then design idempotent `ENT-2` setup and teardown.
 - Resolve the remote-security, credential, backup-schema, and effective-access
     contracts before implementing OI-7 through OI-10.
 - Remote publication remains user-controlled.

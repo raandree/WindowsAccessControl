@@ -9,16 +9,33 @@ source: current task evidence
 
 ## Current focus
 
-Continuous integration is moving from Azure Pipelines to GitHub Actions on
-`ai/github-actions-build`. The workflow builds one Sampler artifact from full
-Git history, then tests that artifact with PowerShell 7 and Windows PowerShell
-5.1 on Windows. GitVersion now treats `main` as the primary branch, and the
-obsolete Azure Pipelines definition is removed. OI-5 phase 1 and the Draft,
-domain-lab-gated enterprise expansion remain the next implementation tracks.
-Remote push and publication remain under explicit user control.
+The `ENT-1` enterprise domain-lab inventory is active on
+`ai/domain-lab-inventory`. The current lab provides one writable domain
+controller, one member server, and one management host in a single-domain
+forest with no trusts. Read-only cross-edition Active Directory probes are
+unblocked; mutation remains gated on verified isolation, reset, and recovery
+boundaries. Remote push and publication remain under explicit user control.
 
 ## Evidence
 
+- `docs/domain-lab-inventory.md` records symbolic roles and capabilities
+    without machine names, domain names, addresses, credentials, or recovery
+    material.
+- The member server is domain joined, runs Windows Server 2022, accepts an
+    explicit Kerberos WinRM session, and exposes Task Scheduler, SMB server,
+    WinRM, and the LDAP protocol API through Windows PowerShell 5.1.
+- The management host and writable domain controller provide both supported
+    PowerShell editions needed for read-only LDAP probes. The member server
+    still needs PowerShell 7 or an equivalent cross-edition replacement.
+- Signed and sealed Negotiate LDAP probes in PowerShell 7.6.3 and Windows
+    PowerShell 5.1 selected a writable domain controller, read RootDSE naming
+    contexts, retrieved the domain DACL, and parsed its binary descriptor.
+- The member-server WinRM service permits Basic, CredSSP, and unencrypted
+    traffic. Explicit Kerberos succeeded, but `ENT-4` remains blocked until the
+    approved encrypted transport and downgrade-rejection contract is defined.
+- One writable domain controller is sufficient for entry-gate and read-only
+    work but not `AD-6` replication, domain-controller switch, or failover
+    evidence.
 - `.github/workflows/build.yml` passes actionlint 1.7.12, uses read-only
     permissions, pins official actions to reviewed commits, and defines a
     full-history build followed by two artifact-consuming Windows test jobs.
@@ -180,10 +197,8 @@ Remote push and publication remain under explicit user control.
 
 ## Next step
 
-After the CI migration, continue OI-5 independently: phase 2 adds the
-`Edit-NTFSItemSecurityDescriptor` scope and the remaining filesystem mutators;
-phase 3 adds the registry family and optimistic concurrency. When the domain
-lab is available, begin enterprise work with `ENT-1`: record a secret-free
-machine/role/topology inventory and prove reset, disposable setup, and teardown
-before implementing a new domain adapter. Do not push or publish without an
-explicit request.
+Confirm the forest-isolation, machine-reset, and untouched recovery-identity
+gates. Then turn the successful `AD-1` baseline into a repeatable read-only
+probe and design idempotent `ENT-2` setup and teardown without applying it.
+Provide a second writable domain controller only when `AD-6` replication and
+failover work begins. Do not push or publish without an explicit request.

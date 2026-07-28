@@ -375,3 +375,14 @@ Normative record: [ADR 0014](../specs/decisions/0014-stage-enterprise-expansion-
 - Rationale: One immutable build output keeps both supported editions aligned,
     full history preserves semantic versioning, and least-privilege automation
     is sufficient for continuous integration without release credentials.
+
+### Decision 37: Version symbolic lab evidence, not infrastructure identity
+
+- Choice: Store domain-lab evidence by symbolic role and capability while
+    keeping machine/domain mappings, addresses, credentials, secret-store
+    references, and recovery material outside the repository. Treat successful
+    explicit Kerberos connectivity as capability evidence, not as approval of
+    a server baseline that still permits prohibited downgrade paths.
+- Rationale: Repeatable evidence does not require identifying the lab, and one
+    secure client choice cannot prove that weaker server authentication or
+    transport settings are unavailable.

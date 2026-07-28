@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document the Draft, domain-lab-gated roadmap and tracked work packages for
     scheduled tasks/task folders, certificate private keys, SMB shares, and
     Active Directory objects
+- Add a secret-free domain-lab inventory with symbolic topology, remote
+    transport findings, cross-edition read-only LDAP evidence, and explicit
+    safety and replication gates
 - Add in-memory NTFS descriptor editing: `Set-NTFSItemSecurityDescriptor`
     persists an edited descriptor object with one write, and `Add-NTFSAccessRule`
     can stage an access rule on a descriptor from `Get-NTFSItemSecurityDescriptor`
