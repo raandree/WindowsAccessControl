@@ -166,7 +166,7 @@ unless a later probe adds an explicit target contract.
 | SMB-3 | Implement canonical target resolution and typed share descriptor/rule commands | Unit and disposable-share live tests |
 | SMB-4 | Extend unified backup/restore under the ENT-5 schema decision and target locking with server-qualified identity | Remote round-trip, duplicate, tamper, and partial-failure tests |
 | SMB-5 | Implement a bounded share-effective-access result that states its token and server context | Requested-rights tests without NTFS claims |
-| SMB-6 | After OI-4 closes, implement combined share-and-NTFS effective access through an explicit on-target evaluator or read-only remote NTFS contract | End-to-end allow/deny and nested-group matrix |
+| SMB-6 | Deferred by ADR 0017; reconsider only under a separately accepted server-side token and remote authorization contract | No combined-access claim in the current roadmap |
 | SMB-7 | Add exact-descriptor/rule DSC resources, help, formatting, and cleanup automation | Cross-edition domain-lab convergence |
 
 ## Active Directory work package
@@ -245,8 +245,8 @@ contain symbolic role names and secret-store references, never secret values.
 5. Implement SMB share management and share-only effective access.
 6. Implement Active Directory query behavior before any directory mutation.
 7. Add Active Directory mutation and replication-aware convergence.
-8. Close OI-4, then implement combined SMB, NTFS, and domain-context effective
-  access through the approved remote authorization contract.
+8. Keep combined SMB, NTFS, and domain-context effective access deferred under
+  ADR 0017 unless a later accepted decision introduces server-side evidence.
 9. Run `ENT-8` for each enterprise release candidate.
 
 Each core family remains independently releasable. Combined SMB, NTFS, and

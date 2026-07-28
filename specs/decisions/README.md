@@ -25,6 +25,7 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0014 | [Stage enterprise expansion behind a domain lab](0014-stage-enterprise-expansion-behind-domain-lab.md) | Accepted |
 | 0015 | [Use local SMB and signed and sealed LDAP authority](0015-use-local-smb-and-signed-sealed-ldap.md) | Accepted |
 | 0016 | [Require backup schema version 2 for enterprise targets](0016-require-schema-v2-for-enterprise-targets.md) | Accepted |
+| 0017 | [Defer remote and combined effective access](0017-defer-remote-and-combined-effective-access.md) | Accepted |
 
 ## See also
 

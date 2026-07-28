@@ -165,4 +165,23 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             $header -join "`n" | Should -Match '- Status: (Proposed|Accepted|Superseded)'
         }
     }
+
+    It 'Should explicitly defer remote and combined effective-access claims' {
+        $decisionName = '0017-defer-remote-and-combined-effective-access.md'
+        $decisionPath = Join-Path $script:decisionRoot $decisionName
+        $decisionIndex = Get-Content -LiteralPath (
+            Join-Path $script:decisionRoot 'README.md'
+        ) -Raw
+        $openIssues = Get-Content -LiteralPath (
+            Join-Path $script:specRoot 'open-issues.md'
+        ) -Raw
+        $securityContract = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0004-security-and-persistence.md'
+        ) -Raw
+
+        $decisionPath | Should -Exist
+        $decisionIndex | Should -Match ([regex]::Escape($decisionName))
+        $openIssues | Should -Not -Match '(?m)^## OI-4:'
+        $securityContract | Should -Match 'Remote and combined effective-access evaluation is unsupported'
+    }
 }

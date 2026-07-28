@@ -33,8 +33,9 @@ to 0005 and the linked ADRs.
 - **FR-12**: Report managed canonical-order state without automatically
   rewriting an ACL.
 - **FR-13**: Evaluate effective NTFS access for a user SID through Windows Authz
-  and expose the granted mask, effective rights, and optional requested-rights
-  result.
+  on a local filesystem target, expose the granted mask, effective rights, and
+  optional requested-rights result, and reject UNC targets before descriptor
+  evaluation.
 - **FR-14**: List, test, enable, and disable privileges in the current process
   token; never claim that a privilege absent from the token was enabled.
 - **FR-15**: Accept wildcard paths, literal paths, filesystem objects, and

@@ -219,6 +219,12 @@ must not be accepted from an untrusted source without review.
 The command therefore does not claim to reproduce every access check made by a
 live logon token or SMB server.
 
+Remote and combined effective-access evaluation is unsupported. Standard and
+extended UNC targets are rejected before descriptor access. A future remote or
+SMB-plus-NTFS result requires a separately accepted server-side token and
+authorization contract; a local SID-derived mask must never be relabeled as
+remote evidence (ADR 0017).
+
 ## Enterprise DACL boundary
 
 The first SMB and AD increment persists only DACLs. SMB share commands execute

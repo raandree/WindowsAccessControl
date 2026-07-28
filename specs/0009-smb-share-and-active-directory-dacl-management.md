@@ -121,8 +121,9 @@ contract. This increment therefore exports no backup integration.
 
 SMB remote APIs, share-only effective access, combined share/NTFS effective
 access, AD schema-name resolution, broader mutation modes, replication, DSC,
-and SACL workflows remain tracked by specification 0008 and open issues OI-4,
-OI-9, OI-10, and OI-11.
+and SACL workflows remain tracked by specification 0008 and open issues OI-9,
+OI-10, and OI-11. ADR 0017 explicitly defers remote and combined effective
+access.
 
 ## Verification
 

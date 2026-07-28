@@ -80,6 +80,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reject UNC targets in `Get-NTFSItemEffectiveAccess` and explicitly defer
+    remote or combined SMB-plus-NTFS effective-access claims
 - Move continuous integration from Azure Pipelines to GitHub Actions while
     preserving full-history GitVersion builds and the PowerShell 7 and Windows
     PowerShell 5.1 test matrix

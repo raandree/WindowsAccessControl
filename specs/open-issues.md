@@ -5,17 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-4: Evaluate remote effective-access context
-
-Specifications: 0003, 0004. Requirement: FR-13.
-
-The current Authz calculation is local and SID-derived. A remote mode could use
-the target computer's group context, but it introduces RPC, trust, credential,
-and authorization boundaries. Add it only with a separate security design and
-explicit failure behavior; do not silently reinterpret the local result.
-This item must close before task SMB-6 or any combined SMB, NTFS, and domain
-effective-access claim can ship.
-
 ## OI-5: Define in-memory descriptor mutation
 
 Specifications: 0003, 0004. Requirements: FR-3 to FR-10.
@@ -60,10 +49,9 @@ identity, descriptor and rule workflows, descriptor-only backup/restore, and
 supported DSC convergence. Never export or serialize private key material;
 unsupported hardware or remote providers must fail explicitly.
 
-## OI-9: Add SMB-share and layered effective access
+## OI-9: Add SMB-share follow-up capabilities
 
-Specifications: 0008, 0004. Tasks: SMB-1 to SMB-7. Blocking item for SMB-6:
-OI-4.
+Specifications: 0008, 0004. Tasks: SMB-1 to SMB-7.
 
 Add server-qualified SMB-share descriptor and rule workflows while keeping the
 share DACL distinct from the backing NTFS DACL. First prove share-only effective
@@ -72,7 +60,8 @@ after domain group expansion and remote authorization behavior are executable.
 
 Specification 0009 admits the local-to-target DACL descriptor, add, query, and
 exact-remove increment. Remote SMB APIs, backup/restore, DSC, and effective
-access remain open here.
+access remain open here. ADR 0017 explicitly defers remote and combined
+effective-access claims.
 
 ## OI-10: Add Active Directory object access control
 

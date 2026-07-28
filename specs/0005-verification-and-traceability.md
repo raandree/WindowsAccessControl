@@ -36,7 +36,7 @@ is not reported as a successful live write.
 | FR-10 | NTFS Backup/Restore tests, cross-family portability tests, SHA-256 and recomputed-digest tamper rejection, X.509 verification, absent-SACL restore, and elevated SACL restore |
 | FR-11 | `Resolve-WindowsIdentity.Tests.ps1` and orphan-rule tests |
 | FR-12 | `Test-NTFSItemAcl.Tests.ps1` |
-| FR-13 | `Get-NTFSItemEffectiveAccess.Tests.ps1` |
+| FR-13 | `Get-NTFSItemEffectiveAccess.Tests.ps1` Integration plus Unit UNC-boundary rejection |
 | FR-14 | Get/Test/Enable/Disable privilege Integration tests |
 | FR-15 | Public command tests and pipeline cases across Integration tests |
 | FR-16 | Path/LiteralPath help QA and filesystem-object pipeline tests |

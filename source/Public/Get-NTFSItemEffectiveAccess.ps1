@@ -103,6 +103,24 @@ function Get-NTFSItemEffectiveAccess {
             $resolveParameters.Path = $Path
         }
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
+            $resolvedPath = [string]$item.FullName
+            $isExtendedUnc = $resolvedPath.StartsWith(
+                '\\?\UNC\',
+                [System.StringComparison]::OrdinalIgnoreCase
+            )
+            $isStandardUnc = $resolvedPath.StartsWith(
+                '\\',
+                [System.StringComparison]::Ordinal
+            ) -and -not $resolvedPath.StartsWith(
+                '\\?\',
+                [System.StringComparison]::Ordinal
+            )
+            if ($isStandardUnc -or $isExtendedUnc) {
+                throw [System.NotSupportedException]::new(
+                    'Remote and combined effective-access evaluation is unsupported. Run the local NTFS evaluation on a local target only.'
+                )
+            }
+
             $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
             $descriptorBytes = $security.GetSecurityDescriptorBinaryForm()
             $accessMask = [WindowsAccessControl.NativeMethods]::GetEffectiveAccess($descriptorBytes, $sidBytes)
