@@ -199,6 +199,13 @@ access-rule provenance.
     The generated package exports `Set-NTFSItemSecurityDescriptor`, but the
     static source manifest export list still omits it.
 
+- 2026-07-28: Added a task-oriented usage guide covering common NTFS,
+    registry, service/SCM, process, backup/restore, diagnostics, batching,
+    impersonation, remote-session, and DSC workflows. Verified 41 PowerShell
+    examples and complete help/catalog coverage for all 72 packaged commands.
+    The generated package exports `Set-NTFSItemSecurityDescriptor`, but the
+    static source manifest export list still omits it.
+
 ## Stable capabilities
 
 - Access and audit rule construction, query, mutation, filtering, and clearing.
