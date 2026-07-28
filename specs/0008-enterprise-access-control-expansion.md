@@ -215,6 +215,14 @@ specified and protected by dedicated recovery tests.
 | ENT-7 | Add a domain-lab test profile with heartbeat, cleanup ledger, retained evidence, exact skip reasons, and runtime secret retrieval from a user-controlled secret store or interactive credential broker | Repeatable unattended run, no secret-bearing environment variables, and leak-free teardown |
 | ENT-8 | Run final cross-edition, privilege-gated, static, package, security, and independent-review gates | Production-readiness evidence for each shipped family |
 
+`ENT-6` and `ENT-7` are delivered for the currently shipped enterprise
+families. SMB, AD, and Task Scheduler use shared bounded dispatch, canonical
+deduplication, metrics, and target-lock contracts. The unattended test-harness
+runner executes four fixed live suites, emits suite heartbeats, records exact
+sanitized skip reasons, rejects zero-pass or skipped suites, fails on an unready
+cleanup ledger, and writes atomic sanitized evidence. `ENT-8` remains the final
+release-candidate gate.
+
 ## Domain-lab entry gate
 
 No production implementation begins until the lab inventory proves the target

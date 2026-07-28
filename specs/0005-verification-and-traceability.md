@@ -15,6 +15,7 @@ mapping, command coverage, and remaining privileged release gate for
 | Live process | Controlled child processes pinned by creation identity or caller handles |
 | Token integration | Real current-process token inventory or mutation in an isolated process |
 | Privilege-gated acceptance | Real SACL or arbitrary-owner workflow, run only when its privilege exists |
+| Domain-lab acceptance | Fixed-order disposable lifecycle and enterprise-family suites with redacted heartbeats and per-suite cleanup ledgers |
 | QA | Export, help, analysis, manifest, formatting, specs, and changelog contracts |
 
 An unavailable privilege produces a Pester skip with the exact reason. A skip
@@ -176,6 +177,14 @@ single-throttle ordering, independent target failure, canonical deduplication,
 consistent nonterminating-error metrics, single-target behavior, and
 cross-module write serialization. The same focused gate runs under PowerShell
 7 and Windows PowerShell 5.1.
+
+`Invoke-WindowsAccessControlDomainLabAcceptance` runs the four live domain-lab
+suites in fixed order, records suite start/end heartbeats and exact sanitized
+skip reasons, and verifies both lab boundaries after every suite. A suite with
+zero passing tests or any skip fails the profile. Retained JSON is atomic,
+sanitizes infrastructure-shaped values, and rejects known plan identifiers. The
+completed profile passed 17 tests with four ready cleanup checks and no failures
+or skips.
 
 `tests/Performance/Measure-NtfsBatchPerformance.ps1` measures alternating
 sequential and bounded-parallel NTFS owner reads over disposable targets. It

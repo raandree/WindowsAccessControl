@@ -97,6 +97,32 @@ Five focused unit tests and four explicit live tests retain this behavior. The
 live suite is outside the default CI paths and requires the member-server role
 through `WAC_DOMAIN_LAB_MEMBER`; its `AfterAll` restores the ready fixture set.
 
+## Unattended acceptance profile
+
+`Invoke-WindowsAccessControlDomainLabAcceptance` in the test harness runs the
+fixture lifecycle, Task Scheduler, SMB-share, and Active Directory suites in a
+fixed order. It requires explicit repository, domain-DN, member-server, and
+evidence-path inputs; the member-server environment variable exists only for
+the duration of the call and is restored afterward. The suites create their
+own ephemeral test credentials, so no secret-bearing environment variable is
+required.
+
+Each suite emits start/end heartbeat records and is followed by an independent
+domain/member readiness check. The runner stops before the next suite when a
+test fails, no test passes, any test is skipped, or the lab is not ready. It
+writes one atomic UTF-8 JSON summary with suite counts, exact sanitized skip
+reasons, heartbeat timestamps, and a cleanup ledger. The summary sanitizes
+known infrastructure value classes, rejects retained plan identifiers, and
+records credential handling only as `SuiteEphemeralRuntime`. Sanitization
+applies to the persisted evidence; thrown errors remain operator-facing and
+must not be copied into a shared log that requires redaction.
+
+The first complete profile executed 17 tests across four suites with zero
+failures or skips. All four cleanup checks were ready, retained evidence
+contained no infrastructure identifiers, and a fresh harness import confirmed
+the complete lab ready afterward. The runner contract passes 13 tests in both
+PowerShell 7 and Windows PowerShell 5.1.
+
 ## Remote transport evidence
 
 - The management host resolved and reached the member server through WinRM
@@ -144,6 +170,12 @@ parts of `AD-1`.
   direct Kerberos LDAP.
 - `ENT-5`: ADR 0016 requires schema version 2 before enterprise targets enter
   unified backup and restore.
+- `ENT-6`: current SMB, AD, and Task Scheduler adapters use the shared bounded
+  dispatcher, canonical deduplication, metrics, and same-target locks with
+  family contract tests.
+- `ENT-7`: the unattended acceptance profile retains redacted heartbeats,
+  exact skip reasons, suite counts, and cleanup ledgers without external test
+  secrets.
 
 ## Additional environment
 

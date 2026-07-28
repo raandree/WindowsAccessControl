@@ -67,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     directory identities and groups, an SMB share, a Task Scheduler folder, and
     a software CNG certificate key, with idempotent setup/teardown, compensating
     cleanup, and explicit private-key deletion evidence
+- Add an unattended domain-lab acceptance runner with fixed suite ordering,
+    heartbeat timestamps, strict nonzero/no-skip gates, exact sanitized skip
+    reasons, atomic JSON evidence, and a fail-stop cleanup ledger
 - Add local SMB-share DACL descriptor and typed access-rule query, add, set,
     and exact-remove workflows with bounded execution and share-description
     preservation

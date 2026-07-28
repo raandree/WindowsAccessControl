@@ -18,10 +18,10 @@ unsupported hardware or remote providers must fail explicitly.
 
 Specification: 0008. Tasks: ENT-6 to ENT-8.
 
-Extend shared dispatch, capability discovery, metrics, error taxonomy, target
-locking, and the domain-lab runner as each family is implemented. The enterprise
-foundation is accepted; ENT-6 and ENT-7 still block the first family release,
-and ENT-8 blocks every enterprise release candidate.
+ENT-6 shared dispatch/metrics/locking and the ENT-7 unattended domain-lab runner
+are complete for the currently shipped enterprise families. Run ENT-8 final
+cross-edition, privilege, static, package, security, and independent-review
+gates before closing this issue for the release candidate.
 
 ## OI-13: Add registry descriptor editing and optimistic concurrency
 

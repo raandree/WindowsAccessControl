@@ -1055,9 +1055,380 @@ function Remove-WindowsAccessControlDomainLab {
     }
 }
 
+function Write-WindowsAccessControlDomainLabAcceptanceEvidence {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'The public acceptance runner enforces ShouldProcess before writing evidence.'
+    )]
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [pscustomobject]$Summary,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$OutputPath,
+
+        [Parameter(Mandatory)]
+        [string[]]$SensitiveValues
+    )
+
+    $fullPath = [IO.Path]::GetFullPath($OutputPath)
+    $directory = [IO.Path]::GetDirectoryName($fullPath)
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and
+        -not (Test-Path -LiteralPath $directory -PathType Container)) {
+        throw [IO.DirectoryNotFoundException]::new(
+            "The acceptance evidence directory does not exist: '$directory'."
+        )
+    }
+
+    $json = $Summary | ConvertTo-Json -Depth 8
+    foreach ($sensitiveValue in $SensitiveValues) {
+        if (-not [string]::IsNullOrWhiteSpace($sensitiveValue) -and
+            $json.IndexOf(
+                $sensitiveValue,
+                [StringComparison]::OrdinalIgnoreCase
+            ) -ge 0) {
+            throw [InvalidOperationException]::new(
+                'The retained domain-lab evidence contains an infrastructure identifier.'
+            )
+        }
+    }
+
+    $temporaryPath = Join-Path -Path $directory -ChildPath (
+        '.{0}.{1}.tmp' -f [IO.Path]::GetFileName($fullPath), [guid]::NewGuid()
+    )
+    $rollbackPath = Join-Path -Path $directory -ChildPath (
+        '.{0}.{1}.bak' -f [IO.Path]::GetFileName($fullPath), [guid]::NewGuid()
+    )
+    try {
+        [IO.File]::WriteAllText(
+            $temporaryPath,
+            $json + [Environment]::NewLine,
+            [Text.UTF8Encoding]::new($false)
+        )
+        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+            [IO.File]::Replace($temporaryPath, $fullPath, $rollbackPath)
+        }
+        else {
+            try {
+                [IO.File]::Move($temporaryPath, $fullPath)
+            }
+            catch [IO.IOException] {
+                if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+                    [IO.File]::Replace($temporaryPath, $fullPath, $rollbackPath)
+                }
+                else {
+                    throw
+                }
+            }
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $temporaryPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $rollbackPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function ConvertTo-WindowsAccessControlDomainLabEvidenceText {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string]$Text,
+
+        [Parameter()]
+        [string[]]$SensitiveValues = @()
+    )
+
+    $sanitized = $Text
+    foreach ($sensitiveValue in @(
+            $SensitiveValues |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                Sort-Object Length -Descending -Unique
+        )) {
+        $sanitized = [regex]::Replace(
+            $sanitized,
+            [regex]::Escape($sensitiveValue),
+            '<redacted>',
+            [Text.RegularExpressions.RegexOptions]::IgnoreCase
+        )
+    }
+    $patterns = [ordered]@{
+        '(?i)\\\\[^\\\s]+\\[^\s]+' = '<unc-target>'
+        '(?i)\bS-\d-\d+(?:-\d+)+\b' = '<sid>'
+        '(?i)\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:[a-z]{2,63})\b' = '<dns-name>'
+        '\b(?:\d{1,3}\.){3}\d{1,3}\b' = '<ip-address>'
+        '(?i)\b[0-9a-f]{40}\b' = '<thumbprint>'
+        '(?i)(?:CN|OU|DC)=[^,\r\n]+(?:,(?:CN|OU|DC)=[^,\r\n]+)*' = '<distinguished-name>'
+        '(?i)\b[A-Z]:\\[^\r\n]+' = '<local-path>'
+    }
+    foreach ($pattern in $patterns.Keys) {
+        $sanitized = [regex]::Replace(
+            $sanitized,
+            $pattern,
+            $patterns[$pattern]
+        )
+    }
+    $sanitized
+}
+
+function Invoke-WindowsAccessControlDomainLabAcceptance {
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateScript({ Test-Path -LiteralPath $_ -PathType Container })]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory)]
+        [ValidatePattern('^DC=[^,]+(?:,DC=[^,]+)+$')]
+        [string]$DomainDistinguishedName,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$MemberServer,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$OutputPath
+    )
+
+    $repositoryPath = (Resolve-Path -LiteralPath $RepositoryRoot).ProviderPath
+    $repositoryManifest = Join-Path `
+        $repositoryPath `
+        'source\WindowsAccessControl.psd1'
+    if (-not (Test-Path -LiteralPath $repositoryManifest -PathType Leaf)) {
+        throw [IO.FileNotFoundException]::new(
+            'RepositoryRoot does not contain the WindowsAccessControl source manifest.'
+        )
+    }
+    $suiteNames = @(
+        'WindowsAccessControl.DomainLab.Live.Tests.ps1'
+        'TaskSchedulerPermissions.Live.Tests.ps1'
+        'SmbSharePermissions.Live.Tests.ps1'
+        'ADObjectPermissions.Live.Tests.ps1'
+    )
+    $suitePaths = @(
+        foreach ($suiteName in $suiteNames) {
+            $suitePath = Join-Path $repositoryPath "tests\Lab\$suiteName"
+            if (-not (Test-Path -LiteralPath $suitePath -PathType Leaf)) {
+                throw [IO.FileNotFoundException]::new(
+                    "The required domain-lab suite does not exist: '$suiteName'."
+                )
+            }
+            $suitePath
+        }
+    )
+
+    if (-not $PSCmdlet.ShouldProcess(
+            'Disposable WindowsAccessControl domain lab',
+            "Run acceptance suites and write redacted evidence to '$OutputPath'"
+        )) {
+        return
+    }
+
+    if (-not (Get-Command -Name Invoke-Pester -ErrorAction SilentlyContinue)) {
+        Import-Module -Name Pester -MinimumVersion 5.7.1 -ErrorAction Stop
+    }
+
+    $harnessModulePath = $MyInvocation.MyCommand.Module.Path
+    $labPlan = Get-WindowsAccessControlDomainLabPlan `
+        -DomainDistinguishedName $DomainDistinguishedName `
+        -MemberServer $MemberServer
+    $sensitiveValues = @(
+        $DomainDistinguishedName
+        $MemberServer
+        $labPlan.Domain.RootOrganizationalUnit
+        $labPlan.MemberServer.ComputerName
+        $labPlan.MemberServer.ShareName
+        $labPlan.MemberServer.SharePath
+        $labPlan.MemberServer.TaskFolder
+        $labPlan.MemberServer.CertificateSubject
+        $labPlan.MemberServer.CertificateName
+        $labPlan.MemberServer.CertificateKeyName
+    )
+    $writeEvidence = (Get-Command `
+        -Name Write-WindowsAccessControlDomainLabAcceptanceEvidence `
+        -CommandType Function `
+        -ErrorAction Stop).ScriptBlock
+    $sanitizeEvidenceText = (Get-Command `
+        -Name ConvertTo-WindowsAccessControlDomainLabEvidenceText `
+        -CommandType Function `
+        -ErrorAction Stop).ScriptBlock
+    $startedAtUtc = [datetime]::UtcNow
+    $suiteResults = [Collections.Generic.List[object]]::new()
+    $cleanupLedger = [Collections.Generic.List[object]]::new()
+    $previousMemberServer = $env:WAC_DOMAIN_LAB_MEMBER
+    $summary = $null
+    $terminalError = $null
+    $secondaryErrors = [Collections.Generic.List[Exception]]::new()
+    try {
+        $env:WAC_DOMAIN_LAB_MEMBER = $MemberServer
+        foreach ($suitePath in $suitePaths) {
+            $suiteName = [IO.Path]::GetFileName($suitePath)
+            $suiteStartedAtUtc = [datetime]::UtcNow
+            Write-Information (
+                '[{0:O}] SUITE START {1}' -f $suiteStartedAtUtc, $suiteName
+            ) -InformationAction Continue
+
+            $pesterResult = Invoke-Pester `
+                -Path $suitePath `
+                -Output Detailed `
+                -PassThru
+            $skips = @(
+                foreach ($test in @($pesterResult.Tests)) {
+                    if ([string]$test.Result -eq 'Skipped') {
+                        $reason = @(
+                            @($test.ErrorRecord.Exception.Message) |
+                                Where-Object {
+                                    -not [string]::IsNullOrWhiteSpace($_)
+                                }
+                        )
+                        $reasonText = if ($reason.Count -gt 0) {
+                            [string]$reason[0]
+                        }
+                        else {
+                            'No skip reason was reported.'
+                        }
+                        [pscustomobject]@{
+                            Test   = [string]$test.ExpandedName
+                            Reason = & $sanitizeEvidenceText `
+                                -Text $reasonText `
+                                -SensitiveValues $sensitiveValues
+                        }
+                    }
+                }
+            )
+            $suiteResult = [pscustomobject]@{
+                Suite         = $suiteName
+                Result        = [string]$pesterResult.Result
+                TotalCount    = [int]$pesterResult.TotalCount
+                PassedCount   = [int]$pesterResult.PassedCount
+                FailedCount   = [int]$pesterResult.FailedCount
+                SkippedCount  = [int]$pesterResult.SkippedCount
+                DurationMs    = [math]::Round(
+                    [double]$pesterResult.Duration.TotalMilliseconds,
+                    2
+                )
+                SkipReasons   = $skips
+                StartedAtUtc  = $suiteStartedAtUtc.ToString('O')
+                CompletedAtUtc = [datetime]::UtcNow.ToString('O')
+            }
+            $suiteResults.Add($suiteResult)
+
+            $labStatus = Test-WindowsAccessControlDomainLab `
+                -DomainDistinguishedName $DomainDistinguishedName `
+                -MemberServer $MemberServer
+            $cleanupResult = [pscustomobject]@{
+                Suite               = $suiteName
+                Ready               = [bool]$labStatus.Ready
+                DomainBoundaryReady = [bool]$labStatus.DomainController.Ready
+                MemberBoundaryReady = [bool]$labStatus.MemberServer.Ready
+                CheckedAtUtc        = [datetime]::UtcNow.ToString('O')
+            }
+            $cleanupLedger.Add($cleanupResult)
+
+            Write-Information (
+                '[{0:O}] SUITE END {1} result={2} ready={3}' -f
+                    [datetime]::UtcNow,
+                    $suiteName,
+                    $suiteResult.Result,
+                    $cleanupResult.Ready
+            ) -InformationAction Continue
+
+            if (-not $cleanupResult.Ready) {
+                throw [InvalidOperationException]::new(
+                    "Suite '$suiteName' left the disposable lab unready."
+                )
+            }
+            if ($suiteResult.Result -ne 'Passed') {
+                throw [InvalidOperationException]::new(
+                    "Suite '$suiteName' completed with result '$($suiteResult.Result)'."
+                )
+            }
+            if ($suiteResult.TotalCount -le 0 -or
+                $suiteResult.PassedCount -le 0) {
+                throw [InvalidOperationException]::new(
+                    "Suite '$suiteName' executed no passing tests."
+                )
+            }
+            if ($suiteResult.SkippedCount -gt 0) {
+                throw [InvalidOperationException]::new(
+                    "Suite '$suiteName' reported $($suiteResult.SkippedCount) skipped test(s); exact sanitized reasons were retained."
+                )
+            }
+        }
+    }
+    catch {
+        $terminalError = $_
+    }
+    finally {
+        if ($null -eq $previousMemberServer) {
+            Remove-Item Env:WAC_DOMAIN_LAB_MEMBER -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:WAC_DOMAIN_LAB_MEMBER = $previousMemberServer
+        }
+
+        $summary = [pscustomobject]@{
+            Format             = 'WindowsAccessControl.DomainLabAcceptance'
+            SchemaVersion      = 1
+            StartedAtUtc       = $startedAtUtc.ToString('O')
+            CompletedAtUtc     = [datetime]::UtcNow.ToString('O')
+            Result             = if ($terminalError) { 'Failed' } else { 'Passed' }
+            CredentialHandling = 'SuiteEphemeralRuntime'
+            Suites             = $suiteResults.ToArray()
+            CleanupLedger      = $cleanupLedger.ToArray()
+        }
+        try {
+            & $writeEvidence `
+                -Summary $summary `
+                -OutputPath $OutputPath `
+                -SensitiveValues $sensitiveValues
+        }
+        catch {
+            $secondaryErrors.Add($_.Exception)
+        }
+
+        try {
+            if (-not (Get-Command `
+                    -Name Test-WindowsAccessControlDomainFixture `
+                    -CommandType Function `
+                    -ErrorAction SilentlyContinue)) {
+                Import-Module -Name $harnessModulePath -Force -ErrorAction Stop
+            }
+        }
+        catch {
+            $secondaryErrors.Add($_.Exception)
+        }
+    }
+
+    if ($terminalError) {
+        if ($secondaryErrors.Count -gt 0) {
+            throw [AggregateException]::new(
+                "Domain-lab acceptance failed: $($terminalError.Exception.Message) Secondary finalization failure(s) also occurred.",
+                [Exception[]]@($terminalError.Exception) +
+                    $secondaryErrors.ToArray()
+            )
+        }
+        throw $terminalError
+    }
+    if ($secondaryErrors.Count -gt 0) {
+        throw [AggregateException]::new(
+            'Domain-lab acceptance finalization failed.',
+            $secondaryErrors.ToArray()
+        )
+    }
+    $summary
+}
+
 Export-ModuleMember -Function @(
     'Get-WindowsAccessControlDomainLabPlan'
     'Initialize-WindowsAccessControlDomainLab'
+    'Invoke-WindowsAccessControlDomainLabAcceptance'
     'Test-WindowsAccessControlDomainLab'
     'Remove-WindowsAccessControlDomainLab'
 )
