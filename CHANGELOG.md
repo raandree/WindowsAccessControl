@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     inheritance, identities, privileges, effective access, and ACL diagnostics
 - Add selected-section descriptor copy plus validated JSON backup and restore
 - Add a Sampler build with PowerShell 7 and Windows PowerShell 5.1 test coverage
-- Add command help, object formatting, usage documentation, and research notes
+- Add command help, object formatting, a task-oriented usage guide, and
+    research notes
 - Add structured current-token privilege inventory with `Get-WindowsPrivilege`
 - Add privilege-gated live SACL and arbitrary-owner acceptance specifications
 - Add live SACL-only descriptor-copy acceptance with owner, group, and DACL
