@@ -361,8 +361,10 @@ ENT-8 are closed for the currently shipped enterprise families.
     comparison.
 - Local SMB-share DACL mutation and bounded share-only SID-derived effective
     access with explicit backing-NTFS exclusion.
-- Signed/sealed explicit-DC Active Directory DACL mutation with complete-batch
-    prevalidation and immutable object identity.
+- Signed/sealed Active Directory DACL mutation against an explicit or
+    discovered and pinned domain controller, with complete-batch prevalidation,
+    immutable object identity, inferred inherited-ACE provenance, and resolved
+    schema and control-access GUID names.
 - Local Task Scheduler folder and registered-task DACL descriptor get/set plus
     typed access-rule query, add, and exact removal with object-specific rights,
     folder inheritance scope, containment, service-token lockout rejection,

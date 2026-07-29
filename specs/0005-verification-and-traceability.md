@@ -57,7 +57,7 @@ is not reported as a successful live write.
 | NFR-8 | Backup schema, no-clobber, malformed-document, and restore tests |
 | NFR-9 | Token inventory test and mutator `WhatIf` safety tests |
 | NFR-10 | Sampler build, package inspection, changelog QA, and GitVersion config |
-| NFR-11 | SMB remote-syntax rejection, explicit Kerberos remoting acceptance, and AD signed/sealed LDAP connection/downgrade tests |
+| NFR-11 | SMB remote-syntax rejection, explicit Kerberos remoting acceptance, AD signed/sealed LDAP connection/downgrade tests, and discovered domain-controller validation and per-invocation pinning tests |
 | NFR-12 | SMB special-share rejection, AD allowed-OU/protected-target/GUID mismatch tests, live rollback, cleanup ledger, and independent security review |
 | NFR-13 | Task Scheduler path/COM Unit tests, duplicate-sensitive DACL canonicalization tests, service-token deny-ACE and object-ACE rejection tests, and zero-leak domain-lab acceptance |
 | NFR-14 | SMB complete-descriptor section regression, existing Authz native cleanup tests, and explicit local/share-only output assertions |

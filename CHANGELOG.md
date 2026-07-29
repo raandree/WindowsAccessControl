@@ -183,6 +183,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Correct the published Active Directory authority contract, which still stated
+    that the commands reject implicit domain-controller discovery after that
+    behavior shipped
 - Propagate a terminating error raised by a command downstream of a batched
     target instead of downgrading it to a non-terminating error, so a piped
     fail-closed rejection such as `Get-NTFSItemSecurityDescriptor -Sections

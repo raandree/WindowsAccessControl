@@ -91,7 +91,8 @@ to 0005 and the linked ADRs.
   project workflow and Semantic Versioning.
 - **NFR-11**: SMB commands reject remote syntax and execute on the target
   computer; AD commands use direct LDAP Kerberos authentication with signing,
-  sealing, no referral chasing, explicit DC authority, and bounded timeouts.
+  sealing, no referral chasing, one validated domain-controller authority that
+  is pinned for the whole invocation, and bounded timeouts.
 - **NFR-12**: Enterprise DACL writes revalidate target identity immediately
   before persistence, reject protected or out-of-bound targets, and retain
   executable rollback evidence from disposable resources.

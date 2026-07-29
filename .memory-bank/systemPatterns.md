@@ -397,31 +397,6 @@ Normative record: [ADR 0014](../specs/decisions/0014-stage-enterprise-expansion-
     teardown can otherwise delete foreign objects, and deleting a certificate
     from the Windows store does not delete its persisted CNG private key.
 
-### Decision 39: Enrich directory rules over the bound connection
-
-Normative record: [ADR 0020](../specs/decisions/0020-enrich-directory-rules-over-the-bound-connection.md).
-
-- Choice: Resolve inherited-ACE provenance by walking the ancestor chain, and
-    resolve object GUIDs to schema and control-access names, over the same
-    signed and sealed connection that returned the descriptor. Match the nearest
-    ancestor holding an equivalent explicit inheritable ACE, stop at a protected
-    DACL or an unreadable ancestor, and degrade to a null value on failure.
-- Rationale: `GetInheritanceSourceW` supports directory objects but locates its
-    own domain controller and takes no credential, so it would mix a second
-    authority into one result.
-
-### Decision 40: Discover and pin one domain controller
-
-Normative record: [ADR 0021](../specs/decisions/0021-discover-and-pin-a-domain-controller.md).
-
-- Choice: Make `Server` optional, locate one writable domain controller in the
-    computer's domain when it is omitted, validate the discovered name with the
-    explicit-name rules, and resolve it once per invocation before target
-    prevalidation so every target and batch worker uses the same replica.
-- Rationale: The requirement is one identified consistency point per command,
-    not a hand-typed name. Supersedes only the explicit-server element of
-    ADR 0015.
-
 ### Decision 39: Address SMB shares through local provider authority
 
 Normative record: [ADR 0015](../specs/decisions/0015-use-local-smb-and-signed-sealed-ldap.md).
@@ -442,7 +417,8 @@ Normative record: [ADR 0015](../specs/decisions/0015-use-local-smb-and-signed-se
     LDAP v3, Kerberos authentication, signing, sealing, referrals disabled, and
     bounded timeouts. Use DACL-only LDAP controls and prevalidate the complete
     write batch against allowed-base, immutable-GUID, excluded-partition, and
-    protected-target rules before dispatch.
+    protected-target rules before dispatch. Decision 58 later allowed the
+    domain-controller name to be discovered and pinned instead of supplied.
 - Rationale: `Negotiate` can fall back to NTLM, referrals can change authority,
     and per-worker validation can allow an earlier independent target to mutate
     before a later invalid target is discovered.
@@ -628,3 +604,29 @@ Normative record: [ADR 0013](../specs/decisions/0013-use-bounded-parallel-target
     command for an optional column. Null is the already-defined "source
     unknown" state, so degrading introduces no new output contract.
     Normative record: [ADR 0019](../specs/decisions/0019-report-null-registry-provenance-for-wow64-views.md).
+
+### Decision 57: Enrich directory rules over the bound connection
+
+Normative record: [ADR 0020](../specs/decisions/0020-enrich-directory-rules-over-the-bound-connection.md).
+
+- Choice: Resolve inherited-ACE provenance by walking the ancestor chain, and
+    resolve object GUIDs to schema and control-access names, over the same
+    signed and sealed connection that returned the descriptor. Match the nearest
+    ancestor holding an equivalent explicit inheritable ACE, stop at a protected
+    DACL or an unreadable ancestor, and degrade to a null value on failure.
+- Rationale: `GetInheritanceSourceW` supports directory objects but locates its
+    own domain controller and takes no credential, so it would mix a second
+    authority into one result. This is the one family where provenance is
+    inferred rather than reported by Windows.
+
+### Decision 58: Discover and pin one domain controller
+
+Normative record: [ADR 0021](../specs/decisions/0021-discover-and-pin-a-domain-controller.md).
+
+- Choice: Make `Server` optional, locate one writable domain controller in the
+    computer's domain when it is omitted, validate the discovered name with the
+    explicit-name rules, and resolve it once per invocation before target
+    prevalidation so every target and batch worker uses the same replica.
+- Rationale: The requirement is one identified consistency point per command,
+    not a hand-typed name. Supersedes only the explicit-server element of
+    ADR 0015 and of Decision 40.

@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-26
+last-verified: 2026-07-29
 owner: active-agent
 source: repository evidence
 ---
@@ -16,6 +16,10 @@ source: repository evidence
 - In-box `Microsoft.PowerShell.Security` commands and
     `System.Security.AccessControl` types at runtime, plus narrowly scoped
     Unicode `advapi32` and `kernel32` interop.
+- In-box `System.DirectoryServices.Protocols` for Active Directory LDAP work,
+    loaded at module import because Windows PowerShell resolves parameter type
+    attributes before a function body runs, and `System.DirectoryServices` for
+    on-demand writable domain-controller discovery.
 
 ## Environment
 
@@ -31,7 +35,9 @@ source: repository evidence
 - Support Windows PowerShell 5.1 and PowerShell 7 without AlphaFS or another
     third-party runtime dependency.
 - Preserve unrelated security descriptor sections during mutation.
-- Use local targets only and reject native remote syntax.
+- Use local targets only and reject native remote syntax, except for Active
+    Directory commands, which address one validated and pinned domain
+    controller over signed and sealed LDAP.
 - Pin process instances by handle and creation identity.
 - Keep caller-owned handles open and close every module-owned native resource.
 - Bound parallel target execution and serialize same-target writes.

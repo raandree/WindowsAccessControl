@@ -381,6 +381,11 @@ reports the ancestor key the same way for the default registry view. Windows
 cannot resolve inheritance sources for the `Registry32` and `Registry64` views,
 so those results leave `InheritedFrom` empty.
 
+`Get-ADObjectAccessRule` is the one exception. Windows has no directory
+inheritance-source call that can honor the selected domain controller and
+credential, so that family infers the ancestor object over the same bound
+connection instead.
+
 ## Rule scope
 
 The `AppliesTo` parameter uses Windows Explorer-style values:

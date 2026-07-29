@@ -207,6 +207,14 @@ specified and protected by dedicated recovery tests.
 | AD-8 | Add object-specific DSC resources, help, formatting, and cleanup automation | Cross-edition live convergence inside the test OU |
 | AD-9 | Complete an independent security review focused on delegation, privilege escalation, and directory lockout | No unresolved Blocker or Major findings |
 
+`AD-1`, `AD-2`, and `AD-9` are delivered. `AD-4` is delivered for DACL
+descriptors and access rules, including inheritance provenance and resolved
+schema, property-set, validated-write, and extended-right names; audit-rule
+queries remain outside the accepted SACL boundary. `AD-5` is delivered for add
+and exact removal only. ADR 0021 amended the `AD-1` server-selection contract to
+allow a discovered and pinned domain controller. Open issues OI-16 through OI-18
+track the remaining directory work.
+
 ## Cross-cutting foundation tasks
 
 | ID | Task | Exit evidence |

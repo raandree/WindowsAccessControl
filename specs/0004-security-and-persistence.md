@@ -270,10 +270,20 @@ locally through `SE_LMSHARE` and reject remote syntax. A caller that manages a
 different server establishes a separately approved secure session and runs the
 command on that target.
 
-AD commands connect directly to an explicit DC with LDAP Kerberos
-authentication, signing, and sealing. They disable referral chasing and reject simple bind, implicit discovery, IP
+AD commands connect directly to one writable domain controller with LDAP
+Kerberos authentication, signing, and sealing. The name is either supplied
+explicitly or located in the calling computer's domain; both forms pass the same
+validation, and the result is resolved once and pinned for every target of the
+invocation, so one command never spans two consistency points. They disable
+referral chasing and reject simple bind, IP
 authority, and channel fallback. Credential objects remain input-only and are
 disposed by the caller; the module does not serialize or log their contents.
+Discovery never uses the credential and never searches another domain or forest.
+
+Inherited-ACE provenance and object-GUID names are resolved over that same bound
+connection rather than through an API that would locate its own domain
+controller. Both enrichments are read-only, degrade to a null value on failure,
+and never remove a rule from a successful descriptor read.
 
 AD reads are restricted to the default domain naming context. Writes require
 an explicit allowed OU and reject domain root, `AdminSDHolder`, Domain
