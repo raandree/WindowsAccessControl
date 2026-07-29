@@ -5,7 +5,10 @@ function Set-ScheduledTaskSecurityDescriptor {
     .DESCRIPTION
         Persists only the DACL through the local Task Scheduler COM API with
         TASK_DONT_ADD_PRINCIPAL_ACE. The target must be inside AllowedRootPath,
-        and the candidate must preserve every current SYSTEM ACE.
+        and the candidate must preserve every current SYSTEM ACE. The Task
+        Scheduler service reorders ACEs, so ACE order is neither preserved nor
+        verified; do not rely on this command to canonicalize a non-canonical
+        DACL.
     .PARAMETER TaskPath
         One or more absolute local Task Scheduler parent-folder paths.
     .PARAMETER TaskName

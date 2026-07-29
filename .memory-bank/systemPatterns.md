@@ -511,3 +511,60 @@ Normative record: [ADR 0016](../specs/decisions/0016-require-schema-v2-for-enter
     breaks the tie with the default set. With `Path` as the default, a piped
     descriptor is stringified into a path and fails in target resolution. This
     was verified empirically, not assumed.
+
+### Decision 50: Name rights after the operation, per object type
+
+- Choice: Give Task Scheduler two enums. `WindowsTaskFolderRights` names
+    directory operations (`ListTasks`, `CreateTask`, `CreateSubfolder`,
+    `Traverse`); `WindowsScheduledTaskRights` names file operations
+    (`ReadTaskDefinition`, `WriteTaskDefinition`, `RunTask`). Neither exposes
+    `FileSystemRights` or `ACCESS_SYSTEM_SECURITY`.
+- Rationale: Task Scheduler descriptors live on the file-backed task store, so
+    the masks are file rights, but the same bit means different things on a
+    folder and a task: `0x2` creates a task on a folder and updates the
+    definition on a task. One shared enum would have understated a folder grant.
+    Microsoft documents the mapping in "Security Contexts for Tasks".
+
+### Decision 51: Evaluate the whole service token before a Task Scheduler write
+
+- Choice: Reject a candidate DACL that newly denies read, write, or run access
+    to any identity in the Task Scheduler service token, using the live
+    LocalSystem token group set captured for the `Schedule` service plus
+    `NT SERVICE\ALL SERVICES`. Do not re-evaluate a deny ACE that the target
+    already carries; warn about it instead, and warn when a new deny removes
+    `WRITE_DAC` or `WRITE_OWNER`.
+- Rationale: Preserving the literal SYSTEM ACEs is not sufficient; a deny ACE
+    for Everyone, Users, or Administrators locks the service out just as
+    effectively. Ignoring pre-existing deny ACEs keeps an affected target
+    manageable and recoverable, and the warnings keep both conditions visible.
+    The SID list is best effort: another SKU or build can carry more groups.
+
+### Decision 52: Reject ACE types the Task Scheduler store re-revisions
+
+- Choice: Reject object and compound ACEs in a Task Scheduler candidate DACL.
+- Rationale: The store accepts them but normalizes the ACL revision from 2 to
+    4, so exact-persistence verification fails and rolls the write back with a
+    misleading error. Those ACE types also carry no Task Scheduler meaning.
+    Verified empirically against a disposable task folder.
+
+### Decision 53: Make inheritance scope part of ACE identity when adding
+
+- Choice: Let a caller opt `Invoke-WindowsAclRuleMutation` into
+    `-MatchAceFlags`, so an `Add` treats a differing `AppliesTo` as a distinct
+    ACE rather than a duplicate. The Task Scheduler folder family opts in.
+- Rationale: The default exact match compares only qualifier, SID, and access
+    mask, so re-adding an existing account and rights combination with a new
+    inheritance scope silently wrote nothing and returned nothing through
+    `PassThru`. The switch is opt-in so `Set` and `Clear` semantics for the
+    other families are unchanged; OI-25 tracks the registry parity gap.
+
+### Decision 54: Re-read and compare before a staged descriptor write
+
+- Choice: Pass the descriptor read at staging time to
+    `Set-WindowsTaskSchedulerSecurityDescriptor` and reject the write when the
+    target's DACL no longer matches it. Verify the rollback descriptor too, and
+    report an indeterminate state when it cannot be confirmed.
+- Rationale: The write boundary already re-reads the target for its safety
+    gates, but previously wrote the stale candidate anyway, so a concurrent
+    change was silently clobbered. The two rule-removal commands do not take
+    the canonical target lock, so this check is what protects them.

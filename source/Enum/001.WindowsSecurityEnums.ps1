@@ -120,6 +120,63 @@ enum WindowsServiceControlManagerRights {
     AllAccess = 0x000F003F
 }
 
+# Task Scheduler stores folder and task descriptors on the file-backed task
+# store, so every mask below is the file right that authorizes the named Task
+# Scheduler operation documented in "Security Contexts for Tasks". Folders are
+# directories and tasks are files, so the low bits mean different things and
+# each object type gets its own enum.
+[Flags()]
+enum WindowsTaskFolderRights {
+    ListTasks = 0x00000001
+    CreateTask = 0x00000002
+    CreateSubfolder = 0x00000004
+    ReadExtendedProperties = 0x00000008
+    WriteExtendedProperties = 0x00000010
+    Traverse = 0x00000020
+    DeleteChild = 0x00000040
+    ReadProperties = 0x00000080
+    WriteProperties = 0x00000100
+    Delete = 0x00010000
+    ReadPermissions = 0x00020000
+    ChangePermissions = 0x00040000
+    TakeOwnership = 0x00080000
+    Synchronize = 0x00100000
+    GenericAll = 0x10000000
+    GenericExecute = 0x20000000
+    GenericWrite = 0x40000000
+    GenericRead = -2147483648
+    Read = 0x00120089
+    ReadAndTraverse = 0x001200A9
+    Write = 0x00120116
+    Modify = 0x001301BF
+    FullControl = 0x001F01FF
+}
+
+[Flags()]
+enum WindowsScheduledTaskRights {
+    ReadTaskDefinition = 0x00000001
+    WriteTaskDefinition = 0x00000002
+    ReadExtendedProperties = 0x00000008
+    WriteExtendedProperties = 0x00000010
+    RunTask = 0x00000020
+    ReadProperties = 0x00000080
+    WriteProperties = 0x00000100
+    Delete = 0x00010000
+    ReadPermissions = 0x00020000
+    ChangePermissions = 0x00040000
+    TakeOwnership = 0x00080000
+    Synchronize = 0x00100000
+    GenericAll = 0x10000000
+    GenericExecute = 0x20000000
+    GenericWrite = 0x40000000
+    GenericRead = -2147483648
+    Read = 0x00120089
+    ReadAndRun = 0x001200A9
+    Write = 0x00120116
+    Modify = 0x001301BF
+    FullControl = 0x001F01FF
+}
+
 [Flags()]
 enum WindowsProcessRights {
     Terminate = 0x00000001
@@ -159,6 +216,8 @@ $windowsAccessControlEnums = @{
     WindowsSmbShareRights              = [WindowsSmbShareRights]
     WindowsServiceRights               = [WindowsServiceRights]
     WindowsServiceControlManagerRights = [WindowsServiceControlManagerRights]
+    WindowsTaskFolderRights            = [WindowsTaskFolderRights]
+    WindowsScheduledTaskRights         = [WindowsScheduledTaskRights]
     WindowsProcessRights               = [WindowsProcessRights]
 }
 $typeAccelerators = [psobject].Assembly.GetType(

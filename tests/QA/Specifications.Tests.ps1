@@ -133,6 +133,8 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             'WindowsAccessControl.ProcessAccessRule'
             'WindowsAccessControl.ProcessAuditRule'
             'WindowsAccessControl.SmbShareAccessRule'
+            'WindowsAccessControl.TaskFolderAccessRule'
+            'WindowsAccessControl.ScheduledTaskAccessRule'
             'WindowsAccessControl.SmbShareEffectiveAccess'
             'WindowsAccessControl.ADObjectAccessRule'
         )
@@ -213,10 +215,10 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             Join-Path $script:decisionRoot 'README.md'
         ) -Raw
 
-        foreach ($closedIssue in 5, 6, 8, 9, 10, 11, 13, 21) {
+        foreach ($closedIssue in 5, 6, 8, 9, 10, 11, 13, 19, 21) {
             $openIssues | Should -Not -Match "(?m)^## OI-$closedIssue`:"
         }
-        foreach ($focusedIssue in 14, 16, 17, 18, 19, 20, 22, 23, 24) {
+        foreach ($focusedIssue in 14, 16, 17, 18, 20, 22, 23, 24, 25, 26) {
             $openIssues | Should -Match "(?m)^## OI-$focusedIssue`:"
         }
         $openIssues | Should -Not -Match '(?m)^## OI-12:'

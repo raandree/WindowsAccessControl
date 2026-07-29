@@ -6,6 +6,9 @@ function Set-TaskFolderSecurityDescriptor {
         Persists only the DACL through the local Task Scheduler COM API. The
         target must be inside AllowedRootPath, outside the root and Microsoft
         system tree, and the candidate must preserve every current SYSTEM ACE.
+        The Task Scheduler service reorders ACEs, so ACE order is neither
+        preserved nor verified; do not rely on this command to canonicalize a
+        non-canonical DACL.
     .PARAMETER Path
         One or more absolute local Task Scheduler folder paths.
     .PARAMETER AllowedRootPath

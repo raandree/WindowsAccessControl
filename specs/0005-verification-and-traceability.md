@@ -43,7 +43,7 @@ is not reported as a successful live write.
 | FR-17 | `MutatorSafety.Tests.ps1` |
 | FR-18 | SMB command-contract Unit tests plus disposable share DACL round-trip, add, exact-remove, `WhatIf`, unrelated-ACE preservation, and rollback tests |
 | FR-19 | AD command-contract and LDAP-adapter Unit tests plus disposable-OU signed/sealed read, delegated add, object-ACE exact-remove, `WhatIf`, GUID revalidation, and rollback tests |
-| FR-20 | Task Scheduler command-contract and COM-boundary Unit tests plus disposable folder/task DACL reads, `WhatIf`, containment rejection, round trip, task-definition preservation, rollback, and cleanup tests |
+| FR-20 | Task Scheduler command-contract and COM-boundary Unit tests plus disposable folder/task DACL reads, `WhatIf`, containment rejection, round trip, task-definition preservation, rollback, and cleanup tests; typed access-rule contract, rights-model mask, `AppliesTo` flag-conversion, inherited-rule rejection, canonical-identity revalidation, and live add/remove tests |
 | FR-21 | SMB effective-access contract/behavior Unit tests plus delegated local share Authz, canonical deduplication, context-label, and backing-NTFS exclusion live evidence |
 | FR-22 | `Edit-NTFSItemSecurityDescriptor.Tests.ps1` Unit contract plus bounded live add, pass-through, callback-failure, and non-persistence tests; `NtfsDescriptorMutators.Tests.ps1` and `RegistryDescriptorMutators.Tests.ps1` descriptor parameter-set contract, in-memory staging, unloaded-section rejection, and concurrency-token tests; live `NtfsInMemoryDescriptorEditing` and `RegistryInMemoryDescriptorEditing` round-trip, bounded-scope, `RequireUnchanged` stale-rejection, and target-unchanged evidence |
 | FR-23 | Certificate-private-key command/identity Unit tests plus cross-edition read-only non-exportable CNG fixture acceptance |
@@ -59,7 +59,7 @@ is not reported as a successful live write.
 | NFR-10 | Sampler build, package inspection, changelog QA, and GitVersion config |
 | NFR-11 | SMB remote-syntax rejection, explicit Kerberos remoting acceptance, and AD signed/sealed LDAP connection/downgrade tests |
 | NFR-12 | SMB special-share rejection, AD allowed-OU/protected-target/GUID mismatch tests, live rollback, cleanup ledger, and independent security review |
-| NFR-13 | Task Scheduler path/COM Unit tests, duplicate-sensitive DACL canonicalization tests, and zero-leak domain-lab acceptance |
+| NFR-13 | Task Scheduler path/COM Unit tests, duplicate-sensitive DACL canonicalization tests, service-token deny-ACE and object-ACE rejection tests, and zero-leak domain-lab acceptance |
 | NFR-14 | SMB complete-descriptor section regression, existing Authz native cleanup tests, and explicit local/share-only output assertions |
 | NFR-15 | Bounded edit one-read/one-write mocks, `WhatIf`, unloaded-section, callback-failure, batch, and live target-state assertions |
 | NFR-16 | Provider/key mismatch rejection, hashed canonical identity, caller-certificate lifetime, RSA cleanup, no-private-key-output, and lab readiness checks |

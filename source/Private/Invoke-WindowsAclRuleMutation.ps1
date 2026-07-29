@@ -28,7 +28,10 @@ function Invoke-WindowsAclRuleMutation {
             [System.Security.AccessControl.AceFlags]::None,
 
         [Parameter()]
-        [System.Security.AccessControl.GenericAce]$NativeAce
+        [System.Security.AccessControl.GenericAce]$NativeAce,
+
+        [Parameter()]
+        [switch]$MatchAceFlags
     )
 
     $descriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new(
@@ -80,7 +83,8 @@ function Invoke-WindowsAclRuleMutation {
             $matchSecurityIdentifier,
             $matchAccessMask,
             $matchAceFlags,
-            $matchAuditAceFlagMask
+            $matchAuditAceFlagMask,
+            $matchExactAceFlags
         )
 
         $qualifiedAce = $ace -as [System.Security.AccessControl.QualifiedAce]
@@ -103,6 +107,9 @@ function Invoke-WindowsAclRuleMutation {
         if ($knownAce.AccessMask -ne $matchAccessMask) {
             return $false
         }
+        if ($matchExactAceFlags -and [int]$ace.AceFlags -ne [int]$matchAceFlags) {
+            return $false
+        }
         $true
     }
     $matchArguments = @(
@@ -112,6 +119,7 @@ function Invoke-WindowsAclRuleMutation {
         $AccessMask
         $AceFlags
         $auditAceFlagMask
+        [bool]$MatchAceFlags
     )
 
     if ($Operation -eq 'Clear') {

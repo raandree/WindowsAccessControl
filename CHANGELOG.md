@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add typed Task Scheduler access-rule commands (`Get-TaskFolderAccessRule`,
+    `Add-TaskFolderAccessRule`, `Remove-TaskFolderAccessRule`,
+    `Get-ScheduledTaskAccessRule`, `Add-ScheduledTaskAccessRule`,
+    `Remove-ScheduledTaskAccessRule`) with separate `WindowsTaskFolderRights`
+    and `WindowsScheduledTaskRights` models and folder inheritance scope
 - Add `SecurityDescriptor` parameter sets to the remaining NTFS access, audit,
     owner, and inheritance mutators so a detached descriptor can be edited in
     memory and persisted with one write
@@ -140,6 +145,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Reject a Task Scheduler DACL write that newly denies an identity in the Task
+    Scheduler service token the read, write, or run access the service requires
+- Reject object and compound ACEs in a Task Scheduler DACL, which the store
+    silently re-revisions so exact-persistence verification cannot succeed
+- Reject a Task Scheduler rule mutation whose target DACL changed after the
+    staging read, instead of silently clobbering the concurrent change
+- Verify the Task Scheduler rollback descriptor and report an indeterminate
+    stored state when it cannot be confirmed
 - Validate every unified backup record, digest, signature, canonical target,
     and process instance before restoring the first descriptor
 - Reject recomputed-digest signature tampering, mixed signed/unsigned

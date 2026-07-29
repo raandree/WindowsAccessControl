@@ -375,5 +375,59 @@
         </TableRowEntries>
       </TableControl>
     </View>
+    <View>
+      <Name>WindowsAccessControl.TaskFolderAccessRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.TaskFolderAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>TaskPath</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+          <TableColumnHeader><Label>AppliesTo</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Inherited</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>TaskPath</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AppliesTo</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>WindowsAccessControl.ScheduledTaskAccessRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.ScheduledTaskAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>TaskName</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Inherited</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>TaskName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
   </ViewDefinitions>
 </Configuration>

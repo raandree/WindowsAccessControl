@@ -21,15 +21,21 @@ function Test-WindowsTaskSchedulerSystemAce {
         $Ace.GetBinaryForm($bytes, 0)
         [Convert]::ToBase64String($bytes)
     }
-    $currentSystemAces = @(
-        foreach ($ace in $CurrentDescriptor.DiscretionaryAcl) {
-            & $getAceIdentity $ace
-        }
+    $currentSystemAces = [Collections.Generic.HashSet[string]]::new(
+        [string[]]@(
+            foreach ($ace in $CurrentDescriptor.DiscretionaryAcl) {
+                & $getAceIdentity $ace
+            }
+        ),
+        [StringComparer]::Ordinal
     )
-    $candidateSystemAces = @(
-        foreach ($ace in $CandidateDescriptor.DiscretionaryAcl) {
-            & $getAceIdentity $ace
-        }
+    $candidateSystemAces = [Collections.Generic.HashSet[string]]::new(
+        [string[]]@(
+            foreach ($ace in $CandidateDescriptor.DiscretionaryAcl) {
+                & $getAceIdentity $ace
+            }
+        ),
+        [StringComparer]::Ordinal
     )
     if ($currentSystemAces.Count -eq 0) {
         return $false
@@ -44,7 +50,7 @@ function Test-WindowsTaskSchedulerSystemAce {
         }
     }
     foreach ($currentSystemAce in $currentSystemAces) {
-        if ($candidateSystemAces -notcontains $currentSystemAce) {
+        if (-not $candidateSystemAces.Contains($currentSystemAce)) {
             return $false
         }
     }

@@ -38,17 +38,6 @@ evidence when a second writable domain controller exists. The current
 two-machine topology leaves this issue externally blocked; do not repurpose the
 member server that hosts SMB, Task Scheduler, and software-key fixtures.
 
-## OI-19: Add typed Task Scheduler access-rule commands
-
-Specifications: 0008, 0010. Tasks: TASK-1 and TASK-4.
-
-Build and verify an object-specific rights model for task folders and registered
-tasks before exposing access-rule query or mutation commands. Preserve
-inheritance and service-required ACEs without treating filesystem rights as
-Task Scheduler rights. Define broader deny-group evaluation for the Task
-Scheduler service token and verify ACL-revision normalization for object or
-compound ACEs.
-
 ## OI-20: Add Task Scheduler portability and desired state
 
 Specifications: 0008, 0010. Tasks: TASK-5 to TASK-7.
@@ -81,6 +70,34 @@ Specification: 0008. Tasks: KEY-5 and KEY-6.
 After safe typed mutation exists, add schema-version-2 descriptor-only
 backup/restore and DSC only for stable supported software-key identities.
 Never store certificate or private-key material in portability records.
+
+## OI-25: Detect registry inheritance scope in duplicate suppression
+
+Specification: 0003.
+
+`Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` suppress an ACE as a
+duplicate when the account, qualifier, and rights match, ignoring `AppliesTo`.
+Adding an existing account and rights combination with a different inheritance
+scope therefore succeeds without writing anything and returns nothing through
+`PassThru`. The Task Scheduler family opts into the flag-sensitive comparison
+through `Invoke-WindowsAclRuleMutation -MatchAceFlags`; extend it to the
+registry family with regression coverage and confirm that no existing `Set` or
+`Clear` behavior changes.
+
+## OI-26: Stop the batch dispatcher downgrading downstream terminating errors
+
+Specification: 0003.
+
+`Invoke-WindowsAccessControlBatch` catches an exception raised while writing a
+target result and re-emits it through `$PSCmdlet.WriteError`. When a command is
+piped into a mutator, a terminating error thrown by the downstream command
+surfaces in that frame and is downgraded to a non-terminating error, so
+`Get-NTFSItemSecurityDescriptor -Sections Owner | Add-NTFSAccessRule
+-ErrorAction Stop` reports the fail-closed section rejection without throwing.
+The same statement throws when the descriptor is bound from a variable. Two
+integration tests assert the throwing form and are therefore sensitive to the
+caller's effective `$ErrorActionPreference`. Distinguish a worker failure from
+a downstream pipeline failure and rethrow the latter.
 
 ## See also
 

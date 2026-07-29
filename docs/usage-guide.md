@@ -53,7 +53,7 @@ mutation. Prefer `LiteralPath` when a path can contain wildcard characters.
 | Manage SMB share permissions | `Get-SmbShareAccessRule`, `Add-SmbShareAccessRule` |
 | Evaluate a local SMB share DACL only | `Get-SmbShareEffectiveAccess` |
 | Delegate Active Directory object access | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule` |
-| Manage Task Scheduler DACLs | `Get-TaskFolderSecurityDescriptor`, `Get-ScheduledTaskSecurityDescriptor` |
+| Manage Task Scheduler DACLs | `Get-TaskFolderSecurityDescriptor`, `Get-ScheduledTaskSecurityDescriptor`, `Get-TaskFolderAccessRule`, `Get-ScheduledTaskAccessRule` |
 | Inspect a supported private-key DACL | `Get-CertificatePrivateKeySecurityDescriptor` |
 | Enforce desired state | The class-based DSC resources |
 
@@ -169,11 +169,40 @@ Set-ScheduledTaskSecurityDescriptor `
 
 Writes to the scheduler root and `\Microsoft` tree are rejected. Candidate
 DACLs must retain the current literal Local System ACEs and cannot add an
-explicit Local System deny ACE. Broader group-based deny effects remain the
-operator's responsibility. Task Scheduler may reorder ACEs and add its derived
-auto-inherited flag; the module verifies the native ACE set and caller-controlled
-protection state after persistence. Typed rules, SACLs, backup/restore, DSC, and
-direct remote targets are not part of this increment.
+explicit Local System deny ACE. A write is also rejected when it newly denies
+any identity in the Task Scheduler service token, or when it contains an object
+or compound ACE that the store would silently re-revision. Task Scheduler may
+reorder ACEs and add its derived auto-inherited flag; the module verifies the
+native ACE set and caller-controlled protection state after persistence.
+
+Typed access rules use the same boundary and object-specific rights models:
+
+```powershell
+Get-TaskFolderAccessRule -Path $taskPath -ExcludeInherited
+
+Add-TaskFolderAccessRule `
+    -Path $taskPath `
+    -AllowedRootPath $taskPath `
+    -Account 'CONTOSO\Operators' `
+    -AccessRights ReadAndTraverse `
+    -AppliesTo ThisFolderSubfoldersAndTasks `
+    -WhatIf
+
+Get-ScheduledTaskAccessRule -TaskPath $taskPath -TaskName 'Cleanup' -ExcludeInherited |
+    Where-Object SID -EQ 'S-1-1-0' |
+    Remove-ScheduledTaskAccessRule -AllowedRootPath $taskPath -WhatIf
+```
+
+A task folder is a directory and a registered task is a file, so each has its
+own enum: `WindowsTaskFolderRights` names `ListTasks`, `CreateTask`,
+`CreateSubfolder`, and `Traverse`, while `WindowsScheduledTaskRights` names
+`ReadTaskDefinition`, `WriteTaskDefinition`, and `RunTask`. Both share
+`ChangePermissions`, `TakeOwnership`, and the `Read`, `Write`, `Modify`, and
+`FullControl` composites. `AppliesTo` applies to task folders only; a
+registered task is a leaf object. Removal is exact, idempotent when the ACE is
+already absent, and refuses an inherited rule, which must be removed on the
+folder that defines it. Audit rules, SACLs, backup/restore, DSC, and direct
+remote targets are not part of this increment.
 
 ## Inspect a supported private-key DACL
 

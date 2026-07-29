@@ -394,21 +394,50 @@ DACL; ADR 0017 continues to prohibit remote and combined claims.
 | --- | --- | --- |
 | `Get-TaskFolderSecurityDescriptor` | local task-folder paths | `TaskFolderSecurityDescriptor` |
 | `Set-TaskFolderSecurityDescriptor` | local task-folder paths | none / `TaskFolderSecurityDescriptor` |
+| `Get-TaskFolderAccessRule` | local task-folder paths | `TaskFolderAccessRule` |
+| `Add-TaskFolderAccessRule` | local task-folder paths | none / `TaskFolderAccessRule` |
+| `Remove-TaskFolderAccessRule` | path-bound `TaskFolderAccessRule` | none / removed rule |
 | `Get-ScheduledTaskSecurityDescriptor` | local parent-folder paths | `ScheduledTaskSecurityDescriptor` |
 | `Set-ScheduledTaskSecurityDescriptor` | local parent-folder paths | none / `ScheduledTaskSecurityDescriptor` |
+| `Get-ScheduledTaskAccessRule` | local parent-folder paths | `ScheduledTaskAccessRule` |
+| `Add-ScheduledTaskAccessRule` | local parent-folder paths | none / `ScheduledTaskAccessRule` |
+| `Remove-ScheduledTaskAccessRule` | path-bound `ScheduledTaskAccessRule` | none / removed rule |
 
 Task Scheduler commands use absolute local paths and expose no direct remote
 or credential parameter. Registered tasks bind an exact `TaskName` beneath each
-`TaskPath`. Every setter requires an explicit `AllowedRootPath`, rejects root
+`TaskPath`. Every mutator requires an explicit `AllowedRootPath`, rejects root
 and `\Microsoft` system-tree writes, parses DACL SDDL as data, preserves current
 literal Local System ACEs, rejects explicit Local System deny ACEs, and
 participates in high-impact `ShouldProcess`.
 
-The first increment is DACL descriptor-only. Task Scheduler can reorder ACEs
-and add `DACL_AUTO_INHERITED`; stored-state verification ignores only those
-system-derived differences while retaining duplicate-sensitive native ACE and
-caller-controlled flag comparison. Typed rules, SACL, backup/restore, DSC, and
-direct remote APIs remain outside this contract.
+`WindowsTaskFolderRights` and `WindowsScheduledTaskRights` are object-specific
+rights models. Task folders are directories on the file-backed task store and
+registered tasks are files, so the same mask means different things: `0x1` is
+`ListTasks` on a folder and `ReadTaskDefinition` on a task, `0x2` is
+`CreateTask` versus `WriteTaskDefinition`, and `0x20` is `Traverse` versus
+`RunTask`. Both enums expose the shared `Delete`, `ReadPermissions`,
+`ChangePermissions`, `TakeOwnership`, generic, `Read`, `Write`, `Modify`, and
+`FullControl` members; neither exposes `ACCESS_SYSTEM_SECURITY`. The module
+never presents `FileSystemRights` as Task Scheduler rights.
+
+Task-folder rules expose an `AppliesTo` scope of `ThisFolderOnly`,
+`ThisFolderAndTasks`, `ThisFolderAndSubfolders`, `ThisFolderSubfoldersAndTasks`,
+`TasksOnly`, `SubfoldersOnly`, or `SubfoldersAndTasksOnly`; any other stored
+combination reads back as `Custom`. Registered tasks are leaf objects and
+expose no `AppliesTo` parameter. An add treats inheritance scope as part of ACE
+identity, so changing `AppliesTo` adds a distinct ACE. Removal is exact,
+idempotent when the ACE is already absent, refuses an inherited rule, and
+revalidates canonical identity and containment before writing.
+
+Every write rejects a candidate that newly denies an identity in the Task
+Scheduler service token, rejects object or compound ACEs because the store
+normalizes the DACL revision and the write cannot then be verified exactly, and
+rejects a candidate whose target changed after the staging read. Task Scheduler
+can reorder ACEs and add `DACL_AUTO_INHERITED`; stored-state verification
+ignores only those system-derived differences while retaining
+duplicate-sensitive native ACE and caller-controlled flag comparison, so ACE
+order is neither preserved nor verified. Audit rules, SACL, backup/restore,
+DSC, and direct remote APIs remain outside this contract.
 
 ## Certificate private-key commands
 

@@ -380,3 +380,166 @@ Describe 'Task Scheduler DACL descriptor commands' -Tag 'DomainLab', 'WindowsOnl
         $result.DefinitionPreserved | Should -BeTrue
     }
 }
+
+Describe 'Task Scheduler typed access-rule commands' -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    AfterEach {
+        Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:taskPath, $script:taskName, $script:original `
+            -ScriptBlock {
+                param($TaskPath, $TaskName, $Original)
+
+                Set-TaskFolderSecurityDescriptor `
+                    -Path $TaskPath `
+                    -AllowedRootPath $TaskPath `
+                    -Sddl $Original.FolderSddl `
+                    -Confirm:$false
+                Set-ScheduledTaskSecurityDescriptor `
+                    -TaskPath $TaskPath `
+                    -TaskName $TaskName `
+                    -AllowedRootPath $TaskPath `
+                    -Sddl $Original.TaskSddl `
+                    -Confirm:$false
+            }
+    }
+
+    It 'Should emit typed folder and task rules with Task Scheduler rights' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:taskPath, $script:taskName `
+            -ScriptBlock {
+                param($TaskPath, $TaskName)
+
+                $folderRules = @(Get-TaskFolderAccessRule `
+                    -Path @($TaskPath, $TaskPath.ToUpperInvariant()))
+                $taskRules = @(Get-ScheduledTaskAccessRule `
+                    -TaskPath $TaskPath -TaskName $TaskName)
+                [pscustomobject]@{
+                    FirstFolderRule = $folderRules[0]
+                    FolderRightsType = $folderRules[0].AccessRights.GetType().FullName
+                    FolderSystemRule = [bool]@($folderRules |
+                        Where-Object { $_.SID -eq 'S-1-5-18' })
+                    FolderAppliesTo = @($folderRules.AppliesTo | Sort-Object -Unique)
+                    TaskCount = $taskRules.Count
+                    TaskName = $taskRules[0].TaskName
+                    TaskInherited = [bool]@($taskRules | Where-Object IsInherited)
+                    ExplicitOnly = @(Get-TaskFolderAccessRule `
+                        -Path $TaskPath -ExcludeInherited).Count
+                    AllCount = $folderRules.Count
+                }
+            }
+
+        $result.FirstFolderRule.PSObject.TypeNames |
+            Should -Contain 'Deserialized.WindowsAccessControl.TaskFolderAccessRule'
+        $result.FolderRightsType | Should -BeExactly 'WindowsTaskFolderRights'
+        $result.FolderSystemRule | Should -BeTrue
+        $result.FolderAppliesTo | Should -Not -Contain 'Custom'
+        $result.TaskCount | Should -BeGreaterThan 0
+        $result.TaskName | Should -BeExactly $script:taskName
+        $result.TaskInherited | Should -BeTrue
+        $result.ExplicitOnly | Should -BeLessOrEqual $result.AllCount
+    }
+
+    It 'Should add and exactly remove typed rules while preserving unrelated ACEs' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:taskPath, $script:taskName `
+            -ScriptBlock {
+                param($TaskPath, $TaskName)
+
+                $folderBefore = (Get-TaskFolderSecurityDescriptor -Path $TaskPath).Sddl
+                $taskBefore = (Get-ScheduledTaskSecurityDescriptor `
+                    -TaskPath $TaskPath -TaskName $TaskName).Sddl
+
+                Add-TaskFolderAccessRule `
+                    -Path $TaskPath `
+                    -AllowedRootPath $TaskPath `
+                    -Account 'S-1-1-0' `
+                    -AccessRights ReadAndTraverse `
+                    -AppliesTo ThisFolderSubfoldersAndTasks `
+                    -WhatIf
+                $whatIfFolder = (Get-TaskFolderSecurityDescriptor -Path $TaskPath).Sddl
+
+                $addedFolder = @(Add-TaskFolderAccessRule `
+                    -Path $TaskPath `
+                    -AllowedRootPath $TaskPath `
+                    -Account 'S-1-1-0', 'S-1-1-0' `
+                    -AccessRights ReadAndTraverse `
+                    -AppliesTo ThisFolderSubfoldersAndTasks `
+                    -PassThru `
+                    -Confirm:$false)
+                $addedTask = @(Add-ScheduledTaskAccessRule `
+                    -TaskPath $TaskPath `
+                    -TaskName $TaskName `
+                    -AllowedRootPath $TaskPath `
+                    -Account 'S-1-1-0' `
+                    -AccessRights Read `
+                    -PassThru `
+                    -Confirm:$false)
+
+                $removedFolder = $addedFolder |
+                    Remove-TaskFolderAccessRule `
+                        -AllowedRootPath $TaskPath -PassThru -Confirm:$false
+                $removedTask = $addedTask |
+                    Remove-ScheduledTaskAccessRule `
+                        -AllowedRootPath $TaskPath -PassThru -Confirm:$false
+
+                $inheritedRule = @(Get-ScheduledTaskAccessRule `
+                    -TaskPath $TaskPath -TaskName $TaskName -ExcludeExplicit)[0]
+                $inheritedRejected = $null
+                try {
+                    Remove-ScheduledTaskAccessRule `
+                        -InputObject $inheritedRule `
+                        -AllowedRootPath $TaskPath `
+                        -Confirm:$false `
+                        -ErrorAction Stop
+                }
+                catch {
+                    $inheritedRejected = $_.Exception.Message
+                }
+
+                $lockoutRejected = $null
+                try {
+                    Add-TaskFolderAccessRule `
+                        -Path $TaskPath `
+                        -AllowedRootPath $TaskPath `
+                        -Account 'S-1-1-0' `
+                        -AccessRights FullControl `
+                        -AccessControlType Deny `
+                        -Confirm:$false `
+                        -ErrorAction Stop
+                }
+                catch {
+                    $lockoutRejected = $_.Exception.Message
+                }
+
+                [pscustomobject]@{
+                    WhatIfUnchanged = $whatIfFolder -ceq $folderBefore
+                    AddedFolderCount = $addedFolder.Count
+                    AddedFolderRights = [string]$addedFolder[0].AccessRights
+                    AddedFolderAppliesTo = $addedFolder[0].AppliesTo
+                    AddedTaskCount = $addedTask.Count
+                    RemovedFolderSid = $removedFolder.SID
+                    RemovedTaskSid = $removedTask.SID
+                    FolderRestored = (Get-TaskFolderSecurityDescriptor `
+                        -Path $TaskPath).Sddl -ceq $folderBefore
+                    TaskRestored = (Get-ScheduledTaskSecurityDescriptor `
+                        -TaskPath $TaskPath -TaskName $TaskName).Sddl -ceq $taskBefore
+                    InheritedRejected = $inheritedRejected
+                    LockoutRejected = $lockoutRejected
+                }
+            }
+
+        $result.WhatIfUnchanged | Should -BeTrue
+        $result.AddedFolderCount | Should -Be 1
+        $result.AddedFolderRights | Should -BeExactly 'ReadAndTraverse'
+        $result.AddedFolderAppliesTo | Should -BeExactly 'ThisFolderSubfoldersAndTasks'
+        $result.AddedTaskCount | Should -Be 1
+        $result.RemovedFolderSid | Should -BeExactly 'S-1-1-0'
+        $result.RemovedTaskSid | Should -BeExactly 'S-1-1-0'
+        $result.FolderRestored | Should -BeTrue
+        $result.TaskRestored | Should -BeTrue
+        $result.InheritedRejected | Should -BeLike '*inherited*'
+        $result.LockoutRejected | Should -BeLike '*Task Scheduler service token*'
+    }
+}

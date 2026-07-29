@@ -275,6 +275,26 @@ ENT-8 are closed for the currently shipped enterprise families.
     Major findings (post-commit protection failure, stale NTFS descriptor
     projection) were fixed; the re-review returned APPROVE and the remaining
     Minor and Nit findings were closed.
+- 2026-07-29: Closed OI-19 by adding six typed Task Scheduler access-rule
+    commands as exports 91 through 96, backed by separate
+    `WindowsTaskFolderRights` and `WindowsScheduledTaskRights` models and a
+    seven-value folder `AppliesTo` scope. The rights model, ACL-revision
+    behavior, and service-token group set were established by live probes, not
+    assumed.
+- 2026-07-29: Added three fail-closed Task Scheduler write gates: reject a
+    candidate that newly denies the service token, reject object and compound
+    ACEs that the store re-revisions from ACL revision 2 to 4, and reject a
+    staged write whose target changed after the read. Rollback is now verified.
+- 2026-07-29: Independent security review returned REQUEST CHANGES with three
+    Major findings; all three were fixed (flags-blind duplicate suppression,
+    one shared rights enum that understated a folder grant, missing optimistic
+    concurrency). Every Minor and Nit finding was closed except the registry
+    parity gap, recorded as OI-25. The focused re-review returned APPROVE.
+- 2026-07-29: Traced two intermittently failing in-memory descriptor editing
+    tests to `Invoke-WindowsAccessControlBatch` downgrading a downstream
+    terminating error to a non-terminating one on its sequential path. Two
+    source-stash bisects reproduce the failure on unmodified `HEAD` source, so
+    the defect predates this increment; it is recorded as OI-26.
 
 ## Stable capabilities
 
@@ -308,9 +328,11 @@ ENT-8 are closed for the currently shipped enterprise families.
     access with explicit backing-NTFS exclusion.
 - Signed/sealed explicit-DC Active Directory DACL mutation with complete-batch
     prevalidation and immutable object identity.
-- Local Task Scheduler folder and registered-task DACL descriptor get/set with
-    containment, Local System ACE preservation, semantic verification, and
-    rollback.
+- Local Task Scheduler folder and registered-task DACL descriptor get/set plus
+    typed access-rule query, add, and exact removal with object-specific rights,
+    folder inheritance scope, containment, service-token lockout rejection,
+    object-ACE rejection, staged-write concurrency rejection, semantic
+    verification, and verified rollback.
 - Bounded NTFS callback editing with deterministic sequential callbacks and one
     read/at-most-one-write per target.
 - Read-only DACL inspection of exact persisted RSA CNG keys without private-key
@@ -327,8 +349,12 @@ ENT-8 are closed for the currently shipped enterprise families.
     resolution, broader mutation, and an AD effective-access decision.
 - OI-18 requires a second writable domain controller for replication and
     failover evidence.
-- OI-19 and OI-20 add typed Task Scheduler rules, portability, and desired
-    state.
+- OI-20 adds Task Scheduler portability and desired state.
 - OI-22 through OI-24 add fail-closed CNG mutation, separate CAPI support, and
     private-key portability/desired state after their security gates.
+- OI-25 extends inheritance-sensitive duplicate detection to the registry-key
+    family.
+- OI-26 stops the batch dispatcher downgrading a downstream terminating error
+    to a non-terminating one, which currently makes two in-memory descriptor
+    editing tests environment sensitive.
 - Remote publication remains user-controlled.

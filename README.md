@@ -215,9 +215,10 @@ backup/restore, DSC, effective access, and replication convergence.
 ## Task Scheduler folders and tasks
 
 Task Scheduler commands run locally on the computer that owns the folder or
-registered task. Descriptor setters require an explicit non-system
-`AllowedRootPath`, preserve current literal Local System ACEs, reject explicit
-Local System deny ACEs, and reject root or `\Microsoft` writes:
+registered task. Every mutator requires an explicit non-system
+`AllowedRootPath`, preserves current literal Local System ACEs, rejects a write
+that newly denies the Task Scheduler service token, and rejects root or
+`\Microsoft` writes:
 
 ```powershell
 $taskPath = '\Operations'
@@ -231,10 +232,23 @@ Set-TaskFolderSecurityDescriptor -Path $taskPath `
 Get-ScheduledTaskSecurityDescriptor `
     -TaskPath $taskPath `
     -TaskName 'Cleanup'
+
+Add-TaskFolderAccessRule -Path $taskPath `
+    -AllowedRootPath $taskPath `
+    -Account 'CONTOSO\Operators' `
+    -AccessRights ReadAndTraverse `
+    -AppliesTo ThisFolderSubfoldersAndTasks `
+    -WhatIf
+
+Get-ScheduledTaskAccessRule -TaskPath $taskPath -TaskName 'Cleanup'
 ```
 
-The first increment is DACL descriptor-only. It does not expose typed rules,
-SACLs, backup/restore, DSC, or direct remote target parameters.
+`WindowsTaskFolderRights` and `WindowsScheduledTaskRights` name the Task
+Scheduler operation each mask authorizes rather than exposing filesystem
+rights; folders and tasks get separate enums because the same mask bit means
+different things on a directory and a file. The increment covers DACL
+descriptors and typed access rules; it does not expose audit rules, SACLs,
+backup/restore, DSC, or direct remote target parameters.
 
 ## Certificate private keys
 
