@@ -149,9 +149,9 @@ is not reported as a successful live write.
 | `Get-SmbShareAccessRule` | 1 | Disposable local share native ACE enumeration | Typed mask and unrelated-ACE preservation |
 | `Add-SmbShareAccessRule` | 1 | Disposable local share delegated add | `WhatIf`, exact mask, metadata preservation |
 | `Remove-SmbShareAccessRule` | 1 | Disposable local share exact native removal | Canonical target validation and rollback |
-| `Get-ADObjectSecurityDescriptor` | 1 | Signed/sealed LDAP disposable-OU read | Explicit DC and immutable GUID binding |
+| `Get-ADObjectSecurityDescriptor` | 1 | Signed/sealed LDAP disposable-OU read | Explicit or discovered DC and immutable GUID binding |
 | `Set-ADObjectSecurityDescriptor` | 1 | Delegated disposable-OU DACL round trip | `WhatIf`, allowed-OU and protected-target rejection |
-| `Get-ADObjectAccessRule` | 1 | Common/object ACE enumeration in disposable OU | GUID and inheritance preservation |
+| `Get-ADObjectAccessRule` | 1 | Common/object ACE enumeration in disposable OU | GUID and inheritance preservation, ancestor provenance, resolved schema names |
 | `Add-ADObjectAccessRule` | 1 | Delegated object-specific ACE add | Non-Domain-Admin, idempotence, prevalidation, rollback |
 | `Remove-ADObjectAccessRule` | 1 | Exact object-ACE removal | GUID revalidation and stale-target rejection |
 | `Get-TaskFolderSecurityDescriptor` | 1 | Disposable local task-folder DACL | Local path and system-tree rejection |

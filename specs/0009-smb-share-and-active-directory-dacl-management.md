@@ -54,13 +54,17 @@ projection.
 
 ## Active Directory contract
 
-Every AD command requires `Server` and `DistinguishedName`. `Server` names the
-final writable domain controller directly. IP literals, URLs, local aliases,
-and implicit DC discovery are rejected by the public adapter. The connection
+Every AD command requires `DistinguishedName`. `Server` names the final writable
+domain controller directly and is optional. When it is omitted, one writable
+domain controller is located in the calling computer's domain, validated by the
+same explicit-name rules, resolved once per invocation, and pinned for every
+target so one command never spans two consistency points. IP literals, URLs,
+local aliases, and remote syntax are rejected in both cases. The connection
 uses LDAP v3 with Kerberos authentication, signing, sealing, no referral
 chasing, and a bounded timeout. An optional `PSCredential` binds directly to
 that DC; credentials are never forwarded through another machine or retained
-in output, logs, metrics, or backup data.
+in output, logs, metrics, or backup data. Discovery itself does not use the
+credential and never searches another domain or forest.
 
 Targets must resolve inside the selected DC's default domain naming context.
 Output binds the current distinguished name to immutable `objectGUID` and
@@ -79,6 +83,16 @@ supplied base.
 `SelfAndChildren`, and `Children`. Optional `ObjectType` and
 `InheritedObjectType` GUIDs create an object ACE without flattening native
 metadata. Query output preserves unknown GUIDs and the exact native ACE.
+
+Query output additionally reports where an inherited ACE came from and what its
+GUIDs mean. `InheritedFrom` names the nearest ancestor object that holds the
+originating explicit inheritable ACE, resolved over the same bound connection
+rather than through a separately located domain controller. `ObjectTypeName`
+and `InheritedObjectTypeName` report the schema class, attribute, property set,
+validated write, or extended right that each GUID identifies. Both enrichments
+are best effort: an unreadable ancestor, an unresolved GUID, or a lookup failure
+reports null for that property and never removes a rule from the result. ADR
+0020 records the inference rules and their evidence.
 
 ## Mutation and failure behavior
 
@@ -120,21 +134,25 @@ directory object identity without changing its replay and canonical-target
 contract. This increment therefore exports no backup integration.
 
 Specification 0011 later admits bounded local share-only effective access. SMB
-remote APIs, combined share/NTFS effective access, AD schema-name resolution,
-broader mutation modes, replication, DSC, and SACL workflows remain tracked by
-specification 0008 and focused open issues OI-11 and OI-14 through OI-18. ADR
-0017 explicitly defers remote and combined effective access.
+remote APIs, combined share/NTFS effective access, broader AD mutation modes,
+replication, DSC, and SACL workflows remain tracked by specification 0008 and
+focused open issues OI-11 and OI-14 through OI-18. ADR 0017 explicitly defers
+remote and combined effective access.
 
 ## Verification
 
 - Unit tests cover target rejection, rights typing, object GUID preservation,
   signed/sealed connection construction, protected-target rejection,
-  `WhatIf`, idempotent add, and exact removal.
+  `WhatIf`, idempotent add, exact removal, distinguished-name parent parsing,
+  ancestor provenance matching, and pinned domain-controller discovery.
 - Disposable live tests prove SMB DACL round trip and unrelated-ACE
   preservation on the member server.
 - Disposable live tests prove AD DACL round trip, object-specific ACE
   preservation, delegated mutation, GUID revalidation, and rollback in the
   test OU.
+- A live probe compares inferred inheritance sources with the native
+  `GetInheritanceSourceW` result for the same object and records that the
+  native call cannot honor an explicit server.
 - Both adapters parse and import in PowerShell 7 and Windows PowerShell 5.1.
 - PSScriptAnalyzer, manifest/help QA, specification conformance, package
   inspection, and independent security review have no unresolved Blocker or
@@ -149,3 +167,5 @@ specification 0008 and focused open issues OI-11 and OI-14 through OI-18. ADR
 - [Verification and traceability](0005-verification-and-traceability.md)
 - [Enterprise authority decision](decisions/0015-use-local-smb-and-signed-sealed-ldap.md)
 - [Enterprise backup schema decision](decisions/0016-require-schema-v2-for-enterprise-targets.md)
+- [Directory rule enrichment decision](decisions/0020-enrich-directory-rules-over-the-bound-connection.md)
+- [Domain-controller discovery decision](decisions/0021-discover-and-pin-a-domain-controller.md)

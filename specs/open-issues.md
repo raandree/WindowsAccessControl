@@ -13,13 +13,13 @@ Add schema-version-2 SMB backup/restore, server-qualified canonical locking,
 and exact-descriptor/rule DSC resources for the accepted local-on-target share
 boundary. Direct remote APIs remain excluded by ADR 0015.
 
-## OI-16: Add AD schema resolution and broader DACL mutation
+## OI-16: Add broader AD DACL mutation
 
-Specifications: 0008, 0009. Tasks: AD-2, AD-4, and AD-5.
+Specifications: 0008, 0009. Tasks: AD-4 and AD-5.
 
-Resolve schema, property-set, extended-right, and object-class names while
-preserving GUIDs. Add set, rights-removal, account-purge, and clear semantics
-without flattening object ACEs.
+Add set, rights-removal, account-purge, and clear semantics without flattening
+object ACEs. Read-side schema, property-set, extended-right, and object-class
+name resolution shipped with ADR 0020 and is no longer part of this issue.
 
 ## OI-17: Add AD portability, desired state, and access decision
 

@@ -314,6 +314,22 @@ ENT-8 are closed for the currently shipped enterprise families.
     error instead of discarding a successful descriptor read, the native entry
     point rejects unsupported object types, and the hive translator fails closed
     on an unrecognized native form.
+- 2026-07-29: Added `InheritedFrom`, `ObjectTypeName`, and
+    `InheritedObjectTypeName` to Active Directory access rules and made `Server`
+    optional on the four directory commands that take it. A live probe proved
+    `GetInheritanceSourceW` supports `SE_DS_OBJECT` but rejects a
+    server-qualified name and locates its own domain controller, so provenance
+    is inferred by walking the ancestor chain over the bound connection. The
+    inference agrees with that native oracle on all 26 inherited ACEs of the lab
+    user. Recorded as ADR 0020 and ADR 0021.
+- 2026-07-29: Independent security review of the directory enrichment returned
+    APPROVE WITH COMMENTS with no Blocker and one Major finding. Discovery ran
+    once per pipeline item instead of once per invocation and now memoizes the
+    pinned name; the ancestor walk stops at a protected DACL, requires candidate
+    propagation flags to be consistent with the observed inherited ACE, and no
+    longer caches an identity-dependent unresolved GUID. Windows PowerShell
+    resolves parameter type attributes before a function body runs, so the
+    directory assembly is now loaded at module import.
 
 ## Stable capabilities
 
@@ -364,8 +380,8 @@ ENT-8 are closed for the currently shipped enterprise families.
 
 ## Open work
 
-- OI-14, OI-16, and OI-17 add SMB/AD portability, desired state, schema
-    resolution, broader mutation, and an AD effective-access decision.
+- OI-14, OI-16, and OI-17 add SMB/AD portability, desired state, broader
+    mutation, and an AD effective-access decision.
 - OI-18 requires a second writable domain controller for replication and
     failover evidence.
 - OI-20 adds Task Scheduler portability and desired state.

@@ -49,8 +49,10 @@ to 0005 and the linked ADRs.
   deny share ACEs, and remove exact path-bound share ACEs without changing the
   backing NTFS descriptor or unrelated share ACEs.
 - **FR-19**: Query and set Active Directory object DACL descriptors through an
-  explicit domain controller, add typed common or object-specific ACEs, and
-  remove exact path-bound ACEs while preserving GUID and inheritance metadata.
+  explicit or automatically located and pinned writable domain controller, add
+  typed common or object-specific ACEs, and remove exact path-bound ACEs while
+  preserving GUID and inheritance metadata and reporting the ancestor source and
+  resolved schema names of every inherited ACE.
 - **FR-20**: Query and set DACL descriptors for local Task Scheduler folders and
   registered tasks inside an explicit allowed-root boundary while preserving
   required Local System access and task definitions.

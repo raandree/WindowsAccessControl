@@ -6,7 +6,9 @@ function Get-ADObjectSecurityDescriptor {
         Uses direct LDAP Negotiate authentication with signing and sealing to
         read one or more domain-partition object DACLs plus immutable object GUIDs.
     .PARAMETER Server
-        The explicit DNS name of the final writable domain controller.
+        The explicit DNS name of the final writable domain controller. When it
+        is omitted, one writable domain controller is located in the current
+        computer's domain and pinned for the whole command.
     .PARAMETER DistinguishedName
         One or more distinguished names in the selected domain partition.
     .PARAMETER Credential
@@ -27,7 +29,7 @@ function Get-ADObjectSecurityDescriptor {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory)]
+        [Parameter()]
         [string]$Server,
         [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [Alias('Path')]
@@ -44,10 +46,14 @@ function Get-ADObjectSecurityDescriptor {
 
     process {
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            if (-not $pinnedServer) {
+                $pinnedServer = Resolve-WindowsADServer -Server $Server
+            }
+            $PSBoundParameters['Server'] = $pinnedServer
             Invoke-WindowsADCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `
                 -BoundParameters $PSBoundParameters `
-                -Server $Server `
+                -Server $pinnedServer `
                 -DistinguishedName $DistinguishedName `
                 -Credential $Credential `
                 -TimeoutSeconds $TimeoutSeconds `

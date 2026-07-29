@@ -22,20 +22,29 @@ function Resolve-WindowsADObjectTarget {
         [switch]$ForWrite,
 
         [Parameter()]
-        [guid]$ExpectedObjectGuid = [guid]::Empty
+        [guid]$ExpectedObjectGuid = [guid]::Empty,
+
+        [Parameter()]
+        [System.DirectoryServices.Protocols.LdapConnection]$Connection
     )
 
     $serverName = Resolve-WindowsADServerName -Server $Server
-    $connection = New-WindowsADConnection `
-        -Server $serverName `
-        -Credential $Credential `
-        -TimeoutSeconds $TimeoutSeconds
+    $ownsConnection = -not $Connection
+    $ldapConnection = if ($ownsConnection) {
+        New-WindowsADConnection `
+            -Server $serverName `
+            -Credential $Credential `
+            -TimeoutSeconds $TimeoutSeconds
+    }
+    else {
+        $Connection
+    }
     try {
-        $rootDse = Get-WindowsADRootDse -Connection $connection
+        $rootDse = Get-WindowsADRootDse -Connection $ldapConnection
         if (-not (Test-WindowsADDistinguishedNameWithinBase `
-                -DistinguishedName $DistinguishedName `
-                -BaseDistinguishedName $rootDse.DefaultNamingContext)) {
-            throw 'Active Directory targets must be in the default domain naming context.'
+                    -DistinguishedName $DistinguishedName `
+                    -BaseDistinguishedName $rootDse.DefaultNamingContext)) {
+            throw "Active Directory targets must be in the default domain naming context. Domain controller '$serverName' serves '$($rootDse.DefaultNamingContext)'."
         }
         if (Test-WindowsADExcludedPartition `
                 -DistinguishedName $DistinguishedName `
@@ -43,7 +52,7 @@ function Resolve-WindowsADObjectTarget {
             throw 'Active Directory targets in the configuration or schema partition are not supported.'
         }
         $record = Get-WindowsADObjectRecord `
-            -Connection $connection `
+            -Connection $ldapConnection `
             -DistinguishedName $DistinguishedName `
             -IncludeSecurityDescriptor
         if ($ExpectedObjectGuid -ne [guid]::Empty -and
@@ -61,7 +70,7 @@ function Resolve-WindowsADObjectTarget {
                 throw 'The allowed Active Directory base must be in the default domain partition.'
             }
             $baseRecord = Get-WindowsADObjectRecord `
-                -Connection $connection `
+                -Connection $ldapConnection `
                 -DistinguishedName $AllowedBaseDistinguishedName
             if ('organizationalUnit' -notin $baseRecord.ObjectClasses) {
                 throw 'AllowedBaseDistinguishedName must resolve to an organizational unit.'
@@ -84,12 +93,17 @@ function Resolve-WindowsADObjectTarget {
             ObjectGuid = $record.ObjectGuid
             ObjectClasses = $record.ObjectClasses
             BinarySecurityDescriptor = $record.SecurityDescriptor
+            DefaultNamingContext = $rootDse.DefaultNamingContext
+            ConfigurationNamingContext = $rootDse.ConfigurationNamingContext
+            SchemaNamingContext = $rootDse.SchemaNamingContext
             CanonicalTarget = 'ADObject:{0}:{1}' -f (
                 $serverName.ToUpperInvariant()
             ), $record.ObjectGuid.ToString('D').ToUpperInvariant()
         }
     }
     finally {
-        $connection.Dispose()
+        if ($ownsConnection) {
+            $ldapConnection.Dispose()
+        }
     }
 }

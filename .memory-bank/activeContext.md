@@ -9,28 +9,30 @@ source: current task evidence
 
 ## Current focus
 
-Registry-key access rules now report native inherited-ACE provenance through
-`InheritedFrom`, matching the NTFS family. The shared native inheritance-source
-helper serves both families, the WOW64 registry views fail closed to a null
-source, and a provenance lookup failure degrades the column instead of
-discarding a successful descriptor read.
+Active Directory access rules now report where an inherited ACE came from and
+what its object GUIDs mean, and `Server` is optional across the directory
+commands. Provenance and schema names are resolved over the same signed and
+sealed connection that returned the descriptor, and a discovered writable domain
+controller is resolved once per invocation and pinned for every target.
 
 ## Evidence
 
-- A live probe established the constraints rather than assuming them:
-    `GetInheritanceSourceW` succeeds with `SE_REGISTRY_KEY` and returns native
-    hive names, but fails with `ERROR_INVALID_PARAMETER` for
-    `SE_REGISTRY_WOW64_32KEY` and `SE_REGISTRY_WOW64_64KEY`, even though
-    `GetNamedSecurityInfoW` accepts both for the same key.
-- ADR 0019 records the fail-closed view decision and the degrade-on-failure
-    decision; specifications 0003, 0004, and 0005 record the expanded contract
-    and evidence.
-- Independent security review returned APPROVE WITH COMMENTS with no Blocker
-    and one Major finding. All Major and Minor findings were fixed.
-- A pristine `main` worktree established the environment baseline for the full
-    Sampler suite: 1081 passed, 50 failed, every failure elevation dependent.
-- The focused registry, NTFS, QA, and mutator-safety set passes 68 of 68
-    non-elevation tests, including 25 new provenance tests.
+- A live probe established both constraints. `GetInheritanceSourceW` does work
+    with `SE_DS_OBJECT` and returned `DC=contoso,DC=com` for every inherited ACE
+    of the lab user, but it rejects a server-qualified object name and locates
+    its own domain controller, so it cannot honor `Server` or `Credential`.
+- The LDAP ancestor-walk inference agrees with that native oracle: 26 of 26
+    inherited ACEs resolve to `DC=contoso,DC=com` in both PowerShell editions.
+- Schema and extended-right lookups resolve the reported GUIDs to
+    `Account Restrictions`, `inetOrgPerson`, `user`, `Logon Information`, and
+    `Group Membership`.
+- ADR 0020 records the enrichment decision, ADR 0021 the discovery decision;
+    specifications 0002, 0003, 0005, and 0009 record the expanded contract.
+- Independent security review returned APPROVE WITH COMMENTS with no Blocker and
+    one Major finding. The Major finding and three fail-open Minor findings were
+    fixed and covered by regression tests.
+- `tests/Unit` plus `tests/QA` pass 1022 of 1022 with the module built from
+    source, and the same paths work under Windows PowerShell 5.1.
 
 ## Next step
 

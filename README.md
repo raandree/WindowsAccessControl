@@ -189,25 +189,34 @@ and can omit network-logon-specific groups.
 
 ## Active Directory objects
 
-AD commands require an explicit DNS domain-controller name and use direct LDAP
-Kerberos authentication with signing and sealing. Mutators additionally
+AD commands use direct LDAP Kerberos authentication with signing and sealing.
+`Server` is optional: supply an explicit DNS domain-controller name, or omit it
+and let the command locate one writable domain controller in the computer's
+domain and pin it for every target in that invocation. Mutators additionally
 require an allowed OU boundary and revalidate the immutable object GUID before
 every write.
 
 ```powershell
-$server = 'dc01.example.test'
 $base = 'OU=Applications,DC=example,DC=test'
-$target = 'OU=Database,$base'
+$target = "OU=Database,$base"
 
-Get-ADObjectAccessRule -Server $server -DistinguishedName $target
+# Inherited rules report the ancestor they came from and resolved GUID names.
+Get-ADObjectAccessRule -DistinguishedName $target -ExcludeExplicit |
+    Select-Object Account, AccessRights, InheritedFrom, ObjectTypeName,
+        InheritedObjectTypeName
 
-Add-ADObjectAccessRule -Server $server `
+Add-ADObjectAccessRule -Server 'dc01.example.test' `
     -DistinguishedName $target `
     -AllowedBaseDistinguishedName $base `
     -Account 'CONTOSO\Analysts' `
     -AccessRights ReadProperty `
     -WhatIf
 ```
+
+`InheritedFrom` is resolved by walking the ancestor chain over the same bound
+connection, because the Windows inheritance-source API cannot honor the
+selected domain controller and credential. It is empty for an explicit rule and
+for an inherited rule whose origin sits above an ancestor you cannot read.
 
 The first increment is DACL-only. It excludes SACLs, owner/group mutation,
 backup/restore, DSC, effective access, and replication convergence.

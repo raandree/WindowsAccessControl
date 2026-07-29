@@ -144,6 +144,45 @@ Describe 'Active Directory object DACL commands' `
         $result.BinarySecurityDescriptor.Length | Should -BeGreaterThan 0
     }
 
+    It 'Should report ACE provenance and resolved GUID names through a discovered domain controller' {
+        $inherited = @(
+            Get-ADObjectAccessRule `
+                -DistinguishedName $script:targetOu `
+                -ExcludeExplicit `
+                -ThrottleLimit 1
+        )
+
+        $inherited | Should -Not -BeNullOrEmpty
+        @($inherited.Server | Sort-Object -Unique) | Should -HaveCount 1
+        $inherited[0].Server | Should -BeLike "*.$($script:domain.DNSRoot)"
+        $inherited[0].Server | Should -BeExactly $inherited[0].Server.ToLowerInvariant()
+        @($inherited | Where-Object { -not $_.InheritedFrom }) | Should -BeNullOrEmpty
+        foreach ($rule in $inherited) {
+            $rule.InheritedFrom | Should -Not -BeExactly $script:targetOu
+            $script:targetOu | Should -BeLike "*$($rule.InheritedFrom)"
+        }
+        @(
+            $inherited |
+                Where-Object { $_.ObjectTypeGuid -ne [guid]::Empty -and -not $_.ObjectTypeName }
+        ) | Should -BeNullOrEmpty
+        @(
+            $inherited |
+                Where-Object {
+                    $_.InheritedObjectTypeGuid -ne [guid]::Empty -and
+                    -not $_.InheritedObjectTypeName
+                }
+        ) | Should -BeNullOrEmpty
+
+        $explicit = @(
+            Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeInherited `
+                -ThrottleLimit 1
+        )
+        @($explicit | Where-Object InheritedFrom) | Should -BeNullOrEmpty
+    }
+
     It 'Should reject configuration and schema partition reads' {
         foreach ($distinguishedName in @(
                 $script:configurationDn

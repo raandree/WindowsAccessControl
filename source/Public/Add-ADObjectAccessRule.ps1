@@ -6,7 +6,9 @@ function Add-ADObjectAccessRule {
         Prevalidates identities and a disposable OU boundary, adds idempotent
         common or object-specific ACEs, and revalidates object GUID before LDAP write.
     .PARAMETER Server
-        The explicit DNS name of the final writable domain controller.
+        The explicit DNS name of the final writable domain controller. When it
+        is omitted, one writable domain controller is located in the current
+        computer's domain and pinned for the whole command.
     .PARAMETER DistinguishedName
         One or more distinguished names to modify.
     .PARAMETER AllowedBaseDistinguishedName
@@ -44,7 +46,7 @@ function Add-ADObjectAccessRule {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory)]
+        [Parameter()]
         [string]$Server,
         [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [Alias('Path')]
@@ -91,10 +93,14 @@ function Add-ADObjectAccessRule {
     }
     process {
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            if (-not $pinnedServer) {
+                $pinnedServer = Resolve-WindowsADServer -Server $Server
+            }
+            $PSBoundParameters['Server'] = $pinnedServer
             Invoke-WindowsADCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `
                 -BoundParameters $PSBoundParameters `
-                -Server $Server `
+                -Server $pinnedServer `
                 -DistinguishedName $DistinguishedName `
                 -Credential $Credential `
                 -TimeoutSeconds $TimeoutSeconds `

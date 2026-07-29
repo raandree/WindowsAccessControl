@@ -6,7 +6,16 @@ function ConvertTo-WindowsADAccessRuleObject {
         [System.Security.AccessControl.GenericAce]$Ace,
 
         [Parameter(Mandatory)]
-        [pscustomobject]$Target
+        [pscustomobject]$Target,
+
+        [Parameter()]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$InheritedFrom,
+
+        [Parameter()]
+        [AllowNull()]
+        [System.Collections.IDictionary]$SchemaGuidName
     )
 
     $qualifiedAce = $Ace -as [System.Security.AccessControl.QualifiedAce]
@@ -29,6 +38,18 @@ function ConvertTo-WindowsADAccessRuleObject {
         $isOrphaned = $true
     }
     $objectAce = $Ace -as [System.Security.AccessControl.ObjectAce]
+    $objectTypeGuid = if ($objectAce -and
+        ($objectAce.ObjectAceFlags -band
+            [System.Security.AccessControl.ObjectAceFlags]::ObjectAceTypePresent)) {
+        $objectAce.ObjectAceType
+    }
+    else { [guid]::Empty }
+    $inheritedObjectTypeGuid = if ($objectAce -and
+        ($objectAce.ObjectAceFlags -band
+            [System.Security.AccessControl.ObjectAceFlags]::InheritedObjectAceTypePresent)) {
+        $objectAce.InheritedObjectAceType
+    }
+    else { [guid]::Empty }
     $inheritanceMask = [int]$Ace.AceFlags -band (
         [int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
         [int][System.Security.AccessControl.AceFlags]::InheritOnly -bor
@@ -42,6 +63,8 @@ function ConvertTo-WindowsADAccessRuleObject {
         14 { [WindowsActiveDirectoryInheritance]::Children }
         default { [WindowsActiveDirectoryInheritance]::None }
     }
+    $isInherited = ([int]$Ace.AceFlags -band
+        [int][System.Security.AccessControl.AceFlags]::Inherited) -ne 0
     $result = [pscustomobject]@{
         ObjectType = 'ADObject'
         Server = $Target.Server
@@ -64,20 +87,17 @@ function ConvertTo-WindowsADAccessRuleObject {
             [System.Security.AccessControl.AccessControlType]::Allow
         }
         InheritanceType = $inheritanceType
-        IsInherited = ([int]$Ace.AceFlags -band
-            [int][System.Security.AccessControl.AceFlags]::Inherited) -ne 0
-        ObjectTypeGuid = if ($objectAce -and
-            ($objectAce.ObjectAceFlags -band
-                [System.Security.AccessControl.ObjectAceFlags]::ObjectAceTypePresent)) {
-            $objectAce.ObjectAceType
+        IsInherited = $isInherited
+        InheritedFrom = if ($isInherited -and -not [string]::IsNullOrEmpty($InheritedFrom)) {
+            $InheritedFrom
         }
-        else { [guid]::Empty }
-        InheritedObjectTypeGuid = if ($objectAce -and
-            ($objectAce.ObjectAceFlags -band
-                [System.Security.AccessControl.ObjectAceFlags]::InheritedObjectAceTypePresent)) {
-            $objectAce.InheritedObjectAceType
-        }
-        else { [guid]::Empty }
+        else { $null }
+        ObjectTypeGuid = $objectTypeGuid
+        ObjectTypeName = Get-WindowsADSchemaGuidDisplayName `
+            -Guid $objectTypeGuid -SchemaGuidName $SchemaGuidName
+        InheritedObjectTypeGuid = $inheritedObjectTypeGuid
+        InheritedObjectTypeName = Get-WindowsADSchemaGuidDisplayName `
+            -Guid $inheritedObjectTypeGuid -SchemaGuidName $SchemaGuidName
         IdentityReference = $qualifiedAce.SecurityIdentifier
         NativeAce = $Ace
     }

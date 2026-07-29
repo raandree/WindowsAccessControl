@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `InheritedFrom` provenance to Active Directory access-rule results and
+    their default table view, resolved by walking the ancestor chain over the
+    same signed and sealed connection that returned the descriptor
+- Add `ObjectTypeName` and `InheritedObjectTypeName` to Active Directory
+    access-rule results, resolving schema classes, attributes, property sets,
+    validated writes, and extended rights while preserving the GUID properties
 - Add native `InheritedFrom` provenance to registry-key access-rule results and
     their default table view, resolved with the Windows inheritance-source API
     for the default registry view
@@ -112,6 +118,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Make `Server` optional on `Get-ADObjectAccessRule`,
+    `Get-ADObjectSecurityDescriptor`, `Add-ADObjectAccessRule`, and
+    `Set-ADObjectSecurityDescriptor`. When it is omitted, one writable domain
+    controller is located in the computer's domain, validated by the same
+    explicit-name rules, reported through the verbose stream, and pinned for
+    every target of that invocation
 - Make `SecurityDescriptor` the default parameter set on the registry
     descriptor and rule mutators so a piped descriptor binds to its typed
     parameter instead of the untyped `Path`. Path-based invocation is

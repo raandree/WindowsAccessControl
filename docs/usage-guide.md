@@ -116,20 +116,19 @@ selected SID's account authority.
 
 ## Delegate Active Directory object access
 
-Select the DC and allowed OU explicitly. Kerberos, LDAP signing, and sealing
-are mandatory:
+Select the allowed OU explicitly. Kerberos, LDAP signing, and sealing are
+mandatory. `Server` is optional; omit it to use one automatically located
+writable domain controller, which is then pinned for every target of that
+command:
 
 ```powershell
-$server = 'dc01.example.test'
 $baseDn = 'OU=Applications,DC=example,DC=test'
 $targetDn = "OU=Database,$baseDn"
 
-Get-ADObjectAccessRule `
-    -Server $server `
-    -DistinguishedName $targetDn
+Get-ADObjectAccessRule -DistinguishedName $targetDn
 
 Add-ADObjectAccessRule `
-    -Server $server `
+    -Server 'dc01.example.test' `
     -DistinguishedName $targetDn `
     -AllowedBaseDistinguishedName $baseDn `
     -Account $account `
@@ -140,6 +139,21 @@ Add-ADObjectAccessRule `
 
 Use `ObjectType` and `InheritedObjectType` GUIDs for property, extended-right,
 or child-object-specific ACEs. The output retains those GUIDs for exact removal.
+
+To find out where an inherited rule comes from and what its GUIDs mean, read
+`InheritedFrom`, `ObjectTypeName`, and `InheritedObjectTypeName`:
+
+```powershell
+Get-ADObjectAccessRule -DistinguishedName $targetDn -ExcludeExplicit |
+    Format-Table Account, AccessRights, ObjectTypeName, InheritedObjectTypeName,
+        InheritedFrom
+```
+
+`InheritedFrom` names the nearest ancestor object that holds the originating
+explicit inheritable ACE. It stays empty when an ancestor in the chain cannot be
+read, so an unreadable parent costs the column rather than the rules. The name
+properties resolve schema classes, attributes, property sets, validated writes,
+and extended rights, and stay empty for a GUID that resolves to none of those.
 
 ## Manage Task Scheduler DACLs
 

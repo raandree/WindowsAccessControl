@@ -124,8 +124,18 @@ argument array before later values. Build script-block argument lists with a
 otherwise `RawSecurityDescriptor` receives a single byte and reports that the
 destination array is too short.
 
-## ServiceController type loading
+## Parameter type attributes bind before the body runs
 
+Windows PowerShell resolves a parameter's type attribute during binding, before
+the function body executes. A private helper that declares
+`[System.DirectoryServices.Protocols.LdapConnection]$Connection` therefore fails
+with `Unable to find type` when it is the first directory call in a session,
+even though a helper it calls would have loaded the assembly with `Add-Type`.
+PowerShell 7 resolves the same type because the assembly is already present.
+Load an on-demand assembly in the module prefix when any exported code path can
+reach a typed parameter from it.
+
+## ServiceController type loading
 Windows PowerShell 5.1 may not resolve the `System.ServiceProcess.ServiceController`
 type until `System.ServiceProcess` is loaded. Avoid a direct type literal in a
 merged module resolver: resolve it through `PSTypeName`, load the in-box

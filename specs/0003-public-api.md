@@ -130,7 +130,17 @@ ACE with rules on parent directories.
 reported as a provider path such as `HKCU:\Control Panel`. Windows rejects the
 `Registry32` and `Registry64` object types for inheritance-source lookups, so
 those views always return null rather than an ancestor resolved against a
-different view. Every other object family that shares the rule shape carries
+different view.
+
+`ADObjectAccessRule` objects expose `InheritedFrom` as the distinguished name of
+the nearest ancestor object that holds the originating explicit inheritable ACE.
+Windows offers no inheritance-source call that can honor the selected domain
+controller and credential, so the directory family resolves the source by
+walking the ancestor chain over the same bound connection. The value is null for
+an explicit rule, for an inherited rule whose origin lies above an ancestor the
+caller cannot read, and when the lookup fails.
+
+Every other object family that shares the rule shape carries
 the property for a uniform output contract but never populates it, because the
 module does not resolve provenance for registry audit rules, service, SCM,
 process, or SMB share rules.
@@ -470,15 +480,23 @@ material, disposes the caller certificate, or exposes a mutation surface.
 | `Add-ADObjectAccessRule` | distinguished names | none / `ADObjectAccessRule` |
 | `Remove-ADObjectAccessRule` | path-bound `ADObjectAccessRule` | none / removed rule |
 
-Every AD command requires an explicit `Server`. Mutators additionally require
-`AllowedBaseDistinguishedName`. Query output includes `Server`, current
+`Server` is optional on every AD command except `Remove-ADObjectAccessRule`,
+which takes it from the path-bound rule. When it is omitted, one writable domain
+controller is located in the calling computer's domain, validated by the same
+explicit-name rules, and pinned for the whole invocation. Mutators additionally
+require `AllowedBaseDistinguishedName`. Query output includes `Server`, current
 `DistinguishedName`, immutable `ObjectGuid`, SID/account state, unsigned access
 mask, `WindowsActiveDirectoryRights`, allow/deny qualifier, inheritance,
-`ObjectTypeGuid`, `InheritedObjectTypeGuid`, and the exact native ACE.
+`InheritedFrom`, `ObjectTypeGuid`, `ObjectTypeName`, `InheritedObjectTypeGuid`,
+`InheritedObjectTypeName`, and the exact native ACE. The two name properties
+report the schema class, attribute, property set, validated write, or extended
+right that each GUID identifies, and are null when the GUID is absent or
+unresolved.
 
-An optional credential binds directly to the selected DC. It is never emitted.
-The first increment operates on DACLs only and exposes no implicit DC discovery,
-SACL, backup, DSC, replication, or effective-access contract.
+An optional credential binds directly to the selected DC. It is never emitted,
+and it is not used to locate a domain controller. The first increment operates
+on DACLs only and exposes no SACL, backup, DSC, replication, or effective-access
+contract.
 Exact removal is idempotent when the path-bound ACE is already absent.
 
 ## Local impersonation

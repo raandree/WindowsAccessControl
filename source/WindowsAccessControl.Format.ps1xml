@@ -362,6 +362,7 @@
           <TableColumnHeader><Label>Type</Label></TableColumnHeader>
           <TableColumnHeader><Label>Inheritance</Label></TableColumnHeader>
           <TableColumnHeader><Label>ObjectType</Label></TableColumnHeader>
+          <TableColumnHeader><Label>InheritedFrom</Label></TableColumnHeader>
         </TableHeaders>
         <TableRowEntries>
           <TableRowEntry>
@@ -371,7 +372,8 @@
               <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>InheritanceType</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>ObjectTypeGuid</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>ObjectTypeName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>InheritedFrom</PropertyName></TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
         </TableRowEntries>

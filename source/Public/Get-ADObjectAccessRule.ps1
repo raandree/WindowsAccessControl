@@ -5,8 +5,13 @@ function Get-ADObjectAccessRule {
     .DESCRIPTION
         Reads object DACLs over signed and sealed LDAP and preserves common or
         object-specific ACE masks, inheritance, GUIDs, and immutable targets.
+        Inherited rules expose InheritedFrom with the ancestor object that holds
+        the originating explicit ACE, and object GUIDs are additionally reported
+        as resolved schema, property-set, or extended-right names.
     .PARAMETER Server
-        The explicit DNS name of the final writable domain controller.
+        The explicit DNS name of the final writable domain controller. When it
+        is omitted, one writable domain controller is located in the current
+        computer's domain and pinned for the whole command.
     .PARAMETER DistinguishedName
         One or more distinguished names to query.
     .PARAMETER Credential
@@ -25,6 +30,11 @@ function Get-ADObjectAccessRule {
         Get-ADObjectAccessRule -Server dc01.example.test -DistinguishedName $dn -Account Everyone
 
         Gets Everyone access rules from the selected directory object.
+    .EXAMPLE
+        Get-ADObjectAccessRule -DistinguishedName $dn -ExcludeExplicit
+
+        Gets inherited rules, with their source object and resolved GUID names,
+        through an automatically located writable domain controller.
     .INPUTS
         System.String
     .OUTPUTS
@@ -33,7 +43,7 @@ function Get-ADObjectAccessRule {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory)]
+        [Parameter()]
         [string]$Server,
         [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
         [Alias('Path')]
@@ -57,10 +67,14 @@ function Get-ADObjectAccessRule {
 
     process {
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
+            if (-not $pinnedServer) {
+                $pinnedServer = Resolve-WindowsADServer -Server $Server
+            }
+            $PSBoundParameters['Server'] = $pinnedServer
             Invoke-WindowsADCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `
                 -BoundParameters $PSBoundParameters `
-                -Server $Server `
+                -Server $pinnedServer `
                 -DistinguishedName $DistinguishedName `
                 -Credential $Credential `
                 -TimeoutSeconds $TimeoutSeconds `
@@ -72,30 +86,64 @@ function Get-ADObjectAccessRule {
                 (Resolve-WindowsIdentityReference -Identity $accountValue).Value
             }
         )
-        foreach ($dnValue in $DistinguishedName) {
-            $target = Resolve-WindowsADObjectTarget `
-                -Server $Server `
-                -DistinguishedName ([string]$dnValue) `
-                -Credential $Credential `
-                -TimeoutSeconds $TimeoutSeconds
-            $descriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new(
-                $target.BinarySecurityDescriptor,
-                0
-            )
-            for ($index = 0; $index -lt $descriptor.DiscretionaryAcl.Count; $index++) {
-                $ace = $descriptor.DiscretionaryAcl[$index]
-                $qualified = $ace -as [System.Security.AccessControl.QualifiedAce]
-                if (-not $qualified) { continue }
-                $isInherited = ([int]$ace.AceFlags -band
-                    [int][System.Security.AccessControl.AceFlags]::Inherited) -ne 0
-                if (($ExcludeInherited -and $isInherited) -or
-                    ($ExcludeExplicit -and -not $isInherited) -or
-                    ($accountSids.Count -gt 0 -and
-                        $qualified.SecurityIdentifier.Value -notin $accountSids)) {
+        $connection = New-WindowsADConnection `
+            -Server $Server `
+            -Credential $Credential `
+            -TimeoutSeconds $TimeoutSeconds
+        try {
+            foreach ($dnValue in $DistinguishedName) {
+                $target = Resolve-WindowsADObjectTarget `
+                    -Server $Server `
+                    -DistinguishedName ([string]$dnValue) `
+                    -Credential $Credential `
+                    -TimeoutSeconds $TimeoutSeconds `
+                    -Connection $connection
+                $acl = [System.Security.AccessControl.RawSecurityDescriptor]::new(
+                    $target.BinarySecurityDescriptor,
+                    0
+                ).DiscretionaryAcl
+                if (-not $acl) {
                     continue
                 }
-                ConvertTo-WindowsADAccessRuleObject -Ace $ace -Target $target
+                $selectedIndexes = @(
+                    for ($index = 0; $index -lt $acl.Count; $index++) {
+                        $qualified = $acl[$index] -as [System.Security.AccessControl.QualifiedAce]
+                        if (-not $qualified) { continue }
+                        $isInherited = ([int]$acl[$index].AceFlags -band
+                            [int][System.Security.AccessControl.AceFlags]::Inherited) -ne 0
+                        if (($ExcludeInherited -and $isInherited) -or
+                            ($ExcludeExplicit -and -not $isInherited) -or
+                            ($accountSids.Count -gt 0 -and
+                                $qualified.SecurityIdentifier.Value -notin $accountSids)) {
+                            continue
+                        }
+                        $index
+                    }
+                )
+                if ($selectedIndexes.Count -eq 0) {
+                    continue
+                }
+                $enrichment = Get-WindowsADRuleEnrichment `
+                    -Connection $connection `
+                    -Target $target `
+                    -Ace @(foreach ($index in $selectedIndexes) { $acl[$index] }) `
+                    -SkipInheritanceSource:$ExcludeInherited
+
+                foreach ($index in $selectedIndexes) {
+                    $inheritedFrom = if ($index -lt $enrichment.InheritanceSource.Count) {
+                        $enrichment.InheritanceSource[$index]
+                    }
+                    else { $null }
+                    ConvertTo-WindowsADAccessRuleObject `
+                        -Ace $acl[$index] `
+                        -Target $target `
+                        -InheritedFrom $inheritedFrom `
+                        -SchemaGuidName $enrichment.SchemaGuidName
+                }
             }
+        }
+        finally {
+            $connection.Dispose()
         }
     }
 }
