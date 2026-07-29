@@ -295,6 +295,12 @@ ENT-8 are closed for the currently shipped enterprise families.
     terminating error to a non-terminating one on its sequential path. Two
     source-stash bisects reproduce the failure on unmodified `HEAD` source, so
     the defect predates this increment; it is recorded as OI-26.
+- 2026-07-29: Closed OI-26 by buffering each target's worker output and
+    emitting it after the dispatcher's `try`/`catch` on both the sequential and
+    parallel paths, after a probe proved a downstream terminating error is
+    indistinguishable from a worker failure by exception type, error ID,
+    activity, or invocation info. Added sequential and parallel propagation
+    regression tests; both previously failing integration tests pass again.
 
 ## Stable capabilities
 
@@ -354,7 +360,4 @@ ENT-8 are closed for the currently shipped enterprise families.
     private-key portability/desired state after their security gates.
 - OI-25 extends inheritance-sensitive duplicate detection to the registry-key
     family.
-- OI-26 stops the batch dispatcher downgrading a downstream terminating error
-    to a non-terminating one, which currently makes two in-memory descriptor
-    editing tests environment sensitive.
 - Remote publication remains user-controlled.

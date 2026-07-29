@@ -168,6 +168,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Propagate a terminating error raised by a command downstream of a batched
+    target instead of downgrading it to a non-terminating error, so a piped
+    fail-closed rejection such as `Get-NTFSItemSecurityDescriptor -Sections
+    Owner | Add-NTFSAccessRule` stops the caller as its own contract promises
+- Let a command downstream of a batched target dispatch and lock its own
+    targets, instead of observing the batch-worker flag and taking the inline
+    branch that skips same-target write serialization
 - Reject a descriptor-bound mutation whose required section was not loaded,
     instead of expanding the persisted section set and replacing a live ACL
     with an empty one

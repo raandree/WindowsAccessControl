@@ -116,6 +116,88 @@ Describe 'Invoke-WindowsAccessControlBatch' -Tag 'Unit', 'WindowsOnly' {
         $result | Should -Be @('third', 'first', 'second')
     }
 
+    It 'Should propagate a downstream terminating error from sequential dispatch' {
+        $worker = & $script:module {
+            { param($InputValue) $InputValue }
+        }
+
+        {
+            & $script:module {
+                param($InputValues, $Worker)
+                Invoke-WindowsAccessControlBatch `
+                    -InputObject $InputValues `
+                    -ScriptBlock $Worker `
+                    -ThrottleLimit 1 |
+                    ForEach-Object {
+                        throw [InvalidOperationException]::new(
+                            'Expected downstream rejection.'
+                        )
+                    }
+            } @(1, 2) $worker
+        } | Should -Throw -ExpectedMessage '*Expected downstream rejection*'
+    }
+
+    It 'Should propagate a downstream terminating error from parallel dispatch' {
+        $worker = & $script:module {
+            { param($InputValue) $InputValue }
+        }
+
+        {
+            & $script:module {
+                param($InputValues, $Worker)
+                Invoke-WindowsAccessControlBatch `
+                    -InputObject $InputValues `
+                    -ScriptBlock $Worker `
+                    -ThrottleLimit 2 |
+                    ForEach-Object {
+                        throw [InvalidOperationException]::new(
+                            'Expected downstream rejection.'
+                        )
+                    }
+            } @(1, 2, 3, 4) $worker
+        } | Should -Throw -ExpectedMessage '*Expected downstream rejection*'
+    }
+
+    It 'Should emit a failing target''s partial output before its error' {
+        $worker = & $script:module {
+            {
+                param($InputValue)
+                "$InputValue-partial"
+                throw 'Expected target failure.'
+            }
+        }
+
+        $merged = @(& $script:module {
+            param($Worker)
+            Invoke-WindowsAccessControlBatch `
+                -InputObject @(1) `
+                -ScriptBlock $Worker `
+                -ThrottleLimit 1 `
+                -ErrorAction Continue
+        } $worker 2>&1)
+
+        $merged | Should -HaveCount 2
+        $merged[0] | Should -BeExactly '1-partial'
+        $merged[1] | Should -BeOfType ([System.Management.Automation.ErrorRecord])
+    }
+
+    It 'Should clear the batch-worker flag before a downstream command runs' {
+        $worker = & $script:module {
+            { param($InputValue) $InputValue }
+        }
+
+        $observed = & $script:module {
+            param($Worker)
+            Invoke-WindowsAccessControlBatch `
+                -InputObject @(1) `
+                -ScriptBlock $Worker `
+                -ThrottleLimit 1 |
+                ForEach-Object { $script:WindowsAccessControlBatchWorker.Value }
+        } $worker
+
+        $observed | Should -BeFalse -Because 'a downstream command must dispatch its own batch and take the target lock'
+    }
+
     It 'Should continue independent targets after one worker fails' {
         $worker = & $script:module {
             {

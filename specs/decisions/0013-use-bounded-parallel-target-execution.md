@@ -22,6 +22,8 @@ privilege restoration.
 - Reference-count automatic privilege scopes across workers.
 - Stream completed results and structured errors in completion order; do not
   promise input ordering for parallel execution.
+- Buffer one target's results and emit them after that target's dispatch scope
+  closes, so streaming granularity is per target rather than per object.
 - Keep global validation terminating and target-local failures nonterminating.
 
 ## Consequences
@@ -30,6 +32,14 @@ privilege restoration.
   growth.
 - Parallel output order is intentionally nondeterministic.
 - Same-target aliases cannot race one another after canonical deduplication.
+- A terminating error raised by a command downstream of the dispatcher reaches
+  the caller instead of being reported as a target failure, because no pipeline
+  write happens inside the dispatcher's target `catch`.
+- A downstream command observes the batch-worker flag as false and therefore
+  dispatches and locks its own targets normally.
+- Aborting a batch mid-loop stops remaining workers, but a worker already
+  blocked on a target semaphore can still complete its mutation before it
+  observes the stop.
 - Runspace isolation, privilege state, error aggregation, and cleanup need
   explicit cross-edition tests.
 

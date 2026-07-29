@@ -146,6 +146,10 @@ function Invoke-WindowsAccessControlBatch {
                 }
                 $lockAcquired = $false
                 $targetSucceeded = $true
+                $targetError = $null
+                # Buffer worker output so a downstream terminating error surfaces
+                # outside this catch instead of being downgraded to a warning.
+                $workerOutput = [System.Collections.Generic.List[object]]::new()
                 try {
                     if ($targetLock) {
                         $targetLock.Semaphore.Wait()
@@ -158,7 +162,8 @@ function Invoke-WindowsAccessControlBatch {
                             -Worker $ScriptBlock `
                             -InputValue $inputValue `
                             -Arguments $ArgumentList `
-                            -ErrorVariable +workerErrors
+                            -ErrorVariable +workerErrors |
+                            ForEach-Object { $workerOutput.Add($_) }
                         if ($workerErrors.Count -gt 0) {
                             $targetSucceeded = $false
                             $failureCount++
@@ -166,7 +171,7 @@ function Invoke-WindowsAccessControlBatch {
                     } catch {
                         $targetSucceeded = $false
                         $failureCount++
-                        $PSCmdlet.WriteError($_)
+                        $targetError = $_
                     }
                 } finally {
                     if ($lockAcquired) {
@@ -178,6 +183,12 @@ function Invoke-WindowsAccessControlBatch {
                 }
                 if ($targetSucceeded) {
                     $successCount++
+                }
+                foreach ($outputItem in $workerOutput) {
+                    $PSCmdlet.WriteObject($outputItem, $false)
+                }
+                if ($targetError) {
+                    $PSCmdlet.WriteError($targetError)
                 }
             }
         } finally {
@@ -295,8 +306,11 @@ finally
             $completedIndex = [System.Threading.WaitHandle]::WaitAny($waitHandles)
             $completedWorker = $activeWorkers[$completedIndex]
             $completionError = $null
+            $workerOutput = $null
             try {
-                $completedWorker.PowerShell.EndInvoke($completedWorker.AsyncResult)
+                $workerOutput = $completedWorker.PowerShell.EndInvoke(
+                    $completedWorker.AsyncResult
+                )
             } catch {
                 $completionError = $_
             }
@@ -327,6 +341,9 @@ finally
                     -TargetLock $completedWorker.TargetLock
             }
             $activeWorkers.RemoveAt($completedIndex)
+            foreach ($outputItem in $workerOutput) {
+                $PSCmdlet.WriteObject($outputItem, $false)
+            }
             foreach ($workerError in $workerErrors) {
                 $PSCmdlet.WriteError($workerError)
             }

@@ -568,3 +568,22 @@ Normative record: [ADR 0016](../specs/decisions/0016-require-schema-v2-for-enter
     gates, but previously wrote the stale candidate anyway, so a concurrent
     change was silently clobbered. The two rule-removal commands do not take
     the canonical target lock, so this check is what protects them.
+
+### Decision 55: Emit batched worker output outside the dispatcher's catch
+
+Normative record: [ADR 0013](../specs/decisions/0013-use-bounded-parallel-target-execution.md).
+
+- Choice: Keep every pipeline write out of the batch dispatcher's per-target
+    `try`/`catch`. The sequential path collects worker output into a list; the
+    parallel path reuses the collection `EndInvoke` already materialized. Both
+    emit through `$PSCmdlet.WriteObject($item, $false)` after the target's lock
+    is released, then write that target's error record.
+- Rationale: PowerShell surfaces a downstream command's terminating error in
+    the upstream frame at the moment output is written. With the write inside
+    the dispatcher's `catch`, that error was indistinguishable from a worker
+    failure — a probe confirmed identical exception type, fully qualified error
+    ID, activity, and invocation info — and was downgraded to a non-terminating
+    error, so a piped fail-closed rejection did not stop the caller. Moving the
+    write out also runs it after the worker's `finally` cleared the thread-local
+    batch-worker flag, so a downstream mutator dispatches and locks its own
+    targets instead of silently taking the inline branch.

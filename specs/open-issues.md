@@ -84,21 +84,6 @@ through `Invoke-WindowsAclRuleMutation -MatchAceFlags`; extend it to the
 registry family with regression coverage and confirm that no existing `Set` or
 `Clear` behavior changes.
 
-## OI-26: Stop the batch dispatcher downgrading downstream terminating errors
-
-Specification: 0003.
-
-`Invoke-WindowsAccessControlBatch` catches an exception raised while writing a
-target result and re-emits it through `$PSCmdlet.WriteError`. When a command is
-piped into a mutator, a terminating error thrown by the downstream command
-surfaces in that frame and is downgraded to a non-terminating error, so
-`Get-NTFSItemSecurityDescriptor -Sections Owner | Add-NTFSAccessRule
--ErrorAction Stop` reports the fail-closed section rejection without throwing.
-The same statement throws when the descriptor is bound from a variable. Two
-integration tests assert the throwing form and are therefore sensitive to the
-caller's effective `$ErrorActionPreference`. Distinguish a worker failure from
-a downstream pipeline failure and rethrow the latter.
-
 ## See also
 
 - [Specification index](README.md)
