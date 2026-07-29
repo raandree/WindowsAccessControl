@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `SecurityDescriptor` parameter sets to the remaining NTFS access, audit,
+    owner, and inheritance mutators so a detached descriptor can be edited in
+    memory and persisted with one write
+- Add registry-key descriptor editing with `Edit-RegistryKeySecurityDescriptor`,
+    descriptor input on `Set-RegistryKeySecurityDescriptor`, and
+    `SecurityDescriptor` parameter sets on every registry access, audit, and
+    inheritance mutator
+- Add an opt-in `RequireUnchanged` optimistic-concurrency switch and a
+    `ConcurrencyToken` descriptor property that reject a stale target before
+    persistence; last-writer-wins remains the default
 - Add 28 pipeline-first commands for NTFS access rules, audit rules, ownership,
     inheritance, identities, privileges, effective access, and ACL diagnostics
 - Add selected-section descriptor copy plus validated JSON backup and restore
@@ -94,6 +104,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Make `SecurityDescriptor` the default parameter set on the registry
+    descriptor and rule mutators so a piped descriptor binds to its typed
+    parameter instead of the untyped `Path`. Path-based invocation is
+    unchanged, but a call with no bound target now reports `SecurityDescriptor`
+    as the missing mandatory parameter
 - Complete the cross-edition enterprise release gate with privilege, static,
     package, cleanup, security-review, and policy-qualified impersonation
     evidence
@@ -140,6 +155,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject a descriptor-bound mutation whose required section was not loaded,
+    instead of expanding the persisted section set and replacing a live ACL
+    with an empty one
+- Persist the selected ACL protection state with `Set-NTFSItemSecurityDescriptor`
+    so a detached inheritance edit converges like its path-bound equivalent
+- Request NTFS ACL protection only for an ACL that is present, so persisting an
+    `Access, Audit` descriptor on an item without a SACL no longer fails after
+    the DACL was already written
+- Refresh a filesystem descriptor's SDDL, protection, and canonical projection
+    after each in-memory mutation so a staged descriptor cannot be backed up or
+    inspected with pre-edit content
 - Persist DACL and SACL inheritance protection changes on PowerShell 7 through
     a section-scoped native security update
 - Fix account-wide access and audit removal when `AccessRights` is omitted

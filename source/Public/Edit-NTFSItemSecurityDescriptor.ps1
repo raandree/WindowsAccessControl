@@ -21,6 +21,9 @@ function Edit-NTFSItemSecurityDescriptor {
         this scope persists them.
     .PARAMETER ArgumentList
         Supplies additional positional arguments after the descriptor.
+    .PARAMETER RequireUnchanged
+        Rejects the write when the selected sections changed between this
+        scope's read and its persist step. The default is last-writer-wins.
     .PARAMETER ThrottleLimit
         Accepted for target-array command consistency. Caller script blocks are
         intentionally dispatched sequentially to preserve runspace affinity;
@@ -79,6 +82,9 @@ function Edit-NTFSItemSecurityDescriptor {
         [Parameter()]
         [AllowEmptyCollection()]
         [object[]]$ArgumentList = @(),
+
+        [Parameter()]
+        [switch]$RequireUnchanged,
 
         [Parameter()]
         [ValidateRange(1, 64)]
@@ -156,6 +162,19 @@ function Edit-NTFSItemSecurityDescriptor {
 
             $action = "Persist edited $Sections security descriptor sections"
             if ($PSCmdlet.ShouldProcess($item.FullName, $action)) {
+                if ($RequireUnchanged) {
+                    $currentSecurity = Get-NTFSSecurityDescriptorForItem `
+                        -Item $item `
+                        -Sections $Sections
+                    $current = ConvertTo-NTFSSecurityDescriptorObject `
+                        -Item $item `
+                        -Security $currentSecurity `
+                        -Sections $Sections
+                    Assert-WindowsDescriptorUnchanged `
+                        -ExpectedToken $descriptor.ConcurrencyToken `
+                        -CurrentToken $current.ConcurrencyToken `
+                        -Target $item.FullName
+                }
                 $persistenceParameters = @{
                     Item     = $item
                     Security = [Security.AccessControl.FileSystemSecurity](

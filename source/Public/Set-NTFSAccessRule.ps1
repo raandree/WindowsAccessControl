@@ -16,6 +16,12 @@ function Set-NTFSAccessRule {
         One or more filesystem paths used exactly as supplied. FileSystem
         objects bind to this parameter through their PSPath property.
 
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.SecurityDescriptor object returned by
+        Get-NTFSItemSecurityDescriptor. When supplied, matching rules are
+        replaced on the descriptor in memory and the descriptor is returned;
+        nothing is written until Set-NTFSItemSecurityDescriptor persists it.
+
     .PARAMETER Account
         The account name or SID whose matching access rules are replaced.
 
@@ -41,13 +47,22 @@ function Set-NTFSAccessRule {
 
         Replaces allow rules for the Analysts group with a Modify rule.
 
+    .EXAMPLE
+        Get-NTFSItemSecurityDescriptor -LiteralPath C:\Data -Sections Access |
+            Set-NTFSAccessRule -Account 'CONTOSO\Analysts' -AccessRights Modify |
+            Set-NTFSItemSecurityDescriptor
+
+        Stages the replacement in memory and persists it with one write.
+
     .INPUTS
         System.String
         System.IO.FileSystemInfo
+        WindowsAccessControl.SecurityDescriptor
 
     .OUTPUTS
         None
         WindowsAccessControl.AccessRule
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -60,6 +75,10 @@ function Set-NTFSAccessRule {
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = 'LiteralPath')]
         [Alias('PSPath')]
         [string[]]$LiteralPath,
+
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.SecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
@@ -105,6 +124,28 @@ function Set-NTFSAccessRule {
     }
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $security = Assert-NTFSDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Access
+            $effectiveAppliesTo = Get-NTFSDescriptorAppliesTo `
+                -SecurityDescriptor $SecurityDescriptor `
+                -AppliesTo $AppliesTo
+            $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
+            $security.SetAccessRule(
+                [System.Security.AccessControl.FileSystemAccessRule]::new(
+                    $securityIdentifier,
+                    $AccessRights,
+                    $scope.InheritanceFlags,
+                    $scope.PropagationFlags,
+                    $AccessControlType
+                )
+            )
+            Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsNtfsCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `

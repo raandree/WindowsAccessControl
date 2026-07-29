@@ -7,6 +7,11 @@ function Set-RegistryKeyAccessRule {
         or deny qualifier, adds the replacement rule, and writes each DACL once.
     .PARAMETER Path
         One or more local registry key paths or RegistryKey pipeline objects.
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.RegistryKeySecurityDescriptor object returned by
+        Get-RegistryKeySecurityDescriptor. When supplied, matching rules are
+        replaced on the descriptor in memory and the descriptor is returned;
+        nothing is written until Set-RegistryKeySecurityDescriptor persists it.
     .PARAMETER Account
         One or more account names, SID strings, identity references, or module identities.
     .PARAMETER AccessRights
@@ -29,16 +34,21 @@ function Set-RegistryKeyAccessRule {
     .INPUTS
         System.String
         Microsoft.Win32.RegistryKey
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     .OUTPUTS
         None
         WindowsAccessControl.RegistryKeyAccessRule
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     #>
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'SecurityDescriptor')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'Path')]
         [Alias('PSPath')]
         [object[]]$Path,
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.RegistryKeySecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
         [Parameter(Mandatory)]
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
@@ -76,6 +86,28 @@ function Set-RegistryKeyAccessRule {
     }
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $bytes = Assert-WindowsDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Access `
+                -TypeName 'WindowsAccessControl.RegistryKeySecurityDescriptor'
+            foreach ($sid in $identities) {
+                $bytes = Invoke-WindowsAclRuleMutation `
+                    -SecurityDescriptor $bytes `
+                    -RuleType 'Access' `
+                    -Operation 'Set' `
+                    -SecurityIdentifier $sid `
+                    -AccessMask ([int]$AccessRights) `
+                    -AccessControlType $AccessControlType `
+                    -AceFlags $aceFlags
+            }
+            Update-WindowsSecurityDescriptorObject `
+                -Descriptor $SecurityDescriptor `
+                -SecurityDescriptor $bytes
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsRegistryCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `

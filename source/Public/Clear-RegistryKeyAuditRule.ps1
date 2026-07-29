@@ -7,6 +7,12 @@ function Clear-RegistryKeyAuditRule {
         explicit audit rule when Account is omitted, without changing inherited ACEs.
     .PARAMETER Path
         One or more local registry key paths or RegistryKey pipeline objects.
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.RegistryKeySecurityDescriptor object returned by
+        Get-RegistryKeySecurityDescriptor with the Audit section loaded. When
+        supplied, the selected explicit rules are cleared on the descriptor in
+        memory and the descriptor is returned; nothing is written until
+        Set-RegistryKeySecurityDescriptor persists it.
     .PARAMETER Account
         Optional account names or SIDs whose explicit audit rules are removed.
     .PARAMETER RegistryView
@@ -23,16 +29,21 @@ function Clear-RegistryKeyAuditRule {
     .INPUTS
         System.String
         Microsoft.Win32.RegistryKey
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     .OUTPUTS
         None
         WindowsAccessControl.RegistryKeyAuditRule
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     #>
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'SecurityDescriptor')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'Path')]
         [Alias('PSPath')]
         [object[]]$Path,
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.RegistryKeySecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
         [Parameter()]
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
@@ -60,6 +71,32 @@ function Clear-RegistryKeyAuditRule {
         )
     }
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $bytes = Assert-WindowsDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Audit `
+                -TypeName 'WindowsAccessControl.RegistryKeySecurityDescriptor'
+            if ($identities.Count -eq 0) {
+                $bytes = Invoke-WindowsAclRuleMutation `
+                    -SecurityDescriptor $bytes `
+                    -RuleType 'Audit' `
+                    -Operation 'Clear'
+            } else {
+                foreach ($sid in $identities) {
+                    $bytes = Invoke-WindowsAclRuleMutation `
+                        -SecurityDescriptor $bytes `
+                        -RuleType 'Audit' `
+                        -Operation 'Clear' `
+                        -SecurityIdentifier $sid
+                }
+            }
+            Update-WindowsSecurityDescriptorObject `
+                -Descriptor $SecurityDescriptor `
+                -SecurityDescriptor $bytes
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsRegistryCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `

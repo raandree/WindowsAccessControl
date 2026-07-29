@@ -15,6 +15,11 @@ function Set-NTFSItemSecurityDescriptor {
         A WindowsAccessControl.SecurityDescriptor object returned by
         Get-NTFSItemSecurityDescriptor, optionally after in-memory edits.
 
+    .PARAMETER RequireUnchanged
+        Rejects the write when the selected sections of the live item no longer
+        match the ConcurrencyToken recorded when the descriptor was read. The
+        default is last-writer-wins.
+
     .PARAMETER PassThru
         Returns the descriptor object after it is persisted. By default, the
         command does not emit output.
@@ -25,6 +30,11 @@ function Set-NTFSItemSecurityDescriptor {
             Set-NTFSItemSecurityDescriptor
 
         Stages a read access rule in memory and persists the DACL with one write.
+
+    .EXAMPLE
+        $descriptor | Set-NTFSItemSecurityDescriptor -RequireUnchanged
+
+        Fails instead of overwriting a DACL that another writer changed.
 
     .INPUTS
         WindowsAccessControl.SecurityDescriptor
@@ -38,6 +48,9 @@ function Set-NTFSItemSecurityDescriptor {
     param(
         [Parameter(Mandatory, ValueFromPipeline)]
         [pscustomobject]$InputObject,
+
+        [Parameter()]
+        [switch]$RequireUnchanged,
 
         [Parameter()]
         [switch]$PassThru
@@ -55,16 +68,49 @@ function Set-NTFSItemSecurityDescriptor {
         $item = $items[0]
         $sections = [System.Security.AccessControl.AccessControlSections]$InputObject.Sections
 
+        $hasAccess = ([int]$sections -band
+            [int][System.Security.AccessControl.AccessControlSections]::Access) -ne 0
+        $hasAudit = ([int]$sections -band
+            [int][System.Security.AccessControl.AccessControlSections]::Audit) -ne 0
+        $protectionSection = if ($hasAccess -and $hasAudit) {
+            'All'
+        } elseif ($hasAccess) {
+            'Access'
+        } elseif ($hasAudit) {
+            'Audit'
+        } else {
+            $null
+        }
+
         $action = "Persist $sections security descriptor sections"
         if ($PSCmdlet.ShouldProcess($item.FullName, $action)) {
+            if ($RequireUnchanged) {
+                $currentSecurity = Get-NTFSSecurityDescriptorForItem `
+                    -Item $item `
+                    -Sections $sections
+                $current = ConvertTo-NTFSSecurityDescriptorObject `
+                    -Item $item `
+                    -Security $currentSecurity `
+                    -Sections $sections
+                Assert-WindowsDescriptorUnchanged `
+                    -ExpectedToken $InputObject.ConcurrencyToken `
+                    -CurrentToken $current.ConcurrencyToken `
+                    -Target $item.FullName
+            }
             $persistenceParameters = @{
                 Item     = $item
                 Security = [System.Security.AccessControl.FileSystemSecurity]$InputObject.NativeSecurity
                 Sections = $sections
             }
+            if ($protectionSection) {
+                $persistenceParameters.ProtectionSection = $protectionSection
+            }
             Invoke-NTFSSecurityDescriptorPersistence @persistenceParameters
 
             if ($PassThru) {
+                Update-NTFSSecurityDescriptorObject `
+                    -Descriptor $InputObject `
+                    -RefreshConcurrencyToken
                 $InputObject
             }
         }

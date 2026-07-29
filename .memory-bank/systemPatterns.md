@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-27
+last-verified: 2026-07-29
 owner: active-agent
 source: repository evidence
 ---
@@ -473,3 +473,41 @@ Normative record: [ADR 0016](../specs/decisions/0016-require-schema-v2-for-enter
     implementation checks, service-ACE preservation, rollback, and separate
     cryptographic review. Read authority can be proven without assuming those
     mutation guarantees.
+
+### Decision 46: Fail closed on an unloaded descriptor section
+
+- Choice: Reject a descriptor-bound mutation whose required section was not
+    loaded, rather than widening the descriptor's `Sections` to cover it.
+- Rationale: Widening makes the persist step write a section the descriptor
+    never read, replacing a live ACL with an empty one. The gate protects
+    against forgetting to load a section; `Sections` stays caller-writable, so
+    it is not a defense against deliberate tampering by the trusted caller.
+
+### Decision 47: Keep a descriptor projection consistent with its native object
+
+- Choice: Refresh a descriptor's SDDL, owner, group, protection, and canonical
+    projection in place after every in-memory mutation, and create a missing
+    projection member instead of throwing.
+- Rationale: Backup and inspection read the projection, not the native object,
+    so a stale projection silently produces pre-edit output. Creating a missing
+    member keeps a caller-supplied object from failing after its target was
+    already written.
+
+### Decision 48: Never let a post-write step throw
+
+- Choice: Compile native types and validate native preconditions before the ACL
+    write, and skip an ACL-protection request whose ACL is absent while
+    reporting the skip through the verbose stream.
+- Rationale: A throw after `SetAccessControl` commits leaves a caller believing
+    nothing was applied while the change is live. `SetFileSystemAclProtection`
+    rejects an absent ACL, and NTFS items routinely have no SACL.
+
+### Decision 49: Default to the typed parameter set for descriptor input
+
+- Choice: Where a command exposes both an untyped `[object[]]$Path` and a
+    `[PSTypeName(...)]` descriptor parameter on the pipeline, make the
+    descriptor set the default.
+- Rationale: Both match a `pscustomobject` without coercion, and the binder
+    breaks the tie with the default set. With `Path` as the default, a piped
+    descriptor is stringified into a path and fails in target resolution. This
+    was verified empirically, not assumed.

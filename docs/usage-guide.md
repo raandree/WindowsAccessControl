@@ -387,8 +387,21 @@ $descriptor | Set-NTFSItemSecurityDescriptor -Confirm:$false
 ```
 
 The descriptor records its selected sections, and only those sections are
-written. The current in-memory mutation surface stages `Add-NTFSAccessRule`;
-use the path-based commands for other mutations.
+written. Every filesystem access, audit, owner, and inheritance mutator accepts
+a descriptor through its `SecurityDescriptor` parameter set, so several
+different edits can share one write:
+
+```powershell
+Get-NTFSItemSecurityDescriptor -LiteralPath $path -Sections Access |
+    Add-NTFSAccessRule -Account 'CONTOSO\Analysts' -AccessRights Read |
+    Set-NTFSAccessRule -Account 'CONTOSO\Auditors' -AccessRights Modify |
+    Disable-NTFSItemInheritance -Section Access |
+    Set-NTFSItemSecurityDescriptor -Confirm:$false
+```
+
+A descriptor-bound mutation fails when the section it would edit was not
+loaded, because persisting an unloaded section would replace a live ACL with an
+empty one. Read the sections you intend to edit.
 
 Keep the read, in-memory callback, and write in one same-target lock with the
 bounded scope:
@@ -414,6 +427,56 @@ output is suppressed, and errors or an attempt to add an unloaded section
 prevent the descriptor write. Use `PassThru` to receive the edited descriptor.
 Targets run sequentially so one caller script block is never invoked
 concurrently across runspaces; pass explicit values through `ArgumentList`.
+
+## Stage one registry descriptor write
+
+The registry-key family uses the same model:
+
+```powershell
+Get-RegistryKeySecurityDescriptor -Path 'HKLM:\SOFTWARE\Contoso' -Sections Access |
+    Add-RegistryKeyAccessRule -Account 'CONTOSO\Analysts' -AccessRights ReadKey |
+    Set-RegistryKeySecurityDescriptor -Confirm:$false
+
+Edit-RegistryKeySecurityDescriptor `
+    -Path 'HKLM:\SOFTWARE\Contoso' `
+    -Sections Access `
+    -ScriptBlock {
+        param($descriptor)
+        $descriptor | Clear-RegistryKeyAccessRule -Account 'CONTOSO\Legacy' | Out-Null
+    } `
+    -Confirm:$false
+```
+
+Exact ACE removal takes the rule through `-Rule` because the descriptor
+occupies the pipeline:
+
+```powershell
+$rule = Get-RegistryKeyAccessRule -Path 'HKLM:\SOFTWARE\Contoso' -ExcludeInherited |
+    Select-Object -First 1
+
+Get-RegistryKeySecurityDescriptor -Path 'HKLM:\SOFTWARE\Contoso' -Sections Access |
+    Remove-RegistryKeyAccessRule -Rule $rule |
+    Set-RegistryKeySecurityDescriptor -Confirm:$false
+```
+
+## Reject a stale descriptor
+
+A detached descriptor can drift from the live target. Persistence defaults to
+last-writer-wins. Add `RequireUnchanged` to fail instead of overwriting a
+concurrent change:
+
+```powershell
+$descriptor = Get-NTFSItemSecurityDescriptor -LiteralPath $path -Sections Access |
+    Add-NTFSAccessRule -Account 'CONTOSO\Analysts' -AccessRights Read
+
+$descriptor | Set-NTFSItemSecurityDescriptor -RequireUnchanged
+```
+
+The switch compares the descriptor's `ConcurrencyToken` against the live
+selected sections immediately before the write. It narrows the race window and
+fails fast; it is not a transactional guarantee. Re-read the descriptor and
+reapply the edit when it rejects the write, and re-read again before a second
+`RequireUnchanged` write because Windows can recompute inherited ACEs on write.
 
 ## Configure auditing
 

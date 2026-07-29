@@ -15,18 +15,6 @@ function ConvertTo-WindowsSecurityDescriptorObject {
         [string]$TypeName
     )
 
-    $rawDescriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new(
-        $SecurityDescriptor,
-        0
-    )
-    $managedSections = ConvertTo-WindowsAccessControlSection -Sections $Sections
-    $sddl = $rawDescriptor.GetSddlForm($managedSections)
-    $systemAclPresent = ([int]$rawDescriptor.ControlFlags -band
-        [int][System.Security.AccessControl.ControlFlags]::SystemAclPresent) -ne 0
-    if (($Sections -band [WindowsSecurityDescriptorSection]::Audit) -ne 0 -and
-        -not $rawDescriptor.SystemAcl -and -not $systemAclPresent) {
-        $sddl += 'S:NO_ACCESS_CONTROL'
-    }
     $result = [pscustomobject]@{
         ObjectType               = $Target.ObjectType
         Path                     = $Target.Path
@@ -55,18 +43,19 @@ function ConvertTo-WindowsSecurityDescriptorObject {
         CanonicalTarget          = $Target.CanonicalTarget
         RegistryView             = $Target.RegistryView
         Sections                 = $Sections
-        Sddl                     = $sddl
-        OwnerSID                 = if ($rawDescriptor.Owner) { $rawDescriptor.Owner.Value } else { $null }
-        GroupSID                 = if ($rawDescriptor.Group) { $rawDescriptor.Group.Value } else { $null }
-        AccessRulesProtected     = ([int]$rawDescriptor.ControlFlags -band (
-            [int][System.Security.AccessControl.ControlFlags]::DiscretionaryAclProtected
-        )) -ne 0
-        AuditRulesProtected      = ([int]$rawDescriptor.ControlFlags -band (
-            [int][System.Security.AccessControl.ControlFlags]::SystemAclProtected
-        )) -ne 0
+        Sddl                     = $null
+        OwnerSID                 = $null
+        GroupSID                 = $null
+        AccessRulesProtected     = $false
+        AuditRulesProtected      = $false
+        ConcurrencyToken         = $null
         BinarySecurityDescriptor = $SecurityDescriptor
-        NativeDescriptor         = $rawDescriptor
+        NativeDescriptor         = $null
     }
+    Update-WindowsSecurityDescriptorObject `
+        -Descriptor $result `
+        -SecurityDescriptor $SecurityDescriptor `
+        -RefreshConcurrencyToken
     $result.PSObject.TypeNames.Insert(0, $TypeName)
     $result.PSObject.TypeNames.Add('WindowsAccessControl.SecurityDescriptor')
     $result

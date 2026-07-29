@@ -141,10 +141,10 @@ inspectable without a mandatory default view.
 | --- | --- | --- | --- |
 | `New-NTFSAccessRule` | (single) | account strings | `AccessRule` |
 | `Get-NTFSAccessRule` | Path, LiteralPath | paths, filesystem objects | `AccessRule` |
-| `Add-NTFSAccessRule` | Path, LiteralPath | paths, filesystem objects | none / `AccessRule` |
-| `Set-NTFSAccessRule` | Path, LiteralPath | paths, filesystem objects | none / `AccessRule` |
-| `Remove-NTFSAccessRule` | Rule, Path, LiteralPath | path-bound `AccessRule` | none / `AccessRule` |
-| `Clear-NTFSAccessRule` | Path, LiteralPath | paths, filesystem objects | none |
+| `Add-NTFSAccessRule` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / `AccessRule` / descriptor |
+| `Set-NTFSAccessRule` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / `AccessRule` / descriptor |
+| `Remove-NTFSAccessRule` | Rule, Path, LiteralPath, SecurityDescriptor | path-bound `AccessRule`, descriptors | none / `AccessRule` / descriptor |
+| `Clear-NTFSAccessRule` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / descriptor |
 
 `Add-NTFSAccessRule` accumulates rights. `Set-NTFSAccessRule` replaces rules
 for the same SID and allow/deny qualifier while preserving unrelated rules.
@@ -163,10 +163,10 @@ rules unchanged.
 | --- | --- | --- | --- |
 | `New-NTFSAuditRule` | (single) | account strings | `AuditRule` |
 | `Get-NTFSAuditRule` | Path, LiteralPath | paths, filesystem objects | `AuditRule` |
-| `Add-NTFSAuditRule` | Path, LiteralPath | paths, filesystem objects | none / `AuditRule` |
-| `Set-NTFSAuditRule` | Path, LiteralPath | paths, filesystem objects | none / `AuditRule` |
-| `Remove-NTFSAuditRule` | Rule, Path, LiteralPath | path-bound `AuditRule` | none / `AuditRule` |
-| `Clear-NTFSAuditRule` | Path, LiteralPath | paths, filesystem objects | none |
+| `Add-NTFSAuditRule` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / `AuditRule` / descriptor |
+| `Set-NTFSAuditRule` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / `AuditRule` / descriptor |
+| `Remove-NTFSAuditRule` | Rule, Path, LiteralPath, SecurityDescriptor | path-bound `AuditRule`, descriptors | none / `AuditRule` / descriptor |
+| `Clear-NTFSAuditRule` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / descriptor |
 
 Audit commands mirror access-rule semantics but operate on the SACL and require
 `SeSecurityPrivilege` for live descriptor reads or writes. They acquire that
@@ -178,10 +178,10 @@ restore the original state (0004, ADR 0008).
 | Command | Primary parameter sets | Pipeline input | Returns |
 | --- | --- | --- | --- |
 | `Get-NTFSItemOwner` | Path, LiteralPath | paths, filesystem objects | `Owner` |
-| `Set-NTFSItemOwner` | Path, LiteralPath | paths, filesystem objects | none / `Owner` |
+| `Set-NTFSItemOwner` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / `Owner` / descriptor |
 | `Get-NTFSItemInheritance` | Path, LiteralPath | paths, filesystem objects | `Inheritance` |
-| `Enable-NTFSItemInheritance` | Path, LiteralPath | paths, filesystem objects | none / `Inheritance` |
-| `Disable-NTFSItemInheritance` | Path, LiteralPath | paths, filesystem objects | none / `Inheritance` |
+| `Enable-NTFSItemInheritance` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / `Inheritance` / descriptor |
+| `Disable-NTFSItemInheritance` | Path, LiteralPath, SecurityDescriptor | paths, filesystem objects, descriptors | none / `Inheritance` / descriptor |
 
 Inheritance commands select `Access`, `Audit`, or `All`. Disabling inheritance
 preserves inherited rules as explicit rules by default. Enabling inheritance
@@ -226,21 +226,41 @@ bounded execution, aborts on any descriptor-read failure, and submits the
 complete descriptor array to one atomic envelope write.
 
 `Get-NTFSItemSecurityDescriptor` returns a `SecurityDescriptor` whose
-`NativeSecurity` is a live, editable descriptor. Piping that object to
-`Add-NTFSAccessRule` (its `SecurityDescriptor` parameter set) stages the rule in
-memory and returns the same object without writing. `Set-NTFSItemSecurityDescriptor`
-then persists the recorded `Sections` back to the item with a single write under
-`ShouldProcess`. Path-bound commands remain the read-modify-write default; this
-round-trip is the in-memory editing model from specification 0007 and is the
-accepted first increment.
+`NativeSecurity` is a live, editable descriptor. Piping that object to a
+filesystem mutator's `SecurityDescriptor` parameter set stages the change in
+memory and returns the same object without writing. The access, audit, owner,
+and inheritance mutators all accept a descriptor this way.
+`Set-NTFSItemSecurityDescriptor` then persists the recorded `Sections` back to
+the item with a single write under `ShouldProcess`, including the selected ACL
+protection state. Path-bound commands remain the read-modify-write default;
+this round-trip is the in-memory editing model from specification 0007.
+
+A descriptor-bound mutation fails closed when the required section was not
+loaded, because persisting an unloaded section would replace a live ACL with an
+empty one. In-memory mutation has no side effect, so it neither calls
+`ShouldProcess` nor prompts, and it returns the descriptor regardless of
+`PassThru` so mutations can be chained. Each mutation also refreshes the
+descriptor's own SDDL, owner, group, and protection projection, so the object
+never disagrees with the native descriptor it wraps.
 
 `Edit-NTFSItemSecurityDescriptor` bounds that round trip to one command. It
 reads the selected sections once, supplies the detached descriptor as the first
 script-block argument, appends `ArgumentList`, suppresses callback output,
 rejects unloaded-section expansion, and persists at most once under
 `ShouldProcess`. `PassThru` refreshes output from the edited in-memory native
-descriptor without a second read. OI-21 tracks descriptor-input support for the
-remaining mutators; OI-13 tracks registry editing.
+descriptor without a second read.
+
+Every descriptor records a `ConcurrencyToken` over its selected-section SDDL at
+read time. `Set-NTFSItemSecurityDescriptor` and `Edit-NTFSItemSecurityDescriptor`
+default to last-writer-wins. `RequireUnchanged` re-reads the live sections
+before the write and refuses to persist when the token no longer matches,
+requiring an explicit re-read. The check narrows but does not eliminate the
+race; it is not a transactional guarantee. In-memory mutation never refreshes
+the token. A successful persist refreshes it from the descriptor that was
+written, without a second read, so a `PassThru` descriptor is reusable only
+when Windows stored that descriptor unchanged. Windows can recompute inherited
+ACEs and auto-inherit control bits on write, so re-read the descriptor before a
+second `RequireUnchanged` write.
 
 The command accepts `ThrottleLimit` for target-array contract consistency but
 executes caller callbacks sequentially to preserve script-block runspace
@@ -252,25 +272,38 @@ effects performed directly by trusted callback code.
 | Command | Pipeline input | Returns |
 | --- | --- | --- |
 | `Get-RegistryKeySecurityDescriptor` | paths, `RegistryKey` objects | `RegistryKeySecurityDescriptor` |
-| `Set-RegistryKeySecurityDescriptor` | paths, `RegistryKey` objects | none / `RegistryKeySecurityDescriptor` |
+| `Set-RegistryKeySecurityDescriptor` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeySecurityDescriptor` |
+| `Edit-RegistryKeySecurityDescriptor` | paths, `RegistryKey` objects | none / `RegistryKeySecurityDescriptor` |
 | `Get-RegistryKeyAccessRule` | paths, `RegistryKey` objects | `RegistryKeyAccessRule` |
-| `Add-RegistryKeyAccessRule` | paths, `RegistryKey` objects | none / `RegistryKeyAccessRule` |
-| `Set-RegistryKeyAccessRule` | paths, `RegistryKey` objects | none / `RegistryKeyAccessRule` |
-| `Remove-RegistryKeyAccessRule` | path-bound `RegistryKeyAccessRule` | none / `RegistryKeyAccessRule` |
-| `Clear-RegistryKeyAccessRule` | paths, `RegistryKey` objects | none / `RegistryKeyAccessRule` |
+| `Add-RegistryKeyAccessRule` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeyAccessRule` / descriptor |
+| `Set-RegistryKeyAccessRule` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeyAccessRule` / descriptor |
+| `Remove-RegistryKeyAccessRule` | path-bound `RegistryKeyAccessRule`, `RegistryKeySecurityDescriptor` | none / `RegistryKeyAccessRule` / descriptor |
+| `Clear-RegistryKeyAccessRule` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeyAccessRule` / descriptor |
 | `Get-RegistryKeyAuditRule` | paths, `RegistryKey` objects | `RegistryKeyAuditRule` |
-| `Add-RegistryKeyAuditRule` | paths, `RegistryKey` objects | none / `RegistryKeyAuditRule` |
-| `Set-RegistryKeyAuditRule` | paths, `RegistryKey` objects | none / `RegistryKeyAuditRule` |
-| `Remove-RegistryKeyAuditRule` | path-bound `RegistryKeyAuditRule` | none / `RegistryKeyAuditRule` |
-| `Clear-RegistryKeyAuditRule` | paths, `RegistryKey` objects | none / `RegistryKeyAuditRule` |
+| `Add-RegistryKeyAuditRule` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeyAuditRule` / descriptor |
+| `Set-RegistryKeyAuditRule` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeyAuditRule` / descriptor |
+| `Remove-RegistryKeyAuditRule` | path-bound `RegistryKeyAuditRule`, `RegistryKeySecurityDescriptor` | none / `RegistryKeyAuditRule` / descriptor |
+| `Clear-RegistryKeyAuditRule` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeyAuditRule` / descriptor |
 | `Get-RegistryKeyInheritance` | paths, `RegistryKey` objects | `RegistryKeyInheritance` |
-| `Enable-RegistryKeyInheritance` | paths, `RegistryKey` objects | none / `RegistryKeyInheritance` |
-| `Disable-RegistryKeyInheritance` | paths, `RegistryKey` objects | none / `RegistryKeyInheritance` |
+| `Enable-RegistryKeyInheritance` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeyInheritance` / descriptor |
+| `Disable-RegistryKeyInheritance` | paths, `RegistryKey` objects, `RegistryKeySecurityDescriptor` | none / `RegistryKeyInheritance` / descriptor |
 
 Registry-rule commands expose `System.Security.AccessControl.RegistryRights`
 and preserve unknown or unrelated ACEs. Audit and audit-inheritance operations
 scope `SeSecurityPrivilege` to each read/write operation. Registry values do not
 have independent security descriptors; callers manage the containing key.
+
+The registry family supports the same detached editing model as the filesystem
+family. A descriptor-bound mutation updates the descriptor's binary form, SDDL,
+owner, group, and protection projection in place and returns the same object.
+`Set-RegistryKeySecurityDescriptor` persists it using the target, registry view,
+and sections recorded on the descriptor.
+`Edit-RegistryKeySecurityDescriptor` bounds the round trip to one read and at
+most one write per canonical target, dispatches callbacks sequentially, and
+rejects unloaded-section expansion. Both persist steps accept
+`RequireUnchanged` for opt-in optimistic concurrency. Exact ACE removal from a
+descriptor takes the rule through `-Rule` because the descriptor occupies the
+pipeline.
 
 ## Service and Service Control Manager commands
 

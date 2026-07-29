@@ -3,9 +3,8 @@
 Status: Accepted. This contract defines an optional detached descriptor-editing
 model. It reuses the existing access, audit, owner, inheritance, and descriptor
 requirements (FR-3 through FR-10) rather than defining new requirement
-identifiers. The explicit filesystem round-trip and bounded filesystem scope
-are implemented and verified; descriptor-aware mutator expansion and registry
-editing remain focused follow-up issues OI-21 and OI-13.
+identifiers. The filesystem and registry-key families are implemented and
+verified, including opt-in optimistic concurrency.
 
 ## Context and problem statement
 
@@ -123,13 +122,29 @@ descriptor can drift from the live target.
 
 - A detached descriptor tracks its loaded sections. The bounded scope writes
   exactly that selected set at most once and rejects a callback that expands
-  `Sections` beyond what was loaded. Fine-grained dirty-section tracking remains
-  outside the current object contract.
+  `Sections` beyond what was loaded. A descriptor-bound mutator fails closed
+  when the section it would edit was not loaded, because persisting an unloaded
+  section would replace a live ACL with an empty one. Fine-grained dirty-section
+  tracking remains outside the current object contract.
 - Persistence uses the same runtime-specific, section-scoped path as
   path-bound commands, so a DACL edit never rewrites an unselected SACL, owner,
   or group. ADR 0003 and ADR 0004 continue to govern this behavior.
-- Absent selected SACL and null DACL rules continue to fail closed exactly as
-  they do for path-bound persistence.
+- Absent selected SACL and null DACL *rule* operations continue to fail closed
+  exactly as they do for path-bound persistence.
+- The persist step writes the selected ACL together with its protection state,
+  so a detached inheritance edit converges like its path-bound equivalent
+  (Decision 10). Protection is requested only for an ACL that is actually
+  present, because an absent ACL carries no protection state and requesting one
+  would fail after the ACL write already committed. Skipping an absent-SACL
+  protection request is reported through the verbose stream.
+- `Sections` is a caller-writable property. The fail-closed gate protects
+  against forgetting to load a section, not against deliberate tampering by the
+  trusted caller. The bounded scope additionally re-clamps `Sections` to the
+  set it read with before persisting.
+- A descriptor-bound mutation refreshes the descriptor's own projection (SDDL,
+  owner, group, protection, and canonical state) so the object never disagrees
+  with the native descriptor it wraps. The read-time `ConcurrencyToken` is not
+  refreshed by staging; only a successful persist refreshes it.
 
 ## ShouldProcess, PassThru, and confirmation
 
@@ -144,15 +159,18 @@ descriptor can drift from the live target.
 ## Stale-target and concurrency behavior
 
 A detached descriptor read at one time and persisted later can race another
-writer. The contract must choose one default and one opt-in:
+writer. The contract keeps one default and one opt-in:
 
 - Default last-writer-wins matches upstream NTFSSecurity and the current .NET
   behavior. It is simple and predictable but silently overwrites a concurrent
   change.
-- Optional optimistic concurrency captures a section digest at read time and
-  refuses to persist when the live descriptor no longer matches, requiring an
-  explicit re-read. This aligns with the whole-record prevalidation stance in
-  [security and persistence](0004-security-and-persistence.md).
+- Opt-in optimistic concurrency captures a SHA-256 `ConcurrencyToken` over the
+  selected-section SDDL at read time. `RequireUnchanged` re-reads the live
+  sections immediately before the write and refuses to persist when the token no
+  longer matches, requiring an explicit re-read. The check narrows the window
+  but does not close it: Windows exposes no compare-and-swap descriptor write,
+  so this is a fail-fast guard rather than a transactional guarantee. Same-target
+  write serialization (ADR 0013) still applies within one application domain.
 
 The bounded editing scope reduces the drift window to a single call and is the
 reason it is recommended.
@@ -226,10 +244,14 @@ requirements:
   invokes a trusted callback on the detached descriptor, enforces the loaded
   section boundary, and performs at most one serialized write. Unit and live
   tests cover `WhatIf`, callback failure, `ArgumentList`, and `PassThru`.
-- Phase 2b (tracked by OI-21): remaining filesystem access, audit, owner, and
-  inheritance mutators accept a descriptor directly; live-process input remains
-  excluded by its pinned-handle contract.
-- Phase 3 (tracked by OI-13): the registry-key family and opt-in optimistic concurrency.
+- Phase 2b (delivered): the remaining filesystem access, audit, owner, and
+  inheritance mutators accept a descriptor through a `SecurityDescriptor`
+  parameter set and fail closed on an unloaded section. Live-process input
+  remains excluded by its pinned-handle contract.
+- Phase 3 (delivered): the registry-key family exposes the same descriptor
+  parameter sets, `Edit-RegistryKeySecurityDescriptor`, and descriptor input on
+  `Set-RegistryKeySecurityDescriptor`. Both families accept `RequireUnchanged`
+  for opt-in optimistic concurrency.
 
 Full requirement traceability rows are added to
 [verification and traceability](0005-verification-and-traceability.md) as each

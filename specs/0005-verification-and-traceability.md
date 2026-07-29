@@ -45,7 +45,7 @@ is not reported as a successful live write.
 | FR-19 | AD command-contract and LDAP-adapter Unit tests plus disposable-OU signed/sealed read, delegated add, object-ACE exact-remove, `WhatIf`, GUID revalidation, and rollback tests |
 | FR-20 | Task Scheduler command-contract and COM-boundary Unit tests plus disposable folder/task DACL reads, `WhatIf`, containment rejection, round trip, task-definition preservation, rollback, and cleanup tests |
 | FR-21 | SMB effective-access contract/behavior Unit tests plus delegated local share Authz, canonical deduplication, context-label, and backing-NTFS exclusion live evidence |
-| FR-22 | `Edit-NTFSItemSecurityDescriptor.Tests.ps1` Unit contract plus bounded live add, pass-through, callback-failure, and non-persistence tests |
+| FR-22 | `Edit-NTFSItemSecurityDescriptor.Tests.ps1` Unit contract plus bounded live add, pass-through, callback-failure, and non-persistence tests; `NtfsDescriptorMutators.Tests.ps1` and `RegistryDescriptorMutators.Tests.ps1` descriptor parameter-set contract, in-memory staging, unloaded-section rejection, and concurrency-token tests; live `NtfsInMemoryDescriptorEditing` and `RegistryInMemoryDescriptorEditing` round-trip, bounded-scope, `RequireUnchanged` stale-rejection, and target-unchanged evidence |
 | FR-23 | Certificate-private-key command/identity Unit tests plus cross-edition read-only non-exportable CNG fixture acceptance |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
@@ -89,6 +89,7 @@ is not reported as a successful live write.
 | `Get-NTFSItemOwner` | 3 | Live NTFS plus canonical batch deduplication and prevalidation | Not required; also read back by arbitrary-owner acceptance |
 | `Get-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Live SACL backup |
 | `Edit-NTFSItemSecurityDescriptor` | 4 | Unit boundary plus live NTFS DACL | One read/write, `WhatIf`, callback failure, loaded-section enforcement |
+| `Edit-RegistryKeySecurityDescriptor` | 4 | Unit contract plus live registry DACL | One read/write, callback failure, loaded-section enforcement, staged inheritance |
 | `Get-WindowsPrivilege` | 1 | Token integration | Not required |
 | `New-NTFSAccessRule` | 1 | Unit descriptor | Not required |
 | `New-NTFSAuditRule` | 1 | Unit descriptor | Not required |

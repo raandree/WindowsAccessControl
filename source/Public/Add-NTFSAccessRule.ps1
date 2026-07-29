@@ -137,15 +137,12 @@ function Add-NTFSAccessRule {
 
     process {
         if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
-            $security = [System.Security.AccessControl.FileSystemSecurity]$SecurityDescriptor.NativeSecurity
-            $effectiveAppliesTo = $AppliesTo
-            if (-not $PSBoundParameters.ContainsKey('AppliesTo')) {
-                $effectiveAppliesTo = if ($SecurityDescriptor.ItemType -eq 'Directory') {
-                    'ThisFolderSubfoldersAndFiles'
-                } else {
-                    'ThisFolderOnly'
-                }
-            }
+            $security = Assert-NTFSDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Access
+            $effectiveAppliesTo = Get-NTFSDescriptorAppliesTo `
+                -SecurityDescriptor $SecurityDescriptor `
+                -AppliesTo $AppliesTo
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
             foreach ($securityIdentifier in $securityIdentifiers) {
                 $security.AddAccessRule(
@@ -158,8 +155,7 @@ function Add-NTFSAccessRule {
                     )
                 )
             }
-            $SecurityDescriptor.Sections = $SecurityDescriptor.Sections -bor
-                [System.Security.AccessControl.AccessControlSections]::Access
+            Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
             $SecurityDescriptor
             return
         }

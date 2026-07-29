@@ -13,6 +13,13 @@ function Set-NTFSAuditRule {
     .PARAMETER LiteralPath
         One or more filesystem paths used exactly as supplied.
 
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.SecurityDescriptor object returned by
+        Get-NTFSItemSecurityDescriptor with the Audit section loaded. When
+        supplied, matching rules are replaced on the descriptor in memory and
+        the descriptor is returned; nothing is written until
+        Set-NTFSItemSecurityDescriptor persists it.
+
     .PARAMETER Account
         The account name or SID whose matching audit rules are replaced.
 
@@ -40,10 +47,12 @@ function Set-NTFSAuditRule {
     .INPUTS
         System.String
         System.IO.FileSystemInfo
+        WindowsAccessControl.SecurityDescriptor
 
     .OUTPUTS
         None
         WindowsAccessControl.AuditRule
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -56,6 +65,10 @@ function Set-NTFSAuditRule {
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = 'LiteralPath')]
         [Alias('PSPath')]
         [string[]]$LiteralPath,
+
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.SecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
@@ -93,6 +106,28 @@ function Set-NTFSAuditRule {
     }
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $security = Assert-NTFSDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Audit
+            $effectiveAppliesTo = Get-NTFSDescriptorAppliesTo `
+                -SecurityDescriptor $SecurityDescriptor `
+                -AppliesTo $AppliesTo
+            $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
+            $security.SetAuditRule(
+                [System.Security.AccessControl.FileSystemAuditRule]::new(
+                    $securityIdentifier,
+                    $AccessRights,
+                    $scope.InheritanceFlags,
+                    $scope.PropagationFlags,
+                    $AuditFlags
+                )
+            )
+            Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsNtfsCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `

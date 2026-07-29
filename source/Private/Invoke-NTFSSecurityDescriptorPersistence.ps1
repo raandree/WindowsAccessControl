@@ -44,18 +44,41 @@ function Invoke-NTFSSecurityDescriptorPersistence {
         }
 
         if ($targetProtectionSection) {
-            Initialize-WindowsAccessControlNativeType
-            [WindowsAccessControl.NativeMethods]::SetFileSystemAclProtection(
-                $targetItem.FullName,
-                $targetSecurity.GetSecurityDescriptorBinaryForm(),
-                $targetProtectionSection -in @('Access', 'All'),
-                $targetSecurity.AreAccessRulesProtected,
-                $targetProtectionSection -in @('Audit', 'All'),
-                $targetSecurity.AreAuditRulesProtected
+            $binaryForm = $targetSecurity.GetSecurityDescriptorBinaryForm()
+            $rawDescriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new(
+                $binaryForm,
+                0
             )
+            # An absent ACL carries no protection state, and requesting one here
+            # would throw after the ACL write already committed.
+            $setAccessProtection = $targetProtectionSection -in @('Access', 'All') -and
+                $null -ne $rawDescriptor.DiscretionaryAcl
+            $setAuditProtection = $targetProtectionSection -in @('Audit', 'All') -and
+                $null -ne $rawDescriptor.SystemAcl
+            if ($targetProtectionSection -in @('Audit', 'All') -and -not $setAuditProtection) {
+                Write-Verbose -Message (
+                    "Skipped audit protection for '$($targetItem.FullName)' because the descriptor has no SACL."
+                )
+            }
+            if ($setAccessProtection -or $setAuditProtection) {
+                [WindowsAccessControl.NativeMethods]::SetFileSystemAclProtection(
+                    $targetItem.FullName,
+                    $binaryForm,
+                    $setAccessProtection,
+                    $targetSecurity.AreAccessRulesProtected,
+                    $setAuditProtection,
+                    $targetSecurity.AreAuditRulesProtected
+                )
+            }
         }
     }
     $persistenceArguments = @($Item, $Security, $ProtectionSection)
+
+    # Compile the native type before the ACL write so a compile failure cannot
+    # land after the write has already committed.
+    if ($ProtectionSection) {
+        Initialize-WindowsAccessControlNativeType
+    }
 
     $requiredPrivileges = [System.Collections.Generic.List[string]]::new()
     if (($Sections -band [System.Security.AccessControl.AccessControlSections]::Audit) -ne 0 -or

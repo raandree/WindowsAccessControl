@@ -19,6 +19,12 @@ function Remove-NTFSAccessRule {
     .PARAMETER LiteralPath
         One or more filesystem paths used exactly as supplied.
 
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.SecurityDescriptor object returned by
+        Get-NTFSItemSecurityDescriptor. When supplied, the removal is staged on
+        the descriptor in memory and the descriptor is returned; nothing is
+        written until Set-NTFSItemSecurityDescriptor persists it.
+
     .PARAMETER Account
         The account name or SID whose access rule is removed.
 
@@ -50,10 +56,12 @@ function Remove-NTFSAccessRule {
 
     .INPUTS
         WindowsAccessControl.AccessRule
+        WindowsAccessControl.SecurityDescriptor
 
     .OUTPUTS
         None
         WindowsAccessControl.AccessRule
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Rule')]
     [OutputType([pscustomobject])]
@@ -69,21 +77,29 @@ function Remove-NTFSAccessRule {
         [Parameter(Mandatory, ParameterSetName = 'LiteralPath')]
         [string[]]$LiteralPath,
 
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.SecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
+
         [Parameter(Mandatory, ParameterSetName = 'Path')]
         [Parameter(Mandatory, ParameterSetName = 'LiteralPath')]
+        [Parameter(Mandatory, ParameterSetName = 'SecurityDescriptor')]
         [ValidateNotNullOrEmpty()]
         [string]$Account,
 
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]
+        [Parameter(ParameterSetName = 'SecurityDescriptor')]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
 
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]
+        [Parameter(ParameterSetName = 'SecurityDescriptor')]
         [System.Security.AccessControl.AccessControlType]$AccessControlType = 'Allow',
 
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]
+        [Parameter(ParameterSetName = 'SecurityDescriptor')]
         [ValidateSet(
             'ThisFolderOnly',
             'ThisFolderSubfoldersAndFiles',
@@ -125,6 +141,36 @@ function Remove-NTFSAccessRule {
     }
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $security = Assert-NTFSDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Access
+            $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
+            if ($RemovalMode -eq 'All') {
+                $security.PurgeAccessRules($securityIdentifier)
+            } else {
+                $effectiveAppliesTo = Get-NTFSDescriptorAppliesTo `
+                    -SecurityDescriptor $SecurityDescriptor `
+                    -AppliesTo $AppliesTo
+                $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
+                $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+                    $securityIdentifier,
+                    $AccessRights,
+                    $scope.InheritanceFlags,
+                    $scope.PropagationFlags,
+                    $AccessControlType
+                )
+                if ($RemovalMode -eq 'Exact') {
+                    $security.RemoveAccessRuleSpecific($rule)
+                } else {
+                    $null = $security.RemoveAccessRule($rule)
+                }
+            }
+            Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value -and
             $PSCmdlet.ParameterSetName -ne 'Rule') {
             Invoke-WindowsNtfsCommandBatch `

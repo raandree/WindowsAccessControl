@@ -7,6 +7,12 @@ function Add-RegistryKeyAuditRule {
         entries under a scoped security privilege and persisting each target once.
     .PARAMETER Path
         One or more local registry key paths or RegistryKey pipeline objects.
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.RegistryKeySecurityDescriptor object returned by
+        Get-RegistryKeySecurityDescriptor with the Audit section loaded. When
+        supplied, the audit rule is staged on the descriptor in memory and the
+        descriptor is returned; nothing is written until
+        Set-RegistryKeySecurityDescriptor persists it.
     .PARAMETER Account
         One or more account names, SID strings, identity references, or module identities.
     .PARAMETER AccessRights
@@ -29,16 +35,21 @@ function Add-RegistryKeyAuditRule {
     .INPUTS
         System.String
         Microsoft.Win32.RegistryKey
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     .OUTPUTS
         None
         WindowsAccessControl.RegistryKeyAuditRule
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     #>
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'SecurityDescriptor')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'Path')]
         [Alias('PSPath')]
         [object[]]$Path,
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.RegistryKeySecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
         [Parameter(Mandatory)]
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
@@ -80,6 +91,27 @@ function Add-RegistryKeyAuditRule {
         $aceFlags = ConvertTo-WindowsRegistryAceFlag @aceFlagParameters
     }
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $bytes = Assert-WindowsDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Audit `
+                -TypeName 'WindowsAccessControl.RegistryKeySecurityDescriptor'
+            foreach ($sid in $identities) {
+                $bytes = Invoke-WindowsAclRuleMutation `
+                    -SecurityDescriptor $bytes `
+                    -RuleType 'Audit' `
+                    -Operation 'Add' `
+                    -SecurityIdentifier $sid `
+                    -AccessMask ([int]$AccessRights) `
+                    -AceFlags $aceFlags
+            }
+            Update-WindowsSecurityDescriptorObject `
+                -Descriptor $SecurityDescriptor `
+                -SecurityDescriptor $bytes
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsRegistryCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `

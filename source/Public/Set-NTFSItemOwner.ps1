@@ -16,6 +16,13 @@ function Set-NTFSItemOwner {
         One or more filesystem paths used exactly as supplied. FileSystem
         objects bind to this parameter through their PSPath property.
 
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.SecurityDescriptor object returned by
+        Get-NTFSItemSecurityDescriptor with the Owner section loaded. When
+        supplied, the owner is set on the descriptor in memory and the
+        descriptor is returned; nothing is written until
+        Set-NTFSItemSecurityDescriptor persists it.
+
     .PARAMETER Account
         The account name or SID that becomes the new item owner.
 
@@ -34,10 +41,12 @@ function Set-NTFSItemOwner {
     .INPUTS
         System.String
         System.IO.FileSystemInfo
+        WindowsAccessControl.SecurityDescriptor
 
     .OUTPUTS
         None
         WindowsAccessControl.Owner
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -50,6 +59,10 @@ function Set-NTFSItemOwner {
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = 'LiteralPath')]
         [Alias('PSPath')]
         [string[]]$LiteralPath,
+
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.SecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
@@ -71,6 +84,16 @@ function Set-NTFSItemOwner {
     }
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $security = Assert-NTFSDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Owner
+            $security.SetOwner($securityIdentifier)
+            Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsNtfsCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `

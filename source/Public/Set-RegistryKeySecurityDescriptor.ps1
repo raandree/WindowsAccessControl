@@ -11,10 +11,18 @@ function Set-RegistryKeySecurityDescriptor {
         directly or through the pipeline.
     .PARAMETER Sddl
         A structurally valid SDDL document containing every selected section.
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.RegistryKeySecurityDescriptor object returned by
+        Get-RegistryKeySecurityDescriptor, optionally after in-memory edits. Its
+        recorded target, registry view, and selected sections are used.
     .PARAMETER RegistryView
         Selects the default, 32-bit, or 64-bit registry view explicitly.
     .PARAMETER Sections
         Selects the descriptor sections to persist from the SDDL document.
+    .PARAMETER RequireUnchanged
+        Rejects the write when the selected sections of the live key no longer
+        match the ConcurrencyToken recorded when the descriptor was read. The
+        default is last-writer-wins.
     .PARAMETER ThrottleLimit
         Limits concurrently processed canonical targets. One requests
         deterministic sequential execution.
@@ -24,32 +32,46 @@ function Set-RegistryKeySecurityDescriptor {
         Set-RegistryKeySecurityDescriptor -Path HKCU:\Software -Sddl 'D:(A;;KR;;;WD)' -Sections Access -WhatIf
 
         Previews replacing only the Software key DACL.
+    .EXAMPLE
+        Get-RegistryKeySecurityDescriptor -Path HKCU:\Software -Sections Access |
+            Add-RegistryKeyAccessRule -Account Everyone -AccessRights ReadKey |
+            Set-RegistryKeySecurityDescriptor
+
+        Stages a read rule in memory and persists the DACL with one write.
     .INPUTS
         System.String
         Microsoft.Win32.RegistryKey
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     .OUTPUTS
         None
         WindowsAccessControl.RegistryKeySecurityDescriptor
     #>
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'SecurityDescriptor')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'Sddl')]
         [Alias('PSPath')]
         [object[]]$Path,
 
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, ParameterSetName = 'Sddl')]
         [ValidateNotNullOrEmpty()]
         [string]$Sddl,
 
-        [Parameter()]
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.RegistryKeySecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
+
+        [Parameter(ParameterSetName = 'Sddl')]
         [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
 
-        [Parameter()]
+        [Parameter(ParameterSetName = 'Sddl')]
         [WindowsSecurityDescriptorSection]$Sections =
             [WindowsSecurityDescriptorSection]::All,
 
-        [Parameter()]
+        [Parameter(ParameterSetName = 'SecurityDescriptor')]
+        [switch]$RequireUnchanged,
+
+        [Parameter(ParameterSetName = 'Sddl')]
         [ValidateRange(1, 64)]
         [int]$ThrottleLimit = [Math]::Max(
             1,
@@ -61,24 +83,70 @@ function Set-RegistryKeySecurityDescriptor {
     )
 
     begin {
-        $rawDescriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new($Sddl)
-        if (($Sections -band [WindowsSecurityDescriptorSection]::Access) -ne 0 -and
-            -not $rawDescriptor.DiscretionaryAcl) {
-            throw 'The supplied SDDL does not contain a non-null DACL.'
+        if ($PSBoundParameters.ContainsKey('Sddl')) {
+            $rawDescriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new($Sddl)
+            if (($Sections -band [WindowsSecurityDescriptorSection]::Access) -ne 0 -and
+                -not $rawDescriptor.DiscretionaryAcl) {
+                throw 'The supplied SDDL does not contain a non-null DACL.'
+            }
+            $systemAclPresent = ([int]$rawDescriptor.ControlFlags -band
+                [int][System.Security.AccessControl.ControlFlags]::SystemAclPresent) -ne 0
+            if (($Sections -band [WindowsSecurityDescriptorSection]::Audit) -ne 0 -and
+                -not $systemAclPresent) {
+                throw 'The supplied SDDL does not contain a SACL.'
+            }
+            $managedSections = ConvertTo-WindowsAccessControlSection -Sections $Sections
+            $requestedSddl = $rawDescriptor.GetSddlForm($managedSections)
+            $descriptorBytes = [byte[]]::new($rawDescriptor.BinaryLength)
+            $rawDescriptor.GetBinaryForm($descriptorBytes, 0)
         }
-        $systemAclPresent = ([int]$rawDescriptor.ControlFlags -band
-            [int][System.Security.AccessControl.ControlFlags]::SystemAclPresent) -ne 0
-        if (($Sections -band [WindowsSecurityDescriptorSection]::Audit) -ne 0 -and
-            -not $systemAclPresent) {
-            throw 'The supplied SDDL does not contain a SACL.'
-        }
-        $managedSections = ConvertTo-WindowsAccessControlSection -Sections $Sections
-        $requestedSddl = $rawDescriptor.GetSddlForm($managedSections)
-        $descriptorBytes = [byte[]]::new($rawDescriptor.BinaryLength)
-        $rawDescriptor.GetBinaryForm($descriptorBytes, 0)
     }
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $descriptorSections = [WindowsSecurityDescriptorSection]$SecurityDescriptor.Sections
+            $descriptorView = [WindowsRegistryView]$SecurityDescriptor.RegistryView
+            $descriptorTarget = Resolve-RegistryKeyTarget `
+                -Path $SecurityDescriptor.Path `
+                -RegistryView $descriptorView
+            $action = "Persist $descriptorSections registry security"
+            if ($PSCmdlet.ShouldProcess($descriptorTarget.Path, $action)) {
+                $readParameters = @{
+                    NativePath       = $descriptorTarget.NativePath
+                    NativeObjectType = $descriptorTarget.NativeObjectType
+                    Sections         = $descriptorSections
+                }
+                $currentBytes = Get-WindowsNamedSecurityDescriptor @readParameters
+                if ($RequireUnchanged) {
+                    $currentDescriptorObject = ConvertTo-WindowsSecurityDescriptorObject `
+                        -Target $descriptorTarget `
+                        -Sections $descriptorSections `
+                        -SecurityDescriptor $currentBytes `
+                        -TypeName 'WindowsAccessControl.RegistryKeySecurityDescriptor'
+                    Assert-WindowsDescriptorUnchanged `
+                        -ExpectedToken $SecurityDescriptor.ConcurrencyToken `
+                        -CurrentToken $currentDescriptorObject.ConcurrencyToken `
+                        -Target $descriptorTarget.Path
+                }
+                $writeParameters = @{
+                    NativePath                = $descriptorTarget.NativePath
+                    NativeObjectType          = $descriptorTarget.NativeObjectType
+                    Sections                  = $descriptorSections
+                    SecurityDescriptor        = [byte[]]$SecurityDescriptor.BinarySecurityDescriptor
+                    CurrentSecurityDescriptor = $currentBytes
+                }
+                Set-WindowsNamedSecurityDescriptor @writeParameters
+                if ($PassThru) {
+                    Update-WindowsSecurityDescriptorObject `
+                        -Descriptor $SecurityDescriptor `
+                        -SecurityDescriptor ([byte[]]$SecurityDescriptor.BinarySecurityDescriptor) `
+                        -RefreshConcurrencyToken
+                    $SecurityDescriptor
+                }
+            }
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsRegistryCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `

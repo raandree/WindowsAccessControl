@@ -625,7 +625,7 @@ the NTFS result.
 | Owner | `Get-NTFSItemOwner`, `Set-NTFSItemOwner` |
 | Inheritance | `Get-NTFSItemInheritance`, `Enable-NTFSItemInheritance`, `Disable-NTFSItemInheritance` |
 | Descriptor portability and editing | `Get-NTFSItemSecurityDescriptor`, `Edit-NTFSItemSecurityDescriptor`, `Set-NTFSItemSecurityDescriptor`, `Copy-NTFSItemSecurityDescriptor`, `Backup-NTFSItemSecurityDescriptor`, `Restore-NTFSItemSecurityDescriptor`, `Backup-WindowsSecurityDescriptor`, `Restore-WindowsSecurityDescriptor` |
-| Registry descriptors | `Get-RegistryKeySecurityDescriptor`, `Set-RegistryKeySecurityDescriptor` |
+| Registry descriptors | `Get-RegistryKeySecurityDescriptor`, `Edit-RegistryKeySecurityDescriptor`, `Set-RegistryKeySecurityDescriptor` |
 | Registry access rules | `Get-RegistryKeyAccessRule`, `Add-RegistryKeyAccessRule`, `Set-RegistryKeyAccessRule`, `Remove-RegistryKeyAccessRule`, `Clear-RegistryKeyAccessRule` |
 | Registry audit rules | `Get-RegistryKeyAuditRule`, `Add-RegistryKeyAuditRule`, `Set-RegistryKeyAuditRule`, `Remove-RegistryKeyAuditRule`, `Clear-RegistryKeyAuditRule` |
 | Registry inheritance | `Get-RegistryKeyInheritance`, `Enable-RegistryKeyInheritance`, `Disable-RegistryKeyInheritance` |

@@ -13,6 +13,13 @@ function Clear-NTFSAuditRule {
     .PARAMETER LiteralPath
         One or more filesystem paths used exactly as supplied.
 
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.SecurityDescriptor object returned by
+        Get-NTFSItemSecurityDescriptor with the Audit section loaded. When
+        supplied, the explicit rules are cleared on the descriptor in memory and
+        the descriptor is returned; nothing is written until
+        Set-NTFSItemSecurityDescriptor persists it.
+
     .PARAMETER PassThru
         Returns each explicit audit rule that the command removed.
 
@@ -28,10 +35,12 @@ function Clear-NTFSAuditRule {
     .INPUTS
         System.String
         System.IO.FileSystemInfo
+        WindowsAccessControl.SecurityDescriptor
 
     .OUTPUTS
         None
         WindowsAccessControl.AuditRule
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -45,6 +54,10 @@ function Clear-NTFSAuditRule {
         [Alias('PSPath')]
         [string[]]$LiteralPath,
 
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.SecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
+
         [Parameter()]
         [ValidateRange(1, 64)]
         [int]$ThrottleLimit = [Math]::Max(
@@ -57,6 +70,23 @@ function Clear-NTFSAuditRule {
     )
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $security = Assert-NTFSDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Audit
+            $explicitRules = @($security.GetAuditRules(
+                $true,
+                $false,
+                [System.Security.Principal.SecurityIdentifier]
+            ))
+            foreach ($explicitRule in $explicitRules) {
+                $security.RemoveAuditRuleSpecific($explicitRule)
+            }
+            Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsNtfsCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `

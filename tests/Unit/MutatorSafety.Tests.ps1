@@ -38,6 +38,7 @@ Describe 'Mutator WhatIf safety' -Tag 'Unit', 'WindowsOnly' {
             'Enable-NTFSItemInheritance'
             'Disable-NTFSItemInheritance'
             'Edit-NTFSItemSecurityDescriptor'
+            'Edit-RegistryKeySecurityDescriptor'
             'Copy-NTFSItemSecurityDescriptor'
             'Backup-NTFSItemSecurityDescriptor'
             'Backup-WindowsSecurityDescriptor'

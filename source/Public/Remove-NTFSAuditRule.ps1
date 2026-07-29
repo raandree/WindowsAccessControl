@@ -16,6 +16,13 @@ function Remove-NTFSAuditRule {
     .PARAMETER LiteralPath
         One or more filesystem paths used exactly as supplied.
 
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.SecurityDescriptor object returned by
+        Get-NTFSItemSecurityDescriptor with the Audit section loaded. When
+        supplied, the removal is staged on the descriptor in memory and the
+        descriptor is returned; nothing is written until
+        Set-NTFSItemSecurityDescriptor persists it.
+
     .PARAMETER Account
         The account name or SID whose audit rule is removed.
 
@@ -46,10 +53,12 @@ function Remove-NTFSAuditRule {
 
     .INPUTS
         WindowsAccessControl.AuditRule
+        WindowsAccessControl.SecurityDescriptor
 
     .OUTPUTS
         None
         WindowsAccessControl.AuditRule
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High', DefaultParameterSetName = 'Rule')]
     [OutputType([pscustomobject])]
@@ -65,21 +74,29 @@ function Remove-NTFSAuditRule {
         [Parameter(Mandatory, ParameterSetName = 'LiteralPath')]
         [string[]]$LiteralPath,
 
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.SecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
+
         [Parameter(Mandatory, ParameterSetName = 'Path')]
         [Parameter(Mandatory, ParameterSetName = 'LiteralPath')]
+        [Parameter(Mandatory, ParameterSetName = 'SecurityDescriptor')]
         [ValidateNotNullOrEmpty()]
         [string]$Account,
 
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]
+        [Parameter(ParameterSetName = 'SecurityDescriptor')]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
 
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]
+        [Parameter(ParameterSetName = 'SecurityDescriptor')]
         [System.Security.AccessControl.AuditFlags]$AuditFlags = 'Success',
 
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]
+        [Parameter(ParameterSetName = 'SecurityDescriptor')]
         [ValidateSet(
             'ThisFolderOnly', 'ThisFolderSubfoldersAndFiles', 'ThisFolderAndSubfolders',
             'ThisFolderAndFiles', 'SubfoldersAndFilesOnly', 'SubfoldersOnly', 'FilesOnly',
@@ -113,6 +130,36 @@ function Remove-NTFSAuditRule {
     }
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $security = Assert-NTFSDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections Audit
+            $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
+            if ($RemovalMode -eq 'All') {
+                $security.PurgeAuditRules($securityIdentifier)
+            } else {
+                $effectiveAppliesTo = Get-NTFSDescriptorAppliesTo `
+                    -SecurityDescriptor $SecurityDescriptor `
+                    -AppliesTo $AppliesTo
+                $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
+                $rule = [System.Security.AccessControl.FileSystemAuditRule]::new(
+                    $securityIdentifier,
+                    $AccessRights,
+                    $scope.InheritanceFlags,
+                    $scope.PropagationFlags,
+                    $AuditFlags
+                )
+                if ($RemovalMode -eq 'Exact') {
+                    $security.RemoveAuditRuleSpecific($rule)
+                } else {
+                    $null = $security.RemoveAuditRule($rule)
+                }
+            }
+            Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value -and
             $PSCmdlet.ParameterSetName -ne 'Rule') {
             Invoke-WindowsNtfsCommandBatch `

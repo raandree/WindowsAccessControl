@@ -7,6 +7,12 @@ function Enable-RegistryKeyInheritance {
         ACEs before parent inheritance is restored through section-scoped persistence.
     .PARAMETER Path
         One or more local registry key paths or RegistryKey pipeline objects.
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.RegistryKeySecurityDescriptor object returned by
+        Get-RegistryKeySecurityDescriptor with the selected sections loaded.
+        When supplied, inheritance is enabled on the descriptor in memory and
+        the descriptor is returned; nothing is written until
+        Set-RegistryKeySecurityDescriptor persists it.
     .PARAMETER Section
         Selects access inheritance, audit inheritance, or both ACLs.
     .PARAMETER RemoveExplicitRules
@@ -25,16 +31,21 @@ function Enable-RegistryKeyInheritance {
     .INPUTS
         System.String
         Microsoft.Win32.RegistryKey
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     .OUTPUTS
         None
         WindowsAccessControl.RegistryKeyInheritance
+        WindowsAccessControl.RegistryKeySecurityDescriptor
     #>
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'SecurityDescriptor')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName)]
+        [Parameter(Mandatory, Position = 0, ValueFromPipeline, ValueFromPipelineByPropertyName, ParameterSetName = 'Path')]
         [Alias('PSPath')]
         [object[]]$Path,
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.RegistryKeySecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
         [Parameter()]
         [ValidateSet('Access', 'Audit', 'All')]
         [string]$Section = 'Access',
@@ -53,6 +64,23 @@ function Enable-RegistryKeyInheritance {
     )
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $bytes = Assert-WindowsDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections (ConvertTo-WindowsInheritanceSection -Section $Section) `
+                -TypeName 'WindowsAccessControl.RegistryKeySecurityDescriptor'
+            $updatedBytes = Set-WindowsAclProtection `
+                -SecurityDescriptor $bytes `
+                -Section $Section `
+                -Protected $false `
+                -RemoveExplicitRules:$RemoveExplicitRules
+            Update-WindowsSecurityDescriptorObject `
+                -Descriptor $SecurityDescriptor `
+                -SecurityDescriptor $updatedBytes
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsRegistryCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `
@@ -66,11 +94,7 @@ function Enable-RegistryKeyInheritance {
         }
         foreach ($pathValue in $Path) {
             $target = Resolve-RegistryKeyTarget -Path $pathValue -RegistryView $RegistryView
-            $sections = switch ($Section) {
-                Access { [WindowsSecurityDescriptorSection]::Access }
-                Audit { [WindowsSecurityDescriptorSection]::Audit }
-                All { [WindowsSecurityDescriptorSection]::Access -bor [WindowsSecurityDescriptorSection]::Audit }
-            }
+            $sections = ConvertTo-WindowsInheritanceSection -Section $Section
             if ($PSCmdlet.ShouldProcess($target.Path, "Enable $Section registry inheritance")) {
                 $getDescriptorParameters = @{
                     NativePath       = $target.NativePath

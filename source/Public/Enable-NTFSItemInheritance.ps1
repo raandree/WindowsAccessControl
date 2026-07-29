@@ -15,6 +15,13 @@ function Enable-NTFSItemInheritance {
         One or more filesystem paths used exactly as supplied. FileSystem
         objects bind to this parameter through their PSPath property.
 
+    .PARAMETER SecurityDescriptor
+        A WindowsAccessControl.SecurityDescriptor object returned by
+        Get-NTFSItemSecurityDescriptor with the selected sections loaded. When
+        supplied, inheritance is enabled on the descriptor in memory and the
+        descriptor is returned; nothing is written until
+        Set-NTFSItemSecurityDescriptor persists it.
+
     .PARAMETER Section
         Selects access inheritance, audit inheritance, or both. Changing audit
         inheritance can require SeSecurityPrivilege.
@@ -38,10 +45,12 @@ function Enable-NTFSItemInheritance {
     .INPUTS
         System.String
         System.IO.FileSystemInfo
+        WindowsAccessControl.SecurityDescriptor
 
     .OUTPUTS
         None
         WindowsAccessControl.Inheritance
+        WindowsAccessControl.SecurityDescriptor
     #>
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium', DefaultParameterSetName = 'Path')]
     [OutputType([pscustomobject])]
@@ -54,6 +63,10 @@ function Enable-NTFSItemInheritance {
         [Parameter(Mandatory, ValueFromPipelineByPropertyName, ParameterSetName = 'LiteralPath')]
         [Alias('PSPath')]
         [string[]]$LiteralPath,
+
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'SecurityDescriptor')]
+        [PSTypeName('WindowsAccessControl.SecurityDescriptor')]
+        [pscustomobject]$SecurityDescriptor,
 
         [Parameter()]
         [ValidateSet('Access', 'Audit', 'All')]
@@ -74,6 +87,41 @@ function Enable-NTFSItemInheritance {
     )
 
     process {
+        if ($PSCmdlet.ParameterSetName -eq 'SecurityDescriptor') {
+            $security = Assert-NTFSDescriptorSection `
+                -SecurityDescriptor $SecurityDescriptor `
+                -RequiredSections (ConvertTo-NTFSInheritanceSection -Section $Section)
+            if ($Section -in @('Access', 'All')) {
+                $security.SetAccessRuleProtection($false, $false)
+                if ($RemoveExplicitRules) {
+                    $explicitAccessRules = $security.GetAccessRules(
+                        $true,
+                        $false,
+                        [System.Security.Principal.SecurityIdentifier]
+                    )
+                    foreach ($explicitAccessRule in $explicitAccessRules) {
+                        $security.RemoveAccessRuleSpecific($explicitAccessRule)
+                    }
+                }
+            }
+            if ($Section -in @('Audit', 'All')) {
+                $security.SetAuditRuleProtection($false, $false)
+                if ($RemoveExplicitRules) {
+                    $explicitAuditRules = $security.GetAuditRules(
+                        $true,
+                        $false,
+                        [System.Security.Principal.SecurityIdentifier]
+                    )
+                    foreach ($explicitAuditRule in $explicitAuditRules) {
+                        $security.RemoveAuditRuleSpecific($explicitAuditRule)
+                    }
+                }
+            }
+            Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
+            $SecurityDescriptor
+            return
+        }
+
         if (-not $script:WindowsAccessControlBatchWorker.Value) {
             Invoke-WindowsNtfsCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `
@@ -94,14 +142,7 @@ function Enable-NTFSItemInheritance {
 
         foreach ($item in Resolve-NTFSPath @resolveParameters) {
             if ($PSCmdlet.ShouldProcess($item.FullName, "Enable $Section rule inheritance")) {
-                $descriptorSections = switch ($Section) {
-                    'Access' { [System.Security.AccessControl.AccessControlSections]::Access }
-                    'Audit' { [System.Security.AccessControl.AccessControlSections]::Audit }
-                    'All' {
-                        [System.Security.AccessControl.AccessControlSections]::Access -bor
-                            [System.Security.AccessControl.AccessControlSections]::Audit
-                    }
-                }
+                $descriptorSections = ConvertTo-NTFSInheritanceSection -Section $Section
                 $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections $descriptorSections
                 if ($Section -in @('Access', 'All')) {
                     $security.SetAccessRuleProtection($false, $false)

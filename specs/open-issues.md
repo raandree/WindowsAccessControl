@@ -5,14 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-13: Add registry descriptor editing and optimistic concurrency
-
-Specification: 0007. Requirements: FR-3 to FR-10.
-
-Extend detached editing to registry-key descriptors and add an opt-in section
-digest that rejects a stale target before persistence. Keep last-writer-wins as
-the compatibility default.
-
 ## OI-14: Add SMB portability and desired state
 
 Specifications: 0008, 0009. Tasks: SMB-4 and SMB-7.
@@ -64,15 +56,6 @@ Specifications: 0008, 0010. Tasks: TASK-5 to TASK-7.
 Add schema-version-2 backup/restore, target locking evidence, and exact
 descriptor/rule DSC resources where convergence is safe. SACL and direct remote
 APIs remain separately gated.
-
-## OI-21: Extend descriptor-aware NTFS mutators
-
-Specification: 0007. Requirements: FR-3 to FR-9.
-
-Add descriptor-input parameter sets for NTFS access set/remove/clear, audit,
-owner, and inheritance mutators. Preserve explicit mutation semantics and
-loaded-section enforcement. Live-process descriptors remain excluded because
-their read and write must stay on one pinned handle.
 
 ## OI-22: Add fail-closed CNG private-key mutation
 

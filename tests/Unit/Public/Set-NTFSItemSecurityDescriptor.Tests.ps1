@@ -25,13 +25,18 @@ Describe 'Set-NTFSItemSecurityDescriptor' -Tag 'Unit', 'WindowsOnly' {
         )
 
         $script:descriptor = [pscustomobject]@{
-            Path           = $script:testFile
-            ItemType       = 'File'
-            Sections       = [System.Security.AccessControl.AccessControlSections]::Access
-            Sddl           = $security.GetSecurityDescriptorSddlForm(
+            Path                 = $script:testFile
+            ItemType             = 'File'
+            Sections             = [System.Security.AccessControl.AccessControlSections]::Access
+            Sddl                 = $security.GetSecurityDescriptorSddlForm(
                 [System.Security.AccessControl.AccessControlSections]::Access
             )
-            NativeSecurity = $security
+            AccessRulesProtected = $false
+            AuditRulesProtected  = $false
+            AccessRulesCanonical = $false
+            AuditRulesCanonical  = $false
+            ConcurrencyToken     = 'READ-TIME-TOKEN'
+            NativeSecurity       = $security
         }
         $script:descriptor.PSObject.TypeNames.Insert(
             0,
@@ -58,6 +63,14 @@ Describe 'Set-NTFSItemSecurityDescriptor' -Tag 'Unit', 'WindowsOnly' {
             }
     }
 
+    It 'Should persist ACL protection together with the selected sections' {
+        $script:descriptor | Set-NTFSItemSecurityDescriptor
+
+        Should -Invoke -ModuleName WindowsAccessControl `
+            -CommandName Invoke-NTFSSecurityDescriptorPersistence -Times 1 -Exactly `
+            -ParameterFilter { $ProtectionSection -eq 'Access' }
+    }
+
     It 'Should not persist under WhatIf' {
         $script:descriptor | Set-NTFSItemSecurityDescriptor -WhatIf
 
@@ -68,5 +81,12 @@ Describe 'Set-NTFSItemSecurityDescriptor' -Tag 'Unit', 'WindowsOnly' {
     It 'Should reject input that is not a security descriptor object' {
         { [pscustomobject]@{ Path = $script:testFile } | Set-NTFSItemSecurityDescriptor -ErrorAction Stop } |
             Should -Throw
+    }
+
+    It 'Should refresh the concurrency token on a pass-through descriptor' {
+        $result = $script:descriptor | Set-NTFSItemSecurityDescriptor -PassThru
+
+        $result.ConcurrencyToken | Should -Not -BeExactly 'READ-TIME-TOKEN'
+        $result.ConcurrencyToken | Should -Match '^[0-9A-F]{64}$'
     }
 }

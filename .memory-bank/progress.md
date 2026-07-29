@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-28
+last-verified: 2026-07-29
 owner: active-agent
 source: repository evidence
 ---
@@ -254,6 +254,27 @@ ENT-8 are closed for the currently shipped enterprise families.
 - 2026-07-28: Built and inspected the eight-entry 89-export package. Both
     editions import all 89 commands; archive hygiene is clean; package SHA-256
     is `A702E507470676DF4784C2B9442D16DC036DB230552E438B0C8CAFA724312F67`.
+- 2026-07-29: Closed OI-21 by adding `SecurityDescriptor` parameter sets to the
+    remaining NTFS access, audit, owner, and inheritance mutators, and closed
+    OI-13 by extending the same model to the registry-key family with
+    `Edit-RegistryKeySecurityDescriptor` as the 90th export. Added opt-in
+    `RequireUnchanged` optimistic concurrency over a read-time SHA-256
+    `ConcurrencyToken`.
+- 2026-07-29: Replaced the latent section-widening path in `Add-NTFSAccessRule`
+    with a fail-closed unloaded-section gate, and stopped requesting NTFS ACL
+    protection for an absent ACL so an `Access, Audit` persist on a SACL-less
+    item can no longer fail after the DACL was written.
+- 2026-07-29: Made `SecurityDescriptor` the default parameter set on nine
+    registry commands after proving empirically that a piped descriptor
+    otherwise binds to the untyped `Path` and fails in path resolution.
+- 2026-07-29: Passed the full Sampler profile at 1084 of 1087 tests and 80.91
+    percent coverage with zero skips. The only failures are the pre-existing
+    domain-controller interactive-logon policy cases. Static analysis over
+    source and tests is clean.
+- 2026-07-29: Completed independent security review and focused re-review. Two
+    Major findings (post-commit protection failure, stale NTFS descriptor
+    projection) were fixed; the re-review returned APPROVE and the remaining
+    Minor and Nit findings were closed.
 
 ## Stable capabilities
 
@@ -296,10 +317,12 @@ ENT-8 are closed for the currently shipped enterprise families.
     export.
 - Strict unattended domain-lab acceptance with fixed ordering, redacted atomic
     evidence, no-skip/nonzero gates, and cleanup readiness after every suite.
+- Detached descriptor editing across the filesystem and registry-key families
+    with fail-closed unloaded-section rejection, in-place projection refresh,
+    bounded editing scopes, and opt-in optimistic concurrency.
 
 ## Open work
 
-- OI-13 and OI-21 extend descriptor-aware editing and concurrency.
 - OI-14, OI-16, and OI-17 add SMB/AD portability, desired state, schema
     resolution, broader mutation, and an AD effective-access decision.
 - OI-18 requires a second writable domain controller for replication and
