@@ -105,7 +105,7 @@ is not reported as a successful live write.
 | `Test-WindowsPrivilege` | 1 | Token integration | Not required |
 | `Get-RegistryKeySecurityDescriptor` | 3 | Live registry plus canonical batch deduplication and metrics | SACL path included in registry acceptance |
 | `Set-RegistryKeySecurityDescriptor` | 1 | Live registry | SACL path included in registry acceptance |
-| `Get-RegistryKeyAccessRule` | 1 | Live registry | Not required |
+| `Get-RegistryKeyAccessRule` | 8 | Live registry, including direct-parent, original-grandparent, mixed-rule, explicit-only, WOW64-view, and provider-object provenance behavior | Not required |
 | `Add-RegistryKeyAccessRule` | 1 | Live registry | Not required |
 | `Set-RegistryKeyAccessRule` | 1 | Live registry | Not required |
 | `Remove-RegistryKeyAccessRule` | 1 | Live registry | Not required |
@@ -262,6 +262,14 @@ round trips, access and audit add/set/remove/clear, exact pipeline removal,
 access and audit inheritance, explicit registry views, provider-object input,
 native and object-based remote-target rejection, audit-flag isolation, and
 absent-SACL preservation under a matchless clear, and `WhatIf`.
+
+`Get-RegistryKeyAccessRuleInheritance.Tests.ps1` uses its own disposable
+three-level hierarchy under `HKCU` and removes it after the run. Seven live
+scenarios cover the direct-parent ancestor, the original ancestor when an
+intermediate key carries the same inherited rule, the null source of an
+explicit rule, index alignment across an unfiltered read that mixes explicit
+and inherited rules, provider-object pipeline input, the null source of the
+`Registry64` view, and the null source of an explicit-only query.
 
 The registry suite and 15 exact-name command-contract tests passed with 31
 tests, zero failures, and zero skips in separate PowerShell 7 and Windows

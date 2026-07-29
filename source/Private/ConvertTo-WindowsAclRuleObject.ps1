@@ -19,7 +19,12 @@ function ConvertTo-WindowsAclRuleObject {
         [type]$RightsType,
 
         [Parameter()]
-        [bool]$SupportsInheritance = $false
+        [bool]$SupportsInheritance = $false,
+
+        [Parameter()]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$InheritedFrom
     )
 
     $qualifiedAce = $Ace -as [System.Security.AccessControl.QualifiedAce]
@@ -61,6 +66,9 @@ function ConvertTo-WindowsAclRuleObject {
     }
 
     $appliesTo = $null
+    $isInherited = ([int]$Ace.AceFlags -band (
+        [int][System.Security.AccessControl.AceFlags]::Inherited
+    )) -ne 0
     if ($SupportsInheritance) {
         $inheritFlags = [int]$Ace.AceFlags -band (
             [int][System.Security.AccessControl.AceFlags]::ContainerInherit -bor
@@ -124,9 +132,12 @@ function ConvertTo-WindowsAclRuleObject {
         AccessControlType  = $accessControlType
         AuditFlags         = [System.Security.AccessControl.AuditFlags]$auditFlagMask
         AppliesTo          = $appliesTo
-        IsInherited        = ([int]$Ace.AceFlags -band (
-            [int][System.Security.AccessControl.AceFlags]::Inherited
-        )) -ne 0
+        IsInherited        = $isInherited
+        InheritedFrom      = if ($isInherited -and -not [string]::IsNullOrEmpty($InheritedFrom)) {
+            $InheritedFrom
+        } else {
+            $null
+        }
         AceFlags           = $Ace.AceFlags
         IdentityReference  = $securityIdentifier
         NativeAce          = $Ace

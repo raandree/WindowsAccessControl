@@ -190,12 +190,17 @@ namespace WindowsAccessControl
         private const UInt32 ProcessQueryLimitedInformation = 0x00001000;
         private const UInt32 FileObject = 1;
         private const UInt32 ServiceObject = 2;
+        private const UInt32 RegistryKeyObject = 4;
         private const UInt32 KernelObject = 6;
         private const UInt32 AclSizeInformationClass = 2;
         private const UInt32 FileGenericRead = 0x00120089;
         private const UInt32 FileGenericWrite = 0x00120116;
         private const UInt32 FileGenericExecute = 0x001200A0;
         private const UInt32 FileAllAccess = 0x001F01FF;
+        private const UInt32 RegistryGenericRead = 0x00020019;
+        private const UInt32 RegistryGenericWrite = 0x00020006;
+        private const UInt32 RegistryGenericExecute = 0x00020019;
+        private const UInt32 RegistryAllAccess = 0x000F003F;
         private const UInt32 Logon32LogonInteractive = 2;
         private const UInt32 Logon32ProviderDefault = 0;
 
@@ -903,6 +908,66 @@ namespace WindowsAccessControl
             {
                 throw new ArgumentException("A file-system path is required.", "path");
             }
+
+            GenericMapping genericMapping = new GenericMapping
+            {
+                GenericRead = FileGenericRead,
+                GenericWrite = FileGenericWrite,
+                GenericExecute = FileGenericExecute,
+                GenericAll = FileAllAccess
+            };
+            return GetAccessRuleInheritanceSources(
+                path,
+                FileObject,
+                container,
+                securityDescriptor,
+                ref genericMapping,
+                true,
+                true);
+        }
+
+        public static AccessRuleInheritanceSourceInfo[] GetRegistryKeyAccessRuleInheritanceSources(
+            string keyName,
+            UInt32 objectType,
+            byte[] securityDescriptor)
+        {
+            if (String.IsNullOrWhiteSpace(keyName))
+            {
+                throw new ArgumentException("A registry key path is required.", "keyName");
+            }
+            if (objectType != RegistryKeyObject)
+            {
+                throw new ArgumentOutOfRangeException(
+                    "objectType",
+                    "Windows resolves registry inheritance sources only for SE_REGISTRY_KEY.");
+            }
+
+            GenericMapping genericMapping = new GenericMapping
+            {
+                GenericRead = RegistryGenericRead,
+                GenericWrite = RegistryGenericWrite,
+                GenericExecute = RegistryGenericExecute,
+                GenericAll = RegistryAllAccess
+            };
+            return GetAccessRuleInheritanceSources(
+                keyName,
+                RegistryKeyObject,
+                true,
+                securityDescriptor,
+                ref genericMapping,
+                false,
+                false);
+        }
+
+        private static AccessRuleInheritanceSourceInfo[] GetAccessRuleInheritanceSources(
+            string objectName,
+            UInt32 objectType,
+            bool container,
+            byte[] securityDescriptor,
+            ref GenericMapping genericMapping,
+            bool accessAcesOnly,
+            bool normalizeFileSystemName)
+        {
             ValidateSecurityDescriptor(securityDescriptor);
 
             IntPtr descriptorPointer = IntPtr.Zero;
@@ -971,16 +1036,9 @@ namespace WindowsAccessControl
                     inheritedFromSize * aceCount);
                 inheritanceArray = Marshal.AllocHGlobal(allocationSize);
 
-                GenericMapping genericMapping = new GenericMapping
-                {
-                    GenericRead = FileGenericRead,
-                    GenericWrite = FileGenericWrite,
-                    GenericExecute = FileGenericExecute,
-                    GenericAll = FileAllAccess
-                };
                 UInt32 result = NativeGetInheritanceSource(
-                    path,
-                    FileObject,
+                    objectName,
+                    objectType,
                     DaclSecurityInformation,
                     container,
                     IntPtr.Zero,
@@ -997,12 +1055,15 @@ namespace WindowsAccessControl
 
                 for (Int32 index = 0; index < aceCount; index++)
                 {
-                    CommonAce managedAce = rawAcl[index] as CommonAce;
-                    if (managedAce == null ||
-                        (managedAce.AceQualifier != AceQualifier.AccessAllowed &&
-                        managedAce.AceQualifier != AceQualifier.AccessDenied))
+                    if (accessAcesOnly)
                     {
-                        continue;
+                        CommonAce managedAce = rawAcl[index] as CommonAce;
+                        if (managedAce == null ||
+                            (managedAce.AceQualifier != AceQualifier.AccessAllowed &&
+                            managedAce.AceQualifier != AceQualifier.AccessDenied))
+                        {
+                            continue;
+                        }
                     }
                     IntPtr entryPointer = IntPtr.Add(
                         inheritanceArray,
@@ -1012,8 +1073,11 @@ namespace WindowsAccessControl
                         typeof(InheritedFrom));
                     string ancestorName = entry.AncestorName == IntPtr.Zero
                         ? null
-                        : NormalizeAncestorName(
-                            Marshal.PtrToStringUni(entry.AncestorName));
+                        : Marshal.PtrToStringUni(entry.AncestorName);
+                    if (normalizeFileSystemName)
+                    {
+                        ancestorName = NormalizeAncestorName(ancestorName);
+                    }
                     sources.Add(new AccessRuleInheritanceSourceInfo(
                         entry.GenerationGap,
                         ancestorName));

@@ -163,6 +163,16 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
                 TableColumnItems.TableColumnItem.PropertyName
         )
         $accessRuleColumns | Should -Contain 'InheritedFrom'
+
+        $registryAccessRuleView = @(
+            $formatData.Configuration.ViewDefinitions.View |
+                Where-Object Name -EQ 'WindowsAccessControl.RegistryKeyAccessRule'
+        )
+        $registryAccessRuleColumns = @(
+            $registryAccessRuleView.TableControl.TableRowEntries.TableRowEntry.
+                TableColumnItems.TableColumnItem.PropertyName
+        )
+        $registryAccessRuleColumns | Should -Contain 'InheritedFrom'
     }
 
     It 'Should index every architecture decision record' {

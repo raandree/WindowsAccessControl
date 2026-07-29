@@ -67,6 +67,32 @@ function Get-WindowsAclRule {
             (Resolve-WindowsIdentityReference -Identity $accountValue).Value
         }
     )
+    $inheritanceSources = [string[]]@()
+    if ($Target.ObjectType -eq 'RegistryKey' -and
+        $RuleType -eq 'Access' -and
+        -not $ExcludeInherited) {
+        $inheritanceParameters = @{
+            Target             = $Target
+            SecurityDescriptor = $descriptorBytes
+        }
+        try {
+            $inheritanceSources = Get-WindowsRegistryKeyInheritanceSource @inheritanceParameters
+            if ($inheritanceSources.Count -notin @(0, $acl.Count)) {
+                throw "Windows returned $($inheritanceSources.Count) inheritance sources for $($acl.Count) access-control entries."
+            }
+        } catch {
+            # An ancestor key can be unreadable or change between the descriptor
+            # read and the ancestor walk. Report the rules without provenance
+            # rather than discarding a successful descriptor read.
+            $inheritanceSources = [string[]]@()
+            $errorParameters = @{
+                Message      = "Cannot resolve inheritance sources for '$($Target.Path)': $($_.Exception.Message) Access rules are reported without an inheritance source."
+                Category     = [System.Management.Automation.ErrorCategory]::ReadError
+                TargetObject = $Target.Path
+            }
+            Write-Error @errorParameters
+        }
+    }
 
     for ($index = 0; $index -lt $acl.Count; $index++) {
         $ace = $acl[$index]
@@ -98,6 +124,11 @@ function Get-WindowsAclRule {
             Target   = $Target
             RuleType = $RuleType
             TypeName = $TypeName
+            InheritedFrom = if ($isInherited -and $index -lt $inheritanceSources.Count) {
+                $inheritanceSources[$index]
+            } else {
+                $null
+            }
             RightsType = switch ($Target.ObjectType) {
                 Service { [WindowsServiceRights] }
                 ServiceControlManager { [WindowsServiceControlManagerRights] }

@@ -255,7 +255,9 @@ Get-ChildItem -LiteralPath $path -Recurse |
 
 Inherited rules expose `InheritedFrom` when Windows can identify the original
 ancestor. The value is empty for explicit rules and when Windows cannot resolve
-the source.
+the source. `Get-RegistryKeyAccessRule` reports the same provenance for the
+default registry view; the `Registry32` and `Registry64` views leave the value
+empty because Windows does not resolve inheritance sources for them.
 
 ## Grant or replace NTFS access
 

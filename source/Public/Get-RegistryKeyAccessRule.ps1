@@ -5,6 +5,10 @@ function Get-RegistryKeyAccessRule {
     .DESCRIPTION
         Reads registry-key DACLs and emits structured allow or deny rules with
         account, SID, typed registry rights, inheritance scope, and native ACE.
+        Inherited rules expose InheritedFrom with the ancestor key reported by
+        the Windows inheritance-source API. It is empty for explicit rules, for
+        inherited rules whose source Windows cannot identify, and for the
+        Registry32 and Registry64 views, which Windows does not support.
     .PARAMETER Path
         One or more local registry key paths or RegistryKey pipeline objects.
     .PARAMETER RegistryView

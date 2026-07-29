@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add native `InheritedFrom` provenance to registry-key access-rule results and
+    their default table view, resolved with the Windows inheritance-source API
+    for the default registry view
 - Add typed Task Scheduler access-rule commands (`Get-TaskFolderAccessRule`,
     `Add-TaskFolderAccessRule`, `Remove-TaskFolderAccessRule`,
     `Get-ScheduledTaskAccessRule`, `Add-ScheduledTaskAccessRule`,

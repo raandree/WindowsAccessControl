@@ -587,3 +587,20 @@ Normative record: [ADR 0013](../specs/decisions/0013-use-bounded-parallel-target
     write out also runs it after the worker's `finally` cleared the thread-local
     batch-worker flag, so a downstream mutator dispatches and locks its own
     targets instead of silently taking the inline branch.
+
+### Decision 56: Degrade registry provenance instead of losing the rules
+
+- Choice: Resolve registry `InheritedFrom` only with `SE_REGISTRY_KEY`, enforce
+    that object type in the native entry point as well as the PowerShell gate,
+    and report a null source with a non-terminating error when the ancestor
+    lookup fails or its row count does not match the ACL. The filesystem path
+    keeps terminating the target.
+- Rationale: A live probe showed Windows rejects the WOW64 registry-view object
+    types with `ERROR_INVALID_PARAMETER`, while passing `SE_REGISTRY_KEY` for
+    those targets succeeds and returns a confident ancestor from the wrong
+    view. A registry ancestor chain also commonly crosses keys the caller
+    cannot read, and the walk happens after the descriptor is already in hand,
+    so terminating the target would trade a working read-only inspection
+    command for an optional column. Null is the already-defined "source
+    unknown" state, so degrading introduces no new output contract.
+    Normative record: [ADR 0019](../specs/decisions/0019-report-null-registry-provenance-for-wow64-views.md).

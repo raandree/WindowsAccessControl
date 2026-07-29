@@ -301,6 +301,19 @@ ENT-8 are closed for the currently shipped enterprise families.
     indistinguishable from a worker failure by exception type, error ID,
     activity, or invocation info. Added sequential and parallel propagation
     regression tests; both previously failing integration tests pass again.
+- 2026-07-29: Added native `InheritedFrom` provenance to registry-key access
+    rules. `GetFileSystemAccessRuleInheritanceSources` was refactored into a
+    shared native helper with a registry entry point that uses `SE_REGISTRY_KEY`
+    and the registry generic mapping. A live probe proved Windows rejects the
+    WOW64 registry-view object types with `ERROR_INVALID_PARAMETER`, so those
+    views report a null source instead of an ancestor resolved against the
+    wrong view. Recorded as ADR 0019.
+- 2026-07-29: Independent security review of the registry provenance change
+    returned APPROVE WITH COMMENTS with one Major finding. Every Major and Minor
+    finding was fixed: provenance now degrades to null with a non-terminating
+    error instead of discarding a successful descriptor read, the native entry
+    point rejects unsupported object types, and the hive translator fails closed
+    on an unrecognized native form.
 
 ## Stable capabilities
 

@@ -367,7 +367,10 @@ failure can also prevent translation.
 When Windows can identify the source, inherited access-rule results expose
 `InheritedFrom` with the original ancestor path. Explicit rules and inherited
 rules with an unresolved native source leave `InheritedFrom` empty; the module
-does not guess provenance by comparing parent ACLs.
+does not guess provenance by comparing parent ACLs. `Get-RegistryKeyAccessRule`
+reports the ancestor key the same way for the default registry view. Windows
+cannot resolve inheritance sources for the `Registry32` and `Registry64` views,
+so those results leave `InheritedFrom` empty.
 
 ## Rule scope
 

@@ -88,6 +88,28 @@ native inheritance-source path. The native name allocations are released with
 than falling back to heuristic parent-rule comparison. Concurrent hierarchy
 changes can make the native operation fail; no stale source is invented.
 
+Registry-key access-rule queries use the same contract with `SE_REGISTRY_KEY`
+and the registry generic mapping. Registry source rows are aligned by DACL ACE
+index instead of being filtered, because registry queries enumerate the raw ACL
+rather than the .NET access-rule projection. Ancestor names are translated from
+the native hive form to the provider form, and a native form that is not a
+supported local hive is reported as no source rather than as an unopenable
+path. Windows rejects `SE_REGISTRY_WOW64_32KEY` and `SE_REGISTRY_WOW64_64KEY`
+for inheritance-source lookups, so the `Registry32` and `Registry64` views
+report a null source rather than an ancestor resolved against a different view.
+The native entry point rejects any other object type so the guarantee does not
+depend on its caller.
+
+Registry provenance degrades instead of terminating the target. A registry
+ancestor chain can cross keys the caller cannot read, and it can change between
+the descriptor read and the ancestor walk, so a failed lookup or a row count
+that does not match the ACL emits a non-terminating error and reports the
+access rules with a null source. Losing a successful descriptor read to enrich
+an optional column is a worse outcome than reporting the already-defined
+"source unknown" state. A successful lookup is still resolved against the live
+ancestor chain rather than the descriptor snapshot, so a concurrent ancestor
+change can return a source that no longer matches the reported ACE.
+
 ## Privilege boundary
 
 The module recognizes the Windows privilege boundary and scopes required

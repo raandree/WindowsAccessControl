@@ -126,6 +126,15 @@ it contains the normalized local ancestor path returned by the Windows
 inheritance-source API. The module does not infer the source by comparing an
 ACE with rules on parent directories.
 
+`RegistryKeyAccessRule` objects expose `InheritedFrom` with the same contract,
+reported as a provider path such as `HKCU:\Control Panel`. Windows rejects the
+`Registry32` and `Registry64` object types for inheritance-source lookups, so
+those views always return null rather than an ancestor resolved against a
+different view. Every other object family that shares the rule shape carries
+the property for a uniform output contract but never populates it, because the
+module does not resolve provenance for registry audit rules, service, SCM,
+process, or SMB share rules.
+
 Every registry, service, SCM, and process rule object exposes `AccessMask` as a
 `UInt64` containing the normalized unsigned 32-bit native mask. `AccessRights`
 uses the object family's public enum; exact removal uses the preserved native
