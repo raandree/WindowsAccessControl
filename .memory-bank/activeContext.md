@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-29
+last-verified: 2026-07-30
 owner: active-agent
 source: current task evidence
 ---
@@ -9,35 +9,35 @@ source: current task evidence
 
 ## Current focus
 
-Active Directory access rules now report where an inherited ACE came from and
-what its object GUIDs mean, and `Server` is optional across the directory
-commands. Provenance and schema names are resolved over the same signed and
-sealed connection that returned the descriptor, and a discovered writable domain
-controller is resolved once per invocation and pinned for every target.
+Two open issues closed. The registry family now treats inheritance scope as ACE
+identity when adding a rule, and the Active Directory family gained set,
+rights-removal, account-purge, and clear semantics behind a fail-closed
+manageability gate and a write-boundary staleness check.
 
 ## Evidence
 
-- A live probe established both constraints. `GetInheritanceSourceW` does work
-    with `SE_DS_OBJECT` and returned `DC=contoso,DC=com` for every inherited ACE
-    of the lab user, but it rejects a server-qualified object name and locates
-    its own domain controller, so it cannot honor `Server` or `Credential`.
-- The LDAP ancestor-walk inference agrees with that native oracle: 26 of 26
-    inherited ACEs resolve to `DC=contoso,DC=com` in both PowerShell editions.
-- Schema and extended-right lookups resolve the reported GUIDs to
-    `Account Restrictions`, `inetOrgPerson`, `user`, `Logon Information`, and
-    `Group Membership`.
-- ADR 0020 records the enrichment decision, ADR 0021 the discovery decision;
-    specifications 0002, 0003, 0005, and 0009 record the expanded contract.
-- Independent security review returned APPROVE WITH COMMENTS with no Blocker and
-    one Major finding. The Major finding and three fail-open Minor findings were
-    fixed and covered by regression tests.
-- `tests/Unit` plus `tests/QA` pass 1022 of 1022 with the module built from
-    source, and the same paths work under Windows PowerShell 5.1.
+- OI-25: `Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` opt into
+    `Invoke-WindowsAclRuleMutation -MatchAceFlags` on both the descriptor-staging
+    and path-write paths. `Set` and `Clear` are deliberately unchanged, recorded
+    in specification 0003.
+- OI-16: `Set-ADObjectAccessRule` and `Clear-ADObjectAccessRule` are new exports,
+    and `Remove-ADObjectAccessRule` gained a distinguished-name parameter set
+    with `Exact`, `Rights`, and `All` modes. Every mode matches on account,
+    qualifier, and both object GUIDs, so an object ACE is never flattened.
+- Rights removal expands a stored native `GENERIC_*` bit to the rights it
+    confers before subtracting, so revoking a specific right cannot leave the
+    generic grant standing.
+- Two independent security reviews ran. The first returned REQUEST CHANGES with
+    four Major findings; all four plus every Minor and Nit were fixed. The
+    re-review returned APPROVE WITH COMMENTS, and its six follow-up Minor/Nit
+    findings were also fixed.
+- The live domain lab passes 10 of 10 Active Directory acceptance scenarios,
+    including the manageability gate and the staleness rejection, both bounded to
+    a disposable child organizational unit.
 
 ## Next step
 
-Review or push the local commits only on explicit request. Ten focused issues
-remain: OI-14, OI-16 through OI-18, OI-20, and OI-22 through OI-25, plus the
-elevation-dependent failures that predate this work. OI-18 remains externally
+Review or push the local changes only on explicit request. Seven focused issues
+remain: OI-14, OI-17, OI-18, and OI-20 through OI-24. OI-18 remains externally
 blocked until a second writable domain controller exists; do not repurpose the
 member server that hosts SMB, Task Scheduler, and software-key fixtures.

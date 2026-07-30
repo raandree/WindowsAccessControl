@@ -139,8 +139,7 @@ preservation, rollback, COM release, and task deletion in Windows PowerShell
 
 ## Later work
 
-OI-20 tracks schema-version-2 portability and DSC. OI-25 tracks the same
-inheritance-sensitive duplicate detection for the registry-key family. Audit
+OI-20 tracks schema-version-2 portability and DSC. Audit
 rules, SACL, and direct remote APIs require a separately accepted contract.
 
 ## See also

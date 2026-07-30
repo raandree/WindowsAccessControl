@@ -328,4 +328,256 @@ Describe 'Active Directory object DACL commands' `
                 -ErrorAction Stop
         } | Should -Throw
     }
+
+    It 'Should replace same-scope rules and preserve a different object scope' {
+        $objectType = [guid]'bf967953-0de6-11d0-a285-00aa003049e2'
+        $before = Get-ADObjectSecurityDescriptor `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -ThrottleLimit 1
+
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -AccessRights ReadProperty `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -AccessRights ReadProperty `
+            -ObjectType $objectType `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        Set-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -AccessRights WriteProperty `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        $rules = @(Get-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -ExcludeInherited `
+            -ThrottleLimit 1)
+        $common = @($rules | Where-Object ObjectTypeGuid -EQ ([guid]::Empty))
+        $scoped = @($rules | Where-Object ObjectTypeGuid -EQ $objectType)
+
+        $common | Should -HaveCount 1
+        $common[0].AccessRights.ToString() | Should -Be 'WriteProperty'
+        $scoped | Should -HaveCount 1
+        $scoped[0].AccessRights.ToString() | Should -Be 'ReadProperty'
+
+        Clear-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        $after = Get-ADObjectSecurityDescriptor `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -ThrottleLimit 1
+        $after.Sddl | Should -BeExactly $before.Sddl
+    }
+
+    It 'Should subtract rights and purge an account without touching other rules' {
+        $before = Get-ADObjectSecurityDescriptor `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -ThrottleLimit 1
+        $beforeCount = @(Get-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -ExcludeInherited `
+            -ThrottleLimit 1).Count
+
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -AccessRights 'ReadProperty, WriteProperty' `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        Remove-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -AccessRights WriteProperty `
+            -RemovalMode Rights `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        $subtracted = @(Get-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -ExcludeInherited `
+            -ThrottleLimit 1)
+        $subtracted | Should -HaveCount 1
+        $subtracted[0].AccessRights.ToString() | Should -Be 'ReadProperty'
+
+        $purged = @(Remove-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -Account $script:testSid `
+            -RemovalMode All `
+            -ThrottleLimit 1 `
+            -PassThru `
+            -Confirm:$false)
+
+        $purged | Should -HaveCount 1
+        $purged[0].SID | Should -Be $script:testSid
+
+        $remaining = @(Get-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -ExcludeInherited `
+            -ThrottleLimit 1)
+        $remaining | Should -HaveCount $beforeCount
+
+        $after = Get-ADObjectSecurityDescriptor `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -ThrottleLimit 1
+        $after.Sddl | Should -BeExactly $before.Sddl
+    }
+
+    It 'Should reject a clear that would leave the object unmanageable' {
+        # Use a disposable child OU. Protecting the shared target OU and then
+        # removing its only manage grant would lock the fixture out of its own
+        # restore path.
+        $gateOu = "OU=WacGateTest,$($script:targetOu)"
+        $null = New-ADOrganizationalUnit `
+            -Name 'WacGateTest' `
+            -Path $script:targetOu `
+            -Server $script:server `
+            -ProtectedFromAccidentalDeletion:$false `
+            -ErrorAction Stop
+        try {
+            $protectedSddl = 'D:P(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;DA)'
+            Set-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $gateOu `
+                -AllowedBaseDistinguishedName $script:targetOu `
+                -Sddl $protectedSddl `
+                -ThrottleLimit 1 `
+                -Confirm:$false
+
+            $before = Get-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $gateOu `
+                -ThrottleLimit 1
+
+            {
+                Clear-ADObjectAccessRule `
+                    -Server $script:server `
+                    -DistinguishedName $gateOu `
+                    -AllowedBaseDistinguishedName $script:targetOu `
+                    -ThrottleLimit 1 `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+            } | Should -Throw -ExpectedMessage '*no principal with WriteDacl*'
+
+            $unchanged = Get-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $gateOu `
+                -ThrottleLimit 1
+            $unchanged.Sddl | Should -BeExactly $before.Sddl
+        }
+        finally {
+            Remove-ADOrganizationalUnit `
+                -Identity $gateOu `
+                -Server $script:server `
+                -Confirm:$false `
+                -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'Should reject a staged write whose target changed after the read' {
+        $raceOu = "OU=WacRaceTest,$($script:targetOu)"
+        $null = New-ADOrganizationalUnit `
+            -Name 'WacRaceTest' `
+            -Path $script:targetOu `
+            -Server $script:server `
+            -ProtectedFromAccidentalDeletion:$false `
+            -ErrorAction Stop
+        try {
+            $target = & $script:module {
+                param($Server, $DistinguishedName, $Base)
+                Resolve-WindowsADObjectTarget `
+                    -Server $Server `
+                    -DistinguishedName $DistinguishedName `
+                    -AllowedBaseDistinguishedName $Base `
+                    -TimeoutSeconds 10 `
+                    -ForWrite
+            } $script:server $raceOu $script:targetOu
+
+            # Commit a competing change after the descriptor was staged.
+            Add-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $raceOu `
+                -AllowedBaseDistinguishedName $script:targetOu `
+                -Account $script:testSid `
+                -AccessRights ReadProperty `
+                -ThrottleLimit 1 `
+                -Confirm:$false
+
+            {
+                & $script:module {
+                    param($Target, $Base)
+                    $staged = Invoke-WindowsADAccessRuleMutation `
+                        -SecurityDescriptor $Target.BinarySecurityDescriptor `
+                        -Operation Add `
+                        -SecurityIdentifier (
+                            [Security.Principal.SecurityIdentifier]::new('S-1-1-0')
+                        ) `
+                        -AccessMask ([int][WindowsActiveDirectoryRights]::ReadProperty)
+                    Set-WindowsADObjectSecurityDescriptor `
+                        -Target $Target `
+                        -AllowedBaseDistinguishedName $Base `
+                        -TimeoutSeconds 10 `
+                        -SecurityDescriptor $staged `
+                        -ExpectedSecurityDescriptor $Target.BinarySecurityDescriptor
+                } $target $script:targetOu
+            } | Should -Throw -ExpectedMessage '*changed after it was read*'
+        }
+        finally {
+            Remove-ADOrganizationalUnit `
+                -Identity $raceOu `
+                -Server $script:server `
+                -Confirm:$false `
+                -ErrorAction SilentlyContinue
+        }
+    }
 }

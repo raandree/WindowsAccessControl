@@ -20,7 +20,13 @@ function Set-WindowsADObjectSecurityDescriptor {
         [int]$TimeoutSeconds,
 
         [Parameter(Mandatory)]
-        [byte[]]$SecurityDescriptor
+        [byte[]]$SecurityDescriptor,
+
+        [Parameter()]
+        [switch]$RequireManageableDacl,
+
+        [Parameter()]
+        [byte[]]$ExpectedSecurityDescriptor
     )
 
     $validatedTarget = Resolve-WindowsADObjectTarget `
@@ -43,6 +49,26 @@ function Set-WindowsADObjectSecurityDescriptor {
         0
     )
     $section = [System.Security.AccessControl.AccessControlSections]::Access
+    if ($ExpectedSecurityDescriptor) {
+        # The candidate was staged from a read taken before this revalidation, so
+        # refuse to replace a DACL that changed in between instead of reverting it.
+        $expected = [System.Security.AccessControl.RawSecurityDescriptor]::new(
+            $ExpectedSecurityDescriptor,
+            0
+        )
+        if ($current.GetSddlForm($section) -cne $expected.GetSddlForm($section)) {
+            throw (
+                "The Active Directory DACL for $($validatedTarget.CanonicalTarget) " +
+                'changed after it was read. Re-read the object and retry.'
+            )
+        }
+    }
+    if ($RequireManageableDacl) {
+        Assert-WindowsADManageableDacl `
+            -SecurityDescriptor $SecurityDescriptor `
+            -Target $validatedTarget.CanonicalTarget `
+            -CurrentSecurityDescriptor $validatedTarget.BinarySecurityDescriptor
+    }
     if ($current.GetSddlForm($section) -ceq $requested.GetSddlForm($section)) {
         return
     }

@@ -1,10 +1,14 @@
-function Add-ADObjectAccessRule {
+function Clear-ADObjectAccessRule {
     <#
     .SYNOPSIS
-        Adds typed access rules to bounded Active Directory object DACLs.
+        Removes explicit access rules from bounded Active Directory object DACLs.
     .DESCRIPTION
-        Prevalidates identities and a disposable OU boundary, adds idempotent
-        common or object-specific ACEs, and revalidates object GUID before LDAP write.
+        Removes every explicit ACE from the selected object DACLs, or only the
+        explicit ACEs of the selected accounts, and leaves inherited ACEs
+        untouched. Both allow and deny rules are removed, so removing a deny can
+        increase effective access; the command warns when that happens. The write
+        is rejected when the result would leave no principal able to manage the
+        object.
     .PARAMETER Server
         The explicit DNS name of the final writable domain controller. When it
         is omitted, one writable domain controller is located in the current
@@ -16,27 +20,18 @@ function Add-ADObjectAccessRule {
     .PARAMETER Credential
         An optional credential used only for the direct LDAP bind to Server.
     .PARAMETER Account
-        One or more account names, SIDs, identity references, or module identities.
-    .PARAMETER AccessRights
-        Active Directory rights to add.
-    .PARAMETER AccessControlType
-        Adds an Allow rule by default or an explicit Deny rule.
-    .PARAMETER InheritanceType
-        Controls directory inheritance for the new ACE.
-    .PARAMETER ObjectType
-        Optionally scopes the ACE to an object, property, or extended-right GUID.
-    .PARAMETER InheritedObjectType
-        Optionally scopes inherited application to an object-class GUID.
+        Restricts removal to these account names, SIDs, identity references, or
+        module identities. All explicit rules are removed when it is omitted.
     .PARAMETER TimeoutSeconds
         Sets the LDAP request timeout from 1 through 300 seconds.
     .PARAMETER ThrottleLimit
         Limits concurrently processed immutable object targets from 1 through 64.
     .PARAMETER PassThru
-        Returns the stored explicit access rule after persistence.
+        Returns the removed explicit access rules after persistence.
     .EXAMPLE
-        Add-ADObjectAccessRule -Server dc01.example.test -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights ReadProperty -WhatIf
+        Clear-ADObjectAccessRule -Server dc01.example.test -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -WhatIf
 
-        Previews adding an explicit read-property ACE inside the allowed OU.
+        Previews removing every explicit ACE for one account inside the allowed OU.
     .INPUTS
         System.String
     .OUTPUTS
@@ -55,21 +50,9 @@ function Add-ADObjectAccessRule {
         [string]$AllowedBaseDistinguishedName,
         [Parameter()]
         [pscredential]$Credential,
-        [Parameter(Mandatory)]
+        [Parameter()]
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
-        [Parameter(Mandatory)]
-        [WindowsActiveDirectoryRights]$AccessRights,
-        [Parameter()]
-        [System.Security.AccessControl.AccessControlType]$AccessControlType =
-            [System.Security.AccessControl.AccessControlType]::Allow,
-        [Parameter()]
-        [WindowsActiveDirectoryInheritance]$InheritanceType =
-            [WindowsActiveDirectoryInheritance]::None,
-        [Parameter()]
-        [guid]$ObjectType = [guid]::Empty,
-        [Parameter()]
-        [guid]$InheritedObjectType = [guid]::Empty,
         [Parameter()]
         [ValidateRange(1, 300)]
         [int]$TimeoutSeconds = 10,
@@ -118,18 +101,45 @@ function Add-ADObjectAccessRule {
                 -Credential $Credential `
                 -TimeoutSeconds $TimeoutSeconds `
                 -ForWrite
-            if ($PSCmdlet.ShouldProcess($target.CanonicalTarget, "Add $AccessControlType Active Directory access rules")) {
-                $descriptor = $target.BinarySecurityDescriptor
+            $accountLabel = if ($identities.Count -gt 0) {
+                $identities.Value -join ', '
+            }
+            else { 'all accounts' }
+            $descriptor = $target.BinarySecurityDescriptor
+            if ($identities.Count -eq 0) {
+                $descriptor = Invoke-WindowsADAccessRuleMutation `
+                    -SecurityDescriptor $descriptor `
+                    -Operation Clear
+            }
+            else {
                 foreach ($sid in $identities) {
                     $descriptor = Invoke-WindowsADAccessRuleMutation `
                         -SecurityDescriptor $descriptor `
-                        -Operation Add `
-                        -SecurityIdentifier $sid `
-                        -AccessMask ([int]$AccessRights) `
-                        -AccessControlType $AccessControlType `
-                        -InheritanceType $InheritanceType `
-                        -ObjectType $ObjectType `
-                        -InheritedObjectType $InheritedObjectType
+                        -Operation Clear `
+                        -SecurityIdentifier $sid
+                }
+            }
+            # Disclose a deny removal in the description so it is visible under
+            # WhatIf and before a confirmation prompt is answered.
+            $denyCount = @(
+                Get-WindowsADRemovedAce `
+                    -OriginalSecurityDescriptor $target.BinarySecurityDescriptor `
+                    -SecurityDescriptor $descriptor |
+                    Where-Object {
+                        ($_ -as [System.Security.AccessControl.QualifiedAce]).AceQualifier -eq
+                            [System.Security.AccessControl.AceQualifier]::AccessDenied
+                    }
+            ).Count
+            $action = "Clear explicit Active Directory access rules for $accountLabel"
+            if ($denyCount -gt 0) {
+                $action += " including $denyCount explicit deny rule(s), which can increase effective access"
+            }
+            if ($PSCmdlet.ShouldProcess($target.CanonicalTarget, $action)) {
+                $removed = if ($PassThru) {
+                    @(Get-WindowsADRemovedAccessRule `
+                        -Target $target `
+                        -OriginalSecurityDescriptor $target.BinarySecurityDescriptor `
+                        -SecurityDescriptor $descriptor)
                 }
                 Set-WindowsADObjectSecurityDescriptor `
                     -Target $target `
@@ -139,22 +149,14 @@ function Add-ADObjectAccessRule {
                     -SecurityDescriptor $descriptor `
                     -ExpectedSecurityDescriptor $target.BinarySecurityDescriptor `
                     -RequireManageableDacl
+                if ($denyCount -gt 0) {
+                    Write-Warning (
+                        "Clearing $($target.CanonicalTarget) removed $denyCount " +
+                        'explicit deny rule(s), which can increase effective access.'
+                    )
+                }
                 if ($PassThru) {
-                    Get-ADObjectAccessRule `
-                        -Server $Server `
-                        -DistinguishedName $target.DistinguishedName `
-                        -Credential $Credential `
-                        -Account $identities.Value `
-                        -ExcludeInherited `
-                        -TimeoutSeconds $TimeoutSeconds `
-                        -ThrottleLimit 1 |
-                        Where-Object {
-                            [int]$_.AccessRights -eq [int]$AccessRights -and
-                            $_.AccessControlType -eq $AccessControlType -and
-                            $_.InheritanceType -eq $InheritanceType -and
-                            $_.ObjectTypeGuid -eq $ObjectType -and
-                            $_.InheritedObjectTypeGuid -eq $InheritedObjectType
-                        }
+                    foreach ($rule in $removed) { $rule }
                 }
             }
         }

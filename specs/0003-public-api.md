@@ -312,6 +312,15 @@ and preserve unknown or unrelated ACEs. Audit and audit-inheritance operations
 scope `SeSecurityPrivilege` to each read/write operation. Registry values do not
 have independent security descriptors; callers manage the containing key.
 
+`Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` treat inheritance
+scope as part of ACE identity, so adding an existing account and rights
+combination with a different `AppliesTo` value writes a distinct ACE instead of
+being suppressed as a duplicate. `Set` and `Clear` deliberately keep matching on
+account, qualifier, and audit flags regardless of inheritance scope, so a `Set`
+still collapses every scope variant for that account into the single requested
+rule. That asymmetry is intentional: `Add` accumulates, `Set` and `Clear`
+replace, and changing them would silently alter existing behavior.
+
 The registry family supports the same detached editing model as the filesystem
 family. A descriptor-bound mutation updates the descriptor's binary form, SDDL,
 owner, group, and protection projection in place and returns the same object.
@@ -478,10 +487,13 @@ material, disposes the caller certificate, or exposes a mutation surface.
 | `Set-ADObjectSecurityDescriptor` | distinguished names | none / `ADObjectSecurityDescriptor` |
 | `Get-ADObjectAccessRule` | distinguished names | `ADObjectAccessRule` |
 | `Add-ADObjectAccessRule` | distinguished names | none / `ADObjectAccessRule` |
-| `Remove-ADObjectAccessRule` | path-bound `ADObjectAccessRule` | none / removed rule |
+| `Set-ADObjectAccessRule` | distinguished names | none / `ADObjectAccessRule` |
+| `Remove-ADObjectAccessRule` | path-bound `ADObjectAccessRule`, distinguished names | none / removed rules |
+| `Clear-ADObjectAccessRule` | distinguished names | none / removed rules |
 
-`Server` is optional on every AD command except `Remove-ADObjectAccessRule`,
-which takes it from the path-bound rule. When it is omitted, one writable domain
+`Server` is optional on every AD command. `Remove-ADObjectAccessRule` takes it
+from the path-bound rule in its `Rule` parameter set. When it is omitted, one
+writable domain
 controller is located in the calling computer's domain, validated by the same
 explicit-name rules, and pinned for the whole invocation. Mutators additionally
 require `AllowedBaseDistinguishedName`. Query output includes `Server`, current
@@ -492,6 +504,44 @@ mask, `WindowsActiveDirectoryRights`, allow/deny qualifier, inheritance,
 report the schema class, attribute, property set, validated write, or extended
 right that each GUID identifies, and are null when the GUID is absent or
 unresolved.
+
+`Add-ADObjectAccessRule` is idempotent for an exact SID, qualifier, mask,
+inheritance, and object-GUID tuple. `Set-ADObjectAccessRule` replaces every
+explicit ACE that shares the account, qualifier, `ObjectType`, and
+`InheritedObjectType` of the requested rule, so an ACE scoped to a different
+GUID pair survives instead of being flattened into a common ACE.
+`Remove-ADObjectAccessRule` exposes the same three modes as the filesystem
+family on its distinguished-name parameter set:
+
+- `Exact` removes an identical ACE.
+- `Rights` subtracts matching rights from explicit ACEs that share the same
+  object scope and drops an ACE only when its mask empties. A stored native
+  `GENERIC_*` bit is expanded to the rights it confers before the subtraction,
+  so revoking a specific right cannot leave the generic grant standing.
+- `All` purges every explicit ACE for the selected account, allow and deny.
+
+`Clear-ADObjectAccessRule` removes every explicit ACE, or only those of the
+selected accounts, and never removes an inherited ACE. `Clear` and `All` remove
+both allow and deny rules, so they can increase effective access; both warn when
+they remove an explicit deny. `Remove-ADObjectAccessRule` rejects a bound
+parameter that the selected mode would ignore rather than discarding it
+silently, and its distinguished-name parameter set does not accept pipeline
+input, so a piped rule can never bind to a bulk mode.
+
+Every rule mutator fails closed when the candidate DACL would grant no principal
+`WriteDacl` or `WriteOwner` on the object itself, because only the object owner
+would then be able to manage it. A denied, inherit-only, or object-scoped grant
+does not satisfy the check. The gate is a lockout guard for the common case, not
+a proof of recoverability: it does not expand groups, validate that the
+surviving grantee resolves, and it warns instead of failing when the object was
+already unmanageable before the request. `Set-ADObjectSecurityDescriptor`
+remains the explicit escape hatch for applying such a descriptor deliberately.
+
+Every rule mutator also re-reads the target at the write boundary and refuses to
+persist when the DACL changed after the descriptor was staged, so a concurrent
+change is reported instead of silently reverted. The residual window between
+that re-read and the LDAP write is narrowed, not eliminated.
+`Set-ADObjectSecurityDescriptor` keeps last-writer-wins.
 
 An optional credential binds directly to the selected DC. It is never emitted,
 and it is not used to locate a domain controller. The first increment operates

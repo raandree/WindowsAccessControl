@@ -52,7 +52,7 @@ mutation. Prefer `LiteralPath` when a path can contain wildcard characters.
 | Manage another supported object family | `Get-RegistryKeyAccessRule`, `Get-ServiceAccessRule`, `Get-ProcessAccessRule` |
 | Manage SMB share permissions | `Get-SmbShareAccessRule`, `Add-SmbShareAccessRule` |
 | Evaluate a local SMB share DACL only | `Get-SmbShareEffectiveAccess` |
-| Delegate Active Directory object access | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule` |
+| Delegate Active Directory object access | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule`, `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, `Clear-ADObjectAccessRule` |
 | Manage Task Scheduler DACLs | `Get-TaskFolderSecurityDescriptor`, `Get-ScheduledTaskSecurityDescriptor`, `Get-TaskFolderAccessRule`, `Get-ScheduledTaskAccessRule` |
 | Inspect a supported private-key DACL | `Get-CertificatePrivateKeySecurityDescriptor` |
 | Enforce desired state | The class-based DSC resources |
@@ -139,6 +139,41 @@ Add-ADObjectAccessRule `
 
 Use `ObjectType` and `InheritedObjectType` GUIDs for property, extended-right,
 or child-object-specific ACEs. The output retains those GUIDs for exact removal.
+
+To replace, subtract, or purge rules, use the remaining mutators. Each one
+matches on account, qualifier, and both object GUIDs, so an ACE scoped to a
+different GUID pair is preserved rather than folded into a common ACE:
+
+```powershell
+Set-ADObjectAccessRule `
+    -DistinguishedName $targetDn `
+    -AllowedBaseDistinguishedName $baseDn `
+    -Account $account `
+    -AccessRights 'ReadProperty, WriteProperty'
+
+Remove-ADObjectAccessRule `
+    -DistinguishedName $targetDn `
+    -AllowedBaseDistinguishedName $baseDn `
+    -Account $account `
+    -AccessRights WriteProperty `
+    -RemovalMode Rights
+
+Remove-ADObjectAccessRule `
+    -DistinguishedName $targetDn `
+    -AllowedBaseDistinguishedName $baseDn `
+    -Account $account `
+    -RemovalMode All
+
+Clear-ADObjectAccessRule `
+    -DistinguishedName $targetDn `
+    -AllowedBaseDistinguishedName $baseDn
+```
+
+`Clear-ADObjectAccessRule` removes every explicit ACE, or only the selected
+accounts when `Account` is supplied, and never touches an inherited ACE. Every
+rule mutator refuses to write a DACL that would grant no principal `WriteDacl`
+on the object, because only its owner could then manage it. Apply such a
+descriptor deliberately with `Set-ADObjectSecurityDescriptor`.
 
 To find out where an inherited rule comes from and what its GUIDs mean, read
 `InheritedFrom`, `ObjectTypeName`, and `InheritedObjectTypeName`:

@@ -188,6 +188,31 @@ Describe 'Registry key access rules' -Tag 'Integration', 'WindowsOnly' {
         Get-RegistryKeyAccessRule -Path $script:keyPath -Account $script:testSid `
             -ExcludeInherited | Should -BeNullOrEmpty
     }
+
+    It 'Add-RegistryKeyAccessRule should persist a rule that differs only by inheritance scope' {
+        Add-RegistryKeyAccessRule -Path $script:keyPath -Account $script:testSid `
+            -AccessRights ReadKey -AppliesTo ThisKeyOnly -Confirm:$false
+
+        $added = @(Add-RegistryKeyAccessRule -Path $script:keyPath -Account $script:testSid `
+            -AccessRights ReadKey -AppliesTo ThisKeyAndSubkeys -Confirm:$false -PassThru)
+
+        $result = @(Get-RegistryKeyAccessRule -Path $script:keyPath -Account $script:testSid `
+            -ExcludeInherited)
+        $result | Should -HaveCount 2
+        @($result.AppliesTo) | Should -Contain 'ThisKeyOnly'
+        @($result.AppliesTo) | Should -Contain 'ThisKeyAndSubkeys'
+        $added | Should -HaveCount 2
+    }
+
+    It 'Add-RegistryKeyAccessRule should still suppress an identical rule' {
+        Add-RegistryKeyAccessRule -Path $script:keyPath -Account $script:testSid `
+            -AccessRights ReadKey -AppliesTo ThisKeyAndSubkeys -Confirm:$false
+        Add-RegistryKeyAccessRule -Path $script:keyPath -Account $script:testSid `
+            -AccessRights ReadKey -AppliesTo ThisKeyAndSubkeys -Confirm:$false
+
+        @(Get-RegistryKeyAccessRule -Path $script:keyPath -Account $script:testSid `
+            -ExcludeInherited) | Should -HaveCount 1
+    }
 }
 
 Describe 'Registry key audit rules' -Tag 'Integration', 'WindowsOnly', 'RequiresElevation' {
@@ -257,6 +282,21 @@ Describe 'Registry key audit rules' -Tag 'Integration', 'WindowsOnly', 'Requires
 
         Get-RegistryKeyAuditRule -Path $script:keyPath -Account $script:testSid `
             -ExcludeInherited | Should -BeNullOrEmpty
+    }
+
+    It 'Add-RegistryKeyAuditRule should persist a rule that differs only by inheritance scope' {
+        Add-RegistryKeyAuditRule -Path $script:keyPath -Account $script:testSid `
+            -AccessRights SetValue -AuditFlags Failure -AppliesTo ThisKeyOnly -Confirm:$false
+        Add-RegistryKeyAuditRule -Path $script:keyPath -Account $script:testSid `
+            -AccessRights SetValue -AuditFlags Failure -AppliesTo ThisKeyAndSubkeys `
+            -Confirm:$false
+
+        $result = @(Get-RegistryKeyAuditRule -Path $script:keyPath -Account $script:testSid `
+            -ExcludeInherited)
+
+        $result | Should -HaveCount 2
+        @($result.AppliesTo) | Should -Contain 'ThisKeyOnly'
+        @($result.AppliesTo) | Should -Contain 'ThisKeyAndSubkeys'
     }
 
     It 'Clear-RegistryKeyAuditRule should remove selected explicit account rules' {

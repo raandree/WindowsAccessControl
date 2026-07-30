@@ -551,12 +551,13 @@ Normative record: [ADR 0016](../specs/decisions/0016-require-schema-v2-for-enter
 
 - Choice: Let a caller opt `Invoke-WindowsAclRuleMutation` into
     `-MatchAceFlags`, so an `Add` treats a differing `AppliesTo` as a distinct
-    ACE rather than a duplicate. The Task Scheduler folder family opts in.
+    ACE rather than a duplicate. The Task Scheduler folder and registry-key
+    families opt in.
 - Rationale: The default exact match compares only qualifier, SID, and access
     mask, so re-adding an existing account and rights combination with a new
     inheritance scope silently wrote nothing and returned nothing through
     `PassThru`. The switch is opt-in so `Set` and `Clear` semantics for the
-    other families are unchanged; OI-25 tracks the registry parity gap.
+    other families are unchanged.
 
 ### Decision 54: Re-read and compare before a staged descriptor write
 
@@ -630,3 +631,56 @@ Normative record: [ADR 0021](../specs/decisions/0021-discover-and-pin-a-domain-c
 - Rationale: The requirement is one identified consistency point per command,
     not a hand-typed name. Supersedes only the explicit-server element of
     ADR 0015 and of Decision 40.
+
+### Decision 59: Scope a directory rule mutation by both object GUIDs
+
+- Choice: Let `Set`, rights removal, account purge, and clear match an explicit
+    ACE on account, qualifier, `ObjectType`, and `InheritedObjectType`. An ACE
+    scoped to a different GUID pair is preserved.
+- Rationale: Active Directory ACEs carry object-specific meaning. Matching on
+    account and qualifier alone would collapse a property-set or extended-right
+    delegation into whatever common ACE the caller happened to request, silently
+    widening or narrowing rights the caller never named.
+
+### Decision 60: Expand a stored generic bit before subtracting rights
+
+- Choice: In directory rights removal, expand a stored `GENERIC_ALL`,
+    `GENERIC_WRITE`, `GENERIC_READ`, or `GENERIC_EXECUTE` bit into the specific
+    rights the AD generic mapping confers, then subtract.
+- Rationale: Active Directory stores generic bits verbatim and maps them at
+    access-check time. Subtracting `WriteDacl` from a raw `0x10000000` mask left
+    the bit set, so the command reported success while full control survived,
+    and the manageability gate then confirmed the object as manageable through
+    that very ACE. Verified by regression test.
+
+### Decision 61: Refuse a directory DACL that leaves nobody able to manage it
+
+- Choice: Every directory rule mutator rejects a candidate DACL in which no
+    principal holds `WriteDacl` or `WriteOwner` on the object itself. A denied,
+    inherit-only, or object-scoped grant does not count. The check warns instead
+    of failing when the object was already unmanageable, and
+    `Set-ADObjectSecurityDescriptor` is the explicit escape hatch.
+- Rationale: `Clear` and account purge are the first operations here that can
+    strip every explicit grant at once. The gate is a lockout guard for the
+    common case, not a proof of recoverability: it performs no group expansion
+    and does not verify that the surviving grantee still resolves.
+
+### Decision 62: Compare against the staging read before a directory write
+
+- Choice: Directory rule mutators pass the descriptor they staged from to the
+    write boundary, which re-reads the target and refuses to persist when the
+    DACL changed in between. The raw descriptor setter keeps last-writer-wins.
+- Rationale: The boundary already re-read the target for its other gates but
+    wrote the stale candidate anyway, so a concurrent change was silently
+    reverted. This mirrors Decision 54 for the Task Scheduler family.
+
+### Decision 63: Disclose a deny removal before the operator commits
+
+- Choice: Count removed deny ACEs from the raw ACL delta before `ShouldProcess`,
+    fold that count into the operation description, and warn again after a
+    successful write. Project full rule objects only for `PassThru`.
+- Rationale: `All` and `Clear` remove deny rules too, which increases effective
+    access. A warning inside the `ShouldProcess` block is invisible under
+    `-WhatIf` and arrives after a confirmation prompt is answered. Working from
+    the raw ACEs also avoids a SID-translation round trip per ACE just to decide
+    whether to print anything.

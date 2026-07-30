@@ -13,14 +13,6 @@ Add schema-version-2 SMB backup/restore, server-qualified canonical locking,
 and exact-descriptor/rule DSC resources for the accepted local-on-target share
 boundary. Direct remote APIs remain excluded by ADR 0015.
 
-## OI-16: Add broader AD DACL mutation
-
-Specifications: 0008, 0009. Tasks: AD-4 and AD-5.
-
-Add set, rights-removal, account-purge, and clear semantics without flattening
-object ACEs. Read-side schema, property-set, extended-right, and object-class
-name resolution shipped with ADR 0020 and is no longer part of this issue.
-
 ## OI-17: Add AD portability, desired state, and access decision
 
 Specifications: 0008, 0009. Tasks: AD-6 to AD-8 excluding replication.
@@ -70,19 +62,6 @@ Specification: 0008. Tasks: KEY-5 and KEY-6.
 After safe typed mutation exists, add schema-version-2 descriptor-only
 backup/restore and DSC only for stable supported software-key identities.
 Never store certificate or private-key material in portability records.
-
-## OI-25: Detect registry inheritance scope in duplicate suppression
-
-Specification: 0003.
-
-`Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` suppress an ACE as a
-duplicate when the account, qualifier, and rights match, ignoring `AppliesTo`.
-Adding an existing account and rights combination with a different inheritance
-scope therefore succeeds without writing anything and returns nothing through
-`PassThru`. The Task Scheduler family opts into the flag-sensitive comparison
-through `Invoke-WindowsAclRuleMutation -MatchAceFlags`; extend it to the
-registry family with regression coverage and confirm that no existing `Set` or
-`Clear` behavior changes.
 
 ## See also
 

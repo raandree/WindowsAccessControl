@@ -330,6 +330,40 @@ ENT-8 are closed for the currently shipped enterprise families.
     longer caches an identity-dependent unresolved GUID. Windows PowerShell
     resolves parameter type attributes before a function body runs, so the
     directory assembly is now loaded at module import.
+- 2026-07-30: Closed OI-25 by opting `Add-RegistryKeyAccessRule` and
+    `Add-RegistryKeyAuditRule` into inheritance-scope-sensitive duplicate
+    detection on both the descriptor-staging and path-write paths. `Set` and
+    `Clear` stay scope-blind; specification 0003 records the asymmetry as
+    deliberate.
+- 2026-07-30: Closed OI-16 by adding `Set-ADObjectAccessRule`,
+    `Clear-ADObjectAccessRule`, and `Exact`/`Rights`/`All` removal modes on a
+    distinguished-name parameter set for `Remove-ADObjectAccessRule`. Every mode
+    matches on account, qualifier, and both object GUIDs, so an object ACE is
+    never flattened into a common ACE.
+- 2026-07-30: Added a fail-closed manageability gate that rejects a candidate
+    DACL granting no principal `WriteDacl` or `WriteOwner` on the object itself,
+    and a write-boundary staleness check that rejects a staged descriptor whose
+    target changed after the read. `Set-ADObjectSecurityDescriptor` remains the
+    explicit escape hatch and keeps last-writer-wins.
+- 2026-07-30: Rights removal expands a stored native `GENERIC_*` bit into the
+    rights it confers before subtracting, after a review proved that subtracting
+    from the raw bit silently retained the grant while the gate then reported the
+    object as manageable through that very ACE.
+- 2026-07-30: Two independent security reviews ran. The first returned REQUEST
+    CHANGES with four Major findings (deny purge discarding a bound
+    `AccessControlType`, generic-bit subtraction, lost update, and a piped rule
+    binding to the destructive parameter set); all four plus every Minor and Nit
+    were fixed. The re-review returned APPROVE WITH COMMENTS and its six
+    follow-up Minor/Nit findings were fixed too.
+- 2026-07-30: A destructive lab test locked the shared `OU=Targets` fixture out
+    of its own restore path by writing a protected DACL through the raw setter.
+    The OU was repaired by re-enabling inheritance and restoring the nine default
+    `organizationalUnit` explicit ACEs from its parent, and both gate tests now
+    use a disposable child OU that always retains an admin grant.
+- 2026-07-30: Final PowerShell 7 gate passed 1236 of 1239 tests with zero skips;
+    the only failures are the pre-existing domain-controller interactive-logon
+    policy cases. The live domain lab passed 10 of 10 Active Directory scenarios
+    and was left clean with no leaked organizational units.
 
 ## Stable capabilities
 
@@ -365,6 +399,10 @@ ENT-8 are closed for the currently shipped enterprise families.
     discovered and pinned domain controller, with complete-batch prevalidation,
     immutable object identity, inferred inherited-ACE provenance, and resolved
     schema and control-access GUID names.
+- Active Directory add, set, exact removal, rights removal, account purge, and
+    clear that preserve object-ACE scope, expand stored generic bits before
+    subtracting, disclose removed deny rules, reject a staged write whose target
+    changed, and refuse a DACL that would leave the object unmanageable.
 - Local Task Scheduler folder and registered-task DACL descriptor get/set plus
     typed access-rule query, add, and exact removal with object-specific rights,
     folder inheritance scope, containment, service-token lockout rejection,
@@ -382,13 +420,11 @@ ENT-8 are closed for the currently shipped enterprise families.
 
 ## Open work
 
-- OI-14, OI-16, and OI-17 add SMB/AD portability, desired state, broader
-    mutation, and an AD effective-access decision.
+- OI-14 and OI-17 add SMB/AD portability, desired state, and an AD
+    effective-access decision.
 - OI-18 requires a second writable domain controller for replication and
     failover evidence.
 - OI-20 adds Task Scheduler portability and desired state.
 - OI-22 through OI-24 add fail-closed CNG mutation, separate CAPI support, and
     private-key portability/desired state after their security gates.
-- OI-25 extends inheritance-sensitive duplicate detection to the registry-key
-    family.
 - Remote publication remains user-controlled.

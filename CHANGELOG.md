@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix `Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` silently
+    discarding a rule that matched an existing account and rights combination
+    but declared a different `AppliesTo` inheritance scope
+
 ### Added
 
+- Add broader Active Directory DACL mutation with `Set-ADObjectAccessRule`,
+    `Clear-ADObjectAccessRule`, and `Exact`, `Rights`, and `All` removal modes on
+    a distinguished-name parameter set for `Remove-ADObjectAccessRule`; every
+    mode matches on account, qualifier, and both object GUIDs so an object ACE is
+    never flattened into a common ACE
+- Add a fail-closed manageability gate that rejects an Active Directory rule
+    mutation whose result would grant no principal `WriteDacl` or `WriteOwner` on
+    the object
+- Add a write-boundary staleness check that rejects an Active Directory rule
+    mutation when the target DACL changed after the descriptor was staged
 - Add `InheritedFrom` provenance to Active Directory access-rule results and
     their default table view, resolved by walking the ancestor chain over the
     same signed and sealed connection that returned the descriptor

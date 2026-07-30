@@ -1,10 +1,12 @@
-function Add-ADObjectAccessRule {
+function Set-ADObjectAccessRule {
     <#
     .SYNOPSIS
-        Adds typed access rules to bounded Active Directory object DACLs.
+        Replaces typed access rules in bounded Active Directory object DACLs.
     .DESCRIPTION
-        Prevalidates identities and a disposable OU boundary, adds idempotent
-        common or object-specific ACEs, and revalidates object GUID before LDAP write.
+        Prevalidates identities and a disposable OU boundary, replaces every
+        explicit ACE that shares the same account, qualifier, and object GUIDs
+        with one new ACE, and revalidates object GUID before LDAP write. ACEs
+        with a different object scope are preserved rather than flattened.
     .PARAMETER Server
         The explicit DNS name of the final writable domain controller. When it
         is omitted, one writable domain controller is located in the current
@@ -18,11 +20,11 @@ function Add-ADObjectAccessRule {
     .PARAMETER Account
         One or more account names, SIDs, identity references, or module identities.
     .PARAMETER AccessRights
-        Active Directory rights to add.
+        Active Directory rights that replace the current rights.
     .PARAMETER AccessControlType
-        Adds an Allow rule by default or an explicit Deny rule.
+        Replaces Allow rules by default or explicit Deny rules.
     .PARAMETER InheritanceType
-        Controls directory inheritance for the new ACE.
+        Controls directory inheritance for the replacement ACE.
     .PARAMETER ObjectType
         Optionally scopes the ACE to an object, property, or extended-right GUID.
     .PARAMETER InheritedObjectType
@@ -34,9 +36,9 @@ function Add-ADObjectAccessRule {
     .PARAMETER PassThru
         Returns the stored explicit access rule after persistence.
     .EXAMPLE
-        Add-ADObjectAccessRule -Server dc01.example.test -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights ReadProperty -WhatIf
+        Set-ADObjectAccessRule -Server dc01.example.test -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights ReadProperty -WhatIf
 
-        Previews adding an explicit read-property ACE inside the allowed OU.
+        Previews replacing every explicit common ACE for the account inside the allowed OU.
     .INPUTS
         System.String
     .OUTPUTS
@@ -118,18 +120,28 @@ function Add-ADObjectAccessRule {
                 -Credential $Credential `
                 -TimeoutSeconds $TimeoutSeconds `
                 -ForWrite
-            if ($PSCmdlet.ShouldProcess($target.CanonicalTarget, "Add $AccessControlType Active Directory access rules")) {
+            if ($PSCmdlet.ShouldProcess($target.CanonicalTarget, "Set $AccessControlType Active Directory access rules")) {
                 $descriptor = $target.BinarySecurityDescriptor
                 foreach ($sid in $identities) {
                     $descriptor = Invoke-WindowsADAccessRuleMutation `
                         -SecurityDescriptor $descriptor `
-                        -Operation Add `
+                        -Operation Set `
                         -SecurityIdentifier $sid `
                         -AccessMask ([int]$AccessRights) `
                         -AccessControlType $AccessControlType `
                         -InheritanceType $InheritanceType `
                         -ObjectType $ObjectType `
                         -InheritedObjectType $InheritedObjectType
+                }
+                foreach ($displaced in Get-WindowsADRemovedAccessRule `
+                        -Target $target `
+                        -OriginalSecurityDescriptor $target.BinarySecurityDescriptor `
+                        -SecurityDescriptor $descriptor) {
+                    Write-Verbose (
+                        "Replacing $($displaced.AccessControlType) " +
+                        "$($displaced.AccessRights) for $($displaced.SID) on " +
+                        $target.CanonicalTarget
+                    )
                 }
                 Set-WindowsADObjectSecurityDescriptor `
                     -Target $target `

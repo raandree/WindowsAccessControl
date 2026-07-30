@@ -103,7 +103,8 @@ function Add-RegistryKeyAuditRule {
                     -Operation 'Add' `
                     -SecurityIdentifier $sid `
                     -AccessMask ([int]$AccessRights) `
-                    -AceFlags $aceFlags
+                    -AceFlags $aceFlags `
+                    -MatchAceFlags
             }
             Update-WindowsSecurityDescriptorObject `
                 -Descriptor $SecurityDescriptor `
@@ -141,6 +142,7 @@ function Add-RegistryKeyAuditRule {
                         SecurityIdentifier = $sid
                         AccessMask = [int]$AccessRights
                         AceFlags = $aceFlags
+                        MatchAceFlags = $true
                     }
                     $descriptor = Invoke-WindowsAclRuleMutation @parameters
                 }

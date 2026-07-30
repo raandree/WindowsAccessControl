@@ -6,7 +6,7 @@ function Invoke-WindowsADAccessRuleMutation {
         [byte[]]$SecurityDescriptor,
 
         [Parameter(Mandatory)]
-        [ValidateSet('Add', 'Remove')]
+        [ValidateSet('Add', 'Set', 'Remove', 'RemoveRights', 'Clear')]
         [string]$Operation,
 
         [Parameter()]
@@ -50,6 +50,55 @@ function Invoke-WindowsADAccessRuleMutation {
         [Convert]::ToBase64String($bytes)
     }
 
+    # An ACE shares a rule scope only when its qualifier, account, and both object
+    # GUIDs match, so an object ACE is never folded into a common ACE.
+    $testScopeMatch = {
+        param(
+            [System.Security.AccessControl.GenericAce]$Ace,
+            $Qualifier,
+            $Sid,
+            $ScopeObjectType,
+            $ScopeInheritedObjectType
+        )
+
+        $qualifiedAce = $Ace -as [System.Security.AccessControl.QualifiedAce]
+        $knownAce = $Ace -as [System.Security.AccessControl.KnownAce]
+        if (-not $qualifiedAce -or -not $knownAce) {
+            return $false
+        }
+        if (([int]$Ace.AceFlags -band
+            [int][System.Security.AccessControl.AceFlags]::Inherited) -ne 0) {
+            return $false
+        }
+        if ($qualifiedAce.AceQualifier -ne $Qualifier -or
+            $qualifiedAce.SecurityIdentifier -ne $Sid) {
+            return $false
+        }
+        $aceObjectType = [guid]::Empty
+        $aceInheritedObjectType = [guid]::Empty
+        $objectAce = $Ace -as [System.Security.AccessControl.ObjectAce]
+        if ($objectAce) {
+            if (([int]$objectAce.ObjectAceFlags -band
+                [int][System.Security.AccessControl.ObjectAceFlags]::ObjectAceTypePresent) -ne 0) {
+                $aceObjectType = $objectAce.ObjectAceType
+            }
+            if (([int]$objectAce.ObjectAceFlags -band
+                [int][System.Security.AccessControl.ObjectAceFlags]::InheritedObjectAceTypePresent) -ne 0) {
+                $aceInheritedObjectType = $objectAce.InheritedObjectAceType
+            }
+        }
+        $aceObjectType -eq $ScopeObjectType -and
+            $aceInheritedObjectType -eq $ScopeInheritedObjectType
+    }
+
+    $qualifier = if ($AccessControlType -eq
+        [System.Security.AccessControl.AccessControlType]::Deny) {
+        [System.Security.AccessControl.AceQualifier]::AccessDenied
+    }
+    else {
+        [System.Security.AccessControl.AceQualifier]::AccessAllowed
+    }
+
     if ($Operation -eq 'Remove') {
         if (-not $NativeAce) {
             throw 'NativeAce is required for exact Active Directory rule removal.'
@@ -66,51 +115,82 @@ function Invoke-WindowsADAccessRuleMutation {
             }
         }
     }
+    elseif ($Operation -eq 'Clear') {
+        for ($index = $acl.Count - 1; $index -ge 0; $index--) {
+            $ace = $acl[$index]
+            $qualifiedAce = $ace -as [System.Security.AccessControl.QualifiedAce]
+            if (-not $qualifiedAce -or
+                ([int]$ace.AceFlags -band
+                    [int][System.Security.AccessControl.AceFlags]::Inherited) -ne 0) {
+                continue
+            }
+            if ($SecurityIdentifier -and
+                $qualifiedAce.SecurityIdentifier -ne $SecurityIdentifier) {
+                continue
+            }
+            $acl.RemoveAce($index)
+        }
+    }
+    elseif ($Operation -eq 'RemoveRights') {
+        if (-not $SecurityIdentifier) {
+            throw 'SecurityIdentifier is required for Active Directory rights removal.'
+        }
+        # Active Directory stores GENERIC_* bits verbatim and maps them at access
+        # check time, so expand a stored generic bit before subtracting any of the
+        # specific rights it confers. Subtracting from the raw bit would silently
+        # retain the grant.
+        $genericMap = [ordered]@{
+            0x10000000L = [long][WindowsActiveDirectoryRights]::GenericAll
+            0x40000000L = [long][WindowsActiveDirectoryRights]::GenericWrite
+            0x80000000L = [long][WindowsActiveDirectoryRights]::GenericRead
+            0x20000000L = [long][WindowsActiveDirectoryRights]::GenericExecute
+        }
+        $requestedMask = [long]$AccessMask -band 0xFFFFFFFFL
+        for ($index = $acl.Count - 1; $index -ge 0; $index--) {
+            $isMatch = & $testScopeMatch `
+                $acl[$index] $qualifier $SecurityIdentifier $ObjectType $InheritedObjectType
+            if (-not $isMatch) {
+                continue
+            }
+            $stored = [long]$acl[$index].AccessMask -band 0xFFFFFFFFL
+            foreach ($genericBit in $genericMap.Keys) {
+                if (($stored -band $genericBit) -ne 0 -and
+                    ($requestedMask -band $genericMap[$genericBit]) -ne 0) {
+                    $stored = ($stored -band (-bnot $genericBit)) -bor $genericMap[$genericBit]
+                }
+            }
+            $remaining = ($stored -band (-bnot $requestedMask)) -band 0xFFFFFFFFL
+            if ($remaining -eq 0) {
+                $acl.RemoveAce($index)
+            }
+            else {
+                $acl[$index].AccessMask = [BitConverter]::ToInt32(
+                    [BitConverter]::GetBytes([uint32]$remaining),
+                    0
+                )
+            }
+        }
+    }
     else {
         if (-not $SecurityIdentifier) {
             throw 'SecurityIdentifier is required for Active Directory rule addition.'
         }
-        $aceFlags = ConvertTo-WindowsADAceFlag -InheritanceType $InheritanceType
-        $qualifier = if ($AccessControlType -eq
-            [System.Security.AccessControl.AccessControlType]::Deny) {
-            [System.Security.AccessControl.AceQualifier]::AccessDenied
+        if ($Operation -eq 'Set') {
+            for ($index = $acl.Count - 1; $index -ge 0; $index--) {
+                $isMatch = & $testScopeMatch `
+                    $acl[$index] $qualifier $SecurityIdentifier $ObjectType $InheritedObjectType
+                if ($isMatch) {
+                    $acl.RemoveAce($index)
+                }
+            }
         }
-        else {
-            [System.Security.AccessControl.AceQualifier]::AccessAllowed
-        }
-        $objectAceFlags = [System.Security.AccessControl.ObjectAceFlags]::None
-        if ($ObjectType -ne [guid]::Empty) {
-            $objectAceFlags = $objectAceFlags -bor
-                [System.Security.AccessControl.ObjectAceFlags]::ObjectAceTypePresent
-        }
-        if ($InheritedObjectType -ne [guid]::Empty) {
-            $objectAceFlags = $objectAceFlags -bor
-                [System.Security.AccessControl.ObjectAceFlags]::InheritedObjectAceTypePresent
-        }
-        $newAce = if ($objectAceFlags -ne
-            [System.Security.AccessControl.ObjectAceFlags]::None) {
-            [System.Security.AccessControl.ObjectAce]::new(
-                $aceFlags,
-                $qualifier,
-                $AccessMask,
-                $SecurityIdentifier,
-                $objectAceFlags,
-                $ObjectType,
-                $InheritedObjectType,
-                $false,
-                $null
-            )
-        }
-        else {
-            [System.Security.AccessControl.CommonAce]::new(
-                $aceFlags,
-                $qualifier,
-                $AccessMask,
-                $SecurityIdentifier,
-                $false,
-                $null
-            )
-        }
+        $newAce = New-WindowsADAccessRuleAce `
+            -SecurityIdentifier $SecurityIdentifier `
+            -AccessMask $AccessMask `
+            -AccessControlType $AccessControlType `
+            -InheritanceType $InheritanceType `
+            -ObjectType $ObjectType `
+            -InheritedObjectType $InheritedObjectType
         $expected = & $getAceBytes $newAce
         $duplicate = @(
             $acl | Where-Object { (& $getAceBytes $_) -ceq $expected }

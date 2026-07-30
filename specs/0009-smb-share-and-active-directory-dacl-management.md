@@ -104,6 +104,21 @@ reports null for that property and never removes a rule from the result. ADR
   persists only the access section.
 - Add is idempotent for an exact SID, qualifier, mask, inheritance, and object
   GUID tuple.
+- AD set, rights removal, account purge, and clear match on account, qualifier,
+  and both object GUIDs, so an ACE scoped to a different GUID pair is preserved
+  rather than flattened. Clear and account purge never remove an inherited ACE,
+  remove allow and deny alike, and warn when an explicit deny is removed.
+- AD rights removal expands a stored native `GENERIC_*` bit into the rights it
+  confers before subtracting, so a revoked right cannot survive inside a
+  generic grant.
+- Every AD rule mutator rejects a candidate DACL that grants no principal
+  `WriteDacl` or `WriteOwner` on the object itself. The check is a lockout guard
+  for the common case, not a proof of recoverability: it performs no group
+  expansion and no grantee resolution, and it warns instead of failing when the
+  object was already unmanageable. `Set-ADObjectSecurityDescriptor` remains the
+  explicit escape hatch.
+- Every AD rule mutator re-reads the target at the write boundary and rejects
+  the write when the DACL changed after the descriptor was staged.
 - Exact removal rejects output from another family, server, share, DN, or
   object instance.
 - Exact removal is idempotent when the path-bound ACE is already absent.
@@ -134,9 +149,9 @@ directory object identity without changing its replay and canonical-target
 contract. This increment therefore exports no backup integration.
 
 Specification 0011 later admits bounded local share-only effective access. SMB
-remote APIs, combined share/NTFS effective access, broader AD mutation modes,
-replication, DSC, and SACL workflows remain tracked by specification 0008 and
-focused open issues OI-11 and OI-14 through OI-18. ADR 0017 explicitly defers
+remote APIs, combined share/NTFS effective access, replication, DSC, and SACL
+workflows remain tracked by specification 0008 and
+focused open issues OI-11, OI-14, OI-17, and OI-18. ADR 0017 explicitly defers
 remote and combined effective access.
 
 ## Verification
@@ -150,6 +165,12 @@ remote and combined effective access.
 - Disposable live tests prove AD DACL round trip, object-specific ACE
   preservation, delegated mutation, GUID revalidation, and rollback in the
   test OU.
+- Disposable live tests prove that set replaces only the matching object scope,
+  that rights removal subtracts without dropping a still-granted ACE, that an
+  account purge leaves unrelated rules intact, that a clear which would make the
+  object unmanageable is rejected without writing, and that a staged write whose
+  target changed after the read is rejected. The last two use a disposable child
+  organizational unit so a rejected write can never strand the shared fixture.
 - A live probe compares inferred inheritance sources with the native
   `GetInheritanceSourceW` result for the same object and records that the
   native call cannot honor an explicit server.

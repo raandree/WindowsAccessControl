@@ -23,8 +23,7 @@ Describe 'WindowsAccessControl package rename' -Tag 'QA' {
         $manifest.Guid | Should -Be $script:expectedGuid
         $manifest.RootModule | Should -Be 'WindowsAccessControl.psm1'
         $formatFileNames = $manifest.ExportedFormatFiles | Split-Path -Leaf
-        $formatFileNames | Should -Contain 'WindowsAccessControl.Format.ps1xml'
-    }
+        $formatFileNames | Should -Contain 'WindowsAccessControl.Format.ps1xml'    }
 
     It 'Should export renamed cross-domain commands only' {
         $manifestData = Microsoft.PowerShell.Utility\Import-PowerShellDataFile -Path $script:newManifestPath
@@ -49,6 +48,13 @@ Describe 'WindowsAccessControl package rename' -Tag 'QA' {
         foreach ($command in $removedCommands) {
             $manifestData.FunctionsToExport | Should -Not -Contain $command
         }
+    }
+
+    It 'Should keep the exported function list alphabetically sorted' {
+        $manifestData = Microsoft.PowerShell.Utility\Import-PowerShellDataFile -Path $script:newManifestPath
+        $exported = @($manifestData.FunctionsToExport)
+
+        $exported | Should -Be @($exported | Sort-Object)
     }
 
     It 'Should use the WindowsAccessControl output type prefix throughout source' {

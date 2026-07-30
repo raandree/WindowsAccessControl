@@ -184,6 +184,105 @@ Describe 'Registry descriptor-aware mutators' -Tag 'Unit', 'WindowsOnly' {
         }
     }
 
+    Context 'Inheritance-scope-sensitive duplicate detection' {
+        BeforeAll {
+            function Get-EveryoneAce {
+                param(
+                    [Parameter(Mandatory)]
+                    [string]$Sddl,
+
+                    [Parameter()]
+                    [switch]$Audit
+                )
+
+                $raw = [System.Security.AccessControl.RawSecurityDescriptor]::new($Sddl)
+                $acl = if ($Audit) { $raw.SystemAcl } else { $raw.DiscretionaryAcl }
+                $everyone = [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0')
+
+                @($acl | Where-Object { $_.SecurityIdentifier -eq $everyone })
+            }
+        }
+
+        It 'Should add an access ACE that differs only by inheritance scope' {
+            $descriptor = Get-TestRegistryDescriptor -Sddl 'O:BAG:BAD:(A;;KR;;;WD)'
+
+            $null = $descriptor | Add-RegistryKeyAccessRule `
+                -Account 'S-1-1-0' `
+                -AccessRights ReadKey `
+                -AppliesTo ThisKeyAndSubkeys
+
+            $aces = Get-EveryoneAce -Sddl $descriptor.Sddl
+
+            $aces.Count | Should -Be 2
+            @($aces.AceFlags) | Should -Contain ([System.Security.AccessControl.AceFlags]::None)
+            @($aces.AceFlags) |
+                Should -Contain ([System.Security.AccessControl.AceFlags]::ContainerInherit)
+        }
+
+        It 'Should still suppress an access ACE with an identical inheritance scope' {
+            $descriptor = Get-TestRegistryDescriptor -Sddl 'O:BAG:BAD:(A;CI;KR;;;WD)'
+
+            $null = $descriptor | Add-RegistryKeyAccessRule `
+                -Account 'S-1-1-0' `
+                -AccessRights ReadKey `
+                -AppliesTo ThisKeyAndSubkeys
+
+            (Get-EveryoneAce -Sddl $descriptor.Sddl).Count | Should -Be 1
+        }
+
+        It 'Should add an audit ACE that differs only by inheritance scope' {
+            $descriptor = Get-TestRegistryDescriptor `
+                -Sddl 'O:BAG:BAD:(A;;KA;;;SY)S:(AU;SA;KR;;;WD)' `
+                -Sections 'Audit'
+
+            $null = $descriptor | Add-RegistryKeyAuditRule `
+                -Account 'S-1-1-0' `
+                -AccessRights ReadKey `
+                -AuditFlags Success `
+                -AppliesTo ThisKeyAndSubkeys
+
+            (Get-EveryoneAce -Sddl $descriptor.Sddl -Audit).Count | Should -Be 2
+        }
+
+        It 'Should still suppress an audit ACE with an identical inheritance scope' {
+            $descriptor = Get-TestRegistryDescriptor `
+                -Sddl 'O:BAG:BAD:(A;;KA;;;SY)S:(AU;CISA;KR;;;WD)' `
+                -Sections 'Audit'
+
+            $null = $descriptor | Add-RegistryKeyAuditRule `
+                -Account 'S-1-1-0' `
+                -AccessRights ReadKey `
+                -AuditFlags Success `
+                -AppliesTo ThisKeyAndSubkeys
+
+            (Get-EveryoneAce -Sddl $descriptor.Sddl -Audit).Count | Should -Be 1
+        }
+
+        It 'Should keep Set replacing an access rule across inheritance scopes' {
+            $descriptor = Get-TestRegistryDescriptor -Sddl 'O:BAG:BAD:(A;CI;KR;;;WD)'
+
+            $null = $descriptor | Set-RegistryKeyAccessRule `
+                -Account 'S-1-1-0' `
+                -AccessRights FullControl `
+                -AppliesTo ThisKeyOnly
+
+            $aces = Get-EveryoneAce -Sddl $descriptor.Sddl
+
+            $aces.Count | Should -Be 1
+            $aces[0].AceFlags | Should -Be ([System.Security.AccessControl.AceFlags]::None)
+            $aces[0].AccessMask |
+                Should -Be ([int][System.Security.AccessControl.RegistryRights]::FullControl)
+        }
+
+        It 'Should keep Clear removing an access rule across inheritance scopes' {
+            $descriptor = Get-TestRegistryDescriptor -Sddl 'O:BAG:BAD:(A;CI;KR;;;WD)(A;;KA;;;SY)'
+
+            $null = $descriptor | Clear-RegistryKeyAccessRule -Account 'S-1-1-0'
+
+            (Get-EveryoneAce -Sddl $descriptor.Sddl).Count | Should -Be 0
+        }
+    }
+
     Context 'Inheritance staging' {
         It 'Should protect the selected ACL in memory' {
             $descriptor = Get-TestRegistryDescriptor
