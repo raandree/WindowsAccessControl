@@ -22,6 +22,7 @@ function ConvertTo-WindowsSecurityDescriptorObject {
         Server                   = $Target.Server
         DistinguishedName        = $Target.DistinguishedName
         ObjectGuid               = $Target.ObjectGuid
+        DefaultNamingContext     = $Target.DefaultNamingContext
         TaskPath                 = $Target.TaskPath
         TaskName                 = $Target.TaskName
         ProviderName             = $Target.ProviderName

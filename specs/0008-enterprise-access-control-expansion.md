@@ -181,6 +181,12 @@ unless a later probe adds an explicit target contract.
 | SMB-6 | Deferred by ADR 0017; reconsider only under a separately accepted server-side token and remote authorization contract | No combined-access claim in the current roadmap |
 | SMB-7 | Add exact-descriptor/rule DSC resources, help, formatting, and cleanup automation | Cross-edition domain-lab convergence |
 
+`SMB-1` through `SMB-5` and `SMB-7` are delivered. Specification 0009 owns the
+command contract, specification 0011 owns the bounded share-only effective
+access, and specification 0013 owns the server-qualified canonical identity,
+schema-version-2 portability, and the two share DSC resources. `SMB-6` remains
+deferred by ADR 0017.
+
 ## Active Directory work package
 
 Active Directory is not treated as a generic file-like ACL. The adapter must
@@ -213,8 +219,13 @@ schema, property-set, validated-write, and extended-right names; audit-rule
 queries remain outside the accepted SACL boundary. `AD-5` covers add, set, exact
 removal, rights removal, account purge, and clear. ADR 0021 amended the `AD-1`
 server-selection contract to
-allow a discovered and pinned domain controller. Open issues OI-17 and OI-18
-track the remaining directory work.
+allow a discovered and pinned domain controller. `AD-6` is delivered for
+schema-version-2 backup and restore and for the existing write-boundary
+concurrency check; directory inheritance and owner/group mutation stay outside
+the accepted boundary and replication evidence remains blocked. `AD-7` is
+closed as an explicit evidence-based deferral in ADR 0022. `AD-8` is delivered
+by the two directory DSC resources in specification 0013. Open issue OI-18
+tracks the remaining replication work.
 
 ## Cross-cutting foundation tasks
 

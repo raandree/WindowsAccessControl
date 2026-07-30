@@ -6,6 +6,10 @@ function Restore-WindowsSecurityDescriptor {
         Parses a versioned backup as data, validates every record and SHA-256
         digest, resolves every target, and only then restores the selected
         descriptor sections. Invalid later records fail before the first write.
+        Schema version 2 additionally restores SMB share records on their
+        originating computer and Active Directory records through one pinned
+        writable domain controller inside an explicit allowed organizational
+        unit, matched by immutable object GUID and domain partition.
     .PARAMETER BackupPath
         The literal path to a unified backup created by
         Backup-WindowsSecurityDescriptor.
@@ -13,6 +17,17 @@ function Restore-WindowsSecurityDescriptor {
         Returns each restored security descriptor after persistence.
     .PARAMETER VerificationCertificate
         The RSA X.509 certificate required to verify every signed record.
+    .PARAMETER Server
+        The explicit DNS name of the writable domain controller used for every
+        Active Directory record. When it is omitted, one writable domain
+        controller is located in the current computer's domain and pinned.
+    .PARAMETER AllowedBaseDistinguishedName
+        The organizational unit that bounds every Active Directory restore. It
+        is required when the backup contains Active Directory records.
+    .PARAMETER Credential
+        An optional credential used only for the direct LDAP bind to Server.
+    .PARAMETER TimeoutSeconds
+        Sets the LDAP request timeout from 1 through 300 seconds.
     .EXAMPLE
         Restore-WindowsSecurityDescriptor `
             -BackupPath C:\Backup\acl.json `
@@ -36,12 +51,27 @@ function Restore-WindowsSecurityDescriptor {
         [System.Security.Cryptography.X509Certificates.X509Certificate2]$VerificationCertificate,
 
         [Parameter()]
+        [string]$Server,
+
+        [Parameter()]
+        [string]$AllowedBaseDistinguishedName,
+
+        [Parameter()]
+        [pscredential]$Credential,
+
+        [Parameter()]
+        [ValidateRange(1, 300)]
+        [int]$TimeoutSeconds = 10,
+
+        [Parameter()]
         [switch]$PassThru
     )
 
     $backup = Get-Content -LiteralPath $BackupPath -Raw -ErrorAction Stop |
         ConvertFrom-Json -ErrorAction Stop
-    if ($backup.SchemaVersion -ne 1 -or
+    $schemaVersion = 0
+    if (-not [int]::TryParse([string]$backup.SchemaVersion, [ref]$schemaVersion) -or
+        $schemaVersion -notin @(1, 2) -or
         [string]$backup.Format -cne
             'WindowsAccessControl.SecurityDescriptorBackup' -or
         $null -eq $backup.Records) {
@@ -49,7 +79,7 @@ function Restore-WindowsSecurityDescriptor {
     }
 
     $validatedRecords = [System.Collections.Generic.List[object]]::new()
-    $validatedTargets = [System.Collections.Generic.HashSet[string]]::new(
+    $validatedIdentities = [System.Collections.Generic.HashSet[string]]::new(
         [System.StringComparer]::OrdinalIgnoreCase
     )
     foreach ($record in @($backup.Records)) {
@@ -59,13 +89,34 @@ function Restore-WindowsSecurityDescriptor {
         }
         $validatedRecord = ConvertFrom-WindowsSecurityDescriptorBackupRecord `
             @validationParameters
-        if (-not $validatedTargets.Add($validatedRecord.CanonicalTarget)) {
-            throw "The backup contains duplicate records for '$($validatedRecord.CanonicalTarget)'."
+        if ($validatedRecord.RecordVersion -gt $schemaVersion) {
+            throw "The backup document declares schema version $schemaVersion but contains a version $($validatedRecord.RecordVersion) record for '$($validatedRecord.CanonicalTarget)'."
+        }
+        $identity = Get-WindowsSecurityDescriptorRecordIdentity -Record $validatedRecord
+        if (-not $validatedIdentities.Add($identity)) {
+            throw "The backup contains duplicate records for '$identity'."
         }
         $validatedRecords.Add($validatedRecord)
     }
     if ($validatedRecords.Count -eq 0) {
         throw 'The backup document does not contain any descriptor records.'
+    }
+    if (-not $VerificationCertificate -and @(
+            $validatedRecords | Where-Object RecordVersion -GE 2
+        ).Count -gt 0) {
+        Write-Warning (
+            'Restoring enterprise records without a verification certificate. ' +
+            'The SHA-256 digest is unkeyed, so it detects accidental damage ' +
+            'but not deliberate modification.'
+        )
+    }
+
+    $directoryServer = $null
+    if (@($validatedRecords | Where-Object ObjectFamily -EQ 'ADObject').Count -gt 0) {
+        if ([string]::IsNullOrWhiteSpace($AllowedBaseDistinguishedName)) {
+            throw 'AllowedBaseDistinguishedName is required to restore Active Directory records.'
+        }
+        $directoryServer = Resolve-WindowsADServer -Server $Server
     }
 
     $preparedRecords = [System.Collections.Generic.List[object]]::new()
@@ -151,6 +202,52 @@ function Restore-WindowsSecurityDescriptor {
                     Descriptor      = $descriptor
                 }
             }
+            'SmbShare' {
+                if (-not [string]::Equals(
+                        [string]$record.Server,
+                        [System.Environment]::MachineName,
+                        [System.StringComparison]::OrdinalIgnoreCase
+                    )) {
+                    throw "SMB share backup record '$($record.CanonicalTarget)' was captured on another server. Run the restore on that computer."
+                }
+                $descriptor = Get-SmbShareSecurityDescriptor `
+                    -Name $record.ShareName `
+                    -ThrottleLimit 1
+                [pscustomobject]@{
+                    Record          = $record
+                    Item            = $null
+                    ManagedSections = $null
+                    Security        = $null
+                    Descriptor      = $descriptor
+                }
+            }
+            'ADObject' {
+                # Resolve for write so the allowed base, base object class,
+                # protected targets, excluded partitions, and immutable object
+                # GUID are all rejected before any earlier record is written.
+                $target = Resolve-WindowsADObjectTarget `
+                    -Server $directoryServer `
+                    -DistinguishedName $record.DistinguishedName `
+                    -AllowedBaseDistinguishedName $AllowedBaseDistinguishedName `
+                    -Credential $Credential `
+                    -TimeoutSeconds $TimeoutSeconds `
+                    -ForWrite `
+                    -ExpectedObjectGuid $record.ObjectGuid
+                if (-not [string]::Equals(
+                        [string]$target.DefaultNamingContext,
+                        $record.DomainNamingContext,
+                        [System.StringComparison]::OrdinalIgnoreCase
+                    )) {
+                    throw "Active Directory backup target '$($record.DistinguishedName)' is served from another domain partition."
+                }
+                [pscustomobject]@{
+                    Record          = $record
+                    Item            = $null
+                    ManagedSections = $null
+                    Security        = $null
+                    Descriptor      = $null
+                }
+            }
             default {
                 throw [System.IO.InvalidDataException]::new(
                     "Unsupported object family '$($record.ObjectFamily)'."
@@ -158,11 +255,15 @@ function Restore-WindowsSecurityDescriptor {
             }
         }
 
+        # A directory record carries no descriptor here: its canonical target
+        # names the domain controller that produced the backup, and a restore
+        # may legitimately bind a different writable one. The prepare branch
+        # verified it by immutable object GUID and domain partition instead.
         if ($preparedRecord.Descriptor -and -not [string]::Equals(
-            [string]$preparedRecord.Descriptor.CanonicalTarget,
-            $record.CanonicalTarget,
-            [System.StringComparison]::OrdinalIgnoreCase
-        )) {
+                [string]$preparedRecord.Descriptor.CanonicalTarget,
+                $record.CanonicalTarget,
+                [System.StringComparison]::OrdinalIgnoreCase
+            )) {
             throw "Backup target '$($record.Target)' does not match its canonical identity."
         }
         $preparedRecords.Add($preparedRecord)
@@ -235,6 +336,32 @@ function Restore-WindowsSecurityDescriptor {
                         PassThru    = $PassThru
                     }
                     Set-ProcessSecurityDescriptor @setParameters
+                    break
+                }
+                'SmbShare' {
+                    $setParameters = @{
+                        Name          = $preparedRecord.Record.ShareName
+                        Sddl          = $preparedRecord.Record.Sddl
+                        ThrottleLimit = 1
+                        Confirm       = $false
+                        PassThru      = $PassThru
+                    }
+                    Set-SmbShareSecurityDescriptor @setParameters
+                    break
+                }
+                'ADObject' {
+                    $setParameters = @{
+                        Server                       = $directoryServer
+                        DistinguishedName            = $preparedRecord.Record.DistinguishedName
+                        AllowedBaseDistinguishedName = $AllowedBaseDistinguishedName
+                        Sddl                         = $preparedRecord.Record.Sddl
+                        Credential                   = $Credential
+                        TimeoutSeconds               = $TimeoutSeconds
+                        ThrottleLimit                = 1
+                        Confirm                      = $false
+                        PassThru                     = $PassThru
+                    }
+                    Set-ADObjectSecurityDescriptor @setParameters
                     break
                 }
                 default {

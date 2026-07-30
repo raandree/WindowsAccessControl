@@ -33,9 +33,10 @@ Describe 'Get-SmbShareEffectiveAccess behavior' -Tag 'Unit', 'WindowsOnly' {
                     ObjectType = 'SmbShare'
                     Path = 'WacLab$'
                     ShareName = 'WacLab$'
+                    Server = 'WACMEMBER'
                     NativePath = 'WacLab$'
                     NativeObjectType = 5
-                    CanonicalTarget = 'SmbShare:Local:WACLAB$'
+                    CanonicalTarget = 'SmbShare:WACMEMBER:WACLAB$'
                 }
             }
             Mock Get-WindowsNamedSecurityDescriptor { $DescriptorBytes }
@@ -87,7 +88,7 @@ Describe 'Get-SmbShareEffectiveAccess behavior' -Tag 'Unit', 'WindowsOnly' {
                     ShareName = 'WacLab$'
                     NativePath = 'WacLab$'
                     NativeObjectType = 5
-                    CanonicalTarget = 'SmbShare:Local:WACLAB$'
+                    CanonicalTarget = 'SmbShare:WACMEMBER:WACLAB$'
                 }
             }
             Mock Get-WindowsNamedSecurityDescriptor { $DescriptorBytes }
@@ -117,7 +118,7 @@ Describe 'Get-SmbShareEffectiveAccess behavior' -Tag 'Unit', 'WindowsOnly' {
                     ShareName = 'WacLab$'
                     NativePath = 'WacLab$'
                     NativeObjectType = 5
-                    CanonicalTarget = 'SmbShare:Local:WACLAB$'
+                    CanonicalTarget = 'SmbShare:WACMEMBER:WACLAB$'
                 }
             }
             Mock Get-WindowsNamedSecurityDescriptor { $DescriptorBytes }
@@ -155,7 +156,7 @@ Describe 'Get-SmbShareEffectiveAccess behavior' -Tag 'Unit', 'WindowsOnly' {
                     ShareName = 'WacLab$'
                     NativePath = 'WacLab$'
                     NativeObjectType = 5
-                    CanonicalTarget = 'SmbShare:Local:WACLAB$'
+                    CanonicalTarget = 'SmbShare:WACMEMBER:WACLAB$'
                 }
             }
             Mock Get-WindowsNamedSecurityDescriptor { $DescriptorBytes }

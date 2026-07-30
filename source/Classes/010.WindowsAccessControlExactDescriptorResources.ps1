@@ -278,3 +278,151 @@ class WindowsAccessControlProcessSecurityDescriptor {
         return @($reason)
     }
 }
+
+[DscResource()]
+class WindowsAccessControlSmbShareSecurityDescriptor {
+    [DscProperty(Key)]
+    [string]$Name
+
+    [DscProperty(Key)]
+    [WindowsSecurityDescriptorSection]$Sections =
+        [WindowsSecurityDescriptorSection]::Access
+
+    [DscProperty(Mandatory)]
+    [string]$Sddl
+
+    [DscProperty(NotConfigurable)]
+    [WindowsAccessControlDscReason[]]$Reasons
+
+    [WindowsAccessControlSmbShareSecurityDescriptor] Get() {
+        $descriptor = Get-WindowsAccessControlDscSecurityDescriptor `
+            -ObjectFamily SmbShare `
+            -Target $this.Name `
+            -Sections $this.Sections `
+            -ErrorAction Stop
+        $currentState = [WindowsAccessControlSmbShareSecurityDescriptor]::new()
+        $currentState.Name = $this.Name
+        $currentState.Sections = $this.Sections
+        $currentState.Sddl = $descriptor.Sddl
+        $currentState.Reasons = $this.GetReasons($descriptor.Sddl)
+        return $currentState
+    }
+
+    [bool] Test() {
+        return $this.Get().Reasons.Count -eq 0
+    }
+
+    [void] Set() {
+        Set-WindowsAccessControlDscSecurityDescriptor `
+            -ObjectFamily SmbShare `
+            -Target $this.Name `
+            -Sections $this.Sections `
+            -Sddl $this.Sddl `
+            -ErrorAction Stop
+    }
+
+    [WindowsAccessControlDscReason[]] GetReasons([string]$CurrentSddl) {
+        if (Test-WindowsAccessControlDscSddl `
+                -CurrentSddl $CurrentSddl `
+                -DesiredSddl $this.Sddl `
+                -Sections $this.Sections) {
+            return @()
+        }
+        $reason = [WindowsAccessControlDscReason]::new()
+        $reason.Code = '{0}:{0}:Sddl' -f $this.GetType().Name
+        $reason.Phrase = "The share DACL for '$($this.Name)' differs from the desired SDDL."
+        return @($reason)
+    }
+}
+
+[DscResource()]
+class WindowsAccessControlADObjectSecurityDescriptor {
+    [DscProperty(Key)]
+    [string]$DistinguishedName
+
+    [DscProperty(Key)]
+    [WindowsSecurityDescriptorSection]$Sections =
+        [WindowsSecurityDescriptorSection]::Access
+
+    [DscProperty(Mandatory)]
+    [string]$AllowedBaseDistinguishedName
+
+    [DscProperty(Mandatory)]
+    [string]$Sddl
+
+    [DscProperty()]
+    [string]$Server
+
+    [DscProperty()]
+    [string]$ObjectGuid
+
+    [DscProperty()]
+    [int]$TimeoutSeconds = 10
+
+    [DscProperty(NotConfigurable)]
+    [WindowsAccessControlDscReason[]]$Reasons
+
+    [WindowsAccessControlADObjectSecurityDescriptor] Get() {
+        $descriptor = Get-WindowsAccessControlDscSecurityDescriptor `
+            -ObjectFamily ADObject `
+            -Target $this.DistinguishedName `
+            -Server $this.Server `
+            -TimeoutSeconds $this.TimeoutSeconds `
+            -Sections $this.Sections `
+            -ErrorAction Stop
+        $this.AssertObjectGuid($descriptor.ObjectGuid)
+        $currentState = [WindowsAccessControlADObjectSecurityDescriptor]::new()
+        $currentState.DistinguishedName = $this.DistinguishedName
+        $currentState.Sections = $this.Sections
+        $currentState.AllowedBaseDistinguishedName = $this.AllowedBaseDistinguishedName
+        $currentState.Server = $this.Server
+        $currentState.ObjectGuid = [string]$descriptor.ObjectGuid
+        $currentState.TimeoutSeconds = $this.TimeoutSeconds
+        $currentState.Sddl = $descriptor.Sddl
+        $currentState.Reasons = $this.GetReasons($descriptor.Sddl)
+        return $currentState
+    }
+
+    [bool] Test() {
+        return $this.Get().Reasons.Count -eq 0
+    }
+
+    [void] Set() {
+        Set-WindowsAccessControlDscSecurityDescriptor `
+            -ObjectFamily ADObject `
+            -Target $this.DistinguishedName `
+            -Server $this.Server `
+            -AllowedBaseDistinguishedName $this.AllowedBaseDistinguishedName `
+            -ObjectGuid $this.ObjectGuid `
+            -TimeoutSeconds $this.TimeoutSeconds `
+            -Sections $this.Sections `
+            -Sddl $this.Sddl `
+            -ErrorAction Stop
+    }
+
+    # A distinguished name can be reused by a different object after a delete
+    # and recreate, so an author may pin the immutable directory identity.
+    [void] AssertObjectGuid([object]$ActualObjectGuid) {
+        if ([string]::IsNullOrWhiteSpace($this.ObjectGuid)) {
+            return
+        }
+        $expected = [guid]::Empty
+        if (-not [guid]::TryParse($this.ObjectGuid, [ref]$expected) -or
+            $expected -ne ($ActualObjectGuid -as [guid])) {
+            throw "The Active Directory object '$($this.DistinguishedName)' does not have the configured object GUID."
+        }
+    }
+
+    [WindowsAccessControlDscReason[]] GetReasons([string]$CurrentSddl) {
+        if (Test-WindowsAccessControlDscSddl `
+                -CurrentSddl $CurrentSddl `
+                -DesiredSddl $this.Sddl `
+                -Sections $this.Sections) {
+            return @()
+        }
+        $reason = [WindowsAccessControlDscReason]::new()
+        $reason.Code = '{0}:{0}:Sddl' -f $this.GetType().Name
+        $reason.Phrase = "The directory DACL for '$($this.DistinguishedName)' differs from the desired SDDL."
+        return @($reason)
+    }
+}

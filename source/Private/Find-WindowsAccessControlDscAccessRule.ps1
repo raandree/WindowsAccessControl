@@ -3,17 +3,24 @@ function Find-WindowsAccessControlDscAccessRule {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject')]
         [string]$ObjectFamily,
         [Parameter()] [string]$Target,
         [Parameter()] [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
         [Parameter()] [uint32]$ProcessId,
         [Parameter()] [int64]$CreationTimeFileTime,
+        [Parameter()] [string]$Server,
+        [Parameter()] [ValidateRange(1, 300)] [int]$TimeoutSeconds = 10,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string]$Account,
         [Parameter(Mandatory)] [ValidateRange(0, [uint32]::MaxValue)] [uint64]$AccessMask,
         [Parameter(Mandatory)]
         [System.Security.AccessControl.AccessControlType]$AccessControlType,
-        [Parameter()] [string]$AppliesTo
+        [Parameter()] [string]$AppliesTo,
+        [Parameter()]
+        [WindowsActiveDirectoryInheritance]$InheritanceType =
+            [WindowsActiveDirectoryInheritance]::None,
+        [Parameter()] [guid]$ObjectTypeGuid = [guid]::Empty,
+        [Parameter()] [guid]$InheritedObjectTypeGuid = [guid]::Empty
     )
 
     $securityIdentifier = Resolve-WindowsIdentityReference -Identity $Account
@@ -108,6 +115,32 @@ function Find-WindowsAccessControlDscAccessRule {
                 -ErrorAction Stop)
             break
         }
+        'SmbShare' {
+            if ([string]::IsNullOrWhiteSpace($Target)) {
+                throw 'An SMB share name is required.'
+            }
+            @(Get-SmbShareAccessRule `
+                -Name $Target `
+                -Account $securityIdentifier.Value `
+                -ExcludeInherited `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop)
+            break
+        }
+        'ADObject' {
+            if ([string]::IsNullOrWhiteSpace($Target)) {
+                throw 'An Active Directory distinguished name is required.'
+            }
+            @(Get-ADObjectAccessRule `
+                -Server (Resolve-WindowsADServer -Server $Server) `
+                -DistinguishedName $Target `
+                -Account $securityIdentifier.Value `
+                -ExcludeInherited `
+                -TimeoutSeconds $TimeoutSeconds `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop)
+            break
+        }
     }
 
     foreach ($rule in @($rules)) {
@@ -127,6 +160,12 @@ function Find-WindowsAccessControlDscAccessRule {
         }
         if ($ObjectFamily -in @('FileSystem', 'RegistryKey') -and
             [string]$rule.AppliesTo -ne $AppliesTo) {
+            continue
+        }
+        if ($ObjectFamily -eq 'ADObject' -and (
+            [WindowsActiveDirectoryInheritance]$rule.InheritanceType -ne $InheritanceType -or
+            [guid]$rule.ObjectTypeGuid -ne $ObjectTypeGuid -or
+            [guid]$rule.InheritedObjectTypeGuid -ne $InheritedObjectTypeGuid)) {
             continue
         }
         $rule

@@ -20,14 +20,21 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             Mock Get-RegistryKeyAccessRule { $script:rules }
             Mock Get-ServiceAccessRule { $script:rules }
             Mock Get-ProcessAccessRule { $script:rules }
+            Mock Get-SmbShareAccessRule { $script:rules }
+            Mock Get-ADObjectAccessRule { $script:rules }
+            Mock Resolve-WindowsADServer { 'dc01.contoso.test' }
             Mock Add-NTFSAccessRule
             Mock Add-RegistryKeyAccessRule
             Mock Add-ServiceAccessRule
             Mock Add-ProcessAccessRule
+            Mock Add-SmbShareAccessRule
+            Mock Add-ADObjectAccessRule
             Mock Remove-NTFSAccessRule
             Mock Remove-RegistryKeyAccessRule
             Mock Remove-ServiceAccessRule
             Mock Remove-ProcessAccessRule
+            Mock Remove-SmbShareAccessRule
+            Mock Remove-ADObjectAccessRule
         }
 
         It 'Should find one exact <ObjectFamily> rule' -ForEach @(
@@ -52,6 +59,15 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
                 ObjectFamily = 'Process'; Target = $null; Mask = 4096
                 AppliesTo = $null; GetCommand = 'Get-ProcessAccessRule'
             }
+            @{
+                ObjectFamily = 'SmbShare'; Target = 'WacLab$'; Mask = 1179785
+                AppliesTo = $null; GetCommand = 'Get-SmbShareAccessRule'
+            }
+            @{
+                ObjectFamily = 'ADObject'
+                Target = 'CN=Test,OU=Targets,DC=contoso,DC=test'; Mask = 16
+                AppliesTo = $null; GetCommand = 'Get-ADObjectAccessRule'
+            }
         ) {
             $storedMask = if ($ObjectFamily -eq 'FileSystem') {
                 $Mask -bor 0x00100000
@@ -65,6 +81,9 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
                 AccessControlType = 'Allow'
                 AppliesTo = $AppliesTo
                 IsInherited = $false
+                InheritanceType = 'None'
+                ObjectTypeGuid = [guid]::Empty
+                InheritedObjectTypeGuid = [guid]::Empty
             }
             $script:rules = @(
                 [pscustomobject]@{
@@ -72,6 +91,9 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
                     AccessRights = [int]($storedMask + 1)
                     AccessControlType = 'Allow'; AppliesTo = $AppliesTo
                     IsInherited = $false
+                    InheritanceType = 'None'
+                    ObjectTypeGuid = [guid]::Empty
+                    InheritedObjectTypeGuid = [guid]::Empty
                 }
                 $exactRule
             )
@@ -99,6 +121,8 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             @{ ObjectFamily = 'Service'; Target = 'BITS'; Mask = 4; AppliesTo = $null; AddCommand = 'Add-ServiceAccessRule' }
             @{ ObjectFamily = 'ServiceControlManager'; Target = $null; Mask = 1; AppliesTo = $null; AddCommand = 'Add-ServiceAccessRule' }
             @{ ObjectFamily = 'Process'; Target = $null; Mask = 4096; AppliesTo = $null; AddCommand = 'Add-ProcessAccessRule' }
+            @{ ObjectFamily = 'SmbShare'; Target = 'WacLab$'; Mask = 1179785; AppliesTo = $null; AddCommand = 'Add-SmbShareAccessRule' }
+            @{ ObjectFamily = 'ADObject'; Target = 'CN=Test,OU=Targets,DC=contoso,DC=test'; Mask = 16; AppliesTo = $null; AddCommand = 'Add-ADObjectAccessRule' }
         ) {
             $parameters = @{
                 ObjectFamily = $ObjectFamily; Account = 'Everyone'
@@ -108,6 +132,9 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             if ($Target) { $parameters.Target = $Target }
             if ($AppliesTo) { $parameters.AppliesTo = $AppliesTo }
             if ($ObjectFamily -eq 'RegistryKey') { $parameters.RegistryView = 'Default' }
+            if ($ObjectFamily -eq 'ADObject') {
+                $parameters.AllowedBaseDistinguishedName = 'OU=Targets,DC=contoso,DC=test'
+            }
             if ($ObjectFamily -eq 'Process') {
                 $parameters.ProcessId = 42
                 $parameters.CreationTimeFileTime = 123456789
@@ -124,6 +151,8 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             @{ ObjectFamily = 'Service'; Target = 'BITS'; Mask = 4; AppliesTo = $null; RemoveCommand = 'Remove-ServiceAccessRule' }
             @{ ObjectFamily = 'ServiceControlManager'; Target = $null; Mask = 1; AppliesTo = $null; RemoveCommand = 'Remove-ServiceAccessRule' }
             @{ ObjectFamily = 'Process'; Target = $null; Mask = 4096; AppliesTo = $null; RemoveCommand = 'Remove-ProcessAccessRule' }
+            @{ ObjectFamily = 'SmbShare'; Target = 'WacLab$'; Mask = 1179785; AppliesTo = $null; RemoveCommand = 'Remove-SmbShareAccessRule' }
+            @{ ObjectFamily = 'ADObject'; Target = 'CN=Test,OU=Targets,DC=contoso,DC=test'; Mask = 16; AppliesTo = $null; RemoveCommand = 'Remove-ADObjectAccessRule' }
         ) {
             $storedMask = if ($ObjectFamily -eq 'FileSystem') {
                 $Mask -bor 0x00100000
@@ -135,6 +164,9 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
                 AccessRights = [int]$storedMask
                 AccessControlType = 'Allow'; AppliesTo = $AppliesTo
                 IsInherited = $false
+                InheritanceType = 'None'
+                ObjectTypeGuid = [guid]::Empty
+                InheritedObjectTypeGuid = [guid]::Empty
             })
             $parameters = @{
                 ObjectFamily = $ObjectFamily; Account = 'Everyone'
@@ -144,6 +176,9 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             if ($Target) { $parameters.Target = $Target }
             if ($AppliesTo) { $parameters.AppliesTo = $AppliesTo }
             if ($ObjectFamily -eq 'RegistryKey') { $parameters.RegistryView = 'Default' }
+            if ($ObjectFamily -eq 'ADObject') {
+                $parameters.AllowedBaseDistinguishedName = 'OU=Targets,DC=contoso,DC=test'
+            }
             if ($ObjectFamily -eq 'Process') {
                 $parameters.ProcessId = 42
                 $parameters.CreationTimeFileTime = 123456789
@@ -304,6 +339,58 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
                     -ParameterFilter {
                         $ServiceRights -eq [WindowsServiceRights]::GenericRead
                 }
+        }
+
+        It 'Should reject a directory rule whose object scope differs' {
+            $script:rules = @([pscustomobject]@{
+                SID = 'S-1-1-0'; AccessMask = [uint64]16
+                AccessControlType = 'Allow'; IsInherited = $false
+                InheritanceType = 'None'
+                ObjectTypeGuid = [guid]'bf967a86-0de6-11d0-a285-00aa003049e2'
+                InheritedObjectTypeGuid = [guid]::Empty
+            })
+
+            Get-WindowsAccessControlDscAccessRule `
+                -ObjectFamily ADObject `
+                -Target 'CN=Test,OU=Targets,DC=contoso,DC=test' `
+                -Account Everyone `
+                -AccessMask 16 `
+                -AccessControlType Allow |
+                Should -BeFalse
+        }
+
+        It 'Should match a directory rule on both object GUIDs and inheritance' {
+            $objectTypeGuid = [guid]'bf967a86-0de6-11d0-a285-00aa003049e2'
+            $script:rules = @([pscustomobject]@{
+                SID = 'S-1-1-0'; AccessMask = [uint64]16
+                AccessControlType = 'Allow'; IsInherited = $false
+                InheritanceType = 'Descendents'
+                ObjectTypeGuid = $objectTypeGuid
+                InheritedObjectTypeGuid = [guid]::Empty
+            })
+
+            Get-WindowsAccessControlDscAccessRule `
+                -ObjectFamily ADObject `
+                -Target 'CN=Test,OU=Targets,DC=contoso,DC=test' `
+                -Account Everyone `
+                -AccessMask 16 `
+                -AccessControlType Allow `
+                -InheritanceType Descendents `
+                -ObjectTypeGuid $objectTypeGuid |
+                Should -BeTrue
+        }
+
+        It 'Should require an allowed base before a directory write' {
+            {
+                Set-WindowsAccessControlDscAccessRule `
+                    -ObjectFamily ADObject `
+                    -Target 'CN=Test,OU=Targets,DC=contoso,DC=test' `
+                    -Account Everyone `
+                    -AccessMask 16 `
+                    -AccessControlType Allow `
+                    -Ensure Present
+            } | Should -Throw '*AllowedBaseDistinguishedName*'
+            Should -Invoke Add-ADObjectAccessRule -Exactly -Times 0
         }
     }
 }

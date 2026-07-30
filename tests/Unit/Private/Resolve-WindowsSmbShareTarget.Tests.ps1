@@ -79,4 +79,32 @@ Describe 'Resolve-WindowsSmbShareTarget' -Tag 'Unit', 'WindowsOnly' {
             }
         }
     }
+
+    It 'Should qualify the canonical target with the local server name' {
+        InModuleScope WindowsAccessControl {
+            Mock Get-SmbShare {
+                [pscustomobject]@{
+                    Name = 'WacLab$'
+                    ShareType = 'FileSystemDirectory'
+                    SmbInstance = 'Default'
+                    AvailabilityType = 'NonClustered'
+                    Special = $false
+                    ContinuouslyAvailable = $false
+                    Infrastructure = $false
+                    ShadowCopy = $false
+                    Scoped = $false
+                    Temporary = $false
+                    ScopeName = '*'
+                    Description = 'test'
+                }
+            }
+
+            $target = Resolve-WindowsSmbShareTarget -Name 'WacLab$'
+
+            $expectedServer = [System.Environment]::MachineName.ToUpperInvariant()
+            $target.Server | Should -BeExactly $expectedServer
+            $target.CanonicalTarget |
+                Should -BeExactly "SmbShare:$expectedServer`:WACLAB`$"
+        }
+    }
 }

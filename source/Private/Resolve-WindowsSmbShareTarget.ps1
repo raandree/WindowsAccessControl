@@ -46,15 +46,18 @@ function Resolve-WindowsSmbShareTarget {
             )
         }
 
+        $serverName = [System.Environment]::MachineName.ToUpperInvariant()
         [pscustomobject]@{
             ObjectType       = 'SmbShare'
             Path             = $share.Name
             ShareName        = $share.Name
+            Server           = $serverName
             Description      = [string]$share.Description
             NativePath       = $share.Name
             NativeObjectType = [int][WindowsSecurityObjectType]::SmbShare
             DescriptorSource = 'Named'
-            CanonicalTarget  = 'SmbShare:Local:{0}' -f $share.Name.ToUpperInvariant()
+            CanonicalTarget  = 'SmbShare:{0}:{1}' -f
+                $serverName, $share.Name.ToUpperInvariant()
         }
     }
 }

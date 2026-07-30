@@ -364,6 +364,50 @@ ENT-8 are closed for the currently shipped enterprise families.
     the only failures are the pre-existing domain-controller interactive-logon
     policy cases. The live domain lab passed 10 of 10 Active Directory scenarios
     and was left clean with no leaked organizational units.
+- 2026-07-30: Closed OI-14 and OI-17 with specification 0013. SMB share
+    canonical targets and write-lock keys are now qualified by the owning
+    computer (`SmbShare:<SERVER>:<SHARE>`), and both enterprise families entered
+    unified backup and restore as schema-version-2 records that bind server
+    authority plus immutable share or directory identity. Record version is a
+    property of the object family, so a family/version mismatch is rejected in
+    both directions and the pinned version-1 digest keeps existing local backups
+    valid.
+- 2026-07-30: Added `Server`, `AllowedBaseDistinguishedName`, `Credential`, and
+    `TimeoutSeconds` to `Restore-WindowsSecurityDescriptor`. An SMB record
+    restores only on the computer it names; a directory record is resolved for
+    write during preparation and restored through one pinned writable domain
+    controller matched by `objectGUID` and domain naming context.
+- 2026-07-30: Added four class-based DSC resources for SMB share and Active
+    Directory descriptors and access rules. Directory resources require an
+    allowed organizational unit, manage the access section only, take no
+    credential, pin one domain controller per `Set()`, and re-assert an optional
+    `ObjectGuid` before the write.
+- 2026-07-30: Closed AD-7 with ADR 0022 after read-only probes measured the gap:
+    8 directory-computed group SIDs against 16 in the same principal's live logon
+    token, 22 confidential attributes, 15 property sets, 6 validated writes, and
+    a domain-wide `dSHeuristics` list-object switch. The domain controller
+    exposes an authoritative answer only for the bound caller.
+- 2026-07-30: Independent security review returned three Major findings
+    (directory deduplication keyed on the server-qualified canonical target, an
+    unprevalidated directory write boundary, and an object-GUID pin enforced only
+    in `Get()`). All three plus every Minor were fixed and covered by new
+    regression tests.
+- 2026-07-30: Final non-lab gate passed 1268 of 1271 tests with zero skips; the
+    only failures remain the domain-controller interactive-logon policy cases.
+    The unattended domain-lab profile passed all five suites at 29 of 29 tests
+    with zero skips and both boundaries ready.
+- 2026-07-30: Closed the cross-edition gate for the increment. A focused Windows
+    PowerShell 5.1 run passed 103 of 103 tests with zero skips over the
+    portability, DSC contract, DSC adapter, and SMB target suites, so the new
+    `[guid]::TryParse` reference calls, enum casts, and class-based resources
+    hold on Desktop. The built artifact carries 98 exports, 14 DSC resources,
+    five files, and no test, source, or secret-like content.
+- 2026-07-30: `build.ps1 -Tasks pack` cannot complete in this checkout.
+    `Microsoft.PowerShell.PSResourceGet` fails to load `NuGet.Packaging`
+    6.7.0.127, and that assembly is genuinely absent from the restored module in
+    `output/RequiredModules`. The module build itself succeeds; this is a
+    dependency-restore gap in the environment, not a product defect, and it
+    predates this increment.
 
 ## Stable capabilities
 

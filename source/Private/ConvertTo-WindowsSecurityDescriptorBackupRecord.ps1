@@ -34,6 +34,11 @@ function ConvertTo-WindowsSecurityDescriptorBackupRecord {
             RegistryView         = $null
             ProcessId            = $null
             CreationTimeFileTime = $null
+            Server               = $null
+            ShareName            = $null
+            DistinguishedName    = $null
+            ObjectGuid           = $null
+            DomainNamingContext  = $null
             Sections             = 0
             Sddl                 = [string]$InputObject.Sddl
             Integrity            = $null
@@ -107,6 +112,59 @@ function ConvertTo-WindowsSecurityDescriptorBackupRecord {
                     $recordValues.CanonicalTarget = [string]$InputObject.CanonicalTarget
                     $recordValues.ProcessId = $processId
                     $recordValues.CreationTimeFileTime = $creationTimeFileTime
+                    break
+                }
+                'SmbShare' {
+                    if ($recordValues.Sections -ne
+                        [int][WindowsSecurityDescriptorSection]::Access) {
+                        throw [System.ArgumentException]::new(
+                            'An SMB share backup selects only the access section.'
+                        )
+                    }
+                    if ([string]::IsNullOrWhiteSpace([string]$InputObject.ShareName) -or
+                        [string]::IsNullOrWhiteSpace([string]$InputObject.Server)) {
+                        throw [System.ArgumentException]::new(
+                            'An SMB share backup requires a share name and server identity.'
+                        )
+                    }
+                    $recordValues.RecordVersion = 2
+                    $recordValues.ObjectFamily = 'SmbShare'
+                    $recordValues.Target = [string]$InputObject.ShareName
+                    $recordValues.CanonicalTarget = [string]$InputObject.CanonicalTarget
+                    $recordValues.Server = [string]$InputObject.Server
+                    $recordValues.ShareName = [string]$InputObject.ShareName
+                    break
+                }
+                'ADObject' {
+                    if ($recordValues.Sections -ne
+                        [int][WindowsSecurityDescriptorSection]::Access) {
+                        throw [System.ArgumentException]::new(
+                            'An Active Directory backup selects only the access section.'
+                        )
+                    }
+                    $objectGuid = $InputObject.ObjectGuid -as [guid]
+                    if ([string]::IsNullOrWhiteSpace([string]$InputObject.Server) -or
+                        [string]::IsNullOrWhiteSpace([string]$InputObject.DistinguishedName) -or
+                        $null -eq $objectGuid -or $objectGuid -eq [guid]::Empty) {
+                        throw [System.ArgumentException]::new(
+                            'An Active Directory backup requires a server, distinguished name, and object GUID.'
+                        )
+                    }
+                    if ([string]::IsNullOrWhiteSpace(
+                            [string]$InputObject.DefaultNamingContext)) {
+                        throw [System.ArgumentException]::new(
+                            'An Active Directory backup requires the domain naming context.'
+                        )
+                    }
+                    $recordValues.RecordVersion = 2
+                    $recordValues.ObjectFamily = 'ADObject'
+                    $recordValues.Target = [string]$InputObject.DistinguishedName
+                    $recordValues.CanonicalTarget = [string]$InputObject.CanonicalTarget
+                    $recordValues.Server = [string]$InputObject.Server
+                    $recordValues.DistinguishedName = [string]$InputObject.DistinguishedName
+                    $recordValues.ObjectGuid = $objectGuid.ToString('D').ToUpperInvariant()
+                    $recordValues.DomainNamingContext =
+                        [string]$InputObject.DefaultNamingContext
                     break
                 }
                 default {

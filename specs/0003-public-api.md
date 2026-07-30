@@ -223,9 +223,29 @@ Arbitrary owner assignment can require `SeRestorePrivilege`.
 The `Sections` value selects any combination of owner, group, DACL, and SACL.
 Copy, backup, and restore preserve sections outside that selection (ADR 0003).
 The unified backup accepts descriptor output from filesystem, registry,
-service/SCM, and pinned process commands. Schema-version 1 records contain
-object family, target and canonical identity, native section mask, SDDL, and a
-SHA-256 digest. Process records include PID and creation `FILETIME`.
+service/SCM, pinned process, SMB share, and Active Directory commands. Record
+version is a property of the object family: the five local families use
+schema-version 1 and the two enterprise families use schema-version 2
+(ADR 0016). A record whose family and version disagree is rejected in both
+directions.
+
+Every record contains object family, target and canonical identity, native
+section mask, SDDL, and a SHA-256 digest. Process records include PID and
+creation `FILETIME`. Version-2 records additionally bind `Server`, plus
+`ShareName` for a share and `DistinguishedName`, `ObjectGuid`, and
+`DomainNamingContext` for a directory object; all of them are covered by the
+digest. The envelope `SchemaVersion` is the highest record version present, and
+restore rejects a document that declares a lower version than one of its
+records.
+
+`Restore-WindowsSecurityDescriptor` gains `Server`,
+`AllowedBaseDistinguishedName`, `Credential`, and `TimeoutSeconds` for
+enterprise records. An SMB record restores only on the computer named in the
+record. A directory record requires an allowed base, binds one explicit or
+discovered writable domain controller for the whole restore, and matches
+identity on the immutable `objectGUID` and recorded domain naming context so a
+different controller can serve the restore. Specification 0013 owns this
+contract.
 
 `SigningCertificate` signs every record hash with RSA/SHA-256. Signed records
 require the matching `VerificationCertificate`; supplying a verification
@@ -544,9 +564,11 @@ that re-read and the LDAP write is narrowed, not eliminated.
 `Set-ADObjectSecurityDescriptor` keeps last-writer-wins.
 
 An optional credential binds directly to the selected DC. It is never emitted,
-and it is not used to locate a domain controller. The first increment operates
-on DACLs only and exposes no SACL, backup, DSC, replication, or effective-access
-contract.
+and it is not used to locate a domain controller. Directory commands operate on
+DACLs only and expose no SACL or replication contract. Portability and
+desired-state support arrived with specification 0013; ADR 0022 defers
+directory effective access, so the module never presents a locally constructed
+Authz result as a directory access decision.
 Exact removal is idempotent when the path-bound ACE is already absent.
 
 ## Local impersonation
@@ -601,6 +623,8 @@ process resets the counters.
 | `WindowsAccessControlServiceSecurityDescriptor` | `Name`, `Sections` | `Sddl` |
 | `WindowsAccessControlServiceControlManagerSecurityDescriptor` | `Sections` | `Sddl` |
 | `WindowsAccessControlProcessSecurityDescriptor` | `ProcessId`, `CreationTimeFileTime`, `Sections` | `Sddl` |
+| `WindowsAccessControlSmbShareSecurityDescriptor` | `Name`, `Sections` | `Sddl` |
+| `WindowsAccessControlADObjectSecurityDescriptor` | `DistinguishedName`, `Sections` | `AllowedBaseDistinguishedName`, `Sddl` |
 
 Every resource is class-based, has `Get()`, `Test()`, and `Set()` methods, and
 returns `WindowsAccessControlDscReason` entries for selected-section SDDL
@@ -623,6 +647,14 @@ reconverge only while the pinned instance remains alive.
 An absent SACL (`S:NO_ACCESS_CONTROL`) remains distinct from a protected empty
 SACL (`S:P`); use the latter when inherited audit ACEs must remain absent.
 
+The SMB share and Active Directory resources manage the access section only and
+fail closed on any other `Sections` value. Directory resources require
+`AllowedBaseDistinguishedName` before a write, accept an optional `Server` and
+`TimeoutSeconds`, and take no credential, so a MOF never carries directory
+credentials. `WindowsAccessControlADObjectSecurityDescriptor` also accepts an
+optional `ObjectGuid` and fails when the distinguished name now resolves to a
+different directory object.
+
 ## Access-rule presence DSC resources
 
 | Resource | Composite keys | Configurable state |
@@ -632,6 +664,8 @@ SACL (`S:P`); use the latter when inherited audit ACEs must remain absent.
 | `WindowsAccessControlServiceAccessRule` | `Name`, `Account`, `ServiceRights`, `AccessControlType` | `Ensure` |
 | `WindowsAccessControlServiceControlManagerAccessRule` | `Account`, `ControlManagerRights`, `AccessControlType` | `Ensure` |
 | `WindowsAccessControlProcessAccessRule` | `ProcessId`, `CreationTimeFileTime`, `Account`, `ProcessRights`, `AccessControlType` | `Ensure` |
+| `WindowsAccessControlSmbShareAccessRule` | `Name`, `Account`, `AccessRights`, `AccessControlType` | `Ensure` |
+| `WindowsAccessControlADObjectAccessRule` | `DistinguishedName`, `Account`, `AccessRights`, `AccessControlType`, `InheritanceType`, `ObjectType`, `InheritedObjectType` | `Ensure` |
 
 `WindowsAccessControlDscEnsure` exposes `Absent` and `Present`; the resource
 default is `Present`. Exact identity is SID, normalized unsigned 32-bit rights
@@ -643,6 +677,9 @@ scopes, or unrelated accounts.
 NTFS matching normalizes desired rights through `FileSystemAccessRule` so the
 automatic `Synchronize` bit on allowed ACEs does not cause permanent drift.
 Registry view and process creation `FILETIME` remain part of target identity.
+Directory rule identity additionally includes both object GUIDs and the
+directory inheritance type; `ObjectType` and `InheritedObjectType` are empty
+strings for an unscoped ACE and must otherwise parse as a GUID.
 Because Windows can merge same-account, qualifier, and scope ACEs, a narrower
 exact `Present` rule cannot converge beside an existing rights superset; callers
 model the superset or use an exact-descriptor resource.

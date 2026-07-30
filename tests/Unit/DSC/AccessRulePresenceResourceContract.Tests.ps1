@@ -67,6 +67,28 @@ Describe 'Access-rule presence DSC resource contract' -Tag 'Unit', 'WindowsOnly'
                 'AccessControlType', 'Ensure', 'Reasons'
             )
         }
+        @{
+            Name = 'WindowsAccessControlSmbShareAccessRule'
+            KeyNames = @('Name', 'Account', 'AccessRights', 'AccessControlType')
+            Properties = @(
+                'Name', 'Account', 'AccessRights', 'AccessControlType',
+                'Ensure', 'Reasons'
+            )
+        }
+        @{
+            Name = 'WindowsAccessControlADObjectAccessRule'
+            KeyNames = @(
+                'DistinguishedName', 'Account', 'AccessRights',
+                'AccessControlType', 'InheritanceType', 'ObjectType',
+                'InheritedObjectType'
+            )
+            Properties = @(
+                'DistinguishedName', 'Account', 'AccessRights',
+                'AccessControlType', 'InheritanceType', 'ObjectType',
+                'InheritedObjectType', 'AllowedBaseDistinguishedName', 'Server',
+                'TimeoutSeconds', 'Ensure', 'Reasons'
+            )
+        }
     ) {
         $script:manifestData.DscResourcesToExport | Should -Contain $Name
         (Get-DscResource -Name $Name -Module WindowsAccessControl -ErrorAction Stop).Name |

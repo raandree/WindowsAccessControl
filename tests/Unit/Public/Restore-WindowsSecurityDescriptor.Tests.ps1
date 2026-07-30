@@ -4,6 +4,10 @@ $contractParameters = @{
     RequiredParameters = @(
         'BackupPath'
         'VerificationCertificate'
+        'Server'
+        'AllowedBaseDistinguishedName'
+        'Credential'
+        'TimeoutSeconds'
         'PassThru'
     )
 }

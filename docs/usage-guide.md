@@ -190,6 +190,19 @@ read, so an unreadable parent costs the column rather than the rules. The name
 properties resolve schema classes, attributes, property sets, validated writes,
 and extended rights, and stay empty for a GUID that resolves to none of those.
 
+The module has no directory effective-access command. A domain controller
+decides directory access with the token it builds for a specific inbound
+authentication plus directory-only rules such as confidential attributes,
+property sets, validated writes, and list-object mode, none of which a locally
+constructed access check reproduces. Use `Get-ADObjectAccessRule` to see who is
+granted what, and read the domain controller's own caller-scoped constructed
+attributes when an authoritative answer for the calling identity is needed:
+
+```powershell
+Get-ADObject -Identity $targetDn -Properties `
+    allowedAttributesEffective, allowedChildClassesEffective, sDRightsEffective
+```
+
 ## Manage Task Scheduler DACLs
 
 Run these commands on the computer that owns the task folder. Use absolute
@@ -665,6 +678,25 @@ the matching `VerificationCertificate` during restore when authenticity is
 required. Review backup files received outside a trusted administrative
 workflow because each record controls its restore target.
 
+SMB share and Active Directory descriptors use record version 2 and bind the
+server plus the immutable share name or distinguished name, `objectGUID`, and
+domain naming context. A share record restores only on the computer it names,
+and a directory record requires an explicit allowed organizational unit:
+
+```powershell
+Get-ADObjectSecurityDescriptor -DistinguishedName $distinguishedName |
+    Backup-WindowsSecurityDescriptor -DestinationPath $backupPath
+
+Restore-WindowsSecurityDescriptor `
+    -BackupPath $backupPath `
+    -AllowedBaseDistinguishedName 'OU=Apps,DC=contoso,DC=com' `
+    -Confirm:$false
+```
+
+The restore can bind a different writable domain controller than the backup
+did, because identity is matched on the immutable `objectGUID` and the recorded
+domain rather than on the server name.
+
 ## Manage registry key permissions
 
 Registry permissions apply to keys, not individual registry values. Commands
@@ -802,7 +834,8 @@ calling token must be permitted to impersonate.
 
 The module provides exact selected-section descriptor resources and exact
 access-rule presence resources for NTFS, registry keys, named services, the
-SCM, and pinned processes. This example ensures one NTFS allow ACE is present:
+SCM, pinned processes, SMB shares, and Active Directory objects. This example
+ensures one NTFS allow ACE is present:
 
 ```powershell
 Configuration ContosoFilePermissions {
@@ -836,6 +869,26 @@ Configuration Manager process, such as
 Use an exact-descriptor resource when DSC should own a complete selected DACL
 or SACL. Use a rule-presence resource when DSC should own one explicit ACE and
 preserve unrelated rules.
+
+The SMB share and Active Directory resources manage the access section only.
+A directory resource must declare its own destructive boundary:
+
+```powershell
+WindowsAccessControlADObjectAccessRule AnalystsReadProperty {
+    DistinguishedName = 'CN=Contoso App,OU=Apps,DC=contoso,DC=com'
+    AllowedBaseDistinguishedName = 'OU=Apps,DC=contoso,DC=com'
+    Account = 'CONTOSO\Analysts'
+    AccessRights = 'ReadProperty'
+    AccessControlType = 'Allow'
+    Ensure = 'Present'
+}
+```
+
+Directory resources take no credential. The Local Configuration Manager binds
+LDAP as the node's own identity, so a MOF never carries directory credentials.
+Supply `ObjectGuid` on `WindowsAccessControlADObjectSecurityDescriptor` when the
+configuration must fail rather than converge a recreated object that reuses the
+same distinguished name.
 
 ## Run against another computer
 

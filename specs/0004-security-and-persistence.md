@@ -195,7 +195,7 @@ Process operations remain pinned by PID plus creation `FILETIME`.
 
 ## Backup and restore trust model
 
-Backups use schema version 1 and contain:
+Every record contains:
 
 - object family, target, and canonical target identity
 - object-specific metadata such as filesystem item type, registry view, or
@@ -204,11 +204,30 @@ Backups use schema version 1 and contain:
 - SDDL for those sections
 - SHA-256 integrity metadata
 
+Record version is a property of the object family. The five local families use
+schema version 1. The SMB share and Active Directory families use schema
+version 2 and additionally bind the explicit server plus the immutable
+enterprise target identity: share name for a share, and distinguished name,
+`objectGUID`, and domain naming context for a directory object (ADR 0016).
+Those fields are covered by the digest. A record whose family and version
+disagree is rejected in both directions, so an enterprise record can never be
+replayed as a local target and a local record can never claim server authority.
+The envelope schema version is the highest record version present, and restore
+rejects a document that declares a lower version than one of its records.
+
 JSON is parsed as data and never evaluated. Restore validates schema, required
 fields, section range, digest, unique canonical targets, target existence,
 object-family metadata, canonical identity, and SDDL for every record before
 the first write (ADR 0005). This prevents a malformed later record from causing
 a partial restore. Process validation rechecks PID plus creation `FILETIME`.
+A directory record is deduplicated by domain naming context plus object GUID
+rather than by canonical target, because the canonical target embeds the domain
+controller that served the read.
+An SMB record restores only on the computer it names. A directory record
+requires an explicit allowed organizational unit and is resolved for write
+during preparation, so the allowed-base, protected-target, excluded-partition,
+and object-GUID rules of specification 0009 reject a bad record before any
+earlier record is written.
 
 SHA-256 detects modification only when the expected digest is itself protected.
 When an RSA X.509 signing certificate is supplied, each record hash is signed.

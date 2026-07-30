@@ -14,9 +14,13 @@ function Get-WindowsSecurityDescriptorRecordHash {
             $true
         )
         try {
+            $recordVersion = [int]$Record.RecordVersion
             $writer.Write('WindowsAccessControl.SecurityDescriptorBackupRecord')
-            $writer.Write([int]$Record.RecordVersion)
-            foreach ($propertyName in @(
+            $writer.Write($recordVersion)
+            # Version 1 keeps its original field set so existing local-family
+            # backups still validate; version 2 additionally binds the explicit
+            # server authority and immutable enterprise target identity.
+            $hashedProperties = @(
                 'ObjectFamily'
                 'Target'
                 'Path'
@@ -26,7 +30,17 @@ function Get-WindowsSecurityDescriptorRecordHash {
                 'ProcessId'
                 'CreationTimeFileTime'
                 'Sddl'
-            )) {
+            )
+            if ($recordVersion -ge 2) {
+                $hashedProperties += @(
+                    'Server'
+                    'ShareName'
+                    'DistinguishedName'
+                    'ObjectGuid'
+                    'DomainNamingContext'
+                )
+            }
+            foreach ($propertyName in $hashedProperties) {
                 $property = $Record.PSObject.Properties[$propertyName]
                 $propertyValue = if ($property -and $null -ne $property.Value) {
                     if ($propertyName -in @('ProcessId', 'CreationTimeFileTime')) {

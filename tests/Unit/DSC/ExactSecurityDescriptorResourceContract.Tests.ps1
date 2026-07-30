@@ -44,6 +44,25 @@ Describe 'Exact security descriptor DSC resource contract' -Tag 'Unit', 'Windows
                 'Reasons'
             )
         }
+        @{
+            Name       = 'WindowsAccessControlSmbShareSecurityDescriptor'
+            KeyNames   = @('Name', 'Sections')
+            Properties = @('Name', 'Sections', 'Sddl', 'Reasons')
+        }
+        @{
+            Name       = 'WindowsAccessControlADObjectSecurityDescriptor'
+            KeyNames   = @('DistinguishedName', 'Sections')
+            Properties = @(
+                'DistinguishedName'
+                'Sections'
+                'AllowedBaseDistinguishedName'
+                'Sddl'
+                'Server'
+                'ObjectGuid'
+                'TimeoutSeconds'
+                'Reasons'
+            )
+        }
     ) {
         $script:manifestData.DscResourcesToExport | Should -Contain $Name
 

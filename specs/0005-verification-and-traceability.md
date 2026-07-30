@@ -204,11 +204,14 @@ hard timing assertion.
 
 ## Exact descriptor DSC evidence
 
-`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies five manifest
+`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies seven manifest
 exports, `Get-DscResource` discovery, composite keys, mandatory SDDL, and
 read-only prefixed reasons. `ExactSecurityDescriptorResource.Tests.ps1` covers
 class orchestration and canonical mismatch reasons in PowerShell 7. Private
-adapter tests cover every object-family route in both editions.
+adapter tests cover every object-family route in both editions, including the
+SMB share and Active Directory routes, the access-section gate, the
+required allowed organizational unit, and the object-GUID pin re-asserted
+before a directory write.
 
 `ExactSecurityDescriptorDscResources.Tests.ps1` reconverges disposable NTFS
 and HKCU DACLs, reconverges all NTFS sections including explicit absent-SACL
@@ -223,10 +226,26 @@ collisions, and removes the installation afterward.
 ## Access-rule presence DSC evidence
 
 `AccessRulePresenceResourceContract.Tests.ps1` verifies the public Ensure enum,
-five resource exports, typed composite keys, default `Present`, and read-only
+seven resource exports, typed composite keys, default `Present`, and read-only
 reasons. Class tests cover compliance reasons and adapter routing. Adapter tests
-cover all five families, exact mask/qualifier/scope matching, inherited-rule
-rejection, idempotence, duplicate removal, and unsigned high-bit rights.
+cover all seven families, exact mask/qualifier/scope matching, inherited-rule
+rejection, idempotence, duplicate removal, unsigned high-bit rights, and
+directory matching on both object GUIDs plus the inheritance type.
+
+## Enterprise portability evidence
+
+`WindowsEnterpriseBackupRecord.Tests.ps1` proves schema-version-2 record
+construction for both enterprise families, family-to-version pairing in both
+directions, digest detection of a tampered server identity, rejection of a
+directory record outside its recorded domain partition, rejection of the same
+directory object captured through two domain controllers, rejection of a
+non-access section at backup time, suppression of unauthenticated enterprise
+fields on a version-1 record, envelope version
+selection, rejection of a version-2 record inside a version-1 envelope, the
+required allowed organizational unit, and refusal to restore a share captured
+on another computer. `Get-WindowsSecurityDescriptorRecordHash.Tests.ps1` pins
+the version-1 digest, so extending the hashed field set for version 2 cannot
+invalidate an existing local backup.
 
 `AccessRulePresenceDscResources.Tests.ps1` converges `Present` and `Absent` on
 disposable NTFS, HKCU, and named-service targets, then performs SCM and pinned

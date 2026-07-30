@@ -7,22 +7,43 @@ function Set-WindowsAccessControlDscAccessRule {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject')]
         [string]$ObjectFamily,
         [Parameter()] [string]$Target,
         [Parameter()] [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
         [Parameter()] [uint32]$ProcessId,
         [Parameter()] [int64]$CreationTimeFileTime,
+        [Parameter()] [string]$Server,
+        [Parameter()] [string]$AllowedBaseDistinguishedName,
+        [Parameter()] [ValidateRange(1, 300)] [int]$TimeoutSeconds = 10,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string]$Account,
         [Parameter(Mandatory)] [ValidateRange(0, [uint32]::MaxValue)] [uint64]$AccessMask,
         [Parameter(Mandatory)]
         [System.Security.AccessControl.AccessControlType]$AccessControlType,
         [Parameter()] [string]$AppliesTo,
+        [Parameter()]
+        [WindowsActiveDirectoryInheritance]$InheritanceType =
+            [WindowsActiveDirectoryInheritance]::None,
+        [Parameter()] [guid]$ObjectTypeGuid = [guid]::Empty,
+        [Parameter()] [guid]$InheritedObjectTypeGuid = [guid]::Empty,
         [Parameter(Mandatory)] [WindowsAccessControlDscEnsure]$Ensure
     )
 
+    if ($ObjectFamily -eq 'ADObject' -and
+        [string]::IsNullOrWhiteSpace($AllowedBaseDistinguishedName)) {
+        throw 'AllowedBaseDistinguishedName is required for Active Directory writes.'
+    }
+    if ($ObjectFamily -eq 'ADObject') {
+        # Pin one domain controller so the compliance read and the write cannot
+        # land on two controllers that disagree.
+        $Server = Resolve-WindowsADServer -Server $Server
+    }
     $findParameters = @{} + $PSBoundParameters
     $null = $findParameters.Remove('Ensure')
+    $null = $findParameters.Remove('AllowedBaseDistinguishedName')
+    if ($ObjectFamily -eq 'ADObject') {
+        $findParameters.Server = $Server
+    }
     $matchingRules = @(Find-WindowsAccessControlDscAccessRule @findParameters)
     if ($Ensure -eq [WindowsAccessControlDscEnsure]::Present) {
         if ($matchingRules.Count -gt 0) {
@@ -113,6 +134,40 @@ function Set-WindowsAccessControlDscAccessRule {
                     -ErrorAction Stop
                 break
             }
+            'SmbShare' {
+                Add-SmbShareAccessRule `
+                    -Name $Target `
+                    -Account $Account `
+                    -AccessRights ([System.Enum]::ToObject(
+                        [WindowsSmbShareRights],
+                        $signedMask
+                    )) `
+                    -AccessControlType $AccessControlType `
+                    -ThrottleLimit 1 `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
+            'ADObject' {
+                Add-ADObjectAccessRule `
+                    -Server $Server `
+                    -DistinguishedName $Target `
+                    -AllowedBaseDistinguishedName $AllowedBaseDistinguishedName `
+                    -Account $Account `
+                    -AccessRights ([System.Enum]::ToObject(
+                        [WindowsActiveDirectoryRights],
+                        $signedMask
+                    )) `
+                    -AccessControlType $AccessControlType `
+                    -InheritanceType $InheritanceType `
+                    -ObjectType $ObjectTypeGuid `
+                    -InheritedObjectType $InheritedObjectTypeGuid `
+                    -TimeoutSeconds $TimeoutSeconds `
+                    -ThrottleLimit 1 `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
         }
         return
     }
@@ -143,6 +198,22 @@ function Set-WindowsAccessControlDscAccessRule {
             'Process' {
                 Remove-ProcessAccessRule `
                     -InputObject $matchingRule `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
+            'SmbShare' {
+                Remove-SmbShareAccessRule `
+                    -InputObject $matchingRule `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
+            'ADObject' {
+                Remove-ADObjectAccessRule `
+                    -InputObject $matchingRule `
+                    -AllowedBaseDistinguishedName $AllowedBaseDistinguishedName `
+                    -TimeoutSeconds $TimeoutSeconds `
                     -Confirm:$false `
                     -ErrorAction Stop
                 break

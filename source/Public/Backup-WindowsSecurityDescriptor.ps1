@@ -5,8 +5,12 @@ function Backup-WindowsSecurityDescriptor {
     .DESCRIPTION
         Accepts security descriptors emitted by WindowsAccessControl, normalizes
         their object-family metadata and section masks, and writes versioned,
-        non-executable JSON records protected by SHA-256 digests. The completed
-        envelope atomically replaces its destination.
+        non-executable JSON records protected by SHA-256 digests. Local object
+        families use record version 1; SMB share and Active Directory records
+        use record version 2 and additionally bind explicit server authority
+        plus immutable target identity. The envelope schema version is the
+        highest record version it contains. The completed envelope atomically
+        replaces its destination.
     .PARAMETER InputObject
         One or more security descriptor objects emitted by WindowsAccessControl.
     .PARAMETER DestinationPath
@@ -52,7 +56,7 @@ function Backup-WindowsSecurityDescriptor {
 
     begin {
         $records = [System.Collections.Generic.List[object]]::new()
-        $canonicalTargets = [System.Collections.Generic.HashSet[string]]::new(
+        $recordIdentities = [System.Collections.Generic.HashSet[string]]::new(
             [System.StringComparer]::OrdinalIgnoreCase
         )
     }
@@ -61,8 +65,9 @@ function Backup-WindowsSecurityDescriptor {
         foreach ($descriptor in $InputObject) {
             $record = ConvertTo-WindowsSecurityDescriptorBackupRecord `
                 -InputObject $descriptor
-            if (-not $canonicalTargets.Add($record.CanonicalTarget)) {
-                throw "The backup contains duplicate records for '$($record.CanonicalTarget)'."
+            $identity = Get-WindowsSecurityDescriptorRecordIdentity -Record $record
+            if (-not $recordIdentities.Add($identity)) {
+                throw "The backup contains duplicate records for '$identity'."
             }
             $records.Add($record)
         }
@@ -100,8 +105,14 @@ function Backup-WindowsSecurityDescriptor {
                         -Certificate $SigningCertificate
                 }
             }
+            $schemaVersion = 1
+            foreach ($record in $records) {
+                if ([int]$record.RecordVersion -gt $schemaVersion) {
+                    $schemaVersion = [int]$record.RecordVersion
+                }
+            }
             $backup = [ordered]@{
-                SchemaVersion = 1
+                SchemaVersion = $schemaVersion
                 Format        = 'WindowsAccessControl.SecurityDescriptorBackup'
                 CreatedUtc    = [DateTime]::UtcNow.ToString('o')
                 Records       = $records.ToArray()

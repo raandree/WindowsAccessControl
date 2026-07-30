@@ -486,6 +486,30 @@ Restore-WindowsSecurityDescriptor `
     -Confirm:$false
 ```
 
+The five local families use record version 1. SMB share and Active Directory
+descriptors use record version 2 and additionally bind the server plus the
+immutable share name or distinguished name, `objectGUID`, and domain naming
+context. The envelope schema version is the highest record version it contains,
+and a record whose family and version disagree is rejected in both directions.
+
+An SMB record restores only on the computer it names. A directory record
+requires an explicit allowed organizational unit and binds one writable domain
+controller for the whole restore, matching the object by its immutable
+`objectGUID` and recorded domain:
+
+```powershell
+Get-SmbShareSecurityDescriptor -Name 'Data$' |
+    Backup-WindowsSecurityDescriptor -DestinationPath 'C:\Backup\share.json'
+
+Get-ADObjectSecurityDescriptor -DistinguishedName $dn |
+    Backup-WindowsSecurityDescriptor -DestinationPath 'C:\Backup\directory.json'
+
+Restore-WindowsSecurityDescriptor `
+    -BackupPath 'C:\Backup\directory.json' `
+    -AllowedBaseDistinguishedName 'OU=Apps,DC=contoso,DC=com' `
+    -Confirm:$false
+```
+
 Supplying an RSA X.509 certificate with a private key signs every record. A
 signed backup requires the matching certificate during restore:
 
@@ -531,6 +555,8 @@ target type:
 - `WindowsAccessControlServiceSecurityDescriptor`
 - `WindowsAccessControlServiceControlManagerSecurityDescriptor`
 - `WindowsAccessControlProcessSecurityDescriptor`
+- `WindowsAccessControlSmbShareSecurityDescriptor`
+- `WindowsAccessControlADObjectSecurityDescriptor`
 
 It also exports exact access-rule presence resources:
 
@@ -539,12 +565,22 @@ It also exports exact access-rule presence resources:
 - `WindowsAccessControlServiceAccessRule`
 - `WindowsAccessControlServiceControlManagerAccessRule`
 - `WindowsAccessControlProcessAccessRule`
+- `WindowsAccessControlSmbShareAccessRule`
+- `WindowsAccessControlADObjectAccessRule`
 
 Each resource owns only its selected owner, group, DACL, or SACL sections.
 System-maintained DACL/SACL `AUTO_INHERITED` flags are ignored during
 comparison, while protection flags and every ACE remain exact. Registry view
 is part of registry resource identity. Process resources require both PID and
 creation `FILETIME`, so PID reuse fails closed.
+
+The SMB share and Active Directory resources manage the access section only.
+Directory resources require `AllowedBaseDistinguishedName`, accept an optional
+`Server` and `TimeoutSeconds`, and take no credential, so the Local
+Configuration Manager binds LDAP as the node's own identity and a MOF never
+carries directory credentials. `WindowsAccessControlADObjectSecurityDescriptor`
+also accepts an optional `ObjectGuid` that fails closed when the distinguished
+name now resolves to a different directory object.
 
 Capture desired SDDL from the corresponding `Get-*SecurityDescriptor` command.
 When a resource owns an access ACL, prefer a protected (`D:P`) descriptor so

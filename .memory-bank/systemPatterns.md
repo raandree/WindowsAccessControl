@@ -684,3 +684,65 @@ Normative record: [ADR 0021](../specs/decisions/0021-discover-and-pin-a-domain-c
     `-WhatIf` and arrives after a confirmation prompt is answered. Working from
     the raw ACEs also avoids a SID-translation round trip per ACE just to decide
     whether to print anything.
+
+### Decision 64: Pin the backup record version to the object family
+
+Normative record: [ADR 0016](../specs/decisions/0016-require-schema-v2-for-enterprise-targets.md).
+
+- Choice: Make the record version a property of the object family, not of the
+    caller. The five local families are version 1; SMB share and Active
+    Directory are version 2. Reject a record whose family and version disagree
+    in both directions, and set the envelope schema version to the highest
+    record version present.
+- Rationale: A caller-chosen version would let an enterprise record be replayed
+    as a local target, or a local record claim server authority it never
+    carried. Version 1 also keeps its original hashed field set, so extending
+    the digest for version 2 cannot invalidate an existing local backup.
+
+### Decision 65: Qualify an SMB canonical target with its owning computer
+
+- Choice: Replace `SmbShare:Local:<SHARE>` with `SmbShare:<SERVER>:<SHARE>`,
+    report `Server` on share targets, and refuse to restore a share record on a
+    different computer.
+- Rationale: The lock registry is process-wide, so `Local` was sufficient for
+    serialization but not for portability. A record has to name the machine that
+    produced it, or a restore could silently apply one server's share DACL to a
+    same-named share elsewhere. ADR 0015 still keeps every SMB command local.
+
+### Decision 66: Match a restored directory object by GUID, not by server
+
+- Choice: Bind one explicit or discovered writable domain controller for a whole
+    restore, and verify a directory record against the object's immutable
+    `objectGUID` and recorded domain naming context rather than its canonical
+    target.
+- Rationale: The canonical target embeds the domain controller that produced the
+    backup. Any writable domain controller may legitimately serve the restore,
+    so server equality would reject a valid restore while GUID plus domain still
+    prevents replay into another directory.
+
+### Decision 67: Keep directory credentials out of desired state
+
+Normative record: [ADR 0012](../specs/decisions/0012-use-object-specific-commands-and-dsc-resources.md).
+
+- Choice: Give the SMB share and Active Directory DSC resources no credential
+    property, require `AllowedBaseDistinguishedName` on every directory write,
+    restrict `Sections` to `Access`, and accept an optional `ObjectGuid` that
+    fails closed when a distinguished name resolves to a different object.
+- Rationale: The Local Configuration Manager already binds LDAP as the node
+    identity, so a credential property would only add plaintext-MOF risk. The
+    allowed base makes a configuration state its own destructive boundary, and a
+    distinguished name can be reused after a delete and recreate.
+
+### Decision 68: Defer directory effective access on measured evidence
+
+Normative record: [ADR 0022](../specs/decisions/0022-defer-active-directory-effective-access.md).
+
+- Choice: Ship no Active Directory effective-access command, and never present a
+    locally constructed Authz context or a `tokenGroups` reconstruction as a
+    directory access decision.
+- Rationale: Live probes measured 8 directory-computed group SIDs against 16 in
+    the same principal's real logon token, 22 confidential attributes that need
+    `CONTROL_ACCESS` beyond `READ_PROPERTY`, 15 property sets, 6 validated
+    writes, and a domain-wide `dSHeuristics` list-object switch. The domain
+    controller exposes an authoritative answer only for the bound caller.
+

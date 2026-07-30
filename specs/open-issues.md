@@ -5,22 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-14: Add SMB portability and desired state
-
-Specifications: 0008, 0009. Tasks: SMB-4 and SMB-7.
-
-Add schema-version-2 SMB backup/restore, server-qualified canonical locking,
-and exact-descriptor/rule DSC resources for the accepted local-on-target share
-boundary. Direct remote APIs remain excluded by ADR 0015.
-
-## OI-17: Add AD portability, desired state, and access decision
-
-Specifications: 0008, 0009. Tasks: AD-6 to AD-8 excluding replication.
-
-Add schema-version-2 backup/restore and object-specific DSC resources, then
-make an explicit evidence-based decision on bounded AD effective access. Keep
-SACL and protected/forest-wide writes outside the accepted boundary.
-
 ## OI-18: Validate AD replication and failover
 
 Specification: 0008. Tasks: AD-3 and AD-6.
@@ -36,7 +20,8 @@ Specifications: 0008, 0010. Tasks: TASK-5 to TASK-7.
 
 Add schema-version-2 backup/restore, target locking evidence, and exact
 descriptor/rule DSC resources where convergence is safe. SACL and direct remote
-APIs remain separately gated.
+APIs remain separately gated. Specification 0013 is the reference contract for
+the equivalent SMB share and Active Directory work.
 
 ## OI-22: Add fail-closed CNG private-key mutation
 

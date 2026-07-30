@@ -3,7 +3,7 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject')]
         [string]$ObjectFamily,
 
         [Parameter()]
@@ -18,12 +18,25 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
         [Parameter()]
         [int64]$CreationTimeFileTime,
 
+        [Parameter()]
+        [string]$Server,
+
+        [Parameter()]
+        [ValidateRange(1, 300)]
+        [int]$TimeoutSeconds = 10,
+
         [Parameter(Mandatory)]
         [WindowsSecurityDescriptorSection]$Sections
     )
 
     if ([int]$Sections -le 0 -or [int]$Sections -gt 15) {
         throw [System.ArgumentOutOfRangeException]::new('Sections')
+    }
+    if ($ObjectFamily -in @('SmbShare', 'ADObject') -and
+        $Sections -ne [WindowsSecurityDescriptorSection]::Access) {
+        throw [System.ArgumentException]::new(
+            "Object family $ObjectFamily manages only the access section."
+        )
     }
 
     switch ($ObjectFamily) {
@@ -93,6 +106,32 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
             Get-ProcessSecurityDescriptor `
                 -InputObject $processIdentity `
                 -Sections $Sections `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop
+            break
+        }
+        'SmbShare' {
+            if ([string]::IsNullOrWhiteSpace($Target)) {
+                throw [System.ArgumentException]::new(
+                    'An SMB share name is required.'
+                )
+            }
+            Get-SmbShareSecurityDescriptor `
+                -Name $Target `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop
+            break
+        }
+        'ADObject' {
+            if ([string]::IsNullOrWhiteSpace($Target)) {
+                throw [System.ArgumentException]::new(
+                    'An Active Directory distinguished name is required.'
+                )
+            }
+            Get-ADObjectSecurityDescriptor `
+                -Server (Resolve-WindowsADServer -Server $Server) `
+                -DistinguishedName $Target `
+                -TimeoutSeconds $TimeoutSeconds `
                 -ThrottleLimit 1 `
                 -ErrorAction Stop
             break

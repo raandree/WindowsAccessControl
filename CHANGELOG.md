@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add schema-version-2 descriptor portability for SMB share and Active
+    Directory targets, binding the explicit server plus the immutable share
+    name or distinguished name, `objectGUID`, and domain naming context into the
+    SHA-256 record digest; the envelope schema version is the highest record
+    version present and a record whose family and version disagree is rejected
+- Add `Server`, `AllowedBaseDistinguishedName`, `Credential`, and
+    `TimeoutSeconds` to `Restore-WindowsSecurityDescriptor`; an SMB record
+    restores only on the computer it names and a directory record requires an
+    explicit allowed organizational unit
+- Add four class-based DSC resources:
+    `WindowsAccessControlSmbShareSecurityDescriptor`,
+    `WindowsAccessControlSmbShareAccessRule`,
+    `WindowsAccessControlADObjectSecurityDescriptor`, and
+    `WindowsAccessControlADObjectAccessRule`
 - Add broader Active Directory DACL mutation with `Set-ADObjectAccessRule`,
     `Clear-ADObjectAccessRule`, and `Exact`, `Rights`, and `All` removal modes on
     a distinguished-name parameter set for `Remove-ADObjectAccessRule`; every
@@ -134,6 +148,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** qualify the SMB share canonical target and write-lock key with
+    the owning computer name. `SmbShare:Local:<SHARE>` becomes
+    `SmbShare:<SERVER>:<SHARE>`, and share targets, descriptors, and rules now
+    report a `Server` property
+- Defer Active Directory effective access on measured evidence rather than
+    presenting a locally constructed Authz or `tokenGroups` result as a
+    directory access decision
 - Make `Server` optional on `Get-ADObjectAccessRule`,
     `Get-ADObjectSecurityDescriptor`, `Add-ADObjectAccessRule`, and
     `Set-ADObjectSecurityDescriptor`. When it is omitted, one writable domain

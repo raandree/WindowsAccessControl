@@ -28,10 +28,15 @@ Describe 'Windows access control DSC security descriptor adapters' -Tag 'Unit', 
             Mock Get-RegistryKeySecurityDescriptor { $script:descriptor }
             Mock Get-ServiceSecurityDescriptor { $script:descriptor }
             Mock Get-ProcessSecurityDescriptor { $script:descriptor }
+            Mock Get-SmbShareSecurityDescriptor { $script:descriptor }
+            Mock Get-ADObjectSecurityDescriptor { $script:descriptor }
+            Mock Resolve-WindowsADServer { 'dc01.contoso.test' }
             Mock Set-WindowsNtfsDscSecurityDescriptor
             Mock Set-RegistryKeySecurityDescriptor
             Mock Set-ServiceSecurityDescriptor
             Mock Set-ProcessSecurityDescriptor
+            Mock Set-SmbShareSecurityDescriptor
+            Mock Set-ADObjectSecurityDescriptor
         }
 
         It 'Should route a filesystem descriptor read' {
@@ -172,6 +177,103 @@ Describe 'Windows access control DSC security descriptor adapters' -Tag 'Unit', 
                         $InputObject.CreationTimeFileTime -eq 123456789 -and
                         $Confirm -eq $false
                 }
+        }
+
+        It 'Should route an SMB share descriptor read and write' {
+            $result = Get-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily SmbShare `
+                -Target 'WacLab$' `
+                -Sections Access
+
+            $result | Should -Be $script:descriptor
+            Should -Invoke Get-SmbShareSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter { $Name -eq 'WacLab$' }
+
+            Set-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily SmbShare `
+                -Target 'WacLab$' `
+                -Sections Access `
+                -Sddl 'D:(A;;0x001200A9;;;WD)'
+
+            Should -Invoke Set-SmbShareSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter { $Name -eq 'WacLab$' -and $Confirm -eq $false }
+        }
+
+        It 'Should route a directory descriptor read and write through a pinned server' {
+            $distinguishedName = 'CN=Test,OU=Targets,DC=contoso,DC=test'
+            $allowedBase = 'OU=Targets,DC=contoso,DC=test'
+
+            $result = Get-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily ADObject `
+                -Target $distinguishedName `
+                -Sections Access
+
+            $result | Should -Be $script:descriptor
+            Should -Invoke Get-ADObjectSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $Server -eq 'dc01.contoso.test' -and
+                        $DistinguishedName -eq $distinguishedName
+                }
+
+            Set-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily ADObject `
+                -Target $distinguishedName `
+                -AllowedBaseDistinguishedName $allowedBase `
+                -Sections Access `
+                -Sddl 'D:(A;;0x00000010;;;WD)'
+
+            Should -Invoke Set-ADObjectSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $Server -eq 'dc01.contoso.test' -and
+                        $AllowedBaseDistinguishedName -eq $allowedBase -and
+                        $Confirm -eq $false
+                }
+        }
+
+        It 'Should reject a non-access section for an enterprise family' {
+            {
+                Get-WindowsAccessControlDscSecurityDescriptor `
+                    -ObjectFamily SmbShare `
+                    -Target 'WacLab$' `
+                    -Sections Owner
+            } | Should -Throw '*access section*'
+
+            {
+                Set-WindowsAccessControlDscSecurityDescriptor `
+                    -ObjectFamily ADObject `
+                    -Target 'CN=Test,OU=Targets,DC=contoso,DC=test' `
+                    -AllowedBaseDistinguishedName 'OU=Targets,DC=contoso,DC=test' `
+                    -Sections 'Owner, Access' `
+                    -Sddl 'D:(A;;0x00000010;;;WD)'
+            } | Should -Throw '*access section*'
+        }
+
+        It 'Should require an allowed base before a directory descriptor write' {
+            {
+                Set-WindowsAccessControlDscSecurityDescriptor `
+                    -ObjectFamily ADObject `
+                    -Target 'CN=Test,OU=Targets,DC=contoso,DC=test' `
+                    -Sections Access `
+                    -Sddl 'D:(A;;0x00000010;;;WD)'
+            } | Should -Throw '*AllowedBaseDistinguishedName*'
+            Should -Invoke Set-ADObjectSecurityDescriptor -Exactly -Times 0
+        }
+
+        It 'Should re-assert a pinned object GUID before a directory write' {
+            Mock Resolve-WindowsADObjectTarget {
+                throw 'The Active Directory object GUID no longer matches the path-bound target.'
+            }
+
+            {
+                Set-WindowsAccessControlDscSecurityDescriptor `
+                    -ObjectFamily ADObject `
+                    -Target 'CN=Test,OU=Targets,DC=contoso,DC=test' `
+                    -AllowedBaseDistinguishedName 'OU=Targets,DC=contoso,DC=test' `
+                    -ObjectGuid '2f1d6c4a-6b6f-4a0e-9d02-3a1f9f0a1234' `
+                    -Sections Access `
+                    -Sddl 'D:(A;;0x00000010;;;WD)'
+            } | Should -Throw '*object GUID*'
+            Should -Invoke Set-ADObjectSecurityDescriptor -Exactly -Times 0
         }
     }
 }

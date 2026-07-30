@@ -580,4 +580,163 @@ Describe 'Active Directory object DACL commands' `
                 -ErrorAction SilentlyContinue
         }
     }
+
+    It 'Should round trip a schema-version-2 directory backup' {
+        $backupOu = "OU=WacBackupTest,$($script:targetOu)"
+        $null = New-ADOrganizationalUnit `
+            -Name 'WacBackupTest' `
+            -Path $script:targetOu `
+            -Server $script:server `
+            -ProtectedFromAccidentalDeletion:$false `
+            -ErrorAction Stop
+        $backupPath = Join-Path $env:TEMP (
+            'wac-ad-backup-{0}.json' -f [guid]::NewGuid().ToString('N')
+        )
+        try {
+            $before = Get-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $backupOu `
+                -ThrottleLimit 1
+            $before | Backup-WindowsSecurityDescriptor `
+                -DestinationPath $backupPath `
+                -Confirm:$false
+            $document = Get-Content -LiteralPath $backupPath -Raw | ConvertFrom-Json
+
+            $document.SchemaVersion | Should -Be 2
+            $document.Records[0].RecordVersion | Should -Be 2
+            $document.Records[0].Server | Should -Be $script:server
+            $document.Records[0].ObjectGuid |
+                Should -BeExactly $before.ObjectGuid.ToString('D').ToUpperInvariant()
+            $document.Records[0].DomainNamingContext |
+                Should -BeExactly $script:domain.DistinguishedName
+
+            Add-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $backupOu `
+                -AllowedBaseDistinguishedName $script:targetOu `
+                -Account $script:testSid `
+                -AccessRights ReadProperty `
+                -ThrottleLimit 1 `
+                -Confirm:$false
+            $drifted = Get-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $backupOu `
+                -ThrottleLimit 1
+            $drifted.Sddl | Should -Not -BeExactly $before.Sddl
+
+            Restore-WindowsSecurityDescriptor `
+                -BackupPath $backupPath `
+                -Server $script:server `
+                -AllowedBaseDistinguishedName $script:targetOu `
+                -Confirm:$false
+            $restored = Get-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $backupOu `
+                -ThrottleLimit 1
+
+            $restored.Sddl | Should -BeExactly $before.Sddl
+        }
+        finally {
+            Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+            Remove-ADOrganizationalUnit `
+                -Identity $backupOu `
+                -Server $script:server `
+                -Confirm:$false `
+                -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'Should converge the directory descriptor and rule DSC resources' {
+        $dscOu = "OU=WacDscTest,$($script:targetOu)"
+        $null = New-ADOrganizationalUnit `
+            -Name 'WacDscTest' `
+            -Path $script:targetOu `
+            -Server $script:server `
+            -ProtectedFromAccidentalDeletion:$false `
+            -ErrorAction Stop
+        try {
+            $before = Get-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $dscOu `
+                -ThrottleLimit 1
+
+            $ruleState = & $script:module {
+                param($Server, $DistinguishedName, $Base, $Sid)
+
+                $resource = [WindowsAccessControlADObjectAccessRule]::new()
+                $resource.Server = $Server
+                $resource.DistinguishedName = $DistinguishedName
+                $resource.AllowedBaseDistinguishedName = $Base
+                $resource.Account = $Sid
+                $resource.AccessRights = [WindowsActiveDirectoryRights]::ReadProperty
+                $resource.AccessControlType =
+                    [Security.AccessControl.AccessControlType]::Allow
+                $resource.Ensure = [WindowsAccessControlDscEnsure]::Present
+
+                $initial = $resource.Test()
+                $resource.Set()
+                $afterSet = $resource.Test()
+                $resource.Ensure = [WindowsAccessControlDscEnsure]::Absent
+                $resource.Set()
+                $afterRemove = $resource.Test()
+                [pscustomobject]@{
+                    Initial     = $initial
+                    AfterSet    = $afterSet
+                    AfterRemove = $afterRemove
+                }
+            } $script:server $dscOu $script:targetOu $script:testSid
+
+            $ruleState.Initial | Should -BeFalse
+            $ruleState.AfterSet | Should -BeTrue
+            $ruleState.AfterRemove | Should -BeTrue
+
+            $descriptorState = & $script:module {
+                param($Server, $DistinguishedName, $Base, $Sddl, $ObjectGuid)
+
+                $resource = [WindowsAccessControlADObjectSecurityDescriptor]::new()
+                $resource.Server = $Server
+                $resource.DistinguishedName = $DistinguishedName
+                $resource.AllowedBaseDistinguishedName = $Base
+                $resource.Sections = [WindowsSecurityDescriptorSection]::Access
+                $resource.Sddl = $Sddl
+                $resource.ObjectGuid = $ObjectGuid
+                $compliant = $resource.Test()
+                $current = $resource.Get()
+
+                $resource.ObjectGuid = [guid]::NewGuid().ToString('D')
+                $guidMismatch = $null
+                try {
+                    $null = $resource.Get()
+                }
+                catch {
+                    $guidMismatch = $_.Exception.Message
+                }
+                [pscustomobject]@{
+                    Compliant    = $compliant
+                    Sddl         = $current.Sddl
+                    Reasons      = @($current.Reasons).Count
+                    GuidMismatch = $guidMismatch
+                }
+            } $script:server $dscOu $script:targetOu $before.Sddl `
+                $before.ObjectGuid.ToString('D')
+
+            $descriptorState.Compliant | Should -BeTrue
+            $descriptorState.Reasons | Should -Be 0
+            $descriptorState.Sddl | Should -BeExactly $before.Sddl
+            $descriptorState.GuidMismatch | Should -BeLike '*object GUID*'
+
+            $final = Get-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $dscOu `
+                -ThrottleLimit 1
+            $final.Sddl | Should -BeExactly $before.Sddl
+        }
+        finally {
+            Remove-ADOrganizationalUnit `
+                -Identity $dscOu `
+                -Server $script:server `
+                -Confirm:$false `
+                -ErrorAction SilentlyContinue
+        }
+    }
 }

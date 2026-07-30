@@ -14,7 +14,7 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
         $recordVersion = 0
         $sections = 0
         if (-not [int]::TryParse([string]$Record.RecordVersion, [ref]$recordVersion) -or
-            $recordVersion -ne 1 -or
+            $recordVersion -notin @(1, 2) -or
             [string]::IsNullOrWhiteSpace([string]$Record.ObjectFamily) -or
             [string]::IsNullOrWhiteSpace([string]$Record.Target) -or
             [string]::IsNullOrWhiteSpace([string]$Record.CanonicalTarget) -or
@@ -30,15 +30,26 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
                 "The backup record for '$($Record.CanonicalTarget)' has invalid sections."
             )
         }
-        if ([string]$Record.ObjectFamily -notin @(
-            'FileSystem'
-            'RegistryKey'
-            'Service'
-            'ServiceControlManager'
-            'Process'
-        )) {
+        # ADR 0016 keeps each object family pinned to exactly one record version
+        # so an enterprise record can never be replayed as a local target and a
+        # local record can never claim server authority it does not carry.
+        $familyRecordVersion = switch ([string]$Record.ObjectFamily) {
+            'FileSystem' { 1; break }
+            'RegistryKey' { 1; break }
+            'Service' { 1; break }
+            'ServiceControlManager' { 1; break }
+            'Process' { 1; break }
+            'SmbShare' { 2; break }
+            'ADObject' { 2; break }
+            default {
+                throw [System.IO.InvalidDataException]::new(
+                    "The backup record contains unsupported object family '$($Record.ObjectFamily)'."
+                )
+            }
+        }
+        if ($recordVersion -ne $familyRecordVersion) {
             throw [System.IO.InvalidDataException]::new(
-                "The backup record contains unsupported object family '$($Record.ObjectFamily)'."
+                "The backup record for '$($Record.CanonicalTarget)' must use record version $familyRecordVersion for object family '$($Record.ObjectFamily)'."
             )
         }
         if ([string]$Record.Integrity.Algorithm -cne 'SHA256' -or
@@ -221,6 +232,54 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
                     'A process backup record requires a matching PID and creation identity.'
                 )
             }
+        } elseif ([string]$Record.ObjectFamily -eq 'SmbShare') {
+            if ($sections -ne [int][WindowsSecurityDescriptorSection]::Access) {
+                throw [System.IO.InvalidDataException]::new(
+                    'An SMB share backup record selects only the access section.'
+                )
+            }
+            $shareServer = [string]$Record.Server
+            $shareName = [string]$Record.ShareName
+            if ([string]::IsNullOrWhiteSpace($shareServer) -or
+                [string]::IsNullOrWhiteSpace($shareName) -or
+                $shareName -cne [string]$Record.Target -or
+                [string]$Record.CanonicalTarget -cne (
+                    'SmbShare:{0}:{1}' -f $shareServer.ToUpperInvariant(),
+                        $shareName.ToUpperInvariant())) {
+                throw [System.IO.InvalidDataException]::new(
+                    'An SMB share backup record requires a matching server and share identity.'
+                )
+            }
+        } elseif ([string]$Record.ObjectFamily -eq 'ADObject') {
+            if ($sections -ne [int][WindowsSecurityDescriptorSection]::Access) {
+                throw [System.IO.InvalidDataException]::new(
+                    'An Active Directory backup record selects only the access section.'
+                )
+            }
+            $objectGuid = [guid]::Empty
+            $directoryServer = [string]$Record.Server
+            $distinguishedName = [string]$Record.DistinguishedName
+            $domainNamingContext = [string]$Record.DomainNamingContext
+            if ([string]::IsNullOrWhiteSpace($directoryServer) -or
+                [string]::IsNullOrWhiteSpace($distinguishedName) -or
+                [string]::IsNullOrWhiteSpace($domainNamingContext) -or
+                $distinguishedName -cne [string]$Record.Target -or
+                -not [guid]::TryParse([string]$Record.ObjectGuid, [ref]$objectGuid) -or
+                $objectGuid -eq [guid]::Empty -or
+                [string]$Record.CanonicalTarget -cne (
+                    'ADObject:{0}:{1}' -f $directoryServer.ToUpperInvariant(),
+                        $objectGuid.ToString('D').ToUpperInvariant())) {
+                throw [System.IO.InvalidDataException]::new(
+                    'An Active Directory backup record requires a matching server, distinguished name, domain, and object GUID.'
+                )
+            }
+            if (-not (Test-WindowsADDistinguishedNameWithinBase `
+                        -DistinguishedName $distinguishedName `
+                        -BaseDistinguishedName $domainNamingContext)) {
+                throw [System.IO.InvalidDataException]::new(
+                    'An Active Directory backup record must name an object inside its recorded domain partition.'
+                )
+            }
         }
 
         [pscustomobject]@{
@@ -237,6 +296,31 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
             }
             CreationTimeFileTime = if ([string]$Record.ObjectFamily -eq 'Process') {
                 $creationTimeFileTime
+            } else {
+                $null
+            }
+            Server               = if ($recordVersion -ge 2) {
+                [string]$Record.Server
+            } else {
+                $null
+            }
+            ShareName            = if ([string]$Record.ObjectFamily -eq 'SmbShare') {
+                [string]$Record.ShareName
+            } else {
+                $null
+            }
+            DistinguishedName    = if ([string]$Record.ObjectFamily -eq 'ADObject') {
+                [string]$Record.DistinguishedName
+            } else {
+                $null
+            }
+            ObjectGuid           = if ([string]$Record.ObjectFamily -eq 'ADObject') {
+                $objectGuid
+            } else {
+                $null
+            }
+            DomainNamingContext  = if ([string]$Record.ObjectFamily -eq 'ADObject') {
+                [string]$Record.DomainNamingContext
             } else {
                 $null
             }

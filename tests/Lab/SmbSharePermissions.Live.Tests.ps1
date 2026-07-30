@@ -346,4 +346,141 @@ Describe 'SMB share DACL commands' -Tag 'DomainLab', 'WindowsOnly', 'RequiresEle
         $messages | Should -HaveCount 5
         $messages | Should -Not -Contain $null
     }
+
+    It 'Should round trip a schema-version-2 share backup on its own computer' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:testSid `
+            -ScriptBlock {
+                param($ShareName, $TestSid)
+
+                $backupPath = Join-Path $env:TEMP (
+                    'wac-share-backup-{0}.json' -f [guid]::NewGuid().ToString('N')
+                )
+                try {
+                    $before = Get-SmbShareSecurityDescriptor -Name $ShareName
+                    $before | Backup-WindowsSecurityDescriptor `
+                        -DestinationPath $backupPath `
+                        -Confirm:$false
+                    $document = Get-Content -LiteralPath $backupPath -Raw |
+                        ConvertFrom-Json
+
+                    $null = Add-SmbShareAccessRule `
+                        -Name $ShareName `
+                        -Account $TestSid `
+                        -AccessRights Read `
+                        -Confirm:$false
+                    $drifted = Get-SmbShareSecurityDescriptor -Name $ShareName
+
+                    Restore-WindowsSecurityDescriptor `
+                        -BackupPath $backupPath `
+                        -Confirm:$false
+                    $restored = Get-SmbShareSecurityDescriptor -Name $ShareName
+
+                    [pscustomobject]@{
+                        SchemaVersion   = $document.SchemaVersion
+                        RecordVersion   = $document.Records[0].RecordVersion
+                        RecordServer    = $document.Records[0].Server
+                        RecordShareName = $document.Records[0].ShareName
+                        CanonicalTarget = $before.CanonicalTarget
+                        BeforeSddl      = $before.Sddl
+                        DriftedSddl     = $drifted.Sddl
+                        RestoredSddl    = $restored.Sddl
+                        ComputerName    = $env:COMPUTERNAME
+                    }
+                }
+                finally {
+                    Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+                }
+            }
+
+        $result.SchemaVersion | Should -Be 2
+        $result.RecordVersion | Should -Be 2
+        $result.RecordServer | Should -BeExactly $result.ComputerName.ToUpperInvariant()
+        $result.RecordShareName | Should -BeExactly $script:shareName
+        $result.CanonicalTarget |
+            Should -BeExactly ('SmbShare:{0}:{1}' -f
+                $result.ComputerName.ToUpperInvariant(),
+                $script:shareName.ToUpperInvariant())
+        $result.DriftedSddl | Should -Not -BeExactly $result.BeforeSddl
+        $result.RestoredSddl | Should -BeExactly $result.BeforeSddl
+    }
+
+    It 'Should converge the share descriptor and rule DSC resources' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:testSid `
+            -ScriptBlock {
+                param($ShareName, $TestSid)
+
+                $module = Get-Module WindowsAccessControl
+                $before = Get-SmbShareSecurityDescriptor -Name $ShareName
+                try {
+                    $ruleState = & $module {
+                        param($Name, $Sid)
+
+                        $resource = [WindowsAccessControlSmbShareAccessRule]::new()
+                        $resource.Name = $Name
+                        $resource.Account = $Sid
+                        $resource.AccessRights = [WindowsSmbShareRights]::Read
+                        $resource.AccessControlType =
+                            [Security.AccessControl.AccessControlType]::Allow
+                        $resource.Ensure = [WindowsAccessControlDscEnsure]::Present
+
+                        $initial = $resource.Test()
+                        $resource.Set()
+                        $afterSet = $resource.Test()
+                        $resource.Ensure = [WindowsAccessControlDscEnsure]::Absent
+                        $resource.Set()
+                        $afterRemove = $resource.Test()
+                        [pscustomobject]@{
+                            Initial     = $initial
+                            AfterSet    = $afterSet
+                            AfterRemove = $afterRemove
+                        }
+                    } $ShareName $TestSid
+
+                    $descriptorState = & $module {
+                        param($Name, $Sddl)
+
+                        $resource = [WindowsAccessControlSmbShareSecurityDescriptor]::new()
+                        $resource.Name = $Name
+                        $resource.Sections = [WindowsSecurityDescriptorSection]::Access
+                        $resource.Sddl = $Sddl
+                        $compliant = $resource.Test()
+                        $current = $resource.Get()
+                        [pscustomobject]@{
+                            Compliant = $compliant
+                            Sddl      = $current.Sddl
+                            Reasons   = @($current.Reasons).Count
+                        }
+                    } $ShareName $before.Sddl
+
+                    [pscustomobject]@{
+                        RuleInitial          = $ruleState.Initial
+                        RuleAfterSet         = $ruleState.AfterSet
+                        RuleAfterRemove      = $ruleState.AfterRemove
+                        DescriptorCompliant  = $descriptorState.Compliant
+                        DescriptorSddl       = $descriptorState.Sddl
+                        DescriptorReasons    = $descriptorState.Reasons
+                        BeforeSddl           = $before.Sddl
+                        FinalSddl            = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
+                    }
+                }
+                finally {
+                    Set-SmbShareSecurityDescriptor `
+                        -Name $ShareName `
+                        -Sddl $before.Sddl `
+                        -Confirm:$false
+                }
+            }
+
+        $result.RuleInitial | Should -BeFalse
+        $result.RuleAfterSet | Should -BeTrue
+        $result.RuleAfterRemove | Should -BeTrue
+        $result.DescriptorCompliant | Should -BeTrue
+        $result.DescriptorReasons | Should -Be 0
+        $result.DescriptorSddl | Should -BeExactly $result.BeforeSddl
+        $result.FinalSddl | Should -BeExactly $result.BeforeSddl
+    }
 }

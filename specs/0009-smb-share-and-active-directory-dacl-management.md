@@ -146,13 +146,15 @@ authority and is never a test target.
 ADR 0016 requires backup schema version 2 before either family enters unified
 backup/restore. Version 1 cannot bind explicit server authority plus immutable
 directory object identity without changing its replay and canonical-target
-contract. This increment therefore exports no backup integration.
+contract. This increment therefore exported no backup integration;
+specification 0013 later added it together with the server-qualified SMB
+canonical identity and the four enterprise DSC resources.
 
-Specification 0011 later admits bounded local share-only effective access. SMB
-remote APIs, combined share/NTFS effective access, replication, DSC, and SACL
-workflows remain tracked by specification 0008 and
-focused open issues OI-11, OI-14, OI-17, and OI-18. ADR 0017 explicitly defers
-remote and combined effective access.
+Specification 0011 later admits bounded local share-only effective access.
+ADR 0022 defers Active Directory effective access on measured evidence. SMB
+remote APIs, combined share/NTFS effective access, replication, and SACL
+workflows remain tracked by specification 0008 and open issue OI-18. ADR 0017
+explicitly defers remote and combined effective access.
 
 ## Verification
 

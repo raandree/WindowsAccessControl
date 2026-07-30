@@ -24,6 +24,7 @@ them.
 10. [Task Scheduler DACL management](0010-task-scheduler-dacl-management.md)
 11. [SMB share-only effective access](0011-smb-share-only-effective-access.md)
 12. [CNG private-key DACL inspection](0012-cng-private-key-dacl-inspection.md)
+13. [Enterprise portability and desired state](0013-enterprise-portability-and-desired-state.md)
 
 ## Status
 
@@ -41,6 +42,7 @@ them.
 | 0010 | Task Scheduler DACL management | Accepted |
 | 0011 | SMB share-only effective access | Accepted |
 | 0012 | CNG private-key DACL inspection | Accepted |
+| 0013 | Enterprise portability and desired state | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
@@ -50,15 +52,19 @@ registry-key descriptor-editing model, including opt-in optimistic concurrency.
 Specification 0008 plans the
 domain-lab-gated Task Scheduler, certificate private-key, SMB-share, and Active
 Directory expansion. Specification 0009 accepts the first SMB-share and Active
-Directory DACL-management increment without claiming later backup, DSC,
-effective-access, or replication work. Specification 0010 accepts local
+Directory DACL-management increment without claiming replication work.
+Specification 0010 accepts local
 Task Scheduler folder and registered-task DACL descriptor management without
 claiming typed rules, portability, DSC, SACL, or direct remote APIs.
 Specification 0011 accepts a bounded local SID-derived SMB share-only result
 without a backing-NTFS, remote, or network-token claim. Specification 0012
 accepts read-only DACL
 inspection for an exact persisted RSA key in Microsoft Software Key Storage
-Provider without admitting mutation or broader provider support. A future
+Provider without admitting mutation or broader provider support.
+Specification 0013 accepts schema-version-2 portability, server-qualified SMB
+canonical identity, and object-specific desired-state resources for the SMB
+share and Active Directory families, and records the accepted directory
+effective-access boundary. A future
 change starts as `Draft` and
 becomes `Accepted` when approved.
 

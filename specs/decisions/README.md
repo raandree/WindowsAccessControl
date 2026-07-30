@@ -30,6 +30,7 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0019 | [Report null registry provenance instead of losing rules](0019-report-null-registry-provenance-for-wow64-views.md) | Accepted |
 | 0020 | [Enrich directory rules over the bound LDAP connection](0020-enrich-directory-rules-over-the-bound-connection.md) | Accepted |
 | 0021 | [Discover and pin one domain controller when Server is omitted](0021-discover-and-pin-a-domain-controller.md) | Accepted |
+| 0022 | [Defer Active Directory effective access](0022-defer-active-directory-effective-access.md) | Accepted |
 
 ## See also
 
