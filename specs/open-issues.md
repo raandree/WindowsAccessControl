@@ -14,15 +14,6 @@ evidence when a second writable domain controller exists. The current
 two-machine topology leaves this issue externally blocked; do not repurpose the
 member server that hosts SMB, Task Scheduler, and software-key fixtures.
 
-## OI-20: Add Task Scheduler portability and desired state
-
-Specifications: 0008, 0010. Tasks: TASK-5 to TASK-7.
-
-Add schema-version-2 backup/restore, target locking evidence, and exact
-descriptor/rule DSC resources where convergence is safe. SACL and direct remote
-APIs remain separately gated. Specification 0013 is the reference contract for
-the equivalent SMB share and Active Directory work.
-
 ## OI-22: Add fail-closed CNG private-key mutation
 
 Specifications: 0008, 0012. Tasks: KEY-1, KEY-3, KEY-4, KEY-7, and KEY-8.

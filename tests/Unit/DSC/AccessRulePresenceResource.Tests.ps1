@@ -91,6 +91,24 @@ Describe 'Access-rule presence DSC resource behavior' -Tag 'Unit', 'WindowsOnly'
                 AccessControlType = 'Allow'
             }
         }
+        @{
+            ClassName = 'WindowsAccessControlTaskFolderAccessRule'; Family = 'TaskFolder'
+            Properties = @{
+                Path = '\Operations'; AllowedRootPath = '\Operations'
+                Account = 'S-1-1-0'; AccessRights = 'ReadAndTraverse'
+                AccessControlType = 'Allow'; AppliesTo = 'ThisFolderOnly'
+            }
+        }
+        @{
+            ClassName = 'WindowsAccessControlScheduledTaskAccessRule'
+            Family = 'ScheduledTask'
+            Properties = @{
+                TaskPath = '\Operations'; TaskName = 'Cleanup'
+                AllowedRootPath = '\Operations'
+                Account = 'S-1-1-0'; AccessRights = 'RunTask'
+                AccessControlType = 'Allow'
+            }
+        }
     ) {
         $instance = New-AccessRulePresenceResourceInstance `
             -ClassName $ClassName `
@@ -148,6 +166,23 @@ Describe 'Access-rule presence DSC resource behavior' -Tag 'Unit', 'WindowsOnly'
                 AccessControlType = 'Allow'
             }
         }
+        @{
+            ClassName = 'WindowsAccessControlTaskFolderAccessRule'
+            Properties = @{
+                Path = '\Operations'; AllowedRootPath = '\Operations'
+                Account = 'S-1-1-0'; AccessRights = 'ReadAndTraverse'
+                AccessControlType = 'Allow'; AppliesTo = 'ThisFolderOnly'
+            }
+        }
+        @{
+            ClassName = 'WindowsAccessControlScheduledTaskAccessRule'
+            Properties = @{
+                TaskPath = '\Operations'; TaskName = 'Cleanup'
+                AllowedRootPath = '\Operations'
+                Account = 'S-1-1-0'; AccessRights = 'RunTask'
+                AccessControlType = 'Allow'
+            }
+        }
     ) {
         $script:rulePresent = $true
         $instance = New-AccessRulePresenceResourceInstance `
@@ -192,6 +227,23 @@ Describe 'Access-rule presence DSC resource behavior' -Tag 'Unit', 'WindowsOnly'
             Properties = @{
                 ProcessId = 42; CreationTimeFileTime = 123456789
                 Account = 'S-1-1-0'; ProcessRights = 'QueryLimitedInformation'
+                AccessControlType = 'Allow'
+            }
+        }
+        @{
+            ClassName = 'WindowsAccessControlTaskFolderAccessRule'
+            Properties = @{
+                Path = '\Operations'; AllowedRootPath = '\Operations'
+                Account = 'S-1-1-0'; AccessRights = 'ReadAndTraverse'
+                AccessControlType = 'Allow'; AppliesTo = 'ThisFolderOnly'
+            }
+        }
+        @{
+            ClassName = 'WindowsAccessControlScheduledTaskAccessRule'
+            Properties = @{
+                TaskPath = '\Operations'; TaskName = 'Cleanup'
+                AllowedRootPath = '\Operations'
+                Account = 'S-1-1-0'; AccessRights = 'RunTask'
                 AccessControlType = 'Allow'
             }
         }

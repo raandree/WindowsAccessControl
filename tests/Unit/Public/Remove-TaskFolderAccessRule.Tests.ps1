@@ -31,7 +31,7 @@ Describe 'Remove-TaskFolderAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
                 $null)
             $inheritedRule = [pscustomobject]@{
                 TaskPath        = '\Operations'
-                CanonicalTarget = 'TaskFolder:Local:\OPERATIONS'
+                CanonicalTarget = 'TaskFolder:WACHOST:\OPERATIONS'
                 SID             = 'S-1-1-0'
                 IsInherited     = $true
                 NativeAce       = $ace
@@ -59,7 +59,7 @@ Describe 'Remove-TaskFolderAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
                 ObjectType       = 'TaskFolder'
                 Path             = '\Operations'
                 TaskPath         = '\Operations'
-                CanonicalTarget  = 'TaskFolder:Local:\OPERATIONS'
+                CanonicalTarget  = 'TaskFolder:WACHOST:\OPERATIONS'
                 DescriptorSource = 'TaskSchedulerCom'
             }
             Mock Resolve-WindowsTaskSchedulerTarget { $script:target }
@@ -74,7 +74,7 @@ Describe 'Remove-TaskFolderAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
                 $null)
             $rule = [pscustomobject]@{
                 TaskPath        = '\Operations'
-                CanonicalTarget = 'TaskFolder:Local:\OPERATIONS'
+                CanonicalTarget = 'TaskFolder:WACHOST:\OPERATIONS'
                 SID             = 'S-1-1-0'
                 IsInherited     = $false
                 NativeAce       = $ace

@@ -23,7 +23,7 @@ Describe 'Get-TaskFolderAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
             Path             = '\Operations'
             TaskPath         = '\Operations'
             TaskName         = $null
-            CanonicalTarget  = 'TaskFolder:Local:\OPERATIONS'
+            CanonicalTarget  = 'TaskFolder:WACHOST:\OPERATIONS'
             DescriptorSource = 'TaskSchedulerCom'
         }
         $descriptor = [Security.AccessControl.RawSecurityDescriptor]::new(

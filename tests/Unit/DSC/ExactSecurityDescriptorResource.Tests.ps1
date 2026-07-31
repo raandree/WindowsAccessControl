@@ -106,6 +106,25 @@ Describe 'Exact security descriptor DSC resource behavior' -Tag 'Unit', 'Windows
                 Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
             }
         }
+        @{
+            ClassName    = 'WindowsAccessControlTaskFolderSecurityDescriptor'
+            ObjectFamily = 'TaskFolder'
+            Target       = '\Operations'
+            Properties   = @{
+                Path = '\Operations'; AllowedRootPath = '\Operations'
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
+        @{
+            ClassName    = 'WindowsAccessControlScheduledTaskSecurityDescriptor'
+            ObjectFamily = 'ScheduledTask'
+            Target       = '\Operations'
+            Properties   = @{
+                TaskPath = '\Operations'; TaskName = 'Cleanup'
+                AllowedRootPath = '\Operations'
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
     ) {
         $instance = New-ExactDescriptorResourceInstance `
             -ClassName $ClassName `
@@ -162,6 +181,21 @@ Describe 'Exact security descriptor DSC resource behavior' -Tag 'Unit', 'Windows
                 Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
             }
         }
+        @{
+            ClassName = 'WindowsAccessControlTaskFolderSecurityDescriptor'
+            Properties = @{
+                Path = '\Operations'; AllowedRootPath = '\Operations'
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
+        @{
+            ClassName = 'WindowsAccessControlScheduledTaskSecurityDescriptor'
+            Properties = @{
+                TaskPath = '\Operations'; TaskName = 'Cleanup'
+                AllowedRootPath = '\Operations'
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
     ) {
         $script:currentSddl = 'D:(A;;0x00000001;;;WD)'
         $instance = New-ExactDescriptorResourceInstance `
@@ -201,6 +235,21 @@ Describe 'Exact security descriptor DSC resource behavior' -Tag 'Unit', 'Windows
             ClassName = 'WindowsAccessControlProcessSecurityDescriptor'
             Properties = @{
                 ProcessId = 42; CreationTimeFileTime = 123456789
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
+        @{
+            ClassName = 'WindowsAccessControlTaskFolderSecurityDescriptor'
+            Properties = @{
+                Path = '\Operations'; AllowedRootPath = '\Operations'
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
+        @{
+            ClassName = 'WindowsAccessControlScheduledTaskSecurityDescriptor'
+            Properties = @{
+                TaskPath = '\Operations'; TaskName = 'Cleanup'
+                AllowedRootPath = '\Operations'
                 Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
             }
         }

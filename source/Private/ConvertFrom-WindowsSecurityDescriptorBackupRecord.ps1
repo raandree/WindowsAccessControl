@@ -41,6 +41,8 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
             'Process' { 1; break }
             'SmbShare' { 2; break }
             'ADObject' { 2; break }
+            'TaskFolder' { 2; break }
+            'ScheduledTask' { 2; break }
             default {
                 throw [System.IO.InvalidDataException]::new(
                     "The backup record contains unsupported object family '$($Record.ObjectFamily)'."
@@ -280,6 +282,43 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
                     'An Active Directory backup record must name an object inside its recorded domain partition.'
                 )
             }
+        } elseif ([string]$Record.ObjectFamily -in @('TaskFolder', 'ScheduledTask')) {
+            if ($sections -ne [int][WindowsSecurityDescriptorSection]::Access) {
+                throw [System.IO.InvalidDataException]::new(
+                    'A Task Scheduler backup record selects only the access section.'
+                )
+            }
+            $taskServer = [string]$Record.Server
+            $taskTarget = [string]$Record.Target
+            if ([string]::IsNullOrWhiteSpace($taskServer) -or
+                -not $taskTarget.StartsWith('\', [StringComparison]::Ordinal) -or
+                [string]$Record.CanonicalTarget -cne (
+                    '{0}:{1}:{2}' -f [string]$Record.ObjectFamily,
+                        $taskServer.ToUpperInvariant(),
+                        $taskTarget.ToUpperInvariant())) {
+                throw [System.IO.InvalidDataException]::new(
+                    'A Task Scheduler backup record requires a matching server and task identity.'
+                )
+            }
+            # A task name never contains a separator, so the last one splits the
+            # stored target back into the folder and leaf the write path needs.
+            $separatorIndex = $taskTarget.LastIndexOf('\')
+            $taskFolderPath = $taskTarget
+            $scheduledTaskName = $null
+            if ([string]$Record.ObjectFamily -eq 'ScheduledTask') {
+                if ($separatorIndex -le 0) {
+                    throw [System.IO.InvalidDataException]::new(
+                        "The scheduled-task backup record for '$taskTarget' names the unsupported root task folder."
+                    )
+                }
+                $taskFolderPath = $taskTarget.Substring(0, $separatorIndex)
+                $scheduledTaskName = $taskTarget.Substring($separatorIndex + 1)
+                if ([string]::IsNullOrWhiteSpace($scheduledTaskName)) {
+                    throw [System.IO.InvalidDataException]::new(
+                        'A scheduled-task backup record requires a task name.'
+                    )
+                }
+            }
         }
 
         [pscustomobject]@{
@@ -321,6 +360,19 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
             }
             DomainNamingContext  = if ([string]$Record.ObjectFamily -eq 'ADObject') {
                 [string]$Record.DomainNamingContext
+            } else {
+                $null
+            }
+            TaskPath             = if ([string]$Record.ObjectFamily -in @(
+                'TaskFolder'
+                'ScheduledTask'
+            )) {
+                $taskFolderPath
+            } else {
+                $null
+            }
+            TaskName             = if ([string]$Record.ObjectFamily -eq 'ScheduledTask') {
+                $scheduledTaskName
             } else {
                 $null
             }

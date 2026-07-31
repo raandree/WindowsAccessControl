@@ -543,3 +543,161 @@ Describe 'Task Scheduler typed access-rule commands' -Tag 'DomainLab', 'WindowsO
         $result.LockoutRejected | Should -BeLike '*Task Scheduler service token*'
     }
 }
+
+Describe 'Task Scheduler portability and desired state' -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    It 'Should round trip a schema-version-2 task backup on its own computer' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:taskPath, $script:taskName `
+            -ScriptBlock {
+                param($TaskPath, $TaskName)
+
+                $backupPath = Join-Path $env:TEMP (
+                    'wac-task-backup-{0}.json' -f [guid]::NewGuid().ToString('N')
+                )
+                try {
+                    $before = Get-TaskFolderSecurityDescriptor -Path $TaskPath
+                    $taskBefore = Get-ScheduledTaskSecurityDescriptor `
+                        -TaskPath $TaskPath -TaskName $TaskName
+                    @($before, $taskBefore) | Backup-WindowsSecurityDescriptor `
+                        -DestinationPath $backupPath `
+                        -Confirm:$false
+                    $document = Get-Content -LiteralPath $backupPath -Raw |
+                        ConvertFrom-Json
+
+                    $null = Add-TaskFolderAccessRule `
+                        -Path $TaskPath `
+                        -AllowedRootPath $TaskPath `
+                        -Account 'S-1-1-0' `
+                        -AccessRights ReadAndTraverse `
+                        -Confirm:$false
+                    $drifted = Get-TaskFolderSecurityDescriptor -Path $TaskPath
+
+                    Restore-WindowsSecurityDescriptor `
+                        -BackupPath $backupPath `
+                        -AllowedRootPath $TaskPath `
+                        -Confirm:$false
+                    $restored = Get-TaskFolderSecurityDescriptor -Path $TaskPath
+
+                    $unboundedRejected = $null
+                    try {
+                        Restore-WindowsSecurityDescriptor `
+                            -BackupPath $backupPath `
+                            -Confirm:$false `
+                            -ErrorAction Stop
+                    }
+                    catch {
+                        $unboundedRejected = $_.Exception.Message
+                    }
+
+                    [pscustomobject]@{
+                        SchemaVersion     = $document.SchemaVersion
+                        RecordVersions    = @($document.Records.RecordVersion)
+                        RecordFamilies    = @($document.Records.ObjectFamily)
+                        RecordServer      = $document.Records[0].Server
+                        CanonicalTarget   = $before.CanonicalTarget
+                        BeforeSddl        = $before.Sddl
+                        DriftedSddl       = $drifted.Sddl
+                        RestoredSddl      = $restored.Sddl
+                        UnboundedRejected = $unboundedRejected
+                        ComputerName      = $env:COMPUTERNAME
+                    }
+                }
+                finally {
+                    Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+                }
+            }
+
+        $result.SchemaVersion | Should -Be 2
+        @($result.RecordVersions) | Should -Be @(2, 2)
+        @($result.RecordFamilies) | Should -Be @('TaskFolder', 'ScheduledTask')
+        $result.RecordServer | Should -BeExactly $result.ComputerName.ToUpperInvariant()
+        $result.CanonicalTarget |
+            Should -BeExactly ('TaskFolder:{0}:{1}' -f
+                $result.ComputerName.ToUpperInvariant(),
+                $script:taskPath.ToUpperInvariant())
+        $result.DriftedSddl | Should -Not -BeExactly $result.BeforeSddl
+        $result.RestoredSddl | Should -BeExactly $result.BeforeSddl
+        $result.UnboundedRejected | Should -BeLike '*AllowedRootPath*'
+    }
+
+    It 'Should converge the task folder descriptor and rule DSC resources' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:taskPath `
+            -ScriptBlock {
+                param($TaskPath)
+
+                $module = Get-Module WindowsAccessControl
+                $before = Get-TaskFolderSecurityDescriptor -Path $TaskPath
+                try {
+                    $ruleState = & $module {
+                        param($Path)
+
+                        $resource = [WindowsAccessControlTaskFolderAccessRule]::new()
+                        $resource.Path = $Path
+                        $resource.AllowedRootPath = $Path
+                        $resource.Account = 'S-1-1-0'
+                        $resource.AccessRights = [WindowsTaskFolderRights]::ReadAndTraverse
+                        $resource.AccessControlType =
+                            [Security.AccessControl.AccessControlType]::Allow
+                        $resource.AppliesTo = 'ThisFolderOnly'
+                        $resource.Ensure = [WindowsAccessControlDscEnsure]::Present
+
+                        $initial = $resource.Test()
+                        $resource.Set()
+                        $afterSet = $resource.Test()
+                        $resource.Ensure = [WindowsAccessControlDscEnsure]::Absent
+                        $resource.Set()
+                        $afterRemove = $resource.Test()
+                        [pscustomobject]@{
+                            Initial     = $initial
+                            AfterSet    = $afterSet
+                            AfterRemove = $afterRemove
+                        }
+                    } $TaskPath
+
+                    $descriptorState = & $module {
+                        param($Path, $Sddl)
+
+                        $resource = [WindowsAccessControlTaskFolderSecurityDescriptor]::new()
+                        $resource.Path = $Path
+                        $resource.AllowedRootPath = $Path
+                        $resource.Sections = [WindowsSecurityDescriptorSection]::Access
+                        $resource.Sddl = $Sddl
+                        $compliant = $resource.Test()
+                        $current = $resource.Get()
+                        [pscustomobject]@{
+                            Compliant = $compliant
+                            Reasons   = @($current.Reasons).Count
+                        }
+                    } $TaskPath $before.Sddl
+
+                    [pscustomobject]@{
+                        RuleInitial         = $ruleState.Initial
+                        RuleAfterSet        = $ruleState.AfterSet
+                        RuleAfterRemove     = $ruleState.AfterRemove
+                        DescriptorCompliant = $descriptorState.Compliant
+                        DescriptorReasons   = $descriptorState.Reasons
+                        BeforeSddl          = $before.Sddl
+                        FinalSddl           = (Get-TaskFolderSecurityDescriptor `
+                            -Path $TaskPath).Sddl
+                    }
+                }
+                finally {
+                    Set-TaskFolderSecurityDescriptor `
+                        -Path $TaskPath `
+                        -AllowedRootPath $TaskPath `
+                        -Sddl $before.Sddl `
+                        -Confirm:$false
+                }
+            }
+
+        $result.RuleInitial | Should -BeFalse
+        $result.RuleAfterSet | Should -BeTrue
+        $result.RuleAfterRemove | Should -BeTrue
+        $result.DescriptorCompliant | Should -BeTrue
+        $result.DescriptorReasons | Should -Be 0
+        $result.FinalSddl | Should -BeExactly $result.BeforeSddl
+    }
+}

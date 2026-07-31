@@ -14,7 +14,10 @@ bounded Active Directory command families are complete for their accepted
 increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
 and read-only CNG private-key inspection are independently reviewed. OI-11 and
-ENT-8 are closed for the currently shipped enterprise families.
+ENT-8 are closed for the currently shipped enterprise families. The 80 percent
+coverage gate is currently unmet at 79.61 percent because the Active
+Directory and SMB paths only execute on the domain lab; that needs a separate
+decision on coverage merging or the threshold.
 
 ## Recent milestones
 
@@ -408,6 +411,51 @@ ENT-8 are closed for the currently shipped enterprise families.
     `output/RequiredModules`. The module build itself succeeds; this is a
     dependency-restore gap in the environment, not a product defect, and it
     predates this increment.
+- 2026-07-30: Closed OI-20 with specification 0014 and ADR 0023. Task Scheduler
+    canonical targets and write-lock keys are now qualified by the owning
+    computer (`TaskFolder:<COMPUTER>:<PATH>`), and both families entered unified
+    backup and restore as schema-version-2 records. The records reuse the
+    existing hashed `Server` field and store the absolute task path in `Target`,
+    so no hashed field was added and every existing version-1 and version-2
+    backup still validates.
+- 2026-07-30: Added `AllowedRootPath` to `Restore-WindowsSecurityDescriptor`. A
+    task record restores only on the computer it names, every target is resolved
+    for write during preparation, and the write passes through the public
+    setters and their specification 0010 gates.
+- 2026-07-30: Added four class-based DSC resources for task folder and
+    registered-task descriptors and access rules. They manage the access section
+    only, require `AllowedRootPath`, and compare DACLs by protection state and
+    ACE multiset because the Task Scheduler service canonicalizes ACE order after
+    a write.
+- 2026-07-30: Independent security review returned APPROVE WITH COMMENTS with no
+    Blocker and three Major findings: specification 0014 claimed a staleness gate
+    the descriptor write path does not have, ADR 0023 asserted a root-folder task
+    form the path normalizer makes unreachable, and the ACE-order limitation was
+    documented on the cmdlets but not on the new resources. All three plus every
+    Minor were fixed, including ordinal path comparison, rejection of a
+    whitespace-only task name, an explicit rejection of a registered-task record
+    that names the root folder, and ordinal ACE-multiset ordering.
+- 2026-07-30: A focused Windows PowerShell 5.1 run passed 149 of 149 tests with
+    zero skips over the portability, DSC contract, DSC adapter, and Task
+    Scheduler suites. Static analysis over source and tests is clean apart from
+    pre-existing warnings in the Sampler-provided `tests/QA/module.tests.ps1`.
+- 2026-07-30: The gate run after the review fixes caught a self-inflicted
+    regression. Adopting ordinal ACE-multiset ordering in
+    `Test-WindowsTaskSchedulerDaclEquivalent` ended the sorting script block with
+    `, $identities`, which stopped PowerShell unrolling the array, so
+    `@(& $block ...)` produced one element wrapping the whole array and the
+    pairwise comparison compared two arrays instead of two strings. Every
+    equivalent DACL then reported drift. Removing the comma restored
+    element-by-element output and kept the ordinal sort; the pre-existing
+    reordered-ACE test is what caught it.
+- 2026-07-30: Final gate passed 1309 of 1312 tests with zero skips. The only
+    failures remain the three domain-controller interactive-logon policy cases.
+    A focused Windows PowerShell 5.1 run passed 161 of 161 tests with zero skips.
+- 2026-07-30: Measured the coverage gate. The configured profile reports 79.61
+    percent against an 80 percent threshold. The shortfall is pre-existing: the
+    new Task Scheduler code measures about 97 percent covered and excluding it
+    lowers the total to 79.29 percent, while the largest uncovered regions are
+    Active Directory and SMB paths that only execute on the domain lab.
 
 ## Stable capabilities
 

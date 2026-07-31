@@ -263,8 +263,22 @@ own enum: `WindowsTaskFolderRights` names `ListTasks`, `CreateTask`,
 `FullControl` composites. `AppliesTo` applies to task folders only; a
 registered task is a leaf object. Removal is exact, idempotent when the ACE is
 already absent, and refuses an inherited rule, which must be removed on the
-folder that defines it. Audit rules, SACLs, backup/restore, DSC, and direct
-remote targets are not part of this increment.
+folder that defines it. Audit rules, SACLs, and direct remote targets are not
+part of this increment.
+
+Task Scheduler descriptors join the unified backup as record version 2, bound to
+the owning computer. A restore requires the same `AllowedRootPath` boundary as a
+direct write:
+
+```powershell
+Get-TaskFolderSecurityDescriptor -Path $taskPath |
+    Backup-WindowsSecurityDescriptor -DestinationPath 'C:\Backup\tasks.json'
+
+Restore-WindowsSecurityDescriptor `
+    -BackupPath 'C:\Backup\tasks.json' `
+    -AllowedRootPath $taskPath `
+    -Confirm:$false
+```
 
 ## Inspect a supported private-key DACL
 
@@ -834,7 +848,8 @@ calling token must be permitted to impersonate.
 
 The module provides exact selected-section descriptor resources and exact
 access-rule presence resources for NTFS, registry keys, named services, the
-SCM, pinned processes, SMB shares, and Active Directory objects. This example
+SCM, pinned processes, SMB shares, Active Directory objects, task folders, and
+registered tasks. This example
 ensures one NTFS allow ACE is present:
 
 ```powershell
@@ -889,6 +904,27 @@ LDAP as the node's own identity, so a MOF never carries directory credentials.
 Supply `ObjectGuid` on `WindowsAccessControlADObjectSecurityDescriptor` when the
 configuration must fail rather than converge a recreated object that reuses the
 same distinguished name.
+
+The Task Scheduler resources also manage the access section only and declare
+their containment boundary with `AllowedRootPath`:
+
+```powershell
+WindowsAccessControlTaskFolderAccessRule OperatorsTraverse {
+    Path = '\Operations'
+    AllowedRootPath = '\Operations'
+    Account = 'CONTOSO\Operators'
+    AccessRights = 'ReadAndTraverse'
+    AccessControlType = 'Allow'
+    AppliesTo = 'ThisFolderSubfoldersAndTasks'
+    Ensure = 'Present'
+}
+```
+
+Their compliance check ignores ACE order, because the Task Scheduler service
+canonicalizes a stored DACL after every write. Protection state and every ACE
+stay exact. Windows evaluates a DACL in order, so these resources cannot detect
+or correct a reordering that promotes an allow ACE above a deny ACE; do not
+make them the sole drift control for an order-sensitive deny ACE.
 
 ## Run against another computer
 

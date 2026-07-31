@@ -3,13 +3,14 @@ function Find-WindowsAccessControlDscAccessRule {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask')]
         [string]$ObjectFamily,
         [Parameter()] [string]$Target,
         [Parameter()] [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
         [Parameter()] [uint32]$ProcessId,
         [Parameter()] [int64]$CreationTimeFileTime,
         [Parameter()] [string]$Server,
+        [Parameter()] [string]$TaskName,
         [Parameter()] [ValidateRange(1, 300)] [int]$TimeoutSeconds = 10,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string]$Account,
         [Parameter(Mandatory)] [ValidateRange(0, [uint32]::MaxValue)] [uint64]$AccessMask,
@@ -141,6 +142,33 @@ function Find-WindowsAccessControlDscAccessRule {
                 -ErrorAction Stop)
             break
         }
+        'TaskFolder' {
+            if ([string]::IsNullOrWhiteSpace($Target) -or
+                [string]::IsNullOrWhiteSpace($AppliesTo)) {
+                throw 'A Task Scheduler folder path and AppliesTo value are required.'
+            }
+            @(Get-TaskFolderAccessRule `
+                -Path $Target `
+                -Account $securityIdentifier.Value `
+                -ExcludeInherited `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop)
+            break
+        }
+        'ScheduledTask' {
+            if ([string]::IsNullOrWhiteSpace($Target) -or
+                [string]::IsNullOrWhiteSpace($TaskName)) {
+                throw 'A Task Scheduler folder path and task name are required.'
+            }
+            @(Get-ScheduledTaskAccessRule `
+                -TaskPath $Target `
+                -TaskName $TaskName `
+                -Account $securityIdentifier.Value `
+                -ExcludeInherited `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop)
+            break
+        }
     }
 
     foreach ($rule in @($rules)) {
@@ -158,7 +186,7 @@ function Find-WindowsAccessControlDscAccessRule {
                 $AccessControlType) {
             continue
         }
-        if ($ObjectFamily -in @('FileSystem', 'RegistryKey') -and
+        if ($ObjectFamily -in @('FileSystem', 'RegistryKey', 'TaskFolder') -and
             [string]$rule.AppliesTo -ne $AppliesTo) {
             continue
         }

@@ -139,12 +139,14 @@ preservation, rollback, COM release, and task deletion in Windows PowerShell
 
 ## Later work
 
-OI-20 tracks schema-version-2 portability and DSC. Audit
-rules, SACL, and direct remote APIs require a separately accepted contract.
+Specification 0014 accepts schema-version-2 portability and desired state for
+both families. Audit rules, SACL, and direct remote APIs require a separately
+accepted contract.
 
 ## See also
 
 - [Enterprise expansion](0008-enterprise-access-control-expansion.md)
+- [Task Scheduler portability and desired state](0014-task-scheduler-portability-and-desired-state.md)
 - [Security and persistence](0004-security-and-persistence.md)
 - [Local Task Scheduler authority decision](decisions/0018-use-local-task-and-software-key-authority.md)
 - [Open issues](open-issues.md)

@@ -89,6 +89,26 @@ Describe 'Access-rule presence DSC resource contract' -Tag 'Unit', 'WindowsOnly'
                 'TimeoutSeconds', 'Ensure', 'Reasons'
             )
         }
+        @{
+            Name = 'WindowsAccessControlTaskFolderAccessRule'
+            KeyNames = @(
+                'Path', 'Account', 'AccessRights', 'AccessControlType', 'AppliesTo'
+            )
+            Properties = @(
+                'Path', 'Account', 'AccessRights', 'AccessControlType', 'AppliesTo',
+                'AllowedRootPath', 'Ensure', 'Reasons'
+            )
+        }
+        @{
+            Name = 'WindowsAccessControlScheduledTaskAccessRule'
+            KeyNames = @(
+                'TaskPath', 'TaskName', 'Account', 'AccessRights', 'AccessControlType'
+            )
+            Properties = @(
+                'TaskPath', 'TaskName', 'Account', 'AccessRights',
+                'AccessControlType', 'AllowedRootPath', 'Ensure', 'Reasons'
+            )
+        }
     ) {
         $script:manifestData.DscResourcesToExport | Should -Contain $Name
         (Get-DscResource -Name $Name -Module WindowsAccessControl -ErrorAction Stop).Name |
@@ -118,6 +138,7 @@ Describe 'Access-rule presence DSC resource contract' -Tag 'Unit', 'WindowsOnly'
     It 'Should constrain the DSC AppliesTo values to the <Cmdlet> cmdlet set for <Name>' -ForEach @(
         @{ Name = 'WindowsAccessControlNtfsAccessRule'; Cmdlet = 'New-NTFSAccessRule' }
         @{ Name = 'WindowsAccessControlRegistryKeyAccessRule'; Cmdlet = 'Add-RegistryKeyAccessRule' }
+        @{ Name = 'WindowsAccessControlTaskFolderAccessRule'; Cmdlet = 'Add-TaskFolderAccessRule' }
     ) {
         $resourceType = & $script:module ([scriptblock]::Create("[$Name]"))
         $appliesToProperty = $resourceType.GetProperty('AppliesTo')

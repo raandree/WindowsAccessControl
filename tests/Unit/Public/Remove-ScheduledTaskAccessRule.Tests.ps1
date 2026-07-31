@@ -25,7 +25,7 @@ Describe 'Remove-ScheduledTaskAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
                     ObjectType      = 'ScheduledTask'
                     TaskPath        = '\Operations'
                     TaskName        = 'Cleanup'
-                    CanonicalTarget = 'ScheduledTask:Local:\OPERATIONS\CLEANUP'
+                    CanonicalTarget = 'ScheduledTask:WACHOST:\OPERATIONS\CLEANUP'
                 }
             }
             Mock Invoke-WindowsTaskSchedulerAclRuleMutation
@@ -40,7 +40,7 @@ Describe 'Remove-ScheduledTaskAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
             $rule = [pscustomobject]@{
                 TaskPath        = '\Operations'
                 TaskName        = 'Cleanup'
-                CanonicalTarget = 'ScheduledTask:Local:\OPERATIONS\OTHER'
+                CanonicalTarget = 'ScheduledTask:WACHOST:\OPERATIONS\OTHER'
                 SID             = 'S-1-1-0'
                 IsInherited     = $false
                 NativeAce       = $ace

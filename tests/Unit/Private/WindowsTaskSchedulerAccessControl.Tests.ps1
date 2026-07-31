@@ -23,9 +23,21 @@ Describe 'Task Scheduler access-control internals' -Tag 'Unit', 'WindowsOnly' {
         $target.ObjectType | Should -BeExactly 'ScheduledTask'
         $target.TaskPath | Should -BeExactly '\WindowsAccessControlLab'
         $target.TaskName | Should -BeExactly 'Fixture'
+        $target.Server | Should -BeExactly ([Environment]::MachineName.ToUpperInvariant())
         $target.CanonicalTarget | Should -BeExactly (
-            'ScheduledTask:Local:\WINDOWSACCESSCONTROLLAB\FIXTURE'
+            'ScheduledTask:{0}:\WINDOWSACCESSCONTROLLAB\FIXTURE' -f
+                [Environment]::MachineName.ToUpperInvariant()
         )
+    }
+
+    It 'Should reject a task name that normalizes to nothing' {
+        {
+            & $script:module {
+                Resolve-WindowsTaskSchedulerTarget `
+                    -Path '\WindowsAccessControlLab' `
+                    -TaskName '   '
+            }
+        } | Should -Throw -ExpectedMessage '*is not a canonical local name*'
     }
 
     It 'Should reject unsafe or out-of-bound write targets before COM activation' {

@@ -746,3 +746,36 @@ Normative record: [ADR 0022](../specs/decisions/0022-defer-active-directory-effe
     writes, and a domain-wide `dSHeuristics` list-object switch. The domain
     controller exposes an authoritative answer only for the bound caller.
 
+### Decision 69: Qualify a Task Scheduler target with its owning computer
+
+Normative record: [ADR 0023](../specs/decisions/0023-qualify-task-scheduler-identity-by-computer.md).
+
+- Choice: Replace `TaskFolder:Local:<PATH>` with `TaskFolder:<COMPUTER>:<PATH>`,
+    do the same for `ScheduledTask`, join a task path and leaf with exactly one
+    separator, report `Server` on the target, and encode both families as
+    schema-version-2 records that reuse `Server` and store the absolute task
+    path in `Target`.
+- Rationale: `Local` names no machine, so a portability record could be replayed
+    against another task store. Reusing `Server` and `Target` binds the record
+    to its computer without adding a hashed field, so every existing version-1
+    and version-2 backup keeps validating. ADR 0018 still keeps every Task
+    Scheduler command local.
+
+### Decision 70: Compare a Task Scheduler desired state semantically
+
+Normative records: [ADR 0012](../specs/decisions/0012-use-object-specific-commands-and-dsc-resources.md)
+and Decision 42.
+
+- Choice: Compare a Task Scheduler DSC descriptor by protection state,
+    auto-inherit-required state, ACL revision, and the duplicate-sensitive ACE
+    multiset instead of canonical SDDL equality, and require `AllowedRootPath`
+    on every Task Scheduler resource before a write.
+- Rationale: The Task Scheduler service canonicalizes ACE order after a write,
+    so exact SDDL equality would report drift on every consistency run. The
+    allowed root path makes a configuration state its own containment boundary
+    the way the directory resources state theirs. The multiset is ordered with
+    an ordinal comparer, and the sorted identities are emitted element by
+    element: a leading `,` would stop PowerShell unrolling the array and turn the
+    pairwise string comparison into an array comparison that always reports
+    drift.
+

@@ -392,3 +392,118 @@ class WindowsAccessControlADObjectAccessRule {
         return @($reason)
     }
 }
+
+[DscResource()]
+class WindowsAccessControlTaskFolderAccessRule {
+    [DscProperty(Key)] [string]$Path
+    [DscProperty(Key)] [string]$Account
+    [DscProperty(Key)] [WindowsTaskFolderRights]$AccessRights
+    [DscProperty(Key)] [System.Security.AccessControl.AccessControlType]$AccessControlType
+    [DscProperty(Key)]
+    [ValidateSet(
+        'ThisFolderOnly',
+        'ThisFolderSubfoldersAndTasks',
+        'ThisFolderAndSubfolders',
+        'ThisFolderAndTasks',
+        'SubfoldersAndTasksOnly',
+        'SubfoldersOnly',
+        'TasksOnly'
+    )]
+    [string]$AppliesTo
+    [DscProperty(Mandatory)] [string]$AllowedRootPath
+    [DscProperty()] [WindowsAccessControlDscEnsure]$Ensure =
+        [WindowsAccessControlDscEnsure]::Present
+    [DscProperty(NotConfigurable)] [WindowsAccessControlDscReason[]]$Reasons
+
+    [WindowsAccessControlTaskFolderAccessRule] Get() {
+        $present = Get-WindowsAccessControlDscAccessRule `
+            -ObjectFamily TaskFolder -Target $this.Path -Account $this.Account `
+            -AccessMask ([uint64]([int64][int]$this.AccessRights -band 0xFFFFFFFFL)) `
+            -AccessControlType $this.AccessControlType -AppliesTo $this.AppliesTo `
+            -ErrorAction Stop
+        $currentState = [WindowsAccessControlTaskFolderAccessRule]::new()
+        $currentState.Path = $this.Path
+        $currentState.Account = $this.Account
+        $currentState.AccessRights = $this.AccessRights
+        $currentState.AccessControlType = $this.AccessControlType
+        $currentState.AppliesTo = $this.AppliesTo
+        $currentState.AllowedRootPath = $this.AllowedRootPath
+        $currentState.Ensure = if ($present) {
+            [WindowsAccessControlDscEnsure]::Present
+        } else {
+            [WindowsAccessControlDscEnsure]::Absent
+        }
+        $currentState.Reasons = $this.GetReasons($currentState.Ensure)
+        return $currentState
+    }
+
+    [bool] Test() { return $this.Get().Reasons.Count -eq 0 }
+    [void] Set() {
+        Set-WindowsAccessControlDscAccessRule `
+            -ObjectFamily TaskFolder -Target $this.Path `
+            -AllowedRootPath $this.AllowedRootPath -Account $this.Account `
+            -AccessMask ([uint64]([int64][int]$this.AccessRights -band 0xFFFFFFFFL)) `
+            -AccessControlType $this.AccessControlType -AppliesTo $this.AppliesTo `
+            -Ensure $this.Ensure -ErrorAction Stop
+    }
+    [WindowsAccessControlDscReason[]] GetReasons([WindowsAccessControlDscEnsure]$Current) {
+        if ($Current -eq $this.Ensure) { return @() }
+        $reason = [WindowsAccessControlDscReason]::new()
+        $reason.Code = '{0}:{0}:Ensure' -f $this.GetType().Name
+        $reason.Phrase = "The exact task-folder access rule on '$($this.Path)' is $Current but should be $($this.Ensure)."
+        return @($reason)
+    }
+}
+
+[DscResource()]
+class WindowsAccessControlScheduledTaskAccessRule {
+    [DscProperty(Key)] [string]$TaskPath
+    [DscProperty(Key)] [string]$TaskName
+    [DscProperty(Key)] [string]$Account
+    [DscProperty(Key)] [WindowsScheduledTaskRights]$AccessRights
+    [DscProperty(Key)] [System.Security.AccessControl.AccessControlType]$AccessControlType
+    [DscProperty(Mandatory)] [string]$AllowedRootPath
+    [DscProperty()] [WindowsAccessControlDscEnsure]$Ensure =
+        [WindowsAccessControlDscEnsure]::Present
+    [DscProperty(NotConfigurable)] [WindowsAccessControlDscReason[]]$Reasons
+
+    [WindowsAccessControlScheduledTaskAccessRule] Get() {
+        $present = Get-WindowsAccessControlDscAccessRule `
+            -ObjectFamily ScheduledTask -Target $this.TaskPath `
+            -TaskName $this.TaskName -Account $this.Account `
+            -AccessMask ([uint64]([int64][int]$this.AccessRights -band 0xFFFFFFFFL)) `
+            -AccessControlType $this.AccessControlType -ErrorAction Stop
+        $currentState = [WindowsAccessControlScheduledTaskAccessRule]::new()
+        $currentState.TaskPath = $this.TaskPath
+        $currentState.TaskName = $this.TaskName
+        $currentState.Account = $this.Account
+        $currentState.AccessRights = $this.AccessRights
+        $currentState.AccessControlType = $this.AccessControlType
+        $currentState.AllowedRootPath = $this.AllowedRootPath
+        $currentState.Ensure = if ($present) {
+            [WindowsAccessControlDscEnsure]::Present
+        } else {
+            [WindowsAccessControlDscEnsure]::Absent
+        }
+        $currentState.Reasons = $this.GetReasons($currentState.Ensure)
+        return $currentState
+    }
+
+    [bool] Test() { return $this.Get().Reasons.Count -eq 0 }
+    [void] Set() {
+        Set-WindowsAccessControlDscAccessRule `
+            -ObjectFamily ScheduledTask -Target $this.TaskPath `
+            -TaskName $this.TaskName -AllowedRootPath $this.AllowedRootPath `
+            -Account $this.Account `
+            -AccessMask ([uint64]([int64][int]$this.AccessRights -band 0xFFFFFFFFL)) `
+            -AccessControlType $this.AccessControlType -Ensure $this.Ensure `
+            -ErrorAction Stop
+    }
+    [WindowsAccessControlDscReason[]] GetReasons([WindowsAccessControlDscEnsure]$Current) {
+        if ($Current -eq $this.Ensure) { return @() }
+        $reason = [WindowsAccessControlDscReason]::new()
+        $reason.Code = '{0}:{0}:Ensure' -f $this.GetType().Name
+        $reason.Phrase = "The exact registered-task access rule on '$($this.TaskPath)\$($this.TaskName)' is $Current but should be $($this.Ensure)."
+        return @($reason)
+    }
+}

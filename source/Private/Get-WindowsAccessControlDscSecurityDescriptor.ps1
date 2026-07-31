@@ -3,7 +3,7 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask')]
         [string]$ObjectFamily,
 
         [Parameter()]
@@ -22,6 +22,9 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
         [string]$Server,
 
         [Parameter()]
+        [string]$TaskName,
+
+        [Parameter()]
         [ValidateRange(1, 300)]
         [int]$TimeoutSeconds = 10,
 
@@ -32,7 +35,7 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
     if ([int]$Sections -le 0 -or [int]$Sections -gt 15) {
         throw [System.ArgumentOutOfRangeException]::new('Sections')
     }
-    if ($ObjectFamily -in @('SmbShare', 'ADObject') -and
+    if ($ObjectFamily -in @('SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask') -and
         $Sections -ne [WindowsSecurityDescriptorSection]::Access) {
         throw [System.ArgumentException]::new(
             "Object family $ObjectFamily manages only the access section."
@@ -132,6 +135,32 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
                 -Server (Resolve-WindowsADServer -Server $Server) `
                 -DistinguishedName $Target `
                 -TimeoutSeconds $TimeoutSeconds `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop
+            break
+        }
+        'TaskFolder' {
+            if ([string]::IsNullOrWhiteSpace($Target)) {
+                throw [System.ArgumentException]::new(
+                    'A Task Scheduler folder path is required.'
+                )
+            }
+            Get-TaskFolderSecurityDescriptor `
+                -Path $Target `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop
+            break
+        }
+        'ScheduledTask' {
+            if ([string]::IsNullOrWhiteSpace($Target) -or
+                [string]::IsNullOrWhiteSpace($TaskName)) {
+                throw [System.ArgumentException]::new(
+                    'A Task Scheduler folder path and task name are required.'
+                )
+            }
+            Get-ScheduledTaskSecurityDescriptor `
+                -TaskPath $Target `
+                -TaskName $TaskName `
                 -ThrottleLimit 1 `
                 -ErrorAction Stop
             break

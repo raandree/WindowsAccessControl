@@ -255,9 +255,12 @@ Get-ScheduledTaskAccessRule -TaskPath $taskPath -TaskName 'Cleanup'
 `WindowsTaskFolderRights` and `WindowsScheduledTaskRights` name the Task
 Scheduler operation each mask authorizes rather than exposing filesystem
 rights; folders and tasks get separate enums because the same mask bit means
-different things on a directory and a file. The increment covers DACL
-descriptors and typed access rules; it does not expose audit rules, SACLs,
-backup/restore, DSC, or direct remote target parameters.
+different things on a directory and a file. Canonical identity is qualified by
+the owning computer (`TaskFolder:<COMPUTER>:<PATH>`), so descriptors join the
+unified backup as record version 2 and a record cannot be replayed on another
+machine. The increment covers DACL descriptors, typed access rules,
+backup/restore, and DSC; it does not expose audit rules, SACLs, or direct
+remote target parameters.
 
 ## Certificate private keys
 
@@ -489,10 +492,14 @@ Restore-WindowsSecurityDescriptor `
 The five local families use record version 1. SMB share and Active Directory
 descriptors use record version 2 and additionally bind the server plus the
 immutable share name or distinguished name, `objectGUID`, and domain naming
-context. The envelope schema version is the highest record version it contains,
+context. Task folder and registered-task descriptors also use record version 2
+and bind the owning computer plus the absolute task path. The envelope schema
+version is the highest record version it contains,
 and a record whose family and version disagree is rejected in both directions.
 
-An SMB record restores only on the computer it names. A directory record
+An SMB or Task Scheduler record restores only on the computer it names, and a
+Task Scheduler restore requires an explicit `AllowedRootPath`. A directory
+record
 requires an explicit allowed organizational unit and binds one writable domain
 controller for the whole restore, matching the object by its immutable
 `objectGUID` and recorded domain:
@@ -507,6 +514,14 @@ Get-ADObjectSecurityDescriptor -DistinguishedName $dn |
 Restore-WindowsSecurityDescriptor `
     -BackupPath 'C:\Backup\directory.json' `
     -AllowedBaseDistinguishedName 'OU=Apps,DC=contoso,DC=com' `
+    -Confirm:$false
+
+Get-TaskFolderSecurityDescriptor -Path '\Operations' |
+    Backup-WindowsSecurityDescriptor -DestinationPath 'C:\Backup\tasks.json'
+
+Restore-WindowsSecurityDescriptor `
+    -BackupPath 'C:\Backup\tasks.json' `
+    -AllowedRootPath '\Operations' `
     -Confirm:$false
 ```
 
@@ -557,6 +572,8 @@ target type:
 - `WindowsAccessControlProcessSecurityDescriptor`
 - `WindowsAccessControlSmbShareSecurityDescriptor`
 - `WindowsAccessControlADObjectSecurityDescriptor`
+- `WindowsAccessControlTaskFolderSecurityDescriptor`
+- `WindowsAccessControlScheduledTaskSecurityDescriptor`
 
 It also exports exact access-rule presence resources:
 
@@ -567,6 +584,8 @@ It also exports exact access-rule presence resources:
 - `WindowsAccessControlProcessAccessRule`
 - `WindowsAccessControlSmbShareAccessRule`
 - `WindowsAccessControlADObjectAccessRule`
+- `WindowsAccessControlTaskFolderAccessRule`
+- `WindowsAccessControlScheduledTaskAccessRule`
 
 Each resource owns only its selected owner, group, DACL, or SACL sections.
 System-maintained DACL/SACL `AUTO_INHERITED` flags are ignored during
@@ -581,6 +600,14 @@ Configuration Manager binds LDAP as the node's own identity and a MOF never
 carries directory credentials. `WindowsAccessControlADObjectSecurityDescriptor`
 also accepts an optional `ObjectGuid` that fails closed when the distinguished
 name now resolves to a different directory object.
+
+The Task Scheduler resources manage the access section only and require
+`AllowedRootPath`, so a configuration states its own containment boundary.
+Their compliance check ignores ACE order because the Task Scheduler service
+canonicalizes it after a write; protection state and every ACE stay exact.
+Windows evaluates a DACL in order, so these resources cannot detect a
+reordering that moves an allow ACE ahead of a deny ACE. Do not make them the
+sole drift control for an order-sensitive deny ACE.
 
 Capture desired SDDL from the corresponding `Get-*SecurityDescriptor` command.
 When a resource owns an access ACL, prefer a protected (`D:P`) descriptor so

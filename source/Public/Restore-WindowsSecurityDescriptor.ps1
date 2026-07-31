@@ -9,7 +9,9 @@ function Restore-WindowsSecurityDescriptor {
         Schema version 2 additionally restores SMB share records on their
         originating computer and Active Directory records through one pinned
         writable domain controller inside an explicit allowed organizational
-        unit, matched by immutable object GUID and domain partition.
+        unit, matched by immutable object GUID and domain partition. Task
+        Scheduler records restore on their originating computer inside an
+        explicit allowed root path.
     .PARAMETER BackupPath
         The literal path to a unified backup created by
         Backup-WindowsSecurityDescriptor.
@@ -24,6 +26,9 @@ function Restore-WindowsSecurityDescriptor {
     .PARAMETER AllowedBaseDistinguishedName
         The organizational unit that bounds every Active Directory restore. It
         is required when the backup contains Active Directory records.
+    .PARAMETER AllowedRootPath
+        The non-system task folder that bounds every Task Scheduler restore. It
+        is required when the backup contains Task Scheduler records.
     .PARAMETER Credential
         An optional credential used only for the direct LDAP bind to Server.
     .PARAMETER TimeoutSeconds
@@ -55,6 +60,9 @@ function Restore-WindowsSecurityDescriptor {
 
         [Parameter()]
         [string]$AllowedBaseDistinguishedName,
+
+        [Parameter()]
+        [string]$AllowedRootPath,
 
         [Parameter()]
         [pscredential]$Credential,
@@ -117,6 +125,11 @@ function Restore-WindowsSecurityDescriptor {
             throw 'AllowedBaseDistinguishedName is required to restore Active Directory records.'
         }
         $directoryServer = Resolve-WindowsADServer -Server $Server
+    }
+    if (@($validatedRecords | Where-Object {
+            $_.ObjectFamily -in @('TaskFolder', 'ScheduledTask')
+        }).Count -gt 0 -and [string]::IsNullOrWhiteSpace($AllowedRootPath)) {
+        throw 'AllowedRootPath is required to restore Task Scheduler records.'
     }
 
     $preparedRecords = [System.Collections.Generic.List[object]]::new()
@@ -248,6 +261,47 @@ function Restore-WindowsSecurityDescriptor {
                     Descriptor      = $null
                 }
             }
+            { $_ -in @('TaskFolder', 'ScheduledTask') } {
+                if (-not [string]::Equals(
+                        [string]$record.Server,
+                        [System.Environment]::MachineName,
+                        [System.StringComparison]::OrdinalIgnoreCase
+                    )) {
+                    throw "Task Scheduler backup record '$($record.CanonicalTarget)' was captured on another computer. Run the restore on that computer."
+                }
+                # Resolve for write so the root, Microsoft system tree, and
+                # allowed root path all reject a bad record before any earlier
+                # record is written.
+                $resolveParameters = @{
+                    Path            = $record.TaskPath
+                    ForWrite        = $true
+                    AllowedRootPath = $AllowedRootPath
+                }
+                if ($record.ObjectFamily -eq 'ScheduledTask') {
+                    $resolveParameters.TaskName = $record.TaskName
+                }
+                $target = Resolve-WindowsTaskSchedulerTarget @resolveParameters
+                if ($target.CanonicalTarget -cne $record.CanonicalTarget) {
+                    throw "Task Scheduler backup target '$($record.Target)' does not match its canonical identity."
+                }
+                $descriptor = if ($record.ObjectFamily -eq 'ScheduledTask') {
+                    Get-ScheduledTaskSecurityDescriptor `
+                        -TaskPath $record.TaskPath `
+                        -TaskName $record.TaskName `
+                        -ThrottleLimit 1
+                } else {
+                    Get-TaskFolderSecurityDescriptor `
+                        -Path $record.TaskPath `
+                        -ThrottleLimit 1
+                }
+                [pscustomobject]@{
+                    Record          = $record
+                    Item            = $null
+                    ManagedSections = $null
+                    Security        = $null
+                    Descriptor      = $descriptor
+                }
+            }
             default {
                 throw [System.IO.InvalidDataException]::new(
                     "Unsupported object family '$($record.ObjectFamily)'."
@@ -362,6 +416,31 @@ function Restore-WindowsSecurityDescriptor {
                         PassThru                     = $PassThru
                     }
                     Set-ADObjectSecurityDescriptor @setParameters
+                    break
+                }
+                'TaskFolder' {
+                    $setParameters = @{
+                        Path            = $preparedRecord.Record.TaskPath
+                        AllowedRootPath = $AllowedRootPath
+                        Sddl            = $preparedRecord.Record.Sddl
+                        ThrottleLimit   = 1
+                        Confirm         = $false
+                        PassThru        = $PassThru
+                    }
+                    Set-TaskFolderSecurityDescriptor @setParameters
+                    break
+                }
+                'ScheduledTask' {
+                    $setParameters = @{
+                        TaskPath        = $preparedRecord.Record.TaskPath
+                        TaskName        = $preparedRecord.Record.TaskName
+                        AllowedRootPath = $AllowedRootPath
+                        Sddl            = $preparedRecord.Record.Sddl
+                        ThrottleLimit   = 1
+                        Confirm         = $false
+                        PassThru        = $PassThru
+                    }
+                    Set-ScheduledTaskSecurityDescriptor @setParameters
                     break
                 }
                 default {

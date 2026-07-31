@@ -167,6 +167,29 @@ function ConvertTo-WindowsSecurityDescriptorBackupRecord {
                         [string]$InputObject.DefaultNamingContext
                     break
                 }
+                { $_ -in @('TaskFolder', 'ScheduledTask') } {
+                    if ($recordValues.Sections -ne
+                        [int][WindowsSecurityDescriptorSection]::Access) {
+                        throw [System.ArgumentException]::new(
+                            'A Task Scheduler backup selects only the access section.'
+                        )
+                    }
+                    if ([string]::IsNullOrWhiteSpace([string]$InputObject.Server) -or
+                        [string]::IsNullOrWhiteSpace([string]$InputObject.Path) -or
+                        [string]::IsNullOrWhiteSpace([string]$InputObject.TaskPath) -or
+                        ($_ -eq 'ScheduledTask' -and
+                            [string]::IsNullOrWhiteSpace([string]$InputObject.TaskName))) {
+                        throw [System.ArgumentException]::new(
+                            'A Task Scheduler backup requires a server identity and task path.'
+                        )
+                    }
+                    $recordValues.RecordVersion = 2
+                    $recordValues.ObjectFamily = $_
+                    $recordValues.Target = [string]$InputObject.Path
+                    $recordValues.CanonicalTarget = [string]$InputObject.CanonicalTarget
+                    $recordValues.Server = [string]$InputObject.Server
+                    break
+                }
                 default {
                     throw [System.ArgumentException]::new(
                         "Security descriptor object family '$($InputObject.ObjectType)' is not supported for backup."

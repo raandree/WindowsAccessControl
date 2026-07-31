@@ -63,6 +63,23 @@ Describe 'Exact security descriptor DSC resource contract' -Tag 'Unit', 'Windows
                 'Reasons'
             )
         }
+        @{
+            Name       = 'WindowsAccessControlTaskFolderSecurityDescriptor'
+            KeyNames   = @('Path', 'Sections')
+            Properties = @('Path', 'Sections', 'AllowedRootPath', 'Sddl', 'Reasons')
+        }
+        @{
+            Name       = 'WindowsAccessControlScheduledTaskSecurityDescriptor'
+            KeyNames   = @('TaskPath', 'TaskName', 'Sections')
+            Properties = @(
+                'TaskPath'
+                'TaskName'
+                'Sections'
+                'AllowedRootPath'
+                'Sddl'
+                'Reasons'
+            )
+        }
     ) {
         $script:manifestData.DscResourcesToExport | Should -Contain $Name
 

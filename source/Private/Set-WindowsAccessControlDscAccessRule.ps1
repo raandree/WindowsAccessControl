@@ -7,13 +7,15 @@ function Set-WindowsAccessControlDscAccessRule {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask')]
         [string]$ObjectFamily,
         [Parameter()] [string]$Target,
         [Parameter()] [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
         [Parameter()] [uint32]$ProcessId,
         [Parameter()] [int64]$CreationTimeFileTime,
         [Parameter()] [string]$Server,
+        [Parameter()] [string]$TaskName,
+        [Parameter()] [string]$AllowedRootPath,
         [Parameter()] [string]$AllowedBaseDistinguishedName,
         [Parameter()] [ValidateRange(1, 300)] [int]$TimeoutSeconds = 10,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string]$Account,
@@ -33,6 +35,10 @@ function Set-WindowsAccessControlDscAccessRule {
         [string]::IsNullOrWhiteSpace($AllowedBaseDistinguishedName)) {
         throw 'AllowedBaseDistinguishedName is required for Active Directory writes.'
     }
+    if ($ObjectFamily -in @('TaskFolder', 'ScheduledTask') -and
+        [string]::IsNullOrWhiteSpace($AllowedRootPath)) {
+        throw 'AllowedRootPath is required for Task Scheduler writes.'
+    }
     if ($ObjectFamily -eq 'ADObject') {
         # Pin one domain controller so the compliance read and the write cannot
         # land on two controllers that disagree.
@@ -41,6 +47,7 @@ function Set-WindowsAccessControlDscAccessRule {
     $findParameters = @{} + $PSBoundParameters
     $null = $findParameters.Remove('Ensure')
     $null = $findParameters.Remove('AllowedBaseDistinguishedName')
+    $null = $findParameters.Remove('AllowedRootPath')
     if ($ObjectFamily -eq 'ADObject') {
         $findParameters.Server = $Server
     }
@@ -168,6 +175,38 @@ function Set-WindowsAccessControlDscAccessRule {
                     -ErrorAction Stop
                 break
             }
+            'TaskFolder' {
+                Add-TaskFolderAccessRule `
+                    -Path $Target `
+                    -AllowedRootPath $AllowedRootPath `
+                    -Account $Account `
+                    -AccessRights ([System.Enum]::ToObject(
+                        [WindowsTaskFolderRights],
+                        $signedMask
+                    )) `
+                    -AccessControlType $AccessControlType `
+                    -AppliesTo $AppliesTo `
+                    -ThrottleLimit 1 `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
+            'ScheduledTask' {
+                Add-ScheduledTaskAccessRule `
+                    -TaskPath $Target `
+                    -TaskName $TaskName `
+                    -AllowedRootPath $AllowedRootPath `
+                    -Account $Account `
+                    -AccessRights ([System.Enum]::ToObject(
+                        [WindowsScheduledTaskRights],
+                        $signedMask
+                    )) `
+                    -AccessControlType $AccessControlType `
+                    -ThrottleLimit 1 `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
         }
         return
     }
@@ -214,6 +253,22 @@ function Set-WindowsAccessControlDscAccessRule {
                     -InputObject $matchingRule `
                     -AllowedBaseDistinguishedName $AllowedBaseDistinguishedName `
                     -TimeoutSeconds $TimeoutSeconds `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
+            'TaskFolder' {
+                Remove-TaskFolderAccessRule `
+                    -InputObject $matchingRule `
+                    -AllowedRootPath $AllowedRootPath `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
+            'ScheduledTask' {
+                Remove-ScheduledTaskAccessRule `
+                    -InputObject $matchingRule `
+                    -AllowedRootPath $AllowedRootPath `
                     -Confirm:$false `
                     -ErrorAction Stop
                 break

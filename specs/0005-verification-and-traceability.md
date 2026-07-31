@@ -204,13 +204,15 @@ hard timing assertion.
 
 ## Exact descriptor DSC evidence
 
-`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies seven manifest
+`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies nine manifest
 exports, `Get-DscResource` discovery, composite keys, mandatory SDDL, and
 read-only prefixed reasons. `ExactSecurityDescriptorResource.Tests.ps1` covers
 class orchestration and canonical mismatch reasons in PowerShell 7. Private
 adapter tests cover every object-family route in both editions, including the
-SMB share and Active Directory routes, the access-section gate, the
-required allowed organizational unit, and the object-GUID pin re-asserted
+SMB share, Active Directory, task folder, and registered-task routes, the
+access-section gate, the
+required allowed organizational unit, the required allowed root path, and the
+object-GUID pin re-asserted
 before a directory write.
 
 `ExactSecurityDescriptorDscResources.Tests.ps1` reconverges disposable NTFS
@@ -226,11 +228,13 @@ collisions, and removes the installation afterward.
 ## Access-rule presence DSC evidence
 
 `AccessRulePresenceResourceContract.Tests.ps1` verifies the public Ensure enum,
-seven resource exports, typed composite keys, default `Present`, and read-only
-reasons. Class tests cover compliance reasons and adapter routing. Adapter tests
-cover all seven families, exact mask/qualifier/scope matching, inherited-rule
-rejection, idempotence, duplicate removal, unsigned high-bit rights, and
-directory matching on both object GUIDs plus the inheritance type.
+nine resource exports, typed composite keys, default `Present`, read-only
+reasons, and that every `AppliesTo` property advertises the same values as its
+cmdlet. Class tests cover compliance reasons and adapter routing. Adapter tests
+cover all nine families, exact mask/qualifier/scope matching, inherited-rule
+rejection, idempotence, duplicate removal, unsigned high-bit rights,
+directory matching on both object GUIDs plus the inheritance type, task-folder
+inheritance-scope matching, and the required allowed root path.
 
 ## Enterprise portability evidence
 
@@ -243,7 +247,11 @@ non-access section at backup time, suppression of unauthenticated enterprise
 fields on a version-1 record, envelope version
 selection, rejection of a version-2 record inside a version-1 envelope, the
 required allowed organizational unit, and refusal to restore a share captured
-on another computer. `Get-WindowsSecurityDescriptorRecordHash.Tests.ps1` pins
+on another computer. It also proves Task Scheduler record construction for both
+families, the folder-and-leaf split derived from the stored target, rejection of
+a retargeted canonical identity, the required allowed root path, and refusal to
+restore a task captured on another computer.
+`Get-WindowsSecurityDescriptorRecordHash.Tests.ps1` pins
 the version-1 digest, so extending the hashed field set for version 2 cannot
 invalidate an existing local backup.
 

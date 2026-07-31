@@ -7,7 +7,7 @@ function Set-WindowsAccessControlDscSecurityDescriptor {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask')]
         [string]$ObjectFamily,
 
         [Parameter()]
@@ -24,6 +24,12 @@ function Set-WindowsAccessControlDscSecurityDescriptor {
 
         [Parameter()]
         [string]$Server,
+
+        [Parameter()]
+        [string]$TaskName,
+
+        [Parameter()]
+        [string]$AllowedRootPath,
 
         [Parameter()]
         [string]$AllowedBaseDistinguishedName,
@@ -46,10 +52,16 @@ function Set-WindowsAccessControlDscSecurityDescriptor {
     if ([int]$Sections -le 0 -or [int]$Sections -gt 15) {
         throw [System.ArgumentOutOfRangeException]::new('Sections')
     }
-    if ($ObjectFamily -in @('SmbShare', 'ADObject') -and
+    if ($ObjectFamily -in @('SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask') -and
         $Sections -ne [WindowsSecurityDescriptorSection]::Access) {
         throw [System.ArgumentException]::new(
             "Object family $ObjectFamily manages only the access section."
+        )
+    }
+    if ($ObjectFamily -in @('TaskFolder', 'ScheduledTask') -and
+        [string]::IsNullOrWhiteSpace($AllowedRootPath)) {
+        throw [System.ArgumentException]::new(
+            'AllowedRootPath is required for Task Scheduler writes.'
         )
     }
 
@@ -179,6 +191,38 @@ function Set-WindowsAccessControlDscSecurityDescriptor {
                 -AllowedBaseDistinguishedName $AllowedBaseDistinguishedName `
                 -Sddl $Sddl `
                 -TimeoutSeconds $TimeoutSeconds `
+                -ThrottleLimit 1 `
+                -Confirm:$false `
+                -ErrorAction Stop
+            break
+        }
+        'TaskFolder' {
+            if ([string]::IsNullOrWhiteSpace($Target)) {
+                throw [System.ArgumentException]::new(
+                    'A Task Scheduler folder path is required.'
+                )
+            }
+            Set-TaskFolderSecurityDescriptor `
+                -Path $Target `
+                -AllowedRootPath $AllowedRootPath `
+                -Sddl $Sddl `
+                -ThrottleLimit 1 `
+                -Confirm:$false `
+                -ErrorAction Stop
+            break
+        }
+        'ScheduledTask' {
+            if ([string]::IsNullOrWhiteSpace($Target) -or
+                [string]::IsNullOrWhiteSpace($TaskName)) {
+                throw [System.ArgumentException]::new(
+                    'A Task Scheduler folder path and task name are required.'
+                )
+            }
+            Set-ScheduledTaskSecurityDescriptor `
+                -TaskPath $Target `
+                -TaskName $TaskName `
+                -AllowedRootPath $AllowedRootPath `
+                -Sddl $Sddl `
                 -ThrottleLimit 1 `
                 -Confirm:$false `
                 -ErrorAction Stop

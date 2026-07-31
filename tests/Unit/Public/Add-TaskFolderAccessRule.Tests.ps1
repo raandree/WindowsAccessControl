@@ -22,7 +22,7 @@ Describe 'Add-TaskFolderAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
             ObjectType       = 'TaskFolder'
             Path             = '\Operations'
             TaskPath         = '\Operations'
-            CanonicalTarget  = 'TaskFolder:Local:\OPERATIONS'
+            CanonicalTarget  = 'TaskFolder:WACHOST:\OPERATIONS'
             DescriptorSource = 'TaskSchedulerCom'
         }
         Mock -ModuleName WindowsAccessControl Resolve-WindowsTaskSchedulerTarget {

@@ -24,7 +24,7 @@ Describe 'Get-ScheduledTaskAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
                 Path             = '\Operations\Cleanup'
                 TaskPath         = '\Operations'
                 TaskName         = 'Cleanup'
-                CanonicalTarget  = 'ScheduledTask:Local:\OPERATIONS\CLEANUP'
+                CanonicalTarget  = 'ScheduledTask:WACHOST:\OPERATIONS\CLEANUP'
                 DescriptorSource = 'TaskSchedulerCom'
             }
             $descriptor = [Security.AccessControl.RawSecurityDescriptor]::new(

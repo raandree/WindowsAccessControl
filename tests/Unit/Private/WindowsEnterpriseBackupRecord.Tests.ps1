@@ -51,6 +51,52 @@ Describe 'Enterprise backup schema version 2' -Tag 'Unit', 'WindowsOnly' {
             )
             $descriptor
         }
+
+        function Get-TestScheduledTaskDescriptor {
+            param(
+                [string]$Server = [Environment]::MachineName.ToUpperInvariant()
+            )
+
+            $descriptor = [pscustomobject]@{
+                ObjectType      = 'ScheduledTask'
+                Path            = '\WindowsAccessControlLab\Fixture'
+                TaskPath        = '\WindowsAccessControlLab'
+                TaskName        = 'Fixture'
+                Server          = $Server
+                CanonicalTarget = 'ScheduledTask:{0}:\WINDOWSACCESSCONTROLLAB\FIXTURE' -f
+                    $Server
+                Sections        = 4
+                Sddl            = 'D:(A;;0x00000020;;;WD)'
+            }
+            $descriptor.PSObject.TypeNames.Insert(
+                0, 'WindowsAccessControl.ScheduledTaskSecurityDescriptor'
+            )
+            $descriptor.PSObject.TypeNames.Add(
+                'WindowsAccessControl.SecurityDescriptor'
+            )
+            $descriptor
+        }
+
+        function Get-TestTaskFolderDescriptor {
+            $server = [Environment]::MachineName.ToUpperInvariant()
+            $descriptor = [pscustomobject]@{
+                ObjectType      = 'TaskFolder'
+                Path            = '\WindowsAccessControlLab'
+                TaskPath        = '\WindowsAccessControlLab'
+                TaskName        = $null
+                Server          = $server
+                CanonicalTarget = 'TaskFolder:{0}:\WINDOWSACCESSCONTROLLAB' -f $server
+                Sections        = 4
+                Sddl            = 'D:(A;;0x00000021;;;WD)'
+            }
+            $descriptor.PSObject.TypeNames.Insert(
+                0, 'WindowsAccessControl.TaskFolderSecurityDescriptor'
+            )
+            $descriptor.PSObject.TypeNames.Add(
+                'WindowsAccessControl.SecurityDescriptor'
+            )
+            $descriptor
+        }
     }
 
     It 'Should bind an SMB share record to record version 2 and its server' {
@@ -311,6 +357,247 @@ Describe 'Enterprise backup schema version 2' -Tag 'Unit', 'WindowsOnly' {
             $restored.ShareName | Should -BeNullOrEmpty
             $restored.DistinguishedName | Should -BeNullOrEmpty
             $restored.DomainNamingContext | Should -BeNullOrEmpty
+        }
+    }
+
+    It 'Should bind a registered-task record to its server and split identity' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestScheduledTaskDescriptor
+        } {
+            $record = ConvertTo-WindowsSecurityDescriptorBackupRecord `
+                -InputObject $Descriptor
+
+            $record.RecordVersion | Should -Be 2
+            $record.ObjectFamily | Should -BeExactly 'ScheduledTask'
+            $record.Server | Should -BeExactly (
+                [Environment]::MachineName.ToUpperInvariant()
+            )
+            $record.Target | Should -BeExactly '\WindowsAccessControlLab\Fixture'
+
+            $restored = ConvertFrom-WindowsSecurityDescriptorBackupRecord -Record $record
+            $restored.TaskPath | Should -BeExactly '\WindowsAccessControlLab'
+            $restored.TaskName | Should -BeExactly 'Fixture'
+        }
+    }
+
+    It 'Should bind a task-folder record without a leaf task name' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestTaskFolderDescriptor
+        } {
+            $record = ConvertTo-WindowsSecurityDescriptorBackupRecord `
+                -InputObject $Descriptor
+
+            $record.RecordVersion | Should -Be 2
+            $record.ObjectFamily | Should -BeExactly 'TaskFolder'
+
+            $restored = ConvertFrom-WindowsSecurityDescriptorBackupRecord -Record $record
+            $restored.TaskPath | Should -BeExactly '\WindowsAccessControlLab'
+            $restored.TaskName | Should -BeNullOrEmpty
+        }
+    }
+
+    It 'Should reject a Task Scheduler record whose canonical identity was retargeted' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestScheduledTaskDescriptor
+        } {
+            $Descriptor.CanonicalTarget = 'ScheduledTask:{0}:\OTHER\FIXTURE' -f
+                [Environment]::MachineName.ToUpperInvariant()
+            $record = ConvertTo-WindowsSecurityDescriptorBackupRecord `
+                -InputObject $Descriptor
+
+            {
+                ConvertFrom-WindowsSecurityDescriptorBackupRecord -Record $record
+            } | Should -Throw '*matching server and task identity*'
+        }
+    }
+
+    It 'Should reject a registered-task record that names the root task folder' {
+        InModuleScope WindowsAccessControl {
+            $server = [Environment]::MachineName.ToUpperInvariant()
+            $descriptor = [pscustomobject]@{
+                ObjectType      = 'ScheduledTask'
+                Path            = '\Fixture'
+                TaskPath        = '\'
+                TaskName        = 'Fixture'
+                Server          = $server
+                CanonicalTarget = 'ScheduledTask:{0}:\FIXTURE' -f $server
+                Sections        = 4
+                Sddl            = 'D:(A;;0x00000020;;;WD)'
+            }
+            $descriptor.PSObject.TypeNames.Insert(
+                0, 'WindowsAccessControl.SecurityDescriptor'
+            )
+            $record = ConvertTo-WindowsSecurityDescriptorBackupRecord `
+                -InputObject $descriptor
+
+            {
+                ConvertFrom-WindowsSecurityDescriptorBackupRecord -Record $record
+            } | Should -Throw '*root task folder*'
+        }
+    }
+
+    It 'Should require an allowed root path to restore Task Scheduler records' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestTaskFolderDescriptor
+            Root       = $TestDrive
+        } {
+            $destination = Join-Path $Root 'task-backup.json'
+
+            $Descriptor | Backup-WindowsSecurityDescriptor `
+                -DestinationPath $destination `
+                -Confirm:$false
+
+            {
+                Restore-WindowsSecurityDescriptor `
+                    -BackupPath $destination `
+                    -Confirm:$false
+            } | Should -Throw '*AllowedRootPath*'
+        }
+    }
+
+    It 'Should refuse to restore a task captured on another computer' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestScheduledTaskDescriptor -Server 'OTHERHOST'
+            Root       = $TestDrive
+        } {
+            $destination = Join-Path $Root 'foreign-task-backup.json'
+
+            $Descriptor | Backup-WindowsSecurityDescriptor `
+                -DestinationPath $destination `
+                -Confirm:$false
+
+            {
+                Restore-WindowsSecurityDescriptor `
+                    -BackupPath $destination `
+                    -AllowedRootPath '\WindowsAccessControlLab' `
+                    -Confirm:$false
+            } | Should -Throw '*captured on another computer*'
+        }
+    }
+
+    It 'Should reject a Task Scheduler descriptor that selects another section' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestTaskFolderDescriptor
+        } {
+            $Descriptor.Sections = 5
+            $Descriptor.Sddl = 'O:BAD:(A;;0x00000021;;;WD)'
+
+            {
+                ConvertTo-WindowsSecurityDescriptorBackupRecord `
+                    -InputObject $Descriptor
+            } | Should -Throw '*access section*'
+        }
+    }
+
+    It 'Should restore a contained task folder through its own write path' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestTaskFolderDescriptor
+            Root       = $TestDrive
+        } {
+            $destination = Join-Path $Root 'task-folder-restore.json'
+            $Descriptor | Backup-WindowsSecurityDescriptor `
+                -DestinationPath $destination `
+                -Confirm:$false
+            $expectedSddl = (Get-Content -LiteralPath $destination -Raw |
+                ConvertFrom-Json).Records[0].Sddl
+            Mock Resolve-WindowsTaskSchedulerTarget {
+                [pscustomobject]@{
+                    ObjectType      = 'TaskFolder'
+                    Path            = $Descriptor.Path
+                    TaskPath        = $Descriptor.TaskPath
+                    CanonicalTarget = $Descriptor.CanonicalTarget
+                }
+            }
+            Mock Get-TaskFolderSecurityDescriptor { $Descriptor }
+            Mock Set-TaskFolderSecurityDescriptor
+
+            Restore-WindowsSecurityDescriptor `
+                -BackupPath $destination `
+                -AllowedRootPath '\WindowsAccessControlLab' `
+                -Confirm:$false
+
+            Should -Invoke Resolve-WindowsTaskSchedulerTarget -Exactly -Times 1 `
+                -ParameterFilter {
+                    $ForWrite -and $AllowedRootPath -eq '\WindowsAccessControlLab'
+                }
+            Should -Invoke Set-TaskFolderSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $Path -eq '\WindowsAccessControlLab' -and
+                        $Sddl -ceq $expectedSddl -and
+                        $AllowedRootPath -eq '\WindowsAccessControlLab'
+                }
+        }
+    }
+
+    It 'Should restore a registered task through its split identity' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestScheduledTaskDescriptor
+            Root       = $TestDrive
+        } {
+            $destination = Join-Path $Root 'scheduled-task-restore.json'
+            $Descriptor | Backup-WindowsSecurityDescriptor `
+                -DestinationPath $destination `
+                -Confirm:$false
+            $expectedSddl = (Get-Content -LiteralPath $destination -Raw |
+                ConvertFrom-Json).Records[0].Sddl
+            Mock Resolve-WindowsTaskSchedulerTarget {
+                [pscustomobject]@{
+                    ObjectType      = 'ScheduledTask'
+                    Path            = $Descriptor.Path
+                    TaskPath        = $Descriptor.TaskPath
+                    TaskName        = $Descriptor.TaskName
+                    CanonicalTarget = $Descriptor.CanonicalTarget
+                }
+            }
+            Mock Get-ScheduledTaskSecurityDescriptor { $Descriptor }
+            Mock Set-ScheduledTaskSecurityDescriptor
+
+            Restore-WindowsSecurityDescriptor `
+                -BackupPath $destination `
+                -AllowedRootPath '\WindowsAccessControlLab' `
+                -Confirm:$false
+
+            Should -Invoke Get-ScheduledTaskSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $TaskPath -eq '\WindowsAccessControlLab' -and $TaskName -eq 'Fixture'
+                }
+            Should -Invoke Set-ScheduledTaskSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $TaskPath -eq '\WindowsAccessControlLab' -and
+                        $TaskName -eq 'Fixture' -and
+                        $Sddl -ceq $expectedSddl
+                }
+        }
+    }
+
+    It 'Should reject a Task Scheduler record whose live target was retargeted' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestTaskFolderDescriptor
+            Root       = $TestDrive
+        } {
+            $destination = Join-Path $Root 'task-folder-retargeted.json'
+            $Descriptor | Backup-WindowsSecurityDescriptor `
+                -DestinationPath $destination `
+                -Confirm:$false
+            Mock Resolve-WindowsTaskSchedulerTarget {
+                [pscustomobject]@{
+                    ObjectType      = 'TaskFolder'
+                    Path            = '\Other'
+                    TaskPath        = '\Other'
+                    CanonicalTarget = 'TaskFolder:{0}:\OTHER' -f
+                        [Environment]::MachineName.ToUpperInvariant()
+                }
+            }
+            Mock Get-TaskFolderSecurityDescriptor { $Descriptor }
+            Mock Set-TaskFolderSecurityDescriptor
+
+            {
+                Restore-WindowsSecurityDescriptor `
+                    -BackupPath $destination `
+                    -AllowedRootPath '\WindowsAccessControlLab' `
+                    -Confirm:$false
+            } | Should -Throw '*does not match its canonical identity*'
+            Should -Invoke Set-TaskFolderSecurityDescriptor -Exactly -Times 0
         }
     }
 }

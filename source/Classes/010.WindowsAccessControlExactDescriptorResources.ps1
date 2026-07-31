@@ -426,3 +426,129 @@ class WindowsAccessControlADObjectSecurityDescriptor {
         return @($reason)
     }
 }
+
+[DscResource()]
+class WindowsAccessControlTaskFolderSecurityDescriptor {
+    [DscProperty(Key)]
+    [string]$Path
+
+    [DscProperty(Key)]
+    [WindowsSecurityDescriptorSection]$Sections =
+        [WindowsSecurityDescriptorSection]::Access
+
+    [DscProperty(Mandatory)]
+    [string]$AllowedRootPath
+
+    [DscProperty(Mandatory)]
+    [string]$Sddl
+
+    [DscProperty(NotConfigurable)]
+    [WindowsAccessControlDscReason[]]$Reasons
+
+    [WindowsAccessControlTaskFolderSecurityDescriptor] Get() {
+        $descriptor = Get-WindowsAccessControlDscSecurityDescriptor `
+            -ObjectFamily TaskFolder `
+            -Target $this.Path `
+            -Sections $this.Sections `
+            -ErrorAction Stop
+        $currentState = [WindowsAccessControlTaskFolderSecurityDescriptor]::new()
+        $currentState.Path = $this.Path
+        $currentState.Sections = $this.Sections
+        $currentState.AllowedRootPath = $this.AllowedRootPath
+        $currentState.Sddl = $descriptor.Sddl
+        $currentState.Reasons = $this.GetReasons($descriptor.Sddl)
+        return $currentState
+    }
+
+    [bool] Test() {
+        return $this.Get().Reasons.Count -eq 0
+    }
+
+    [void] Set() {
+        Set-WindowsAccessControlDscSecurityDescriptor `
+            -ObjectFamily TaskFolder `
+            -Target $this.Path `
+            -AllowedRootPath $this.AllowedRootPath `
+            -Sections $this.Sections `
+            -Sddl $this.Sddl `
+            -ErrorAction Stop
+    }
+
+    [WindowsAccessControlDscReason[]] GetReasons([string]$CurrentSddl) {
+        if (Test-WindowsTaskSchedulerDscSddl `
+                -CurrentSddl $CurrentSddl `
+                -DesiredSddl $this.Sddl) {
+            return @()
+        }
+        $reason = [WindowsAccessControlDscReason]::new()
+        $reason.Code = '{0}:{0}:Sddl' -f $this.GetType().Name
+        $reason.Phrase = "The task-folder DACL for '$($this.Path)' differs from the desired SDDL."
+        return @($reason)
+    }
+}
+
+[DscResource()]
+class WindowsAccessControlScheduledTaskSecurityDescriptor {
+    [DscProperty(Key)]
+    [string]$TaskPath
+
+    [DscProperty(Key)]
+    [string]$TaskName
+
+    [DscProperty(Key)]
+    [WindowsSecurityDescriptorSection]$Sections =
+        [WindowsSecurityDescriptorSection]::Access
+
+    [DscProperty(Mandatory)]
+    [string]$AllowedRootPath
+
+    [DscProperty(Mandatory)]
+    [string]$Sddl
+
+    [DscProperty(NotConfigurable)]
+    [WindowsAccessControlDscReason[]]$Reasons
+
+    [WindowsAccessControlScheduledTaskSecurityDescriptor] Get() {
+        $descriptor = Get-WindowsAccessControlDscSecurityDescriptor `
+            -ObjectFamily ScheduledTask `
+            -Target $this.TaskPath `
+            -TaskName $this.TaskName `
+            -Sections $this.Sections `
+            -ErrorAction Stop
+        $currentState = [WindowsAccessControlScheduledTaskSecurityDescriptor]::new()
+        $currentState.TaskPath = $this.TaskPath
+        $currentState.TaskName = $this.TaskName
+        $currentState.Sections = $this.Sections
+        $currentState.AllowedRootPath = $this.AllowedRootPath
+        $currentState.Sddl = $descriptor.Sddl
+        $currentState.Reasons = $this.GetReasons($descriptor.Sddl)
+        return $currentState
+    }
+
+    [bool] Test() {
+        return $this.Get().Reasons.Count -eq 0
+    }
+
+    [void] Set() {
+        Set-WindowsAccessControlDscSecurityDescriptor `
+            -ObjectFamily ScheduledTask `
+            -Target $this.TaskPath `
+            -TaskName $this.TaskName `
+            -AllowedRootPath $this.AllowedRootPath `
+            -Sections $this.Sections `
+            -Sddl $this.Sddl `
+            -ErrorAction Stop
+    }
+
+    [WindowsAccessControlDscReason[]] GetReasons([string]$CurrentSddl) {
+        if (Test-WindowsTaskSchedulerDscSddl `
+                -CurrentSddl $CurrentSddl `
+                -DesiredSddl $this.Sddl) {
+            return @()
+        }
+        $reason = [WindowsAccessControlDscReason]::new()
+        $reason.Code = '{0}:{0}:Sddl' -f $this.GetType().Name
+        $reason.Phrase = "The registered-task DACL for '$($this.TaskPath)\$($this.TaskName)' differs from the desired SDDL."
+        return @($reason)
+    }
+}

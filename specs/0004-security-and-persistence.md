@@ -205,10 +205,12 @@ Every record contains:
 - SHA-256 integrity metadata
 
 Record version is a property of the object family. The five local families use
-schema version 1. The SMB share and Active Directory families use schema
+schema version 1. The SMB share, Active Directory, task folder, and
+registered-task families use schema
 version 2 and additionally bind the explicit server plus the immutable
-enterprise target identity: share name for a share, and distinguished name,
-`objectGUID`, and domain naming context for a directory object (ADR 0016).
+enterprise target identity: share name for a share, distinguished name,
+`objectGUID`, and domain naming context for a directory object, and the
+absolute task path for a Task Scheduler target (ADR 0016 and ADR 0023).
 Those fields are covered by the digest. A record whose family and version
 disagree is rejected in both directions, so an enterprise record can never be
 replayed as a local target and a local record can never claim server authority.
@@ -228,6 +230,10 @@ requires an explicit allowed organizational unit and is resolved for write
 during preparation, so the allowed-base, protected-target, excluded-partition,
 and object-GUID rules of specification 0009 reject a bad record before any
 earlier record is written.
+A Task Scheduler record also restores only on the computer it names, requires
+an explicit allowed root path, and is resolved for write during preparation, so
+the root, `\Microsoft` system tree, and containment rules of specification 0010
+reject a bad record before any earlier record is written.
 
 SHA-256 detects modification only when the expected digest is itself protected.
 When an RSA X.509 signing certificate is supplied, each record hash is signed.

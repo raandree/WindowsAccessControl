@@ -22,6 +22,8 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             Mock Get-ProcessAccessRule { $script:rules }
             Mock Get-SmbShareAccessRule { $script:rules }
             Mock Get-ADObjectAccessRule { $script:rules }
+            Mock Get-TaskFolderAccessRule { $script:rules }
+            Mock Get-ScheduledTaskAccessRule { $script:rules }
             Mock Resolve-WindowsADServer { 'dc01.contoso.test' }
             Mock Add-NTFSAccessRule
             Mock Add-RegistryKeyAccessRule
@@ -29,12 +31,16 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             Mock Add-ProcessAccessRule
             Mock Add-SmbShareAccessRule
             Mock Add-ADObjectAccessRule
+            Mock Add-TaskFolderAccessRule
+            Mock Add-ScheduledTaskAccessRule
             Mock Remove-NTFSAccessRule
             Mock Remove-RegistryKeyAccessRule
             Mock Remove-ServiceAccessRule
             Mock Remove-ProcessAccessRule
             Mock Remove-SmbShareAccessRule
             Mock Remove-ADObjectAccessRule
+            Mock Remove-TaskFolderAccessRule
+            Mock Remove-ScheduledTaskAccessRule
         }
 
         It 'Should find one exact <ObjectFamily> rule' -ForEach @(
@@ -67,6 +73,14 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
                 ObjectFamily = 'ADObject'
                 Target = 'CN=Test,OU=Targets,DC=contoso,DC=test'; Mask = 16
                 AppliesTo = $null; GetCommand = 'Get-ADObjectAccessRule'
+            }
+            @{
+                ObjectFamily = 'TaskFolder'; Target = '\Operations'; Mask = 33
+                AppliesTo = 'ThisFolderOnly'; GetCommand = 'Get-TaskFolderAccessRule'
+            }
+            @{
+                ObjectFamily = 'ScheduledTask'; Target = '\Operations'; Mask = 32
+                AppliesTo = $null; GetCommand = 'Get-ScheduledTaskAccessRule'
             }
         ) {
             $storedMask = if ($ObjectFamily -eq 'FileSystem') {
@@ -106,6 +120,7 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             if ($Target) { $parameters.Target = $Target }
             if ($AppliesTo) { $parameters.AppliesTo = $AppliesTo }
             if ($ObjectFamily -eq 'RegistryKey') { $parameters.RegistryView = 'Default' }
+            if ($ObjectFamily -eq 'ScheduledTask') { $parameters.TaskName = 'Cleanup' }
             if ($ObjectFamily -eq 'Process') {
                 $parameters.ProcessId = 42
                 $parameters.CreationTimeFileTime = 123456789
@@ -123,6 +138,8 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             @{ ObjectFamily = 'Process'; Target = $null; Mask = 4096; AppliesTo = $null; AddCommand = 'Add-ProcessAccessRule' }
             @{ ObjectFamily = 'SmbShare'; Target = 'WacLab$'; Mask = 1179785; AppliesTo = $null; AddCommand = 'Add-SmbShareAccessRule' }
             @{ ObjectFamily = 'ADObject'; Target = 'CN=Test,OU=Targets,DC=contoso,DC=test'; Mask = 16; AppliesTo = $null; AddCommand = 'Add-ADObjectAccessRule' }
+            @{ ObjectFamily = 'TaskFolder'; Target = '\Operations'; Mask = 33; AppliesTo = 'ThisFolderOnly'; AddCommand = 'Add-TaskFolderAccessRule' }
+            @{ ObjectFamily = 'ScheduledTask'; Target = '\Operations'; Mask = 32; AppliesTo = $null; AddCommand = 'Add-ScheduledTaskAccessRule' }
         ) {
             $parameters = @{
                 ObjectFamily = $ObjectFamily; Account = 'Everyone'
@@ -135,6 +152,10 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             if ($ObjectFamily -eq 'ADObject') {
                 $parameters.AllowedBaseDistinguishedName = 'OU=Targets,DC=contoso,DC=test'
             }
+            if ($ObjectFamily -in @('TaskFolder', 'ScheduledTask')) {
+                $parameters.AllowedRootPath = '\Operations'
+            }
+            if ($ObjectFamily -eq 'ScheduledTask') { $parameters.TaskName = 'Cleanup' }
             if ($ObjectFamily -eq 'Process') {
                 $parameters.ProcessId = 42
                 $parameters.CreationTimeFileTime = 123456789
@@ -153,6 +174,8 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             @{ ObjectFamily = 'Process'; Target = $null; Mask = 4096; AppliesTo = $null; RemoveCommand = 'Remove-ProcessAccessRule' }
             @{ ObjectFamily = 'SmbShare'; Target = 'WacLab$'; Mask = 1179785; AppliesTo = $null; RemoveCommand = 'Remove-SmbShareAccessRule' }
             @{ ObjectFamily = 'ADObject'; Target = 'CN=Test,OU=Targets,DC=contoso,DC=test'; Mask = 16; AppliesTo = $null; RemoveCommand = 'Remove-ADObjectAccessRule' }
+            @{ ObjectFamily = 'TaskFolder'; Target = '\Operations'; Mask = 33; AppliesTo = 'ThisFolderOnly'; RemoveCommand = 'Remove-TaskFolderAccessRule' }
+            @{ ObjectFamily = 'ScheduledTask'; Target = '\Operations'; Mask = 32; AppliesTo = $null; RemoveCommand = 'Remove-ScheduledTaskAccessRule' }
         ) {
             $storedMask = if ($ObjectFamily -eq 'FileSystem') {
                 $Mask -bor 0x00100000
@@ -179,6 +202,10 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             if ($ObjectFamily -eq 'ADObject') {
                 $parameters.AllowedBaseDistinguishedName = 'OU=Targets,DC=contoso,DC=test'
             }
+            if ($ObjectFamily -in @('TaskFolder', 'ScheduledTask')) {
+                $parameters.AllowedRootPath = '\Operations'
+            }
+            if ($ObjectFamily -eq 'ScheduledTask') { $parameters.TaskName = 'Cleanup' }
             if ($ObjectFamily -eq 'Process') {
                 $parameters.ProcessId = 42
                 $parameters.CreationTimeFileTime = 123456789
@@ -391,6 +418,43 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
                     -Ensure Present
             } | Should -Throw '*AllowedBaseDistinguishedName*'
             Should -Invoke Add-ADObjectAccessRule -Exactly -Times 0
+        }
+
+        It 'Should require an allowed root path before a <ObjectFamily> write' -ForEach @(
+            @{ ObjectFamily = 'TaskFolder'; AddCommand = 'Add-TaskFolderAccessRule' }
+            @{ ObjectFamily = 'ScheduledTask'; AddCommand = 'Add-ScheduledTaskAccessRule' }
+        ) {
+            $parameters = @{
+                ObjectFamily = $ObjectFamily
+                Target = '\Operations'
+                Account = 'Everyone'
+                AccessMask = [uint64]32
+                AccessControlType = 'Allow'
+                Ensure = 'Present'
+            }
+            if ($ObjectFamily -eq 'TaskFolder') { $parameters.AppliesTo = 'ThisFolderOnly' }
+            if ($ObjectFamily -eq 'ScheduledTask') { $parameters.TaskName = 'Cleanup' }
+
+            { Set-WindowsAccessControlDscAccessRule @parameters } |
+                Should -Throw '*AllowedRootPath*'
+            Should -Invoke -CommandName $AddCommand -Exactly -Times 0
+        }
+
+        It 'Should reject a task-folder rule whose inheritance scope differs' {
+            $script:rules = @([pscustomobject]@{
+                SID = 'S-1-1-0'; AccessMask = [uint64]33
+                AccessControlType = 'Allow'; AppliesTo = 'ThisFolderAndTasks'
+                IsInherited = $false
+            })
+
+            Get-WindowsAccessControlDscAccessRule `
+                -ObjectFamily TaskFolder `
+                -Target '\Operations' `
+                -Account Everyone `
+                -AccessMask 33 `
+                -AccessControlType Allow `
+                -AppliesTo ThisFolderOnly |
+                Should -BeFalse
         }
     }
 }

@@ -30,6 +30,8 @@ Describe 'Windows access control DSC security descriptor adapters' -Tag 'Unit', 
             Mock Get-ProcessSecurityDescriptor { $script:descriptor }
             Mock Get-SmbShareSecurityDescriptor { $script:descriptor }
             Mock Get-ADObjectSecurityDescriptor { $script:descriptor }
+            Mock Get-TaskFolderSecurityDescriptor { $script:descriptor }
+            Mock Get-ScheduledTaskSecurityDescriptor { $script:descriptor }
             Mock Resolve-WindowsADServer { 'dc01.contoso.test' }
             Mock Set-WindowsNtfsDscSecurityDescriptor
             Mock Set-RegistryKeySecurityDescriptor
@@ -37,6 +39,8 @@ Describe 'Windows access control DSC security descriptor adapters' -Tag 'Unit', 
             Mock Set-ProcessSecurityDescriptor
             Mock Set-SmbShareSecurityDescriptor
             Mock Set-ADObjectSecurityDescriptor
+            Mock Set-TaskFolderSecurityDescriptor
+            Mock Set-ScheduledTaskSecurityDescriptor
         }
 
         It 'Should route a filesystem descriptor read' {
@@ -274,6 +278,81 @@ Describe 'Windows access control DSC security descriptor adapters' -Tag 'Unit', 
                     -Sddl 'D:(A;;0x00000010;;;WD)'
             } | Should -Throw '*object GUID*'
             Should -Invoke Set-ADObjectSecurityDescriptor -Exactly -Times 0
+        }
+
+        It 'Should route a task-folder descriptor read and contained write' {
+            $result = Get-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily TaskFolder `
+                -Target '\Operations' `
+                -Sections Access
+
+            $result | Should -Be $script:descriptor
+            Should -Invoke Get-TaskFolderSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter { $Path -eq '\Operations' }
+
+            Set-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily TaskFolder `
+                -Target '\Operations' `
+                -AllowedRootPath '\Operations' `
+                -Sections Access `
+                -Sddl 'D:(A;;0x00000021;;;WD)'
+
+            Should -Invoke Set-TaskFolderSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $Path -eq '\Operations' -and
+                        $AllowedRootPath -eq '\Operations' -and
+                        $Confirm -eq $false
+                }
+        }
+
+        It 'Should route a registered-task descriptor read and contained write' {
+            $result = Get-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily ScheduledTask `
+                -Target '\Operations' `
+                -TaskName 'Cleanup' `
+                -Sections Access
+
+            $result | Should -Be $script:descriptor
+            Should -Invoke Get-ScheduledTaskSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $TaskPath -eq '\Operations' -and $TaskName -eq 'Cleanup'
+                }
+
+            Set-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily ScheduledTask `
+                -Target '\Operations' `
+                -TaskName 'Cleanup' `
+                -AllowedRootPath '\Operations' `
+                -Sections Access `
+                -Sddl 'D:(A;;0x00000020;;;WD)'
+
+            Should -Invoke Set-ScheduledTaskSecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $TaskPath -eq '\Operations' -and
+                        $TaskName -eq 'Cleanup' -and
+                        $AllowedRootPath -eq '\Operations' -and
+                        $Confirm -eq $false
+                }
+        }
+
+        It 'Should require an allowed root path before a Task Scheduler descriptor write' {
+            {
+                Set-WindowsAccessControlDscSecurityDescriptor `
+                    -ObjectFamily TaskFolder `
+                    -Target '\Operations' `
+                    -Sections Access `
+                    -Sddl 'D:(A;;0x00000021;;;WD)'
+            } | Should -Throw '*AllowedRootPath*'
+            Should -Invoke Set-TaskFolderSecurityDescriptor -Exactly -Times 0
+        }
+
+        It 'Should reject a non-access section for a Task Scheduler family' {
+            {
+                Get-WindowsAccessControlDscSecurityDescriptor `
+                    -ObjectFamily TaskFolder `
+                    -Target '\Operations' `
+                    -Sections Owner
+            } | Should -Throw '*access section*'
         }
     }
 }

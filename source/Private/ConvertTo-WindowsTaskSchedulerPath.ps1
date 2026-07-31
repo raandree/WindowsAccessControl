@@ -8,8 +8,8 @@ function ConvertTo-WindowsTaskSchedulerPath {
     )
 
     $normalizedPath = $Path.Trim()
-    if (-not $normalizedPath.StartsWith('\') -or
-        $normalizedPath.StartsWith('\\') -or
+    if (-not $normalizedPath.StartsWith('\', [StringComparison]::Ordinal) -or
+        $normalizedPath.StartsWith('\\', [StringComparison]::Ordinal) -or
         $normalizedPath.Contains('/') -or
         $normalizedPath.Contains([char]0) -or
         [Management.Automation.WildcardPattern]::ContainsWildcardCharacters(

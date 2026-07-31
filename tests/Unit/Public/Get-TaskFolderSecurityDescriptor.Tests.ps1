@@ -30,7 +30,7 @@ Describe 'Get-TaskFolderSecurityDescriptor behavior' -Tag 'Unit', 'WindowsOnly' 
                 ObjectType = 'TaskFolder'
                 Path = '\Operations'
                 TaskPath = '\Operations'
-                CanonicalTarget = 'TaskFolder:Local:\OPERATIONS'
+                CanonicalTarget = 'TaskFolder:WACHOST:\OPERATIONS'
                 DescriptorSource = 'TaskSchedulerCom'
             }
             Mock Resolve-WindowsTaskSchedulerTarget { $script:target }

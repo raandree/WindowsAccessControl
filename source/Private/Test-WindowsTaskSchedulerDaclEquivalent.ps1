@@ -25,13 +25,16 @@ function Test-WindowsTaskSchedulerDaclEquivalent {
     $getSortedAceIdentities = {
         param([Security.AccessControl.RawAcl]$Acl)
 
-        @(
+        $identities = [string[]]@(
             foreach ($ace in $Acl) {
                 $bytes = [byte[]]::new($ace.BinaryLength)
                 $ace.GetBinaryForm($bytes, 0)
                 [Convert]::ToBase64String($bytes)
             }
-        ) | Sort-Object
+        )
+        # Ordinal ordering keeps the multiset comparison independent of culture.
+        [Array]::Sort($identities, [StringComparer]::Ordinal)
+        $identities
     }
     $leftAces = @(& $getSortedAceIdentities $Left.DiscretionaryAcl)
     $rightAces = @(& $getSortedAceIdentities $Right.DiscretionaryAcl)

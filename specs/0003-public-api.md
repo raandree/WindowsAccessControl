@@ -223,29 +223,36 @@ Arbitrary owner assignment can require `SeRestorePrivilege`.
 The `Sections` value selects any combination of owner, group, DACL, and SACL.
 Copy, backup, and restore preserve sections outside that selection (ADR 0003).
 The unified backup accepts descriptor output from filesystem, registry,
-service/SCM, pinned process, SMB share, and Active Directory commands. Record
+service/SCM, pinned process, SMB share, Active Directory, task folder, and
+registered-task commands. Record
 version is a property of the object family: the five local families use
-schema-version 1 and the two enterprise families use schema-version 2
-(ADR 0016). A record whose family and version disagree is rejected in both
-directions.
+schema-version 1 and the four server-qualified families use schema-version 2
+(ADR 0016 and ADR 0023). A record whose family and version disagree is rejected
+in both directions.
 
 Every record contains object family, target and canonical identity, native
 section mask, SDDL, and a SHA-256 digest. Process records include PID and
 creation `FILETIME`. Version-2 records additionally bind `Server`, plus
 `ShareName` for a share and `DistinguishedName`, `ObjectGuid`, and
 `DomainNamingContext` for a directory object; all of them are covered by the
-digest. The envelope `SchemaVersion` is the highest record version present, and
-restore rejects a document that declares a lower version than one of its
-records.
+digest. A Task Scheduler record adds no field: its `Target` is the absolute
+task path, so the canonical target is exactly `<family>:<SERVER>:<TARGET>` in
+uppercase and restore derives the folder and leaf by splitting `Target` at its
+last separator. The envelope `SchemaVersion` is the highest record version
+present, and restore rejects a document that declares a lower version than one
+of its records.
 
 `Restore-WindowsSecurityDescriptor` gains `Server`,
-`AllowedBaseDistinguishedName`, `Credential`, and `TimeoutSeconds` for
-enterprise records. An SMB record restores only on the computer named in the
+`AllowedBaseDistinguishedName`, `AllowedRootPath`, `Credential`, and
+`TimeoutSeconds` for
+enterprise records. An SMB or Task Scheduler record restores only on the
+computer named in the
 record. A directory record requires an allowed base, binds one explicit or
 discovered writable domain controller for the whole restore, and matches
 identity on the immutable `objectGUID` and recorded domain naming context so a
-different controller can serve the restore. Specification 0013 owns this
-contract.
+different controller can serve the restore. A Task Scheduler record requires
+`AllowedRootPath` and is resolved for write during preparation. Specifications
+0013 and 0014 own this contract.
 
 `SigningCertificate` signs every record hash with RSA/SHA-256. Signed records
 require the matching `VerificationCertificate`; supplying a verification
@@ -625,6 +632,8 @@ process resets the counters.
 | `WindowsAccessControlProcessSecurityDescriptor` | `ProcessId`, `CreationTimeFileTime`, `Sections` | `Sddl` |
 | `WindowsAccessControlSmbShareSecurityDescriptor` | `Name`, `Sections` | `Sddl` |
 | `WindowsAccessControlADObjectSecurityDescriptor` | `DistinguishedName`, `Sections` | `AllowedBaseDistinguishedName`, `Sddl` |
+| `WindowsAccessControlTaskFolderSecurityDescriptor` | `Path`, `Sections` | `AllowedRootPath`, `Sddl` |
+| `WindowsAccessControlScheduledTaskSecurityDescriptor` | `TaskPath`, `TaskName`, `Sections` | `AllowedRootPath`, `Sddl` |
 
 Every resource is class-based, has `Get()`, `Test()`, and `Set()` methods, and
 returns `WindowsAccessControlDscReason` entries for selected-section SDDL
@@ -655,6 +664,15 @@ credentials. `WindowsAccessControlADObjectSecurityDescriptor` also accepts an
 optional `ObjectGuid` and fails when the distinguished name now resolves to a
 different directory object.
 
+The Task Scheduler resources also manage the access section only and require
+`AllowedRootPath` before a write. Their compliance check compares DACL
+protection, auto-inherit-required state, ACL revision, and the
+duplicate-sensitive ACE multiset while ignoring ACE order, because the Task
+Scheduler service canonicalizes order after a write. Windows evaluates a DACL
+in order, so they cannot detect a reordering that promotes an allow ACE above a
+deny ACE. Specification 0014 owns
+this contract.
+
 ## Access-rule presence DSC resources
 
 | Resource | Composite keys | Configurable state |
@@ -666,6 +684,8 @@ different directory object.
 | `WindowsAccessControlProcessAccessRule` | `ProcessId`, `CreationTimeFileTime`, `Account`, `ProcessRights`, `AccessControlType` | `Ensure` |
 | `WindowsAccessControlSmbShareAccessRule` | `Name`, `Account`, `AccessRights`, `AccessControlType` | `Ensure` |
 | `WindowsAccessControlADObjectAccessRule` | `DistinguishedName`, `Account`, `AccessRights`, `AccessControlType`, `InheritanceType`, `ObjectType`, `InheritedObjectType` | `Ensure` |
+| `WindowsAccessControlTaskFolderAccessRule` | `Path`, `Account`, `AccessRights`, `AccessControlType`, `AppliesTo` | `Ensure` |
+| `WindowsAccessControlScheduledTaskAccessRule` | `TaskPath`, `TaskName`, `Account`, `AccessRights`, `AccessControlType` | `Ensure` |
 
 `WindowsAccessControlDscEnsure` exposes `Absent` and `Present`; the resource
 default is `Present`. Exact identity is SID, normalized unsigned 32-bit rights
@@ -680,6 +700,9 @@ Registry view and process creation `FILETIME` remain part of target identity.
 Directory rule identity additionally includes both object GUIDs and the
 directory inheritance type; `ObjectType` and `InheritedObjectType` are empty
 strings for an unscoped ACE and must otherwise parse as a GUID.
+Task folder rule identity includes the folder inheritance scope; a registered
+task is a leaf object and exposes no `AppliesTo`. Both Task Scheduler rule
+resources require `AllowedRootPath`.
 Because Windows can merge same-account, qualifier, and scope ACEs, a narrower
 exact `Present` rule cannot converge beside an existing rights superset; callers
 model the superset or use an exact-descriptor resource.

@@ -25,6 +25,7 @@ them.
 11. [SMB share-only effective access](0011-smb-share-only-effective-access.md)
 12. [CNG private-key DACL inspection](0012-cng-private-key-dacl-inspection.md)
 13. [Enterprise portability and desired state](0013-enterprise-portability-and-desired-state.md)
+14. [Task Scheduler portability and desired state](0014-task-scheduler-portability-and-desired-state.md)
 
 ## Status
 
@@ -43,6 +44,7 @@ them.
 | 0011 | SMB share-only effective access | Accepted |
 | 0012 | CNG private-key DACL inspection | Accepted |
 | 0013 | Enterprise portability and desired state | Accepted |
+| 0014 | Task Scheduler portability and desired state | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
@@ -64,7 +66,9 @@ Provider without admitting mutation or broader provider support.
 Specification 0013 accepts schema-version-2 portability, server-qualified SMB
 canonical identity, and object-specific desired-state resources for the SMB
 share and Active Directory families, and records the accepted directory
-effective-access boundary. A future
+effective-access boundary. Specification 0014 extends the same portability and
+desired-state model to the Task Scheduler folder and registered-task families
+with computer-qualified canonical identity. A future
 change starts as `Draft` and
 becomes `Accepted` when approved.
 

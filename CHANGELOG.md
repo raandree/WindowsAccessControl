@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Qualify Task Scheduler canonical identity by the owning computer, so
+    `CanonicalTarget` is now `TaskFolder:<COMPUTER>:<PATH>` or
+    `ScheduledTask:<COMPUTER>:<PATH>` instead of the previous `Local` form, and
+    a registered task in the root folder no longer reports a doubled separator
+
 ### Fixed
 
 - Fix `Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` silently
@@ -15,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add schema-version-2 descriptor portability for Task Scheduler folders and
+    registered tasks, qualifying canonical identity by the owning computer
+    (`TaskFolder:<COMPUTER>:<PATH>`) so a record cannot be replayed on another
+    machine; no hashed field was added, so every existing backup still validates
+- Add `AllowedRootPath` to `Restore-WindowsSecurityDescriptor`; a Task Scheduler
+    record restores only on the computer it names and every target is resolved
+    for write during preparation
+- Add four class-based DSC resources:
+    `WindowsAccessControlTaskFolderSecurityDescriptor`,
+    `WindowsAccessControlScheduledTaskSecurityDescriptor`,
+    `WindowsAccessControlTaskFolderAccessRule`, and
+    `WindowsAccessControlScheduledTaskAccessRule`
 - Add schema-version-2 descriptor portability for SMB share and Active
     Directory targets, binding the explicit server plus the immutable share
     name or distinguished name, `objectGUID`, and domain naming context into the

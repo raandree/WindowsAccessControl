@@ -23,7 +23,7 @@ Describe 'Set-ScheduledTaskSecurityDescriptor behavior' -Tag 'Unit', 'WindowsOnl
             Path = '\Operations\Cleanup'
             TaskPath = '\Operations'
             TaskName = 'Cleanup'
-            CanonicalTarget = 'ScheduledTask:Local:\OPERATIONS\CLEANUP'
+            CanonicalTarget = 'ScheduledTask:WACHOST:\OPERATIONS\CLEANUP'
             DescriptorSource = 'TaskSchedulerCom'
         }
         Mock -ModuleName WindowsAccessControl Resolve-WindowsTaskSchedulerTarget {

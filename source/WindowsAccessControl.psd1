@@ -188,6 +188,8 @@ DscResourcesToExport = @(
     'WindowsAccessControlProcessSecurityDescriptor'
     'WindowsAccessControlSmbShareSecurityDescriptor'
     'WindowsAccessControlADObjectSecurityDescriptor'
+    'WindowsAccessControlTaskFolderSecurityDescriptor'
+    'WindowsAccessControlScheduledTaskSecurityDescriptor'
     'WindowsAccessControlNtfsAccessRule'
     'WindowsAccessControlRegistryKeyAccessRule'
     'WindowsAccessControlServiceAccessRule'
@@ -195,6 +197,8 @@ DscResourcesToExport = @(
     'WindowsAccessControlProcessAccessRule'
     'WindowsAccessControlSmbShareAccessRule'
     'WindowsAccessControlADObjectAccessRule'
+    'WindowsAccessControlTaskFolderAccessRule'
+    'WindowsAccessControlScheduledTaskAccessRule'
 )
 
 # List of all modules packaged with this module

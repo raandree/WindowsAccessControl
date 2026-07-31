@@ -22,7 +22,8 @@ function Resolve-WindowsTaskSchedulerTarget {
         $taskPath = ConvertTo-WindowsTaskSchedulerPath -Path $Path
         if ($PSBoundParameters.ContainsKey('TaskName')) {
             $normalizedTaskName = $TaskName.Trim()
-            if ($normalizedTaskName -in @('.', '..') -or
+            if ([string]::IsNullOrEmpty($normalizedTaskName) -or
+                $normalizedTaskName -in @('.', '..') -or
                 $normalizedTaskName -match '[\\/:]' -or
                 $normalizedTaskName.Contains([char]0) -or
                 [Management.Automation.WildcardPattern]::ContainsWildcardCharacters(
@@ -73,29 +74,24 @@ function Resolve-WindowsTaskSchedulerTarget {
         else {
             'TaskFolder'
         }
-        $canonicalPath = $taskPath.ToUpperInvariant()
-        $canonicalTarget = if ($objectType -eq 'ScheduledTask') {
-            'ScheduledTask:Local:{0}\{1}' -f (
-                $canonicalPath,
-                $normalizedTaskName.ToUpperInvariant()
-            )
-        }
-        else {
-            'TaskFolder:Local:{0}' -f $canonicalPath
-        }
         $targetPath = $taskPath
         $targetTaskName = $null
         if ($objectType -eq 'ScheduledTask') {
             $targetPath = "$taskPath\$normalizedTaskName"
             $targetTaskName = $normalizedTaskName
         }
+        # The owning computer qualifies the identity so a portability record
+        # cannot be replayed against another machine's task store.
+        $serverName = [System.Environment]::MachineName.ToUpperInvariant()
 
         [pscustomobject]@{
             ObjectType       = $objectType
             Path             = $targetPath
             TaskPath         = $taskPath
             TaskName         = $targetTaskName
-            CanonicalTarget  = $canonicalTarget
+            Server           = $serverName
+            CanonicalTarget  = '{0}:{1}:{2}' -f
+                $objectType, $serverName, $targetPath.ToUpperInvariant()
             DescriptorSource = 'TaskSchedulerCom'
         }
     }
