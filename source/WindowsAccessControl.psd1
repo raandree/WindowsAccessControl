@@ -71,6 +71,7 @@ FormatsToProcess = @('WindowsAccessControl.Format.ps1xml')
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
     'Add-ADObjectAccessRule'
+    'Add-CertificatePrivateKeyAccessRule'
     'Add-NTFSAccessRule'
     'Add-NTFSAuditRule'
     'Add-ProcessAccessRule'
@@ -104,6 +105,7 @@ FunctionsToExport = @(
     'Enable-WindowsPrivilege'
     'Get-ADObjectAccessRule'
     'Get-ADObjectSecurityDescriptor'
+    'Get-CertificatePrivateKeyAccessRule'
     'Get-CertificatePrivateKeySecurityDescriptor'
     'Get-NTFSAccessRule'
     'Get-NTFSAuditRule'
@@ -134,6 +136,7 @@ FunctionsToExport = @(
     'New-NTFSAccessRule'
     'New-NTFSAuditRule'
     'Remove-ADObjectAccessRule'
+    'Remove-CertificatePrivateKeyAccessRule'
     'Remove-NTFSAccessRule'
     'Remove-NTFSAuditRule'
     'Remove-ProcessAccessRule'
@@ -150,6 +153,7 @@ FunctionsToExport = @(
     'Restore-WindowsSecurityDescriptor'
     'Set-ADObjectAccessRule'
     'Set-ADObjectSecurityDescriptor'
+    'Set-CertificatePrivateKeySecurityDescriptor'
     'Set-NTFSAccessRule'
     'Set-NTFSAuditRule'
     'Set-NTFSItemOwner'
@@ -166,6 +170,7 @@ FunctionsToExport = @(
     'Set-ServiceSecurityDescriptor'
     'Set-SmbShareSecurityDescriptor'
     'Set-TaskFolderSecurityDescriptor'
+    'Test-CertificatePrivateKeyCriticalBinding'
     'Test-NTFSItemAcl'
     'Test-WindowsPrivilege'
 )

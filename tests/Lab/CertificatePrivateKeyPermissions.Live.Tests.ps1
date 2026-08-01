@@ -113,3 +113,176 @@ Describe 'Certificate private-key DACL inspection' `
         $result.CertificateStillUsable | Should -BeTrue
     }
 }
+
+Describe 'Certificate private-key DACL mutation' `
+    -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    It 'Should add, exactly remove, and refuse an unsafe private-key rule change' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:remoteManifest `
+            -ScriptBlock {
+                param($Manifest)
+
+                Import-Module $Manifest -Force -ErrorAction Stop
+                $certificate = @(
+                    Get-ChildItem Cert:\LocalMachine\My |
+                        Where-Object {
+                            $_.Subject -ceq 'CN=WindowsAccessControl Lab Key' -and
+                            $_.FriendlyName -ceq 'WindowsAccessControl Lab Key'
+                        }
+                )[0]
+                $privateKey = $null
+                try {
+                    $privateKey = [Security.Cryptography.X509Certificates.RSACertificateExtensions]::
+                        GetRSAPrivateKey($certificate)
+                    $providerName = $privateKey.Key.Provider.Provider
+                    $keyName = $privateKey.Key.KeyName
+                }
+                finally {
+                    if ($privateKey) {
+                        $privateKey.Dispose()
+                    }
+                }
+                $common = @{
+                    Certificate  = $certificate
+                    ProviderName = $providerName
+                    KeyName      = $keyName
+                }
+
+                $originalSddl = (Get-CertificatePrivateKeySecurityDescriptor @common).Sddl
+                $originalRules = @(Get-CertificatePrivateKeyAccessRule @common)
+
+                Add-CertificatePrivateKeyAccessRule @common `
+                    -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                $addedRules = @(Get-CertificatePrivateKeyAccessRule @common)
+
+                Add-CertificatePrivateKeyAccessRule @common `
+                    -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                $idempotentRules = @(Get-CertificatePrivateKeyAccessRule @common)
+
+                Remove-CertificatePrivateKeyAccessRule @common `
+                    -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                $restoredSddl = (Get-CertificatePrivateKeySecurityDescriptor @common).Sddl
+
+                $systemRefusal = $null
+                try {
+                    Remove-CertificatePrivateKeyAccessRule @common `
+                        -Account 'NT AUTHORITY\SYSTEM' `
+                        -AccessRights FullControl `
+                        -Confirm:$false
+                }
+                catch {
+                    $systemRefusal = $_.Exception.Message
+                }
+
+                $denyRefusal = $null
+                try {
+                    Set-CertificatePrivateKeySecurityDescriptor @common `
+                        -Sddl 'D:P(D;;FA;;;WD)(A;;FA;;;SY)(A;;FA;;;BA)' `
+                        -Confirm:$false
+                }
+                catch {
+                    $denyRefusal = $_.Exception.Message
+                }
+
+                $conditionalRefusal = $null
+                try {
+                    Set-CertificatePrivateKeySecurityDescriptor @common `
+                        -Sddl 'D:P(XA;;FA;;;SY;(@USER.Title=="x"))(XA;;FA;;;BA;(@USER.Title=="x"))' `
+                        -Confirm:$false
+                }
+                catch {
+                    $conditionalRefusal = $_.Exception.Message
+                }
+
+                $providerRefusal = $null
+                try {
+                    $null = Get-CertificatePrivateKeyAccessRule `
+                        -Certificate $certificate `
+                        -ProviderName 'Microsoft Smart Card Key Storage Provider' `
+                        -KeyName $keyName
+                }
+                catch {
+                    $providerRefusal = $_.Exception.Message
+                }
+
+                $staleToken = (Get-CertificatePrivateKeySecurityDescriptor @common).ConcurrencyToken
+                Add-CertificatePrivateKeyAccessRule @common `
+                    -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                $staleTokenRefusal = $null
+                try {
+                    Set-CertificatePrivateKeySecurityDescriptor @common `
+                        -Sddl $originalSddl `
+                        -ConcurrencyToken $staleToken `
+                        -Confirm:$false
+                }
+                catch {
+                    $staleTokenRefusal = $_.Exception.Message
+                }
+
+                Set-CertificatePrivateKeySecurityDescriptor @common `
+                    -Sddl $originalSddl -Confirm:$false
+                $setRestoredSddl = (Get-CertificatePrivateKeySecurityDescriptor @common).Sddl
+
+                Add-CertificatePrivateKeyAccessRule @common `
+                    -Account 'BUILTIN\Users' -AccessRights Read -WhatIf
+                $whatIfSddl = (Get-CertificatePrivateKeySecurityDescriptor @common).Sddl
+
+                $rdpThumbprint = (
+                    Get-CimInstance `
+                        -Namespace 'root/cimv2/TerminalServices' `
+                        -ClassName 'Win32_TSGeneralSetting'
+                ).SSLCertificateSHA1Hash
+                $rdpStore = [Security.Cryptography.X509Certificates.X509Store]::new(
+                    'Remote Desktop',
+                    'LocalMachine'
+                )
+                $rdpStore.Open('ReadOnly')
+                $rdpCertificate = @(
+                    $rdpStore.Certificates |
+                        Where-Object { $_.Thumbprint -eq $rdpThumbprint }
+                )[0]
+                $rdpStore.Close()
+                $rdpBindings = @(
+                    Test-CertificatePrivateKeyCriticalBinding -Certificate $rdpCertificate
+                )
+
+                [pscustomobject]@{
+                    OriginalRuleCount  = $originalRules.Count
+                    AddedRuleCount     = $addedRules.Count
+                    AddedUsersRights   = [string](
+                        $addedRules | Where-Object SID -EQ 'S-1-5-32-545'
+                    ).AccessRights
+                    IdempotentCount    = $idempotentRules.Count
+                    OriginalSddl       = $originalSddl
+                    RestoredSddl       = $restoredSddl
+                    SetRestoredSddl    = $setRestoredSddl
+                    WhatIfSddl         = $whatIfSddl
+                    SystemRefusal      = $systemRefusal
+                    DenyRefusal        = $denyRefusal
+                    ConditionalRefusal = $conditionalRefusal
+                    ProviderRefusal    = $providerRefusal
+                    StaleTokenRefusal  = $staleTokenRefusal
+                    BindingCount       = @(
+                        Test-CertificatePrivateKeyCriticalBinding -Certificate $certificate
+                    ).Count
+                    RdpBindings        = @($rdpBindings | ForEach-Object { $_.Binding })
+                }
+            }
+
+        $result.OriginalRuleCount | Should -BeGreaterOrEqual 2
+        $result.AddedRuleCount | Should -Be ($result.OriginalRuleCount + 1)
+        $result.AddedUsersRights | Should -BeExactly 'Read'
+        $result.IdempotentCount | Should -Be $result.AddedRuleCount
+        $result.RestoredSddl | Should -BeExactly $result.OriginalSddl
+        $result.SetRestoredSddl | Should -BeExactly $result.OriginalSddl
+        $result.WhatIfSddl | Should -BeExactly $result.OriginalSddl
+        $result.SystemRefusal | Should -BeLike '*full control*'
+        $result.DenyRefusal | Should -BeLike '*adds a deny ACE*'
+        $result.ConditionalRefusal | Should -BeLike '*Only plain allow and deny ACEs*'
+        $result.ProviderRefusal | Should -BeLike '*not admitted*'
+        $result.StaleTokenRefusal | Should -BeLike '*changed after they were read*'
+        $result.BindingCount | Should -Be 0
+        $result.RdpBindings | Should -Contain 'RemoteDesktop'
+    }
+}

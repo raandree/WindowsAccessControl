@@ -499,12 +499,27 @@ DSC, and direct remote APIs remain outside this contract.
 | Command | Pipeline input | Returns |
 | --- | --- | --- |
 | `Get-CertificatePrivateKeySecurityDescriptor` | exact `X509Certificate2` | `CertificatePrivateKeySecurityDescriptor` |
+| `Get-CertificatePrivateKeyAccessRule` | exact `X509Certificate2` | `CertificatePrivateKeyAccessRule` |
+| `Add-CertificatePrivateKeyAccessRule` | exact `X509Certificate2` | none / `CertificatePrivateKeyAccessRule` |
+| `Remove-CertificatePrivateKeyAccessRule` | exact `X509Certificate2` | none |
+| `Set-CertificatePrivateKeySecurityDescriptor` | exact `X509Certificate2` | none / `CertificatePrivateKeySecurityDescriptor` |
+| `Test-CertificatePrivateKeyCriticalBinding` | thumbprints | `CertificateCriticalBinding` |
 
-The read-only command requires the exact expected CNG provider and persisted
-key name in addition to the certificate selector. It supports only RSA keys in
-Microsoft Software Key Storage Provider and emits the DACL descriptor plus
-stable provider identity metadata. It never searches stores, exports key
-material, disposes the caller certificate, or exposes a mutation surface.
+Every command requires the exact expected CNG provider and persisted key name
+in addition to the certificate selector. They support only RSA keys in
+Microsoft Software Key Storage Provider and never search stores, export key
+material, or dispose the caller certificate.
+
+`Get-CertificatePrivateKeySecurityDescriptor` and
+`Get-CertificatePrivateKeyAccessRule` are read-only. The three mutating
+commands manage the access section only, serialize on the canonical key
+identity, verify the stored result, and roll back exactly when the write cannot
+be verified. Specification 0015 defines the fail-closed gates they enforce:
+software-only provider implementation, critical-binding refusal, and
+preservation of SYSTEM, Administrators, and every existing service grant.
+`Test-CertificatePrivateKeyCriticalBinding` reports the bindings that cause a
+refusal without changing state. Audit rules, SACL, owner and group mutation,
+key creation, key deletion, portability, and DSC remain outside this contract.
 
 ## Active Directory object commands
 

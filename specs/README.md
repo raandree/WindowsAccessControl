@@ -26,6 +26,7 @@ them.
 12. [CNG private-key DACL inspection](0012-cng-private-key-dacl-inspection.md)
 13. [Enterprise portability and desired state](0013-enterprise-portability-and-desired-state.md)
 14. [Task Scheduler portability and desired state](0014-task-scheduler-portability-and-desired-state.md)
+15. [CNG private-key DACL mutation](0015-cng-private-key-dacl-mutation.md)
 
 ## Status
 
@@ -45,6 +46,7 @@ them.
 | 0012 | CNG private-key DACL inspection | Accepted |
 | 0013 | Enterprise portability and desired state | Accepted |
 | 0014 | Task Scheduler portability and desired state | Accepted |
+| 0015 | CNG private-key DACL mutation | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
@@ -68,7 +70,9 @@ canonical identity, and object-specific desired-state resources for the SMB
 share and Active Directory families, and records the accepted directory
 effective-access boundary. Specification 0014 extends the same portability and
 desired-state model to the Task Scheduler folder and registered-task families
-with computer-qualified canonical identity. A future
+with computer-qualified canonical identity. Specification 0015 supersedes the
+read-only boundary of specification 0012 with fail-closed typed private-key DACL
+mutation for the software key storage provider. A future
 change starts as `Draft` and
 becomes `Accepted` when approved.
 

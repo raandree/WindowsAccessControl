@@ -232,6 +232,24 @@ namespace WindowsAccessControl
         [DllImport("kernel32.dll")]
         private static extern void SetLastError(UInt32 errorCode);
 
+        [DllImport("ncrypt.dll", CharSet = CharSet.Unicode)]
+        private static extern Int32 NCryptOpenStorageProvider(
+            out IntPtr providerHandle,
+            string providerName,
+            UInt32 flags);
+
+        [DllImport("ncrypt.dll", CharSet = CharSet.Unicode)]
+        private static extern Int32 NCryptGetProperty(
+            IntPtr objectHandle,
+            string property,
+            byte[] output,
+            Int32 outputLength,
+            out Int32 resultLength,
+            UInt32 flags);
+
+        [DllImport("ncrypt.dll")]
+        private static extern Int32 NCryptFreeObject(IntPtr objectHandle);
+
         [DllImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool OpenProcessToken(
@@ -1673,6 +1691,48 @@ namespace WindowsAccessControl
             finally
             {
                 CloseHandle(tokenHandle);
+            }
+        }
+
+        public static UInt32 GetKeyStorageProviderImplementationType(string providerName)
+        {
+            if (string.IsNullOrEmpty(providerName))
+            {
+                throw new ArgumentException("A provider name is required.", "providerName");
+            }
+
+            IntPtr providerHandle = IntPtr.Zero;
+            Int32 status = NCryptOpenStorageProvider(out providerHandle, providerName, 0);
+            if (status != 0)
+            {
+                throw new Win32Exception(
+                    status,
+                    "NCryptOpenStorageProvider failed for provider '" + providerName +
+                    "' with status 0x" + status.ToString("X8") + ".");
+            }
+
+            try
+            {
+                byte[] buffer = new byte[4];
+                Int32 written;
+                status = NCryptGetProperty(providerHandle, "Impl Type", buffer, buffer.Length, out written, 0);
+                if (status != 0)
+                {
+                    throw new Win32Exception(
+                        status,
+                        "NCryptGetProperty('Impl Type') failed for provider '" + providerName +
+                        "' with status 0x" + status.ToString("X8") + ".");
+                }
+                if (written != buffer.Length)
+                {
+                    throw new InvalidOperationException(
+                        "The key storage provider returned an unexpected implementation type size.");
+                }
+                return BitConverter.ToUInt32(buffer, 0);
+            }
+            finally
+            {
+                NCryptFreeObject(providerHandle);
             }
         }
 

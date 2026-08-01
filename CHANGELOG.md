@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add fail-closed DACL mutation for a persisted RSA private key in Microsoft
+    Software Key Storage Provider through
+    `Add-CertificatePrivateKeyAccessRule`,
+    `Remove-CertificatePrivateKeyAccessRule`,
+    `Set-CertificatePrivateKeySecurityDescriptor`, and the typed reader
+    `Get-CertificatePrivateKeyAccessRule`; the write is refused unless the
+    provider itself reports a software-only implementation, no HTTP.sys, WinRM
+    HTTPS, Remote Desktop, or LDAPS binding uses the same private key, every
+    candidate ACE is a plain allow or deny, no deny ACE is added, and the result
+    keeps SYSTEM, Administrators, and every existing service grant
+- Add `Test-CertificatePrivateKeyCriticalBinding` so a refused private-key write
+    can be explained without changing state; it compares the private key by
+    public key rather than by thumbprint, so a certificate renewed with key reuse
+    cannot hide a live binding
+- Add `WindowsCryptoKeyRights`, which mirrors the file rights the software key
+    storage provider stores, and compare every private-key ACE after expanding
+    the generic bit the provider adds when it stores a candidate
+- Add a reproducible multi-forest lab deployment
+    (`tests/Lab/Deploy-WindowsAccessControlLab.ps1`) with three forests, two
+    child domains, a second writable domain controller in the fixture domain, an
+    enterprise root certification authority, and four member servers
+- Add live Active Directory replication, domain-controller switch, rename, move,
+    deletion, and distinguished-name reuse coverage
+    (`tests/Lab/ADObjectReplication.Live.Tests.ps1`)
+
 ### Changed
 
 - Qualify Task Scheduler canonical identity by the owning computer, so

@@ -2,20 +2,38 @@
 
 Status: Verified (`ENT-1` and `ENT-2` complete; `ENT-3` to `ENT-5` decisions accepted)
 
-Last verified: 2026-07-28
+Last verified: 2026-08-01
 
 This document records the secret-free evidence for task `ENT-1`. Actual machine
 names, domain names, credentials, recovery material, and symbolic-role mappings
 remain outside the repository.
 
+## Provisioning
+
+The lab is defined by
+[Deploy-WindowsAccessControlLab.ps1](../tests/Lab/Deploy-WindowsAccessControlLab.ps1),
+which builds it with AutomatedLab on a Hyper-V host. The script takes the
+administrator credential as a parameter, so no secret is stored in this
+repository. It also removes a predecessor lab, its orphaned virtual switch, and
+any stale host-file entry, because a switch that outlives its lab keeps a host
+adapter on the retired subnet while the new lab picks the next free one and
+silently strands every new machine.
+
+The development host is not domain joined. It sits on the lab virtual switch and
+orchestrates the lab through AutomatedLab, which uses credential delegation, so
+a directory call inside a lab session holds a real ticket-granting ticket. The
+module pins Kerberos for its LDAP bind and does not fall back to NTLM, so a
+workgroup host cannot drive the Active Directory commands directly and every
+enterprise suite runs inside the lab.
+
 ## Safety status
 
 | Gate | State | Evidence or required action |
 | --- | --- | --- |
-| Non-production use | Verified | The operator confirmed that the two-machine environment is unused and disposable. |
-| Trust isolation | Verified | The selected forest contains one domain and reports no trusts. |
-| Production network route isolation | Verified | The operator attested that the disposable lab has no production-directory trust or routable production path. This is operator attestation, not an independent network map. |
-| Machine reset | Verified | The operator captured snapshots of both machines before fixture mutation. |
+| Non-production use | Verified | The lab is created and destroyed by the deployment script and holds no production data. |
+| Trust isolation | Verified | The trusts are internal to the lab: two parent-child trusts inside the first forest and forest-transitive trusts between the three lab forests. No trust leaves the lab. |
+| Production network route isolation | Verified | The lab uses an internal Hyper-V switch with no external adapter. This is operator attestation plus the switch type, not an independent network map. |
+| Machine reset | Verified | The whole lab is reproducible from the deployment script. |
 | Recovery identity | Verified | The untouched RID-500 identity is enabled, has domain recovery authority, and performed successful teardown. |
 | Secret handling | Verified | Fixture users remain disabled; no credentials, passwords, private-key material, or recovery data were retained. |
 
@@ -27,30 +45,28 @@ contracts.
 
 | Symbolic role | Count | Verified properties |
 | --- | ---: | --- |
-| Forest | 1 | Windows Server 2016 forest functional level |
-| Domain | 1 | Windows Server 2016 domain functional level |
-| Writable domain controller | 1 | Global catalog; Windows Server 2022 Datacenter |
-| Read-only domain controller | 0 | None discovered |
-| Member server | 1 | Domain joined; Windows Server 2022 Datacenter |
-| Management host | 1 | Co-located on the writable domain controller |
+| Forest | 3 | Windows Server 2016 forest functional level |
+| Domain | 5 | One forest root with two child domains, plus two single-domain forests |
+| Writable domain controller | 5 | Every domain controller is a global catalog on Windows Server 2025 |
+| Replication partner | 1 pair | The fixture domain has two writable domain controllers, so replication, convergence, and domain-controller switch are testable |
+| Certification authority | 1 | Enterprise root certification authority in the forest root domain |
+| Member server | 5 | Domain joined; one hosts the shared fixtures and one additionally runs a web server for HTTP.sys binding evidence |
+| Management host | 1 | The Hyper-V host, not domain joined; orchestrates through AutomatedLab |
 
-The management and domain-controller roles share one machine, so the topology
-contains two unique machines. One writable domain controller supports inventory,
-fixture lifecycle, and read-only API probes. It does not satisfy replication,
-domain-controller switch, or failover evidence.
+The forest root domain also holds a second writable domain controller, so the
+forest-wide partitions have more than one writable replica as well.
 
 ## Role capabilities
 
 | Symbolic role | Windows PowerShell | PowerShell 7 | Active Directory module | LDAP protocol API | Relevant services |
 | --- | --- | --- | --- | --- | --- |
-| Management host | Installed | 7.6.3 | Available | Available | Not evaluated |
-| Domain controller | 5.1.20348.4294 | Installed | Available | Available | Directory service running |
-| Member server | 5.1.20348.4294 | 7.6.3 | Not installed | Available | Task Scheduler, SMB server, and WinRM running |
+| Management host | Installed | 7.6.3 | Not installed | Available | Hyper-V and AutomatedLab |
+| Domain controller | 5.1 on Windows Server 2025 | Installed by the deployment | Available | Available | Directory service running |
+| Member server | 5.1 on Windows Server 2025 | Installed by the deployment | Installed by the deployment | Available | Task Scheduler, SMB server, and WinRM running |
 
-The member server hosts Windows PowerShell 5.1 and a Microsoft-signed
-PowerShell 7.6.3 payload copied from the management host over Kerberos after the
-isolated member could not resolve the official download host. The remote
-`pwsh.exe` signature and version were independently verified before use.
+The deployment installs PowerShell 7 and Pester 5 on every machine, so both
+supported editions are available for cross-edition acceptance without an
+ad-hoc payload copy.
 
 ## Disposable fixture lifecycle
 
@@ -179,14 +195,16 @@ parts of `AD-1`.
 
 ## Additional environment
 
-The present two-machine, three-role topology is sufficient for the entry-gate
-design, disposable fixtures, and read-only probes. The following additions or
-changes are required by later gates:
+The present topology satisfies the entry-gate design, disposable fixtures,
+read-only probes, replication and domain-controller switch evidence, and
+certificate enrollment. The following additions are required only by later
+gates:
 
-- Add a second writable domain controller before `AD-6` replication,
-  domain-controller switch, or failover tests.
-- Add a certification authority or another domain or forest only when a later
-  accepted work package requires it.
+- Add a read-only domain controller before any claim about read-only directory
+  behavior. AutomatedLab exposes no read-only domain controller role, so this
+  needs manual promotion.
+- Add a second forest-root replication partner in a second site before any claim
+  about inter-site replication latency or scheduling.
 
 ## See also
 

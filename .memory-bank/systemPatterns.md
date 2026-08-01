@@ -791,3 +791,47 @@ and Decision 42.
     restored. Verified on 2026-07-31 with a throwaway suite whose `AfterAll`
     throws.
 
+
+### Decision 72: Key the private-key binding gate on the key, not the certificate
+
+- Choice: Refuse a private-key DACL write when any HTTP.sys, WinRM HTTPS,
+    Remote Desktop, or LDAPS binding uses the same private key, and decide
+    sameness by comparing subject public keys rather than thumbprints.
+- Rationale: The canonical write target is the key, while a binding names a
+    certificate, and the relation is many-to-one. A renewal with key reuse
+    (`certreq -renew` without `-newkey`, auto-enrollment configured to reuse the
+    key, or an IIS renew) produces a second certificate over the same container
+    while the binding still names the old thumbprint. A thumbprint comparison
+    passes and the live TLS or LDAPS key is rewritten. Two certificates share a
+    private key exactly when they carry the same public key, and that comparison
+    needs no key handle, so it also works for a bound certificate whose private
+    key cannot be opened. A bound thumbprint that resolves to no stored
+    certificate throws, because its key cannot be compared.
+
+### Decision 73: Refuse a new deny ACE and any non-plain ACE on a private key
+
+- Choice: Reject a candidate private-key DACL that adds a deny ACE the stored
+    DACL does not already contain, and reject any ACE whose type is not plain
+    `AccessAllowed` or `AccessDenied`. `Add-CertificatePrivateKeyAccessRule`
+    therefore exposes no `AccessControlType`.
+- Rationale: A per-account preservation gate cannot see either bypass, and both
+    were proven against the built module. A deny ACE naming `WD` or `AU` denies
+    SYSTEM and Administrators through group membership while the literal-SID
+    grant check still passes. A callback ACE parses with an `AccessAllowed`
+    qualifier and satisfies a required grant, yet grants nothing when its
+    condition evaluates false. Enumerating every group that could contain a
+    recovery identity is not decidable, so the class is removed instead of
+    filtered. Removing a deny ACE that already exists stays supported, because
+    that direction can only widen access.
+
+### Decision 74: Compare a private-key ACE by type and payload, not by qualifier
+
+- Choice: Build the ACE comparison key from the security identifier, ACE type,
+    generic-expanded mask, ACE flags, a digest of any conditional payload, and
+    any object ACE scope, and give a custom ACE a key over its exact bytes.
+- Rationale: `AceQualifier` maps `AccessAllowedCallback` onto `AccessAllowed`,
+    so a qualifier-based key equated a conditional DACL with its plain
+    equivalent. That defect made three things unsound at once: reasserting the
+    plain DACL over a conditional one was a silent no-op, write verification
+    accepted a stored DACL of a different ACE type, and rollback verification
+    accepted a restored DACL of a different ACE type.

@@ -206,6 +206,35 @@ enum WindowsProcessRights {
     AllAccess = 0x001FFFFF
 }
 
+# Microsoft Software Key Storage Provider persists a key as a file, so its
+# NCRYPT_SECURITY_DESCR_PROPERTY descriptor carries the file access mask. A
+# live probe showed the provider stores a candidate ACE with the matching
+# generic bit added, so equivalence must be compared after generic expansion.
+[Flags()]
+enum WindowsCryptoKeyRights {
+    ReadData = 0x00000001
+    WriteData = 0x00000002
+    AppendData = 0x00000004
+    ReadExtendedAttributes = 0x00000008
+    WriteExtendedAttributes = 0x00000010
+    Execute = 0x00000020
+    ReadAttributes = 0x00000080
+    WriteAttributes = 0x00000100
+    Delete = 0x00010000
+    ReadPermissions = 0x00020000
+    ChangePermissions = 0x00040000
+    TakeOwnership = 0x00080000
+    Synchronize = 0x00100000
+    GenericAll = 0x10000000
+    GenericExecute = 0x20000000
+    GenericWrite = 0x40000000
+    GenericRead = -2147483648
+    Read = 0x00120089
+    Write = 0x00120116
+    ReadAndExecute = 0x001200A9
+    FullControl = 0x001F01FF
+}
+
 $windowsAccessControlEnums = @{
     WindowsSecurityDescriptorSection   = [WindowsSecurityDescriptorSection]
     WindowsRegistryView                = [WindowsRegistryView]
@@ -219,6 +248,7 @@ $windowsAccessControlEnums = @{
     WindowsTaskFolderRights            = [WindowsTaskFolderRights]
     WindowsScheduledTaskRights         = [WindowsScheduledTaskRights]
     WindowsProcessRights               = [WindowsProcessRights]
+    WindowsCryptoKeyRights             = [WindowsCryptoKeyRights]
 }
 $typeAccelerators = [psobject].Assembly.GetType(
     'System.Management.Automation.TypeAccelerators'

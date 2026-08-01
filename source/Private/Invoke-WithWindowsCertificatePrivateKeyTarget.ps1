@@ -14,15 +14,17 @@ function Invoke-WithWindowsCertificatePrivateKeyTarget {
         [string]$KeyName,
 
         [Parameter(Mandatory)]
-        [scriptblock]$Operation
+        [scriptblock]$Operation,
+
+        [Parameter()]
+        [AllowEmptyCollection()]
+        [object[]]$ArgumentList = @(),
+
+        [Parameter()]
+        [switch]$ForMutation
     )
 
-    $supportedProvider = 'Microsoft Software Key Storage Provider'
-    if ($ProviderName -cne $supportedProvider) {
-        throw [NotSupportedException]::new(
-            "Only persisted RSA keys in '$supportedProvider' are supported by this read-only increment."
-        )
-    }
+    Assert-WindowsCngKeyProviderSupport -ProviderName $ProviderName
     if (-not $Certificate.HasPrivateKey) {
         throw [InvalidOperationException]::new(
             'The supplied certificate does not have an accessible private key.'
@@ -71,7 +73,25 @@ function Invoke-WithWindowsCertificatePrivateKeyTarget {
             DescriptorSource      = 'CngKey'
         }
 
-        & $Operation $target $key
+        if (-not $ForMutation) {
+            return (& $Operation $target $key @ArgumentList)
+        }
+
+        # Serialize concurrent writers on the canonical key identity exactly as
+        # the bounded dispatcher does for every path-addressed family.
+        $targetLock = Get-WindowsAccessControlTargetLock -CanonicalTarget $canonicalTarget
+        $lockAcquired = $false
+        try {
+            $targetLock.Semaphore.Wait()
+            $lockAcquired = $true
+            & $Operation $target $key @ArgumentList
+        }
+        finally {
+            if ($lockAcquired) {
+                $null = $targetLock.Semaphore.Release()
+            }
+            Unlock-WindowsAccessControlTargetLock -TargetLock $targetLock
+        }
     }
     finally {
         if ($null -ne $rsa) {

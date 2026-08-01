@@ -528,13 +528,65 @@ decision on coverage merging or the threshold.
     with fail-closed unloaded-section rejection, in-place projection refresh,
     bounded editing scopes, and opt-in optimistic concurrency.
 
+- 2026-08-01: Moved the project to a Hyper-V host that is not domain joined and
+    proved the enterprise suites cannot be driven from it. The host binds LDAP
+    with Negotiate but not Kerberos, and the module pins Kerberos deliberately,
+    so the suites run inside the lab through AutomatedLab credential delegation
+    rather than weakening the bind.
+- 2026-08-01: Ran the complete existing acceptance unchanged against an interim
+    single-domain-controller lab on the first attempt: five suites, 32 tests,
+    zero failures and zero skips. The harness is topology-portable.
+- 2026-08-01: Replaced the lab with a reproducible definition in
+    `tests/Lab/Deploy-WindowsAccessControlLab.ps1`: three forests, two child
+    domains, a second writable domain controller in the fixture domain, an
+    enterprise root certification authority, four member servers, and
+    PowerShell 7 plus Pester 5 on every machine. Three failed attempts taught
+    the script to remove a predecessor lab, its orphaned virtual switch, and
+    stale host-file entries; an orphaned switch keeps the host adapter on the
+    retired subnet and strands every new machine.
+- 2026-08-01: Closed OI-22 with specification 0015. Live probes established the
+    rights model instead of assuming it: the software provider stores a
+    candidate ACE with the matching generic bit added, so every comparison
+    expands generic bits first, and `NCryptGetProperty('Impl Type')` reports
+    `0x22` for the software provider against `0x0B` for the smart card provider.
+- 2026-08-01: An independent cryptographic review returned REQUEST CHANGES with
+    one Blocker and six Major findings, and all were fixed and verified live.
+    The Blocker was a routine bypass rather than an exotic one: the binding gate
+    compared certificate thumbprints while the write target is the key, so a
+    certificate renewed with key reuse defeated it. Detection now resolves every
+    bound thumbprint to a stored certificate and compares subject public keys.
+- 2026-08-01: Collapsed two Major findings into one rule after proving both
+    against the built module. A deny ACE naming a containing group and a
+    conditional allow ACE each satisfy a per-account grant check while locking
+    the key, so a new deny ACE and any non-plain ACE type are now refused and
+    `Add-CertificatePrivateKeyAccessRule` exposes no deny surface. `RequireUnchanged`
+    compared two reads taken inside the same write lock and was replaced by a
+    caller-supplied `ConcurrencyToken`.
+- 2026-08-01: Closed OI-23 as a decision. ADR 0024 records a cross-edition probe
+    showing both PowerShell editions route a legacy CSP key through the CNG
+    legacy bridge and return `RSACng`, so the separate managed CAPI object the
+    issue assumed is never returned; the bridge still reports the CAPI provider
+    name and cannot serve a descriptor at all. The rejection boundary is tested;
+    the implementation half is withdrawn.
+- 2026-08-01: Added a live Active Directory replication suite covering
+    domain-controller switch, convergence between two writable replicas,
+    identity across rename and move, rejection of a restore whose distinguished
+    name was reused by a different object, and a failing read of a deleted
+    object.
+
 ## Open work
 
 - OI-14 and OI-17 add SMB/AD portability, desired state, and an AD
     effective-access decision.
-- OI-18 requires a second writable domain controller for replication and
-    failover evidence.
+- OI-18 has a live replication, domain-controller switch, rename, move,
+    deletion, and distinguished-name reuse suite. It waits only on the rebuilt
+    lab, which now has two writable domain controllers in the fixture domain.
 - OI-20 is complete and carries live domain-lab evidence.
-- OI-22 through OI-24 add fail-closed CNG mutation, separate CAPI support, and
-    private-key portability/desired state after their security gates.
+- OI-22 is complete: specification 0015 ships fail-closed CNG mutation and one
+    independent cryptographic review closed with every Blocker and Major fixed.
+- OI-23 is closed by decision. ADR 0024 records the cross-edition probe that
+    disproved its premise and withdraws the implementation half.
+- OI-24 is unblocked and not started. Its three binding design constraints are
+    recorded in the open-issues register.
+- The 80 percent coverage gate still needs a decision.
 - Remote publication remains user-controlled.

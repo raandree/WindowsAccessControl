@@ -304,6 +304,39 @@ value and pass it to ModuleBuilder even though `build.yaml` specifies the valid
 the same package workflow then receives `UTF8` and succeeds without a
 configuration change.
 
+## ModuleBuilder does not parse what it writes
+
+ModuleBuilder concatenates the source files and writes the merged `.psm1`
+without parsing the result, so `build` reports success for a merged file that
+cannot be imported. A missing newline between two statements produced
+`Unexpected token 'if'` only when a later probe imported the module. Parse the
+merged module explicitly after every build with
+`[System.Management.Automation.Language.Parser]::ParseFile()`; single-file
+analysis of `source/` cannot see the defect because each file parses on its own.
+
+The build output can also stay locked for a moment after `Clean` deletes it, so
+`Set-Content` fails with "used by another process". The next build succeeds;
+treat one retry as normal rather than a source defect.
+
+## Case-insensitive variable names collide with typed parameters
+
+PowerShell variable names are case-insensitive, so a loop variable named
+`$left` writes into a `[X509Certificate2]$Left` parameter and fails with
+"Cannot convert value System.Byte[]". The stack trace points at the assignment
+line, not at the parameter. Never differentiate a local from a parameter by
+case alone.
+
+## An if without else contributes zero array elements
+
+`$token = if ($condition) { $value }` yields nothing when the condition is
+false, and an array literal then silently loses that position. Every later
+positional argument shifts, which surfaced as "Cannot bind argument to
+parameter 'Certificate' because it is null" two frames away. Always give such
+an assignment an explicit `else { $null }` when its result enters an array.
+
+Related: `@($a, $arrayValue, $b)` flattens `$arrayValue`, shifting later
+positions the same way. Wrap it as `(, $arrayValue)`.
+
 ## DSC class property value advertising
 
 `Get-DscResource -Syntax` renders a `[string]{ a | b }` value list only for a

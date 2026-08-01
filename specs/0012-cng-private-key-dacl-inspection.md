@@ -48,6 +48,10 @@ until focused issues close fail-closed critical-service binding detection,
 provider implementation/hardware rejection, recovery-ACE preservation,
 negative fixtures, rollback, typed mutation, and cryptographic review.
 
+Specification 0015 closes those conditions and supersedes this read-only
+boundary. Every identity, lifetime, no-export, and canonical-identity rule
+above still applies to the mutation surface.
+
 ## Verification
 
 Unit tests cover the exact public parameter contract, private adapter routing,
@@ -59,6 +63,7 @@ key output. The complete lab remains ready afterward.
 
 ## See also
 
+- [CNG private-key DACL mutation](0015-cng-private-key-dacl-mutation.md)
 - [Enterprise expansion](0008-enterprise-access-control-expansion.md)
 - [Security and persistence](0004-security-and-persistence.md)
 - [Task and software-key authority decision](decisions/0018-use-local-task-and-software-key-authority.md)

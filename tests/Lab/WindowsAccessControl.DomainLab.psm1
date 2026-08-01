@@ -1211,6 +1211,7 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
         'TaskSchedulerPermissions.Live.Tests.ps1'
         'SmbSharePermissions.Live.Tests.ps1'
         'ADObjectPermissions.Live.Tests.ps1'
+        'ADObjectReplication.Live.Tests.ps1'
     )
     $suitePaths = @(
         foreach ($suiteName in $suiteNames) {

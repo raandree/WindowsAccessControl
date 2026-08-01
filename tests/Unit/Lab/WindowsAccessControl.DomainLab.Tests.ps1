@@ -152,10 +152,11 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
             'TaskSchedulerPermissions.Live.Tests.ps1'
             'SmbSharePermissions.Live.Tests.ps1'
             'ADObjectPermissions.Live.Tests.ps1'
+            'ADObjectReplication.Live.Tests.ps1'
         )
         $result.Result | Should -BeExactly 'Passed'
-        $result.Suites | Should -HaveCount 5
-        $result.CleanupLedger | Should -HaveCount 5
+        $result.Suites | Should -HaveCount 6
+        $result.CleanupLedger | Should -HaveCount 6
         $result.CleanupLedger.Ready | Should -Not -Contain $false
         $result.Suites.StartedAtUtc | Should -Not -Contain $null
         $result.Suites.CompletedAtUtc | Should -Not -Contain $null
