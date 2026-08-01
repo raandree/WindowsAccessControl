@@ -63,4 +63,129 @@ Describe 'Remove-CertificatePrivateKeyAccessRule behavior' -Tag 'Unit', 'Windows
             $script:requestedMask | Should -Be 0x00120089
         }
     }
+
+    It 'Should warn when the request matches no rule so a revocation cannot report a false success' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;BU)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                Mock Set-WindowsCngKeySecurityDescriptor { , $SecurityDescriptor }
+                Mock Invoke-WithWindowsCertificatePrivateKeyTarget {
+                    $target = [pscustomobject]@{
+                        CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0'
+                    }
+                    & $Operation $target $ephemeralKey @ArgumentList
+                }
+
+                $certificate | Remove-CertificatePrivateKeyAccessRule `
+                    -ProviderName 'Microsoft Software Key Storage Provider' `
+                    -KeyName 'TestKey' `
+                    -Account 'S-1-5-32-545' `
+                    -AccessRights Read `
+                    -Confirm:$false `
+                    -WarningVariable removalWarning `
+                    -WarningAction SilentlyContinue
+
+                @($removalWarning) | Should -Not -BeNullOrEmpty
+                [string]$removalWarning | Should -BeLike '*matched the requested*'
+            }
+            finally {
+                $ephemeralKey.Dispose()
+            }
+        }
+    }
+
+    It 'Should name only the accounts a partial removal left unchanged' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                # Users holds exactly Read and is removed; Guests holds full
+                # control, so an exact Read removal leaves it untouched.
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x120089;;;BU)(A;;FA;;;BG)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                Mock Set-WindowsCngKeySecurityDescriptor { , $SecurityDescriptor }
+                Mock Invoke-WithWindowsCertificatePrivateKeyTarget {
+                    $target = [pscustomobject]@{
+                        CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0'
+                    }
+                    & $Operation $target $ephemeralKey @ArgumentList
+                }
+
+                $certificate | Remove-CertificatePrivateKeyAccessRule `
+                    -ProviderName 'Microsoft Software Key Storage Provider' `
+                    -KeyName 'TestKey' `
+                    -Account 'S-1-5-32-545', 'S-1-5-32-546' `
+                    -AccessRights Read `
+                    -Confirm:$false `
+                    -WarningVariable removalWarning `
+                    -WarningAction SilentlyContinue
+
+                [string]$removalWarning | Should -BeLike '*S-1-5-32-546*' -Because 'the unmatched account must be named'
+                [string]$removalWarning | Should -Not -BeLike '*S-1-5-32-545*' -Because 'the matched account was removed'
+            }
+            finally {
+                $ephemeralKey.Dispose()
+            }
+        }
+    }
+
+    It 'Should derive a concurrency token from its own read when the caller supplies none' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x120089;;;BU)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                $script:observedToken = $null
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                Mock Set-WindowsCngKeySecurityDescriptor {
+                    $script:observedToken = $ExpectedConcurrencyToken
+                    , $SecurityDescriptor
+                }
+                Mock Invoke-WithWindowsCertificatePrivateKeyTarget {
+                    $target = [pscustomobject]@{
+                        CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0'
+                    }
+                    & $Operation $target $ephemeralKey @ArgumentList
+                }
+
+                $certificate | Remove-CertificatePrivateKeyAccessRule `
+                    -ProviderName 'Microsoft Software Key Storage Provider' `
+                    -KeyName 'TestKey' `
+                    -Account 'S-1-5-32-545' `
+                    -AccessRights Read `
+                    -Confirm:$false
+
+                $expected = Get-WindowsSecurityDescriptorConcurrencyToken -Sddl (
+                    $stored.GetSddlForm(
+                        [Security.AccessControl.AccessControlSections]::Access
+                    )
+                )
+                $script:observedToken | Should -BeExactly $expected
+            }
+            finally {
+                $ephemeralKey.Dispose()
+            }
+        }
+    }
 }

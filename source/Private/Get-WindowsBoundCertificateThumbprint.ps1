@@ -68,18 +68,47 @@ function Get-WindowsBoundCertificateThumbprint {
     }
 
     # Active Directory Domain Services selects an LDAPS certificate itself, so
-    # every server-authentication certificate on a domain controller counts.
+    # every server-authentication certificate on a domain controller counts. The
+    # NTDS store is a service store and is absent on a domain controller that
+    # keeps its certificate in the local machine store instead.
     if ((Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop).ProductType -eq 2) {
-        foreach ($storeName in 'NTDS\My', 'My') {
-            foreach ($certificate in @(
-                    Get-WindowsMachineStoreCertificate -StoreName $storeName -Required
-                )) {
-                if (Test-WindowsCertificateServerAuthentication -Certificate $certificate) {
-                    [pscustomobject]@{
-                        Binding    = 'DirectoryServices'
-                        Thumbprint = $certificate.Thumbprint.ToUpperInvariant()
-                        Detail     = "A server-authentication certificate in '$storeName' on a domain controller can serve LDAPS with this key."
+        $directoryStores = [Collections.Generic.List[object]]::new()
+        try {
+            # Each store is added as it is read so a failure on the next store
+            # still disposes what the previous one produced.
+            $directoryStores.Add(
+                [pscustomobject]@{
+                    Name         = 'NTDS\MY'
+                    Certificates = @(
+                        Get-WindowsServiceStoreCertificate -ServiceName 'NTDS' -StoreName 'MY'
+                    )
+                }
+            )
+            $directoryStores.Add(
+                [pscustomobject]@{
+                    Name         = 'My'
+                    Certificates = @(
+                        Get-WindowsMachineStoreCertificate -StoreName 'My' -Required
+                    )
+                }
+            )
+            foreach ($directoryStore in $directoryStores) {
+                foreach ($certificate in $directoryStore.Certificates) {
+                    if (Test-WindowsCertificateServerAuthentication -Certificate $certificate) {
+                        [pscustomobject]@{
+                            Binding    = 'DirectoryServices'
+                            Thumbprint = $certificate.Thumbprint.ToUpperInvariant()
+                            Detail     = "A server-authentication certificate in '$($directoryStore.Name)' on a domain controller can serve LDAPS with this key."
+                        }
                     }
+                }
+            }
+        }
+        finally {
+            # Only the thumbprint is reported, so nothing outlives this block.
+            foreach ($directoryStore in $directoryStores) {
+                foreach ($certificate in $directoryStore.Certificates) {
+                    $certificate.Dispose()
                 }
             }
         }

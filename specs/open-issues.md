@@ -21,15 +21,6 @@ carry the JaCoCo file back to the repository host, and enable Sampler's
 result. Do not lower the threshold and do not add synthetic unit tests over code
 the live suites already exercise.
 
-## OI-22: Add fail-closed CNG private-key mutation
-
-Specifications: 0008, 0012. Tasks: KEY-1, KEY-3, KEY-4, KEY-7, and KEY-8.
-
-Add provider implementation/hardware rejection, HTTP.sys/WinRM/RDP/LDAPS
-critical-binding detection, SYSTEM/Administrators/original-service-ACE
-preservation, typed add/exact-remove semantics, exact rollback, negative live
-fixtures, and independent cryptographic review before any CNG DACL write ships.
-
 ## OI-23: Add CAPI private-key capability and mutation
 
 Specification: 0008. Tasks: KEY-1 to KEY-4 and KEY-7.

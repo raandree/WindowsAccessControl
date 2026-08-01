@@ -107,8 +107,19 @@ function Add-CertificatePrivateKeyAccessRule {
                 Key                = $Key
                 SecurityDescriptor = $candidateBytes
             }
-            if ($null -ne $Token) {
-                $setParameters['ExpectedConcurrencyToken'] = $Token
+            # Without a caller token this read-modify-write would overwrite a
+            # change another process made after the read above.
+            $setParameters['ExpectedConcurrencyToken'] = if ($null -ne $Token) {
+                $Token
+            }
+            else {
+                Get-WindowsSecurityDescriptorConcurrencyToken -Sddl (
+                    [Security.AccessControl.RawSecurityDescriptor]::new(
+                        $currentBytes, 0
+                    ).GetSddlForm(
+                        [Security.AccessControl.AccessControlSections]::Access
+                    )
+                )
             }
             $null = Set-WindowsCngKeySecurityDescriptor @setParameters
         }

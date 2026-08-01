@@ -518,3 +518,443 @@ Describe 'Certificate server-authentication classification' -Tag 'Unit', 'Window
         }
     }
 }
+
+Describe 'Certificate private-key preservation gate completeness' -Tag 'Unit', 'WindowsOnly' {
+    It 'Should reject a candidate that denies SYSTEM' {
+        $current = script:ConvertTo-Descriptor $script:baselineSddl
+        $candidate = script:ConvertTo-Descriptor 'D:P(D;;0x120089;;;SY)(A;;FA;;;SY)(A;;FA;;;BA)'
+
+        $result = & $script:module {
+            param($Current, $Candidate)
+            Test-WindowsCngKeyProtectedAce -CurrentDescriptor $Current -CandidateDescriptor $Candidate
+        } $current $candidate
+
+        $result.IsAllowed | Should -BeFalse
+        $result.Reason | Should -BeLike '*must not deny any access*'
+    }
+
+    It 'Should reject a candidate that denies access a service identity currently holds' {
+        $current = script:ConvertTo-Descriptor 'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x120089;;;NS)'
+        $candidate = script:ConvertTo-Descriptor 'D:P(D;;0x120089;;;NS)(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x120089;;;NS)'
+
+        $result = & $script:module {
+            param($Current, $Candidate)
+            Test-WindowsCngKeyProtectedAce -CurrentDescriptor $Current -CandidateDescriptor $Candidate
+        } $current $candidate
+
+        $result.IsAllowed | Should -BeFalse
+        $result.Reason | Should -BeLike '*denies access that service identity*'
+    }
+
+    It 'Should not treat an inherit-only service ACE as access a candidate must preserve' {
+        $sddl = 'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;OIIO;0x120089;;;NS)'
+        $current = script:ConvertTo-Descriptor $sddl
+        $candidate = script:ConvertTo-Descriptor $sddl
+
+        $result = & $script:module {
+            param($Current, $Candidate)
+            Test-WindowsCngKeyProtectedAce -CurrentDescriptor $Current -CandidateDescriptor $Candidate
+        } $current $candidate
+
+        $result.IsAllowed | Should -BeTrue -Because 'an inherit-only ACE grants nothing, so an exact reassert must not be refused'
+    }
+}
+
+Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'WindowsOnly' {
+    It 'Should treat a reordered DACL as a different desired state' {
+        $forward = script:ConvertTo-Descriptor 'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x120089;;;BU)'
+        $reversed = script:ConvertTo-Descriptor 'D:P(A;;0x120089;;;BU)(A;;FA;;;BA)(A;;FA;;;SY)'
+
+        $ordered = & $script:module {
+            param($Left, $Right)
+            Test-WindowsCngKeyDaclEquivalent -Left $Left -Right $Right -Ordered
+        } $forward $reversed
+
+        $ordered | Should -BeFalse -Because 'ACE order decides which rule wins'
+    }
+
+    It 'Should compare a single-ACE DACL as a whole ACE rather than character by character' {
+        $first = script:ConvertTo-Descriptor 'D:P(A;;FA;;;SY)'
+        $second = script:ConvertTo-Descriptor 'D:P(A;;FA;;;BA)'
+
+        foreach ($ordered in $true, $false) {
+            $result = & $script:module {
+                param($Left, $Right, $Ordered)
+                Test-WindowsCngKeyDaclEquivalent -Left $Left -Right $Right -Ordered:$Ordered
+            } $first $second $ordered
+
+            $result | Should -BeFalse -Because "a one-ACE DACL must not collapse to a string (Ordered=$ordered)"
+        }
+    }
+
+    It 'Should keep an exact reassert a no-op that never reaches the binding gate' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x120089;;;BU)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                Mock Assert-WindowsCngKeyCriticalBinding { }
+
+                $result = Set-WindowsCngKeySecurityDescriptor `
+                    -Target ([pscustomobject]@{ CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0' }) `
+                    -Certificate $certificate `
+                    -Key $ephemeralKey `
+                    -SecurityDescriptor $storedBytes
+
+                $result.Count | Should -Be $storedBytes.Count
+                Should -Invoke Assert-WindowsCngKeyCriticalBinding -Times 0 -Exactly
+            }
+            finally {
+                $ephemeralKey.Dispose()
+            }
+        }
+    }
+
+    It 'Should refuse a reordering rather than perform a write it cannot verify' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                # A deny ACE makes order observable, so this reordering is a real
+                # change the provider cannot be asked to persist.
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(D;;0x120089;;;BU)(A;;FA;;;SY)(A;;FA;;;BA)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                $reordered = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;BA)(A;;FA;;;SY)(D;;0x120089;;;BU)'
+                )
+                $reorderedBytes = [byte[]]::new($reordered.BinaryLength)
+                $reordered.GetBinaryForm($reorderedBytes, 0)
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                Mock Assert-WindowsCngKeyCriticalBinding { }
+
+                {
+                    Set-WindowsCngKeySecurityDescriptor `
+                        -Target ([pscustomobject]@{ CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0' }) `
+                        -Certificate $certificate `
+                        -Key $ephemeralKey `
+                        -SecurityDescriptor $reorderedBytes
+                } | Should -Throw -ExpectedMessage '*in a different order*'
+
+                Should -Invoke Assert-WindowsCngKeyCriticalBinding -Times 0 -Exactly
+            }
+            finally {
+                $ephemeralKey.Dispose()
+            }
+        }
+    }
+
+    It 'Should accept an allow-only DACL written in another order as already converged' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x120089;;;BU)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                $reordered = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;0x120089;;;BU)(A;;FA;;;BA)(A;;FA;;;SY)'
+                )
+                $reorderedBytes = [byte[]]::new($reordered.BinaryLength)
+                $reordered.GetBinaryForm($reorderedBytes, 0)
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                Mock Assert-WindowsCngKeyCriticalBinding { }
+
+                $result = Set-WindowsCngKeySecurityDescriptor `
+                    -Target ([pscustomobject]@{ CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0' }) `
+                    -Certificate $certificate `
+                    -Key $ephemeralKey `
+                    -SecurityDescriptor $reorderedBytes
+
+                $result.Count | Should -Be $storedBytes.Count
+                Should -Invoke Assert-WindowsCngKeyCriticalBinding -Times 0 -Exactly
+            }
+            finally {
+                $ephemeralKey.Dispose()
+            }
+        }
+    }
+
+    It 'Should reject a protection-state change before any provider write' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;SY)(A;;FA;;;BA)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                $unprotected = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:(A;;FA;;;SY)(A;;FA;;;BA)'
+                )
+                $unprotectedBytes = [byte[]]::new($unprotected.BinaryLength)
+                $unprotected.GetBinaryForm($unprotectedBytes, 0)
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                Mock Assert-WindowsCngKeyCriticalBinding { }
+
+                {
+                    Set-WindowsCngKeySecurityDescriptor `
+                        -Target ([pscustomobject]@{ CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0' }) `
+                        -Certificate $certificate `
+                        -Key $ephemeralKey `
+                        -SecurityDescriptor $unprotectedBytes
+                } | Should -Throw -ExpectedMessage '*protection state does not match*'
+
+                Should -Invoke Assert-WindowsCngKeyCriticalBinding -Times 0 -Exactly
+            }
+            finally {
+                $ephemeralKey.Dispose()
+            }
+        }
+    }
+}
+
+Describe 'Certificate binding store resolution' -Tag 'Unit', 'WindowsOnly' {
+    It 'Should discover the local machine stores that exist rather than a fixed list' {
+        $names = & $script:module {
+            Get-WindowsMachineCertificateStoreName
+        }
+
+        @($names) | Should -Not -BeNullOrEmpty
+        @($names) | Should -Contain 'MY'
+        @($names) | Should -Contain 'ROOT'
+    }
+
+    It 'Should return nothing when a service certificate store cannot be opened' {
+        # A store name that does not exist under a service that does is the only
+        # way to reach the open-failure branch: the services location opens an
+        # empty collection for a service name it does not know.
+        $service = @(
+            Get-ChildItem -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Cryptography\Services' -ErrorAction SilentlyContinue |
+                Where-Object { Test-Path -LiteralPath "$($_.PSPath)\SystemCertificates" }
+        ) | Select-Object -First 1
+
+        if (-not $service) {
+            Set-ItResult -Skipped -Because 'this machine has no service certificate store'
+            return
+        }
+
+        $result = & $script:module {
+            param($ServiceName)
+            @(Get-WindowsServiceStoreCertificate `
+                    -ServiceName $ServiceName `
+                    -StoreName 'WacNoSuchStore')
+        } $service.PSChildName
+
+        @($result).Count | Should -Be 0
+    }
+
+    It 'Should read every certificate from a service store that does exist' {
+        $serviceRoot = 'HKLM:\SOFTWARE\Microsoft\Cryptography\Services'
+        $candidate = @(
+            foreach ($service in @(
+                    Get-ChildItem -LiteralPath $serviceRoot -ErrorAction SilentlyContinue
+                )) {
+                foreach ($store in @(
+                        Get-ChildItem -LiteralPath "$($service.PSPath)\SystemCertificates" -ErrorAction SilentlyContinue
+                    )) {
+                    $certificatePath = Join-Path $store.PSPath 'Certificates'
+                    $thumbprints = @(
+                        Get-ChildItem -LiteralPath $certificatePath -ErrorAction SilentlyContinue |
+                            Select-Object -ExpandProperty PSChildName
+                    )
+                    if ($thumbprints.Count -gt 0) {
+                        [pscustomobject]@{
+                            ServiceName = $service.PSChildName
+                            StoreName   = $store.PSChildName
+                            Thumbprints = @(
+                                $thumbprints | ForEach-Object { $_.ToUpperInvariant() }
+                            )
+                        }
+                    }
+                }
+            }
+        ) | Select-Object -First 1
+
+        if (-not $candidate) {
+            Set-ItResult -Skipped -Because 'this machine has no populated service certificate store'
+            return
+        }
+
+        $actual = & $script:module {
+            param($ServiceName, $StoreName)
+            @(Get-WindowsServiceStoreCertificate -ServiceName $ServiceName -StoreName $StoreName)
+        } $candidate.ServiceName $candidate.StoreName
+
+        # A system store opens a collection of physical stores, so the result can
+        # legitimately hold more than the registry key lists.
+        $actualThumbprints = @($actual | ForEach-Object { $_.Thumbprint.ToUpperInvariant() })
+        foreach ($thumbprint in $candidate.Thumbprints) {
+            $actualThumbprints |
+                Should -Contain $thumbprint -Because "the $($candidate.ServiceName)\$($candidate.StoreName) service store lists it"
+        }
+    }
+
+    It 'Should accept an empty service store without mistaking it for a failure' {
+        # The services location opens an empty collection for a service name it
+        # does not know, so this reaches the enumeration terminator check. A
+        # completed enumeration reports CRYPT_E_NOT_FOUND, including for an empty
+        # store, and only that value is accepted; this pins that the tightened
+        # check cannot turn an empty store into a machine-wide refusal.
+        {
+            & $script:module {
+                [WindowsAccessControl.NativeMethods]::GetServiceStoreCertificates(
+                    'WacNoSuchService',
+                    'MY'
+                )
+            }
+        } | Should -Not -Throw
+
+        $result = & $script:module {
+            @(Get-WindowsServiceStoreCertificate `
+                    -ServiceName 'WacNoSuchService' `
+                    -StoreName 'MY')
+        }
+
+        @($result).Count | Should -Be 0
+    }
+
+    It 'Should refuse the write when a bound thumbprint resolves to no stored certificate' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            Mock Get-WindowsMachineCertificateStoreName { 'MY' }
+            Mock Get-WindowsMachineStoreCertificate { }
+            Mock Get-WindowsServiceStoreCertificate { }
+            Mock Get-WindowsBoundCertificateThumbprint {
+                [pscustomobject]@{
+                    Binding    = 'HttpSys'
+                    Thumbprint = '0123456789ABCDEF0123456789ABCDEF01234567'
+                    Detail     = 'stale binding'
+                }
+            }
+
+            {
+                Get-WindowsCertificateCriticalBinding -Certificate $certificate
+            } | Should -Throw -ExpectedMessage '*NTDS service store*'
+        }
+    }
+
+    It 'Should resolve a bound thumbprint through the NTDS service store' {
+        InModuleScope WindowsAccessControl {
+            $key = [Security.Cryptography.RSA]::Create(2048)
+            try {
+                $bound = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
+                    'CN=WacUnitLdaps',
+                    $key,
+                    [Security.Cryptography.HashAlgorithmName]::SHA256,
+                    [Security.Cryptography.RSASignaturePadding]::Pkcs1
+                ).CreateSelfSigned(
+                    [datetimeoffset]::UtcNow.AddMinutes(-5),
+                    [datetimeoffset]::UtcNow.AddMinutes(5))
+                $renewed = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
+                    'CN=WacUnitLdapsRenewed',
+                    $key,
+                    [Security.Cryptography.HashAlgorithmName]::SHA256,
+                    [Security.Cryptography.RSASignaturePadding]::Pkcs1
+                ).CreateSelfSigned(
+                    [datetimeoffset]::UtcNow.AddMinutes(-4),
+                    [datetimeoffset]::UtcNow.AddMinutes(6))
+                try {
+                    Mock Get-WindowsMachineCertificateStoreName { 'MY' }
+                    Mock Get-WindowsMachineStoreCertificate { }
+                    # The resolver owns every certificate handed to it, so it is
+                    # given a copy rather than the one this test disposes.
+                    Mock Get-WindowsServiceStoreCertificate {
+                        [Security.Cryptography.X509Certificates.X509Certificate2]::new(
+                            $bound.RawData
+                        )
+                    }
+                    Mock Get-WindowsBoundCertificateThumbprint {
+                        [pscustomobject]@{
+                            Binding    = 'DirectoryServices'
+                            Thumbprint = $bound.Thumbprint.ToUpperInvariant()
+                            Detail     = 'LDAPS'
+                        }
+                    }
+
+                    $result = @(
+                        Get-WindowsCertificateCriticalBinding -Certificate $renewed
+                    )
+
+                    $result.Count | Should -Be 1
+                    $result[0].Binding | Should -BeExactly 'DirectoryServices'
+                }
+                finally {
+                    $bound.Dispose()
+                    $renewed.Dispose()
+                }
+            }
+            finally {
+                $key.Dispose()
+            }
+        }
+    }
+
+    It 'Should not enumerate a single store when no binding exists' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            Mock Get-WindowsBoundCertificateThumbprint { }
+            Mock Get-WindowsMachineCertificateStoreName { 'MY' }
+            Mock Get-WindowsMachineStoreCertificate { }
+            Mock Get-WindowsServiceStoreCertificate { }
+
+            $result = @(Get-WindowsCertificateCriticalBinding -Certificate $certificate)
+
+            $result.Count | Should -Be 0
+            Should -Invoke Get-WindowsMachineCertificateStoreName -Times 0 -Exactly
+            Should -Invoke Get-WindowsServiceStoreCertificate -Times 0 -Exactly
+        }
+    }
+
+    It 'Should not swallow a store-root failure when resolving a binding' {
+        InModuleScope WindowsAccessControl {
+            Mock Get-WindowsMachineCertificateStoreName {
+                throw [InvalidOperationException]::new(
+                    "The local machine certificate store root 'SOFTWARE\Microsoft\SystemCertificates' could not be read"
+                )
+            }
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            Mock Get-WindowsServiceStoreCertificate { }
+            Mock Get-WindowsBoundCertificateThumbprint {
+                [pscustomobject]@{
+                    Binding    = 'HttpSys'
+                    Thumbprint = '0123456789ABCDEF0123456789ABCDEF01234567'
+                    Detail     = 'binding'
+                }
+            }
+
+            {
+                Get-WindowsCertificateCriticalBinding -Certificate $certificate
+            } | Should -Throw -ExpectedMessage '*could not be read*'
+        }
+    }
+
+    It 'Should list the stores a binding uses before the remaining stores' {
+        $names = @(& $script:module { Get-WindowsMachineCertificateStoreName })
+        $present = @($names | Where-Object { $_ -in 'My', 'WebHosting', 'Remote Desktop' })
+
+        $present | Should -Not -BeNullOrEmpty
+        for ($index = 0; $index -lt $present.Count; $index++) {
+            $names[$index] | Should -BeIn 'My', 'WebHosting', 'Remote Desktop'
+        }
+    }
+}
+

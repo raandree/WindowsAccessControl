@@ -20,6 +20,27 @@ convert native rules into stable PowerShell objects. Pure descriptor mutation
 is separated from filesystem persistence so most behavior is unit-testable
 without elevation.
 
+## Fail-closed gate patterns
+
+These generalize beyond the private-key family and were established by the
+specification 0015 reviews.
+
+- A gate input that cannot be read must throw. An enumeration that cannot tell
+    completion from failure silently truncates its own input, which turns a
+    refusal into a permit.
+- A refusal that is global needs its input set wide enough that only a genuine
+    fault reaches it. Narrowing the search to a fixed list converts unrelated
+    stale state into a machine-wide denial of the whole command family.
+- Over-matching is the safe direction for a detector and under-matching is not.
+    Prefer a pattern that yields a false refusal to one that can yield no
+    detection at all, and record the trade rather than tightening by reflex.
+- A command that matches exactly must say when it matched nothing. A revocation
+    that removed nothing and reported success is worse than one that failed.
+- A predicate that decides a security outcome must not depend on a caller gate
+    for its correctness, even when every current caller applies that gate.
+- A read-only probe settles a disputed claim faster than an argument. Two review
+    findings in this family were refuted by measuring the platform instead.
+
 ## Decisions
 
 ### Decision 1: Use the canonical Memory Bank base

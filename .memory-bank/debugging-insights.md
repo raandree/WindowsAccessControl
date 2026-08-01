@@ -7,6 +7,40 @@ source: implementation and test evidence
 
 # Debugging insights
 
+## An array wrapper inside an if does not survive assignment
+
+`$x = if ($c) { $a } else { @($b) }` discards the wrapper: the if-statement's
+output is collected and a single-element result collapses to a scalar. A one-ACE
+DACL comparison then indexed a string and compared it character by character,
+and two descriptors that differed only in their single ACE were reported
+equivalent. Write `$x = @(if ($c) { $a } else { $b })` so the wrapper is outside
+the statement. A unit test caught this; inspection did not.
+
+## A service certificate store is a different store location
+
+`X509Store('NTDS\My', StoreLocation::LocalMachine)` cannot reach a domain
+controller's NTDS store. A `LocalMachine` name resolves under
+`HKLM\SOFTWARE\Microsoft\SystemCertificates`, while a service store lives under
+`HKLM\SOFTWARE\Microsoft\Cryptography\Services\<service>\SystemCertificates`.
+Only `CertOpenStore` with `CERT_SYSTEM_STORE_SERVICES` and a
+`<Service>\<Store>` parameter reaches it. The location identifier is 5 shifted
+left by 16, which is `0x00050000`; the neighbouring `0x00040000` is
+`CERT_SYSTEM_STORE_CURRENT_SERVICE` and rejects a service-name prefix with
+`E_INVALIDARG`.
+
+Probed behavior on a workgroup host: an unknown service name opens an empty
+collection rather than failing, an unknown store name under a known service
+fails with `ERROR_FILE_NOT_FOUND`, and a completed enumeration always sets
+`CRYPT_E_NOT_FOUND`, including for an empty store. A null return from
+`CertEnumCertificatesInStore` therefore means finished or failed, so a gate that
+does not check the last error reports a truncated list as a complete one.
+
+## The Sampler build deletes the output directory
+
+Working artifacts written under `output/` are destroyed by the build's clean
+task, including an in-flight log the build itself is writing. Keep review
+packages, reports, and job logs outside the repository.
+
 ## Section-scoped ACL persistence
 
 `Set-Acl` requested `SeSecurityPrivilege` while re-enabling DACL inheritance in

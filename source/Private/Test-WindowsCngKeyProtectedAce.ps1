@@ -60,6 +60,13 @@ function Test-WindowsCngKeyProtectedAce {
             $ace.AceType -ne [Security.AccessControl.AceType]::AccessAllowed) {
             continue
         }
+        # The candidate loop skips an inherit-only ACE because it grants
+        # nothing. Not skipping it here would treat it as access the candidate
+        # must preserve, and refuse even an exact reassert of the stored DACL.
+        if (([int]$ace.AceFlags -band
+                [int][Security.AccessControl.AceFlags]::InheritOnly) -ne 0) {
+            continue
+        }
         $sid = $knownAce.SecurityIdentifier.Value
         if (-not (Test-WindowsCngKeyServiceIdentity -SecurityIdentifier $sid)) {
             continue

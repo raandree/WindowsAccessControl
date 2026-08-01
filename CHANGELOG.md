@@ -40,6 +40,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Resolve a bound certificate against every local machine certificate store that
+    exists plus the `NTDS` service store, instead of a fixed list of four
+    stores, so a binding created against another store no longer blocks every
+    private-key write on the machine; the stores a binding names in practice are
+    searched first and the search stops once every bound thumbprint is resolved
+- Read the `NTDS` service store natively under `CERT_SYSTEM_STORE_SERVICES`,
+    which `StoreLocation` cannot address, so the LDAPS branch of the
+    critical-binding gate is reachable on a domain controller
+- Derive a concurrency token from their own read in
+    `Add-CertificatePrivateKeyAccessRule` and
+    `Remove-CertificatePrivateKeyAccessRule` when the caller supplies none, so a
+    change another writer makes between that read and the write is rejected
+    instead of overwritten
+- Warn from `Remove-CertificatePrivateKeyAccessRule` naming every account the
+    request did not match, because rights are matched exactly and a revocation
+    that removed nothing must not look like one that succeeded
 - Qualify Task Scheduler canonical identity by the owning computer, so
     `CanonicalTarget` is now `TaskFolder:<COMPUTER>:<PATH>` or
     `ScheduledTask:<COMPUTER>:<PATH>` instead of the previous `Local` form, and
@@ -47,6 +63,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix the private-key service-preservation gate refusing an exact reassert of a
+    stored DACL that contains an inherit-only service ACE, which grants nothing
+    and must not count as access the candidate has to preserve
+- Fix a private-key DACL protection-state mismatch being detected only after a
+    real provider write and a rollback; it is now refused before the write
 - Fix `Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` silently
     discarding a rule that matched an existing account and rights combination
     but declared a different `AppliesTo` inheritance scope

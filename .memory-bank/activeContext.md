@@ -9,29 +9,44 @@ source: current task evidence
 
 ## Current focus
 
-The project moved to a Hyper-V host that is not domain joined, and the domain
-lab was replaced with a purpose-built multi-forest environment. OI-18, OI-22,
-and OI-23 are closed. The complete six-suite acceptance passes 40 of 40 tests
-against the rebuilt lab.
+OI-22 is closed. The fail-closed CNG private-key mutation of specification 0015
+went through the repository's review convention in full: one feature review, then
+three fix rounds each followed by its own scoped re-review. The third re-review
+returned APPROVE WITH MINOR FINDINGS with no Blocker and no Major, and the
+remaining Minor and Nit findings were fixed as well. The register entry and the
+conformance test now record the issue as closed.
 
-## OI-18 result
+## OI-22 close-out
 
-- The rebuilt lab gives the fixture domain two writable domain controllers, so
-    replication and controller switching became testable for the first time.
-- The live suite passed 7 of 7 on its first run and is now the sixth acceptance
-    suite. Specification 0016 records the resulting contract.
-- The outage test stops the partner's directory service and proves the module
-    fails a pinned read and a pinned write rather than redirecting to the
-    surviving controller. That is the property that protects the read-compare-write
-    pairing; a silent switch would break the staleness check and the object-GUID
-    pin. It restarts every dependent service it stopped and the suite `AfterAll`
-    fails when the partner does not serve the directory again.
-- The first full acceptance run failed one assertion and the module was right.
-    The live Remote Desktop assertion assumed the bound certificate lives in the
-    `Remote Desktop` store; on the member server the bound certificate is in `My`
-    and that store holds a different one. It was replaced by a deterministic
-    HTTP.sys binding cycle that proves detection, refusal, release, and a
-    permitted write afterwards.
+- The first re-review of the earlier fixes found one dead gate and three defects
+    no unit test could have caught by construction. The `NTDS\My` store had been
+    opened as a `StoreLocation::LocalMachine` name, which cannot address a service
+    certificate store, so the LDAPS branch of the binding gate was inert on every
+    domain controller. It is now opened natively under
+    `CERT_SYSTEM_STORE_SERVICES` and proven against a real service store.
+- A bound thumbprint that resolved to none of four hard-coded stores threw, which
+    denied every private-key write on the machine. Resolution now searches every
+    machine store that exists plus the `NTDS` service store, searches the stores a
+    binding names first, and stops as soon as every thumbprint resolves.
+- `Remove-CertificatePrivateKeyAccessRule` matched rights exactly and reported
+    success when it matched nothing. It now names every account the request left
+    unchanged, including when the same request matched another account.
+- The service-preservation gate skipped inherit-only ACEs on the candidate side
+    but not on the stored side, so it refused an exact reassert of a DACL that
+    carried one.
+- Two rounds argued about ACE ordering before the right rule emerged: allow ACEs
+    are additive, so an allow-only reordering is already the requested state and
+    is a no-op, while a reordering with a deny present is refused because order
+    then decides the access check and the provider owns the stored order.
+- Two review claims were refuted with read-only probes rather than argument. A
+    completed service-store enumeration always reports `CRYPT_E_NOT_FOUND`,
+    including for an empty store, and the services location opens an empty
+    collection for a service name it does not know, so the test that was said
+    never to reach the tightened check does reach it.
+- One finding was parked with a written ruling. The HTTP.sys thumbprint match is
+    deliberately shape-based and over-matches, because a label-and-value pattern
+    would depend on a separator that is not stable across display languages, and
+    a pattern that stops matching detects no binding at all, which is fail-open.
 
 ## Environment change
 
@@ -101,8 +116,9 @@ rejection boundary remains.
 
 ## Next step
 
-Two things remain open. The OI-22 review fixes have not had a focused
-re-review, which this repository's convention requires after a Blocker-level
-redesign. OI-24 is unblocked but not started; its three binding constraints are
-recorded in the open-issues register. OI-27 tracks merging domain-lab coverage
-so the 80 percent threshold measures what the suites actually exercise.
+OI-22 is closed, so the two remaining focused issues are unblocked. OI-24 adds
+private-key portability and desired state; its three binding constraints are
+recorded in the open-issues register, and it must pass through the specification
+0015 write boundary rather than around it. OI-27 merges domain-lab coverage into
+the threshold gate so the 80 percent measurement reflects what the suites
+actually exercise.

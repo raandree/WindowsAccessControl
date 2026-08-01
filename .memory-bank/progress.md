@@ -20,6 +20,17 @@ measurement fix as OI-27.
 
 ## Recent milestones
 
+- 2026-08-01: Closed OI-22 after the full review convention. One feature review
+    and three fix rounds, each with its own scoped re-review, ended at APPROVE
+    WITH MINOR FINDINGS with no Blocker and no Major; the remaining Minor and
+    Nit findings were fixed too. The rounds found a dead LDAPS gate on every
+    domain controller, a machine-wide write denial from one unresolvable bound
+    thumbprint, a revocation that reported success without revoking, a
+    preservation gate that refused an exact reassert, and a native enumeration
+    that could not tell completion from failure. Two review claims were refuted
+    with read-only probes and one finding was parked with a written ruling.
+    Evidence: 1242 unit and QA tests passing against a 1220 baseline, a clean
+    analyzer run over every changed file, and the six-suite lab acceptance green.
 - Canonical Memory Bank base initialized.
 - 2026-07-25: Implemented 27 pipeline-first NTFS permission commands on Sampler.
 - 2026-07-25: Passed 228 tests on PowerShell 7 and Windows PowerShell 5.1 with

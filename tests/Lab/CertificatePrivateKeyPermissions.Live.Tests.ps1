@@ -333,3 +333,73 @@ Describe 'Certificate private-key DACL mutation' `
         $result.FinalSddl | Should -BeExactly $result.OriginalSddl
     }
 }
+
+Describe 'Certificate private-key directory-service binding' `
+    -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    BeforeAll {
+        # This suite runs on the management domain controller, so the LDAPS
+        # branch of the binding gate can be exercised where it applies.
+        $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
+            Sort-Object -Property { [version]$_.Directory.Name } -Descending |
+            Select-Object -First 1
+        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+        $script:localModule = Get-Module WindowsAccessControl
+        $script:productType = (
+            Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        ).ProductType
+    }
+
+    It 'Should reach the NTDS service store and refuse a certificate the directory can serve' {
+        $script:productType | Should -Be 2 -Because 'this suite runs on a domain controller'
+
+        # A service store is not reachable through StoreLocation. This proves the
+        # native path completes on a domain controller; whether the store holds
+        # the LDAPS certificate depends on how the certificate was enrolled, so
+        # the count is reported rather than asserted.
+        $ntdsCertificates = @(
+            & $script:localModule {
+                Get-WindowsServiceStoreCertificate -ServiceName 'NTDS' -StoreName 'MY'
+            }
+        )
+        $myCertificates = @(
+            & $script:localModule {
+                Get-WindowsMachineStoreCertificate -StoreName 'My' -Required
+            }
+        )
+        Write-Information (
+            'NTDS\MY holds {0} certificates; LocalMachine\My holds {1}.' -f
+            $ntdsCertificates.Count, $myCertificates.Count
+        ) -InformationAction Continue
+        ($ntdsCertificates.Count + $myCertificates.Count) |
+            Should -BeGreaterThan 0 -Because 'a domain controller holds a certificate the directory can serve'
+
+        $bindings = @(& $script:localModule { Get-WindowsBoundCertificateThumbprint })
+        $directoryBindings = @(
+            $bindings | Where-Object Binding -EQ 'DirectoryServices'
+        )
+        $directoryBindings | Should -Not -BeNullOrEmpty -Because 'a domain controller holds a server-authentication certificate'
+        $directoryBindings[0].Detail |
+            Should -Match "'(NTDS\\MY|My)'" -Because 'the reported binding must name the store it came from'
+
+        try {
+            $thumbprint = $directoryBindings[0].Thumbprint
+            $certificate = @($ntdsCertificates + $myCertificates) |
+                Where-Object { $_.Thumbprint.ToUpperInvariant() -ceq $thumbprint } |
+                Select-Object -First 1
+            $certificate | Should -Not -BeNullOrEmpty
+
+            # The read-only command exposes the same detection the write gate
+            # uses, so the refusal is proven without writing to a live directory
+            # key.
+            $reported = @(Test-CertificatePrivateKeyCriticalBinding -Certificate $certificate)
+            @($reported.Binding) | Should -Contain 'DirectoryServices'
+        }
+        finally {
+            # Both producers hand the caller certificates it owns.
+            foreach ($stored in @($ntdsCertificates + $myCertificates)) {
+                $stored.Dispose()
+            }
+        }
+    }
+}
+

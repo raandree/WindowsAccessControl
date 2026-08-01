@@ -132,6 +132,16 @@ namespace WindowsAccessControl
         }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct CertContext
+    {
+        public UInt32 CertEncodingType;
+        public IntPtr EncodedCertificate;
+        public Int32 EncodedCertificateLength;
+        public IntPtr CertInfo;
+        public IntPtr CertStore;
+    }
+
     public static class NativeMethods
     {
         private sealed class PrivilegeLeaseState
@@ -249,6 +259,27 @@ namespace WindowsAccessControl
 
         [DllImport("ncrypt.dll")]
         private static extern Int32 NCryptFreeObject(IntPtr objectHandle);
+
+        [DllImport("crypt32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        private static extern IntPtr CertOpenStore(
+            IntPtr storeProvider,
+            UInt32 encodingType,
+            IntPtr cryptProvider,
+            UInt32 flags,
+            [MarshalAs(UnmanagedType.LPWStr)] string para);
+
+        [DllImport("crypt32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CertCloseStore(IntPtr storeHandle, UInt32 flags);
+
+        [DllImport("crypt32.dll", SetLastError = true)]
+        private static extern IntPtr CertEnumCertificatesInStore(
+            IntPtr storeHandle,
+            IntPtr previousCertContext);
+
+        [DllImport("crypt32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CertFreeCertificateContext(IntPtr certContext);
 
         [DllImport("advapi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
@@ -1733,6 +1764,98 @@ namespace WindowsAccessControl
             finally
             {
                 NCryptFreeObject(providerHandle);
+            }
+        }
+
+        public static List<byte[]> GetServiceStoreCertificates(string serviceName, string storeName)
+        {
+            if (string.IsNullOrEmpty(serviceName))
+            {
+                throw new ArgumentException("A service name is required.", "serviceName");
+            }
+            if (string.IsNullOrEmpty(storeName))
+            {
+                throw new ArgumentException("A store name is required.", "storeName");
+            }
+
+            // A service certificate store lives under CERT_SYSTEM_STORE_SERVICES,
+            // which StoreLocation.LocalMachine cannot address. The provider is
+            // CERT_STORE_PROV_SYSTEM_W, passed as the integer 10. An absent store
+            // returns null so a caller can treat it as no certificates, while any
+            // other failure throws so a caller gate fails closed.
+            // CERT_SYSTEM_STORE_SERVICES_ID is 5 shifted left by
+            // CERT_SYSTEM_STORE_LOCATION_SHIFT. The neighbouring value 4 is
+            // CERT_SYSTEM_STORE_CURRENT_SERVICE, which rejects a service-name
+            // prefix in pvPara.
+            const UInt32 certSystemStoreServices = 0x00050000;
+            const UInt32 certStoreReadOnlyFlag = 0x00008000;
+            const UInt32 certStoreOpenExistingFlag = 0x00004000;
+            const Int32 errorFileNotFound = 2;
+            const Int32 cryptNotFound = unchecked((Int32)0x80092004);
+
+            IntPtr store = CertOpenStore(
+                new IntPtr(10),
+                0,
+                IntPtr.Zero,
+                certSystemStoreServices | certStoreReadOnlyFlag | certStoreOpenExistingFlag,
+                serviceName + "\\" + storeName);
+            if (store == IntPtr.Zero)
+            {
+                Int32 openError = Marshal.GetLastWin32Error();
+                if (openError == errorFileNotFound)
+                {
+                    return null;
+                }
+                throw new Win32Exception(
+                    openError,
+                    "CertOpenStore failed for service certificate store '" + serviceName +
+                    "\\" + storeName + "'.");
+            }
+
+            IntPtr context = IntPtr.Zero;
+            try
+            {
+                List<byte[]> certificates = new List<byte[]>();
+                context = CertEnumCertificatesInStore(store, IntPtr.Zero);
+                while (context != IntPtr.Zero)
+                {
+                    CertContext certContext =
+                        (CertContext)Marshal.PtrToStructure(context, typeof(CertContext));
+                    if (certContext.EncodedCertificateLength <= 0 ||
+                        certContext.EncodedCertificate == IntPtr.Zero)
+                    {
+                        throw new InvalidOperationException(
+                            "The service certificate store '" + serviceName + "\\" + storeName +
+                            "' returned a certificate context without encoded content.");
+                    }
+                    byte[] encoded = new byte[certContext.EncodedCertificateLength];
+                    Marshal.Copy(certContext.EncodedCertificate, encoded, 0, encoded.Length);
+                    certificates.Add(encoded);
+                    // CertEnumCertificatesInStore frees the previous context.
+                    context = CertEnumCertificatesInStore(store, context);
+                }
+                // A null return means the enumeration finished or it failed, so
+                // a truncated list would otherwise be reported as a complete one
+                // and a caller gate would fail open. A completed enumeration
+                // always reports CRYPT_E_NOT_FOUND, including for an empty
+                // store, so nothing else is accepted.
+                Int32 enumerationError = Marshal.GetLastWin32Error();
+                if (enumerationError != cryptNotFound)
+                {
+                    throw new Win32Exception(
+                        enumerationError,
+                        "CertEnumCertificatesInStore failed for service certificate store '" +
+                        serviceName + "\\" + storeName + "'.");
+                }
+                return certificates;
+            }
+            finally
+            {
+                if (context != IntPtr.Zero)
+                {
+                    CertFreeCertificateContext(context);
+                }
+                CertCloseStore(store, 0);
             }
         }
 

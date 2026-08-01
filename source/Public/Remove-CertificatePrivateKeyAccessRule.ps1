@@ -98,14 +98,61 @@ function Remove-CertificatePrivateKeyAccessRule {
                 -SecurityIdentifier $Identities `
                 -AccessMask $Rights `
                 -AccessControlType $RuleType
+            $current = [Security.AccessControl.RawSecurityDescriptor]::new($currentBytes, 0)
+            $candidate = [Security.AccessControl.RawSecurityDescriptor]::new($candidateBytes, 0)
+            # Rights are matched exactly, so removing Read from an account that
+            # holds FullControl matches nothing. Counting ACEs would miss a
+            # request where one account matched and another did not, which is
+            # the more convincing false success of the two.
+            $remainingKeys = [Collections.Generic.List[string]]@(
+                ConvertTo-WindowsCngKeyAceKey -Acl $candidate.DiscretionaryAcl
+            )
+            $removedIdentities = [Collections.Generic.HashSet[string]]::new(
+                [StringComparer]::OrdinalIgnoreCase
+            )
+            foreach ($aceKey in @(
+                    ConvertTo-WindowsCngKeyAceKey -Acl $current.DiscretionaryAcl
+                )) {
+                $matchIndex = $remainingKeys.IndexOf($aceKey)
+                if ($matchIndex -ge 0) {
+                    $remainingKeys.RemoveAt($matchIndex)
+                    continue
+                }
+                # A custom ACE is keyed by its bytes rather than by an identity,
+                # so only a key that starts with a security identifier can be
+                # attributed to an account.
+                $identity = ($aceKey -split '\|')[0]
+                if ($identity -like 'S-1-*') {
+                    $null = $removedIdentities.Add($identity)
+                }
+            }
+            $unmatched = @(
+                $Identities.Value | Where-Object { -not $removedIdentities.Contains($_) }
+            )
+            if ($unmatched.Count -gt 0) {
+                Write-Warning (
+                    "No private-key access rule on '$($Target.CanonicalTarget)' matched the " +
+                    "requested $RuleType rights for $($unmatched -join ', '); rights are " +
+                    'matched exactly, so an account that holds different rights is unchanged.'
+                )
+            }
             $setParameters = @{
                 Target             = $Target
                 Certificate        = $BindingCertificate
                 Key                = $Key
                 SecurityDescriptor = $candidateBytes
             }
-            if ($null -ne $Token) {
-                $setParameters['ExpectedConcurrencyToken'] = $Token
+            # Without a caller token this read-modify-write would overwrite a
+            # change another process made after the read above.
+            $setParameters['ExpectedConcurrencyToken'] = if ($null -ne $Token) {
+                $Token
+            }
+            else {
+                Get-WindowsSecurityDescriptorConcurrencyToken -Sddl (
+                    $current.GetSddlForm(
+                        [Security.AccessControl.AccessControlSections]::Access
+                    )
+                )
             }
             $null = Set-WindowsCngKeySecurityDescriptor @setParameters
         }

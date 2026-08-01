@@ -11,15 +11,20 @@ function Get-WindowsMachineStoreCertificate {
     )
 
     # The certificate PSDrive is not present in every runspace, so the store is
-    # opened through the .NET API instead. A store that must exist and cannot be
-    # opened throws so a caller gate fails closed.
+    # opened through the .NET API instead. OpenExistingOnly keeps this read-only
+    # path from creating the store's registry key for a name that does not
+    # exist. A store that must exist and cannot be opened throws so a caller
+    # gate fails closed.
     $store = [Security.Cryptography.X509Certificates.X509Store]::new(
         $StoreName,
         [Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine
     )
     try {
         try {
-            $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
+            $store.Open(
+                [Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly -bor
+                [Security.Cryptography.X509Certificates.OpenFlags]::OpenExistingOnly
+            )
         }
         catch {
             if ($Required) {

@@ -115,4 +115,49 @@ Describe 'Add-CertificatePrivateKeyAccessRule behavior' -Tag 'Unit', 'WindowsOnl
             $script:bindingCertificate | Should -Be $certificate
         }
     }
+
+    It 'Should derive a concurrency token from its own read when the caller supplies none' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;SY)(A;;FA;;;BA)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                $script:observedToken = $null
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                Mock Set-WindowsCngKeySecurityDescriptor {
+                    $script:observedToken = $ExpectedConcurrencyToken
+                    , $SecurityDescriptor
+                }
+                Mock Invoke-WithWindowsCertificatePrivateKeyTarget {
+                    $target = [pscustomobject]@{
+                        CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0'
+                    }
+                    & $Operation $target $ephemeralKey @ArgumentList
+                }
+
+                $certificate | Add-CertificatePrivateKeyAccessRule `
+                    -ProviderName 'Microsoft Software Key Storage Provider' `
+                    -KeyName 'TestKey' `
+                    -Account 'S-1-5-32-545' `
+                    -AccessRights Read `
+                    -Confirm:$false
+
+                $expected = Get-WindowsSecurityDescriptorConcurrencyToken -Sddl (
+                    $stored.GetSddlForm(
+                        [Security.AccessControl.AccessControlSections]::Access
+                    )
+                )
+                $script:observedToken | Should -BeExactly $expected
+            }
+            finally {
+                $ephemeralKey.Dispose()
+            }
+        }
+    }
 }
