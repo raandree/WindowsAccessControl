@@ -700,4 +700,126 @@ Describe 'Task Scheduler portability and desired state' -Tag 'DomainLab', 'Windo
         $result.DescriptorReasons | Should -Be 0
         $result.FinalSddl | Should -BeExactly $result.BeforeSddl
     }
+
+    It 'Should converge the descriptor resources without reporting drift after a write' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:taskPath, $script:taskName `
+            -ScriptBlock {
+                param($TaskPath, $TaskName)
+
+                $module = Get-Module WindowsAccessControl
+                $before = Get-TaskFolderSecurityDescriptor -Path $TaskPath
+                $taskBefore = Get-ScheduledTaskSecurityDescriptor `
+                    -TaskPath $TaskPath -TaskName $TaskName
+                try {
+                    $null = Add-TaskFolderAccessRule `
+                        -Path $TaskPath `
+                        -AllowedRootPath $TaskPath `
+                        -Account 'S-1-1-0' `
+                        -AccessRights ReadAndTraverse `
+                        -Confirm:$false
+                    $null = Add-ScheduledTaskAccessRule `
+                        -TaskPath $TaskPath `
+                        -TaskName $TaskName `
+                        -AllowedRootPath $TaskPath `
+                        -Account 'S-1-1-0' `
+                        -AccessRights ReadAndRun `
+                        -Confirm:$false
+                    $driftedFolder = Get-TaskFolderSecurityDescriptor -Path $TaskPath
+                    $driftedTask = Get-ScheduledTaskSecurityDescriptor `
+                        -TaskPath $TaskPath -TaskName $TaskName
+
+                    $folderState = & $module {
+                        param($Path, $Sddl)
+
+                        $resource = [WindowsAccessControlTaskFolderSecurityDescriptor]::new()
+                        $resource.Path = $Path
+                        $resource.AllowedRootPath = $Path
+                        $resource.Sections = [WindowsSecurityDescriptorSection]::Access
+                        $resource.Sddl = $Sddl
+
+                        $drifted = $resource.Test()
+                        $resource.Set()
+                        # A second consistency pass proves the Task Scheduler
+                        # service canonicalization does not reopen the drift.
+                        $afterSet = $resource.Test()
+                        $repeated = $resource.Test()
+                        [pscustomobject]@{
+                            Drifted  = $drifted
+                            AfterSet = $afterSet
+                            Repeated = $repeated
+                            Reasons  = @($resource.Get().Reasons).Count
+                        }
+                    } $TaskPath $before.Sddl
+
+                    $taskState = & $module {
+                        param($Path, $Name, $Sddl)
+
+                        $resource = [WindowsAccessControlScheduledTaskSecurityDescriptor]::new()
+                        $resource.TaskPath = $Path
+                        $resource.TaskName = $Name
+                        $resource.AllowedRootPath = $Path
+                        $resource.Sections = [WindowsSecurityDescriptorSection]::Access
+                        $resource.Sddl = $Sddl
+
+                        $drifted = $resource.Test()
+                        $resource.Set()
+                        $afterSet = $resource.Test()
+                        $repeated = $resource.Test()
+                        [pscustomobject]@{
+                            Drifted  = $drifted
+                            AfterSet = $afterSet
+                            Repeated = $repeated
+                            Reasons  = @($resource.Get().Reasons).Count
+                        }
+                    } $TaskPath $TaskName $taskBefore.Sddl
+
+                    [pscustomobject]@{
+                        FolderDrifted      = $folderState.Drifted
+                        FolderAfterSet     = $folderState.AfterSet
+                        FolderRepeated     = $folderState.Repeated
+                        FolderReasons      = $folderState.Reasons
+                        TaskDrifted        = $taskState.Drifted
+                        TaskAfterSet       = $taskState.AfterSet
+                        TaskRepeated       = $taskState.Repeated
+                        TaskReasons        = $taskState.Reasons
+                        DriftedFolderSddl  = $driftedFolder.Sddl
+                        DriftedTaskSddl    = $driftedTask.Sddl
+                        BeforeFolderSddl   = $before.Sddl
+                        BeforeTaskSddl     = $taskBefore.Sddl
+                        FinalFolderSddl    = (Get-TaskFolderSecurityDescriptor `
+                            -Path $TaskPath).Sddl
+                        FinalTaskSddl      = (Get-ScheduledTaskSecurityDescriptor `
+                            -TaskPath $TaskPath -TaskName $TaskName).Sddl
+                    }
+                }
+                finally {
+                    Set-TaskFolderSecurityDescriptor `
+                        -Path $TaskPath `
+                        -AllowedRootPath $TaskPath `
+                        -Sddl $before.Sddl `
+                        -Confirm:$false
+                    Set-ScheduledTaskSecurityDescriptor `
+                        -TaskPath $TaskPath `
+                        -TaskName $TaskName `
+                        -AllowedRootPath $TaskPath `
+                        -Sddl $taskBefore.Sddl `
+                        -Confirm:$false
+                }
+            }
+
+        $result.DriftedFolderSddl | Should -Not -BeExactly $result.BeforeFolderSddl
+        $result.DriftedTaskSddl | Should -Not -BeExactly $result.BeforeTaskSddl
+        $result.FolderDrifted | Should -BeFalse
+        $result.FolderAfterSet | Should -BeTrue
+        $result.FolderRepeated | Should -BeTrue
+        $result.FolderReasons | Should -Be 0
+        $result.TaskDrifted | Should -BeFalse
+        $result.TaskAfterSet | Should -BeTrue
+        $result.TaskRepeated | Should -BeTrue
+        $result.TaskReasons | Should -Be 0
+        $result.FinalFolderSddl | Should -BeExactly $result.BeforeFolderSddl
+        $result.FinalTaskSddl | Should -BeExactly $result.BeforeTaskSddl
+    }
 }

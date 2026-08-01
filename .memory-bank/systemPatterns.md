@@ -779,3 +779,15 @@ and Decision 42.
     pairwise string comparison into an array comparison that always reports
     drift.
 
+### Decision 71: Gate a suite on the Pester run result, not its failure count
+
+- Choice: Treat a Pester suite as passing only when `Result` is `Passed`; never
+    infer success from `FailedCount` alone.
+- Rationale: A `BeforeAll` or `AfterAll` failure is recorded as a failed
+    container, not a failed test, so a suite whose rollback verification throws
+    reports `FailedCount` 0 while `Result` is `Failed`. The domain-lab
+    acceptance runner and the detached suite runner both gate on `Result`,
+    which is what makes a green lab run evidence that the fixture DACLs were
+    restored. Verified on 2026-07-31 with a throwaway suite whose `AfterAll`
+    throws.
+

@@ -456,6 +456,24 @@ decision on coverage merging or the threshold.
     new Task Scheduler code measures about 97 percent covered and excluding it
     lowers the total to 79.29 percent, while the largest uncovered regions are
     Active Directory and SMB paths that only execute on the domain lab.
+- 2026-07-31: Ran the domain-lab acceptance against the OI-20 increment for the
+    first time. Five suites and 32 tests passed with zero failures, zero skips,
+    and an independent readiness check after every suite. The two previously
+    unexecuted Task Scheduler Describes passed on the first attempt, so no
+    source change was required and nothing contradicted specification 0014 or
+    ADR 0023.
+- 2026-07-31: Closed the one gap the acceptance did not cover. The suite never
+    called a descriptor resource `Set`, so the endless-correction case was
+    unproven. A new live test drifts both Task Scheduler descriptor resources,
+    converges each in one `Set`, and asserts no drift on two further
+    consistency passes. `Test-WindowsTaskSchedulerDscSddl` was also confirmed
+    against the live eight-ACE inherited folder DACL with a fully reversed ACE
+    order.
+- 2026-07-31: Verified that a green lab run really proves rollback. A throwing
+    `AfterAll` yields `Result` `Failed` with `FailedCount` 0, and both the
+    acceptance runner and the detached suite runner gate on `Result`. The final
+    live folder DACL was byte-identical to the pre-run capture, with zero leaked
+    tasks, subfolders, shares, organizational units, or keys.
 
 ## Stable capabilities
 
@@ -516,7 +534,7 @@ decision on coverage merging or the threshold.
     effective-access decision.
 - OI-18 requires a second writable domain controller for replication and
     failover evidence.
-- OI-20 adds Task Scheduler portability and desired state.
+- OI-20 is complete and carries live domain-lab evidence.
 - OI-22 through OI-24 add fail-closed CNG mutation, separate CAPI support, and
     private-key portability/desired state after their security gates.
 - Remote publication remains user-controlled.

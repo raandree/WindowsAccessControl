@@ -135,6 +135,13 @@ time, so an unrestorable record is never persisted.
   `Add-TaskFolderAccessRule`.
 - The fixed version-1 record-hash test proves existing local backups still
   validate, and no hashed field was added to version 2.
+- Domain-lab acceptance executes the backup round trip, the computer-qualified
+  canonical target, the `AllowedRootPath` requirement, and desired-state
+  convergence against a live Task Scheduler store. It also proves that a
+  drifted descriptor converges in one `Set` and then reports no drift on
+  repeated consistency passes for both descriptor resources, so the ACE order
+  the service canonicalizes after a write cannot reopen the difference and
+  drive an endless correction loop.
 
 ## See also
 
