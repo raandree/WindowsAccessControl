@@ -21,22 +21,6 @@ carry the JaCoCo file back to the repository host, and enable Sampler's
 result. Do not lower the threshold and do not add synthetic unit tests over code
 the live suites already exercise.
 
-## OI-18: Validate AD replication and failover
-
-Specification: 0008. Tasks: AD-3 and AD-6.
-
-The rebuilt lab has two writable domain controllers in the fixture domain, so
-this issue is no longer externally blocked.
-[ADObjectReplication.Live.Tests.ps1](../tests/Lab/ADObjectReplication.Live.Tests.ps1)
-covers explicit domain-controller pinning, convergence of a rule change written
-on one replica and read on the other, immutable identity across a rename and a
-move, rejection of a restore whose distinguished name was reused by a different
-object, and a failing read of a deleted object. It is registered as the sixth
-suite in the acceptance runner.
-
-The suite has not yet executed against a live lab. Close this issue only after a
-green run.
-
 ## OI-22: Add fail-closed CNG private-key mutation
 
 Specifications: 0008, 0012. Tasks: KEY-1, KEY-3, KEY-4, KEY-7, and KEY-8.

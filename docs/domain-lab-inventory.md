@@ -133,11 +133,17 @@ records credential handling only as `SuiteEphemeralRuntime`. Sanitization
 applies to the persisted evidence; thrown errors remain operator-facing and
 must not be copied into a shared log that requires redaction.
 
-The latest complete profile executed 18 tests across five suites with zero
-failures or skips. All five cleanup checks were ready, retained evidence
-contained no infrastructure identifiers, and a fresh harness import confirmed
-the complete lab ready afterward. The runner contract passes 13 tests in both
-PowerShell 7 and Windows PowerShell 5.1.
+The latest complete profile executed 40 tests across six suites with zero
+failures or skips. All six cleanup checks were ready, retained evidence
+contained no infrastructure identifiers, both writable domain controllers served
+the directory afterwards, and no disposable organizational unit or HTTP.sys
+binding leaked. The runner contract passes 13 tests in both PowerShell 7 and
+Windows PowerShell 5.1.
+
+`Invoke-WindowsAccessControlLabAcceptance.ps1` drives the same profile from the
+Hyper-V host: it copies the current build and the suites into the management
+domain controller, runs the acceptance there, and copies the redacted evidence
+back.
 
 ## Remote transport evidence
 
@@ -197,8 +203,9 @@ parts of `AD-1`.
 
 The present topology satisfies the entry-gate design, disposable fixtures,
 read-only probes, replication and domain-controller switch evidence, and
-certificate enrollment. The following additions are required only by later
-gates:
+certificate enrollment. `AD-3` and `AD-6` are closed against it; specification
+0016 records the resulting contract. The following additions are required only
+by later gates:
 
 - Add a read-only domain controller before any claim about read-only directory
   behavior. AutomatedLab exposes no read-only domain controller role, so this

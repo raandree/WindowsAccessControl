@@ -32,7 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     enterprise root certification authority, and four member servers
 - Add live Active Directory replication, domain-controller switch, rename, move,
     deletion, and distinguished-name reuse coverage
-    (`tests/Lab/ADObjectReplication.Live.Tests.ps1`)
+    (`tests/Lab/ADObjectReplication.Live.Tests.ps1`), plus a pinned-controller
+    outage test that proves a command fails instead of silently redirecting to a
+    surviving controller
+- Add specification 0016, which records the Active Directory multi-controller
+    identity, replication, and outage behavior that specification 0009 deferred
 
 ### Changed
 

@@ -233,40 +233,82 @@ Describe 'Certificate private-key DACL mutation' `
                         -Namespace 'root/cimv2/TerminalServices' `
                         -ClassName 'Win32_TSGeneralSetting'
                 ).SSLCertificateSHA1Hash
-                $rdpStore = [Security.Cryptography.X509Certificates.X509Store]::new(
-                    'Remote Desktop',
-                    'LocalMachine'
-                )
-                $rdpStore.Open('ReadOnly')
-                $rdpCertificate = @(
-                    $rdpStore.Certificates |
-                        Where-Object { $_.Thumbprint -eq $rdpThumbprint }
-                )[0]
-                $rdpStore.Close()
-                $rdpBindings = @(
-                    Test-CertificatePrivateKeyCriticalBinding -Certificate $rdpCertificate
-                )
+
+                # Binding the fixture certificate to a disposable HTTP.sys port
+                # is the only way to exercise the refusal deterministically. The
+                # machine's own Remote Desktop certificate cannot be used: which
+                # store holds it varies by machine, and it must stay bound.
+                $bindingsBefore = @(
+                    Test-CertificatePrivateKeyCriticalBinding -Certificate $certificate
+                ).Count
+                $netshPath = Join-Path $env:SystemRoot 'System32\netsh.exe'
+                $bindingPort = 48443
+                $bindingApplicationId = '{6f1cbf6b-1c1a-4d1e-9d2e-4c1b4d3f5a20}'
+                $boundBindings = @()
+                $boundRefusal = $null
+                try {
+                    $null = & $netshPath http add sslcert `
+                        "ipport=0.0.0.0:$bindingPort" `
+                        "certhash=$($certificate.Thumbprint)" `
+                        "appid=$bindingApplicationId" `
+                        'certstorename=MY' 2>&1
+                    if ($LASTEXITCODE -ne 0) {
+                        throw "Unable to create the disposable HTTP.sys binding; netsh returned $LASTEXITCODE."
+                    }
+                    $boundBindings = @(
+                        Test-CertificatePrivateKeyCriticalBinding -Certificate $certificate |
+                            ForEach-Object { $_.Binding }
+                    )
+                    try {
+                        Add-CertificatePrivateKeyAccessRule @common `
+                            -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                    }
+                    catch {
+                        $boundRefusal = $_.Exception.Message
+                    }
+                }
+                finally {
+                    $null = & $netshPath http delete sslcert "ipport=0.0.0.0:$bindingPort" 2>&1
+                }
+                $bindingsAfter = @(
+                    Test-CertificatePrivateKeyCriticalBinding -Certificate $certificate
+                ).Count
+
+                $releasedWriteSucceeded = $false
+                try {
+                    Add-CertificatePrivateKeyAccessRule @common `
+                        -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                    Remove-CertificatePrivateKeyAccessRule @common `
+                        -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                    $releasedWriteSucceeded = $true
+                }
+                catch {
+                    $releasedWriteSucceeded = $false
+                }
 
                 [pscustomobject]@{
-                    OriginalRuleCount  = $originalRules.Count
-                    AddedRuleCount     = $addedRules.Count
-                    AddedUsersRights   = [string](
+                    OriginalRuleCount      = $originalRules.Count
+                    AddedRuleCount         = $addedRules.Count
+                    AddedUsersRights       = [string](
                         $addedRules | Where-Object SID -EQ 'S-1-5-32-545'
                     ).AccessRights
-                    IdempotentCount    = $idempotentRules.Count
-                    OriginalSddl       = $originalSddl
-                    RestoredSddl       = $restoredSddl
-                    SetRestoredSddl    = $setRestoredSddl
-                    WhatIfSddl         = $whatIfSddl
-                    SystemRefusal      = $systemRefusal
-                    DenyRefusal        = $denyRefusal
-                    ConditionalRefusal = $conditionalRefusal
-                    ProviderRefusal    = $providerRefusal
-                    StaleTokenRefusal  = $staleTokenRefusal
-                    BindingCount       = @(
-                        Test-CertificatePrivateKeyCriticalBinding -Certificate $certificate
-                    ).Count
-                    RdpBindings        = @($rdpBindings | ForEach-Object { $_.Binding })
+                    IdempotentCount        = $idempotentRules.Count
+                    OriginalSddl           = $originalSddl
+                    RestoredSddl           = $restoredSddl
+                    SetRestoredSddl        = $setRestoredSddl
+                    WhatIfSddl             = $whatIfSddl
+                    SystemRefusal          = $systemRefusal
+                    DenyRefusal            = $denyRefusal
+                    ConditionalRefusal     = $conditionalRefusal
+                    ProviderRefusal        = $providerRefusal
+                    StaleTokenRefusal      = $staleTokenRefusal
+                    RdpThumbprintPresent   = -not [string]::IsNullOrWhiteSpace($rdpThumbprint)
+                    BindingsBefore         = $bindingsBefore
+                    BoundBindings          = $boundBindings
+                    BoundRefusal           = $boundRefusal
+                    BindingsAfter          = $bindingsAfter
+                    ReleasedWriteSucceeded = $releasedWriteSucceeded
+                    FinalSddl              = (Get-CertificatePrivateKeySecurityDescriptor @common).Sddl
                 }
             }
 
@@ -282,7 +324,12 @@ Describe 'Certificate private-key DACL mutation' `
         $result.ConditionalRefusal | Should -BeLike '*Only plain allow and deny ACEs*'
         $result.ProviderRefusal | Should -BeLike '*not admitted*'
         $result.StaleTokenRefusal | Should -BeLike '*changed after they were read*'
-        $result.BindingCount | Should -Be 0
-        $result.RdpBindings | Should -Contain 'RemoteDesktop'
+        $result.RdpThumbprintPresent | Should -BeTrue
+        $result.BindingsBefore | Should -Be 0
+        $result.BoundBindings | Should -Contain 'HttpSys'
+        $result.BoundRefusal | Should -BeLike '*serves a critical binding*'
+        $result.BindingsAfter | Should -Be 0
+        $result.ReleasedWriteSucceeded | Should -BeTrue
+        $result.FinalSddl | Should -BeExactly $result.OriginalSddl
     }
 }

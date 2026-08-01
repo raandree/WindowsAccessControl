@@ -152,9 +152,12 @@ canonical identity and the four enterprise DSC resources.
 
 Specification 0011 later admits bounded local share-only effective access.
 ADR 0022 defers Active Directory effective access on measured evidence. SMB
-remote APIs, combined share/NTFS effective access, replication, and SACL
-workflows remain tracked by specification 0008 and open issue OI-18. ADR 0017
-explicitly defers remote and combined effective access.
+remote APIs, combined share/NTFS effective access, and SACL workflows remain
+tracked by specification 0008. ADR 0017 explicitly defers remote and combined
+effective access.
+
+Replication convergence is no longer deferred. Specification 0016 records the
+multi-controller behavior this contract left open, and closes open issue OI-18.
 
 ## Verification
 

@@ -10,11 +10,28 @@ source: current task evidence
 ## Current focus
 
 The project moved to a Hyper-V host that is not domain joined, and the domain
-lab was replaced with a purpose-built multi-forest environment. OI-22 shipped as
-specification 0015 after an independent cryptographic review returned REQUEST
-CHANGES and every Blocker and Major finding was fixed. OI-23 closed as a
-decision rather than an implementation. OI-18 has a suite but is waiting for the
-lab rebuild to finish.
+lab was replaced with a purpose-built multi-forest environment. OI-18, OI-22,
+and OI-23 are closed. The complete six-suite acceptance passes 40 of 40 tests
+against the rebuilt lab.
+
+## OI-18 result
+
+- The rebuilt lab gives the fixture domain two writable domain controllers, so
+    replication and controller switching became testable for the first time.
+- The live suite passed 7 of 7 on its first run and is now the sixth acceptance
+    suite. Specification 0016 records the resulting contract.
+- The outage test stops the partner's directory service and proves the module
+    fails a pinned read and a pinned write rather than redirecting to the
+    surviving controller. That is the property that protects the read-compare-write
+    pairing; a silent switch would break the staleness check and the object-GUID
+    pin. It restarts every dependent service it stopped and the suite `AfterAll`
+    fails when the partner does not serve the directory again.
+- The first full acceptance run failed one assertion and the module was right.
+    The live Remote Desktop assertion assumed the bound certificate lives in the
+    `Remote Desktop` store; on the member server the bound certificate is in `My`
+    and that store holds a different one. It was replaced by a deterministic
+    HTTP.sys binding cycle that proves detection, refusal, release, and a
+    permitted write afterwards.
 
 ## Environment change
 
@@ -84,7 +101,8 @@ rejection boundary remains.
 
 ## Next step
 
-Finish the lab rebuild, run the six-suite acceptance including the new
-replication suite, and decide the coverage gate from the current report. OI-24
-is unblocked but not started; its three binding constraints are recorded in the
-open-issues register so the next session starts from evidence.
+Two things remain open. The OI-22 review fixes have not had a focused
+re-review, which this repository's convention requires after a Blocker-level
+redesign. OI-24 is unblocked but not started; its three binding constraints are
+recorded in the open-issues register. OI-27 tracks merging domain-lab coverage
+so the 80 percent threshold measures what the suites actually exercise.

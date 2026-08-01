@@ -13,11 +13,10 @@ The local NTFS, registry, service/SCM, process, SMB-share, Task Scheduler, and
 bounded Active Directory command families are complete for their accepted
 increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
-and read-only CNG private-key inspection are independently reviewed. OI-11 and
-ENT-8 are closed for the currently shipped enterprise families. The 80 percent
-coverage gate is currently unmet at 79.61 percent because the Active
-Directory and SMB paths only execute on the domain lab; that needs a separate
-decision on coverage merging or the threshold.
+and fail-closed CNG private-key mutation are independently reviewed. OI-11,
+ENT-8, OI-18, OI-22, and OI-23 are closed. The 80 percent coverage gate is
+currently unmet at 78.61 percent; ADR 0025 keeps the threshold and tracks the
+measurement fix as OI-27.
 
 ## Recent milestones
 
@@ -573,14 +572,35 @@ decision on coverage merging or the threshold.
     identity across rename and move, rejection of a restore whose distinguished
     name was reused by a different object, and a failing read of a deleted
     object.
+- 2026-08-01: Closed OI-18 with specification 0016 after the rebuilt lab came up
+    with two writable domain controllers in the fixture domain. The live suite
+    passed 7 of 7 on its first run: controller pinning, convergence in both
+    directions between the two replicas, identity across a rename and a move,
+    rejection of a restore whose distinguished name was reused, a failing read of
+    a deleted object, and a pinned-controller outage.
+- 2026-08-01: The outage test stops the partner's directory service and proves
+    the module fails a pinned read and a pinned write with an LDAP-unavailable
+    error rather than redirecting to the surviving controller. It restarts every
+    dependent service it stopped, and the suite `AfterAll` fails when the partner
+    does not serve the directory again.
+- 2026-08-01: The first full acceptance run failed one assertion, and the module
+    was right. The live Remote Desktop assertion assumed the bound certificate
+    lives in the `Remote Desktop` store, but on the member server the bound
+    certificate is in `My` and the `Remote Desktop` store holds a different one.
+    The assertion was replaced by a deterministic HTTP.sys binding cycle that
+    proves detection, refusal, release, and a permitted write afterwards, which
+    also exercises the branch that covers Internet Information Services and
+    WinRM HTTPS.
+- 2026-08-01: The complete six-suite acceptance passed 40 of 40 tests with zero
+    skips, six ready cleanup checks, both controllers serving afterwards, and no
+    leaked organizational unit or HTTP.sys binding.
 
 ## Open work
 
 - OI-14 and OI-17 add SMB/AD portability, desired state, and an AD
     effective-access decision.
-- OI-18 has a live replication, domain-controller switch, rename, move,
-    deletion, and distinguished-name reuse suite. It waits only on the rebuilt
-    lab, which now has two writable domain controllers in the fixture domain.
+- OI-18 is complete. Specification 0016 records the multi-controller contract
+    and the live suite passes 7 of 7 against two writable domain controllers.
 - OI-20 is complete and carries live domain-lab evidence.
 - OI-22 is complete: specification 0015 ships fail-closed CNG mutation and one
     independent cryptographic review closed with every Blocker and Major fixed.

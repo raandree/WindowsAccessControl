@@ -1,3 +1,10 @@
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSUseUsingScopeModifierInNewRunspaces',
+    '',
+    Justification = 'Remote parameters are supplied explicitly through Invoke-Command ArgumentList.'
+)]
+param()
+
 BeforeAll {
     Import-Module ActiveDirectory -ErrorAction Stop
 
@@ -20,6 +27,7 @@ BeforeAll {
     }
     $script:primaryServer = $script:writableControllers[0]
     $script:partnerServer = $script:writableControllers[1]
+    $script:partnerComputerName = $script:partnerServer.Split('.')[0]
 
     $script:rootOu = "OU=WindowsAccessControlLab,$($script:domain.DistinguishedName)"
     $script:targetOu = "OU=Targets,$($script:rootOu)"
@@ -49,6 +57,39 @@ BeforeAll {
             -Destination $To `
             -ErrorAction Stop
     }
+
+    function script:Restore-PartnerDirectoryService {
+        param([string[]]$Dependent = @(), [int]$TimeoutSeconds = 240)
+
+        Invoke-Command `
+            -ComputerName $script:partnerComputerName `
+            -Authentication Kerberos `
+            -ArgumentList (, $Dependent) `
+            -ScriptBlock {
+                param($Services)
+
+                Start-Service -Name NTDS -ErrorAction Stop
+                foreach ($name in $Services) {
+                    Start-Service -Name $name -ErrorAction SilentlyContinue
+                }
+            } `
+            -ErrorAction Stop
+
+        $deadline = [datetime]::UtcNow.AddSeconds($TimeoutSeconds)
+        while ([datetime]::UtcNow -lt $deadline) {
+            try {
+                $null = Get-ADObjectSecurityDescriptor `
+                    -Server $script:partnerServer `
+                    -DistinguishedName $script:targetOu `
+                    -ThrottleLimit 1
+                return $true
+            }
+            catch {
+                Start-Sleep -Seconds 5
+            }
+        }
+        $false
+    }
 }
 
 AfterAll {
@@ -69,7 +110,25 @@ AfterAll {
     if ($leaked.Count -gt 0) {
         throw "The replication suite leaked $($leaked.Count) disposable organizational units."
     }
+
+    # The outage test stops a directory service. Leaving a domain controller
+    # down would silently degrade every later suite, so the suite fails loudly
+    # rather than exiting green on a half-recovered lab.
+    $partnerHealthy = $false
+    try {
+        $null = Get-ADObjectSecurityDescriptor `
+            -Server $script:partnerServer `
+            -DistinguishedName $script:targetOu `
+            -ThrottleLimit 1
+        $partnerHealthy = $true
+    }
+    catch {
+        $partnerHealthy = $false
+    }
     Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
+    if (-not $partnerHealthy) {
+        throw "The replication partner '$($script:partnerServer)' does not serve the directory after the suite."
+    }
 }
 
 Describe 'Active Directory multi-controller identity' `
@@ -291,5 +350,89 @@ Describe 'Active Directory multi-controller identity' `
 
         $result | Should -BeNullOrEmpty
         $readError | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Active Directory pinned-controller outage' `
+    -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    It 'Should fail a pinned read and write instead of redirecting to a surviving controller' {
+        $dependents = @(
+            Invoke-Command `
+                -ComputerName $script:partnerComputerName `
+                -Authentication Kerberos `
+                -ScriptBlock {
+                    @(
+                        (Get-Service NTDS).DependentServices |
+                            Where-Object Status -EQ 'Running' |
+                            Select-Object -ExpandProperty Name
+                    )
+                } `
+                -ErrorAction Stop
+        )
+        $pinnedReadError = $null
+        $pinnedReadResult = $null
+        $pinnedWriteError = $null
+        $survivor = $null
+        $recovered = $false
+
+        try {
+            Invoke-Command `
+                -ComputerName $script:partnerComputerName `
+                -Authentication Kerberos `
+                -ScriptBlock { Stop-Service -Name NTDS -Force -ErrorAction Stop } `
+                -ErrorAction Stop
+
+            try {
+                $pinnedReadResult = Get-ADObjectSecurityDescriptor `
+                    -Server $script:partnerServer `
+                    -DistinguishedName $script:targetOu `
+                    -ThrottleLimit 1
+            }
+            catch {
+                $pinnedReadError = $_.Exception.Message
+            }
+
+            try {
+                Add-ADObjectAccessRule `
+                    -Server $script:partnerServer `
+                    -DistinguishedName $script:targetOu `
+                    -AllowedBaseDistinguishedName $script:targetOu `
+                    -Account $script:testSid `
+                    -AccessRights ReadProperty `
+                    -ThrottleLimit 1 `
+                    -Confirm:$false
+            }
+            catch {
+                $pinnedWriteError = $_.Exception.Message
+            }
+
+            $survivor = Get-ADObjectSecurityDescriptor `
+                -Server $script:primaryServer `
+                -DistinguishedName $script:targetOu `
+                -ThrottleLimit 1
+        }
+        finally {
+            $recovered = script:Restore-PartnerDirectoryService -Dependent $dependents
+        }
+
+        $pinnedReadResult | Should -BeNullOrEmpty -Because 'a pinned controller that is down must not be replaced silently'
+        $pinnedReadError | Should -BeLike '*LDAP server is unavailable*'
+        $pinnedWriteError | Should -BeLike '*LDAP server is unavailable*'
+        $survivor.CanonicalTarget | Should -BeLike "ADObject:$($script:primaryServer.ToUpperInvariant()):*"
+        $recovered | Should -BeTrue -Because 'the suite must leave both controllers serving the directory'
+    }
+
+    It 'Should read the same immutable identity from both controllers after recovery' {
+        $primary = Get-ADObjectSecurityDescriptor `
+            -Server $script:primaryServer `
+            -DistinguishedName $script:targetOu `
+            -ThrottleLimit 1
+        $partner = Get-ADObjectSecurityDescriptor `
+            -Server $script:partnerServer `
+            -DistinguishedName $script:targetOu `
+            -ThrottleLimit 1
+
+        $partner.ObjectGuid | Should -Be $primary.ObjectGuid
+        $partner.Sddl | Should -BeExactly $primary.Sddl
     }
 }
