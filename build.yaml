@@ -68,9 +68,9 @@ BuildWorkflow:
     # Use this task if pipeline uses code coverage and the module is using the
     # pattern of Public, Private, Enum, Classes.
     #- Convert_Pester_Coverage
-    # The default Pester profile cannot execute the Active Directory, certificate
-    # private-key, SMB share, and Task Scheduler families, so the threshold is
-    # asserted over the local run merged with the domain-lab acceptance. See ADR 0025.
+    # The threshold is asserted over the commands this profile can execute. The
+    # domain-lab acceptance measures the Active Directory and SMB share families
+    # and is merged in when it is available. See ADR 0025 and ADR 0027.
     - Import_DomainLab_Code_Coverage
     - Merge_CodeCoverage_Files
     - Assert_Merged_Code_Coverage_Threshold
@@ -116,10 +116,34 @@ Pester:
 # DomainLabCodeCoverageFile    - the JaCoCo document that the domain-lab acceptance
 #                                runner carries back from the lab. It is outside
 #                                'output' because the build deletes that tree.
+# DomainLabOnlySourcePath      - the Active Directory and SMB share source files that no
+#                                test profile executes a single command of. Their live
+#                                evidence is a tests/Lab suite that needs a domain
+#                                controller and a delegated member server. Their commands
+#                                are reported but not asserted. Every other source file,
+#                                and every line that cannot be attributed to one, stays
+#                                inside the asserted scope, and a declared file the local
+#                                run does execute fails the build.
 CodeCoverage:
   CodeCoverageFilePattern: JaCoCo_coverage*.xml
   CodeCoverageMergedOutputFile: JaCoCo_merged.xml
   DomainLabCodeCoverageFile: tests/Lab/coverage/JaCoCo_coverage_DomainLab.xml
+  DomainLabOnlySourcePath:
+    - Private/Get-WindowsADObjectRecord.ps1
+    - Private/Get-WindowsADRootDse.ps1
+    - Private/Get-WindowsADRuleEnrichment.ps1
+    - Private/New-WindowsADConnection.ps1
+    - Private/Resolve-WindowsADObjectTarget.ps1
+    - Public/Get-ADObjectSecurityDescriptor.ps1
+    - Public/Set-ADObjectSecurityDescriptor.ps1
+    - Private/Invoke-WindowsSmbShareAclRuleMutation.ps1
+    - Private/Invoke-WindowsSmbShareCommandBatch.ps1
+    - Private/Set-WindowsSmbShareSecurityDescriptor.ps1
+    - Public/Add-SmbShareAccessRule.ps1
+    - Public/Get-SmbShareAccessRule.ps1
+    - Public/Get-SmbShareSecurityDescriptor.ps1
+    - Public/Remove-SmbShareAccessRule.ps1
+    - Public/Set-SmbShareSecurityDescriptor.ps1
 
 
 # Import ModuleBuilder tasks from a specific PowerShell module using the build

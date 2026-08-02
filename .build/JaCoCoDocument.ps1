@@ -193,3 +193,232 @@ function Assert-JaCoCoDocumentIdentity
         )
     }
 }
+
+<#
+    .SYNOPSIS
+        Maps every line of the built module to the source file it was merged
+        from.
+
+    .DESCRIPTION
+        ModuleBuilder merges the source tree into one `.psm1` and brackets each
+        file with `#Region '<source path>'` and `#EndRegion '<source path>'`
+        comment lines. Coverage measures that merged file, so those comments are
+        the only evidence of which source file a measured line belongs to.
+
+        A line outside every region is deliberately left unmapped. The caller
+        keeps such a line in scope, so a built module whose regions cannot be
+        read measures more rather than less.
+#>
+function Get-BuiltModuleSourceMap
+{
+    [CmdletBinding()]
+    [OutputType([System.Collections.Hashtable])]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [System.String]
+        $Path
+    )
+
+    $map = @{ }
+    $sourcePath = $null
+    $lineNumber = 0
+
+    foreach ($line in [System.IO.File]::ReadLines($Path))
+    {
+        $lineNumber++
+
+        if ($line -cmatch "^#Region\s+'(?<SourcePath>[^']+)'")
+        {
+            $sourcePath = $Matches['SourcePath'] -replace '^\.[\\/]' -replace '\\', '/'
+
+            continue
+        }
+
+        if ($line -cmatch "^#EndRegion\s+'(?<SourcePath>[^']+)'")
+        {
+            $sourcePath = $null
+
+            continue
+        }
+
+        if ($sourcePath)
+        {
+            $map[$lineNumber] = $sourcePath
+        }
+    }
+
+    return $map
+}
+
+<#
+    .SYNOPSIS
+        Returns the measured commands of a JaCoCo document per source file.
+
+    .DESCRIPTION
+        Every measured line is attributed through the built-module source map.
+        A line the map does not know is reported under an empty source path
+        rather than dropped, so the counts still add up to the whole document.
+#>
+function Get-JaCoCoSourceCoverage
+{
+    [CmdletBinding()]
+    [OutputType([PSCustomObject[]])]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [System.Xml.XmlDocument]
+        $Document,
+
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Hashtable]
+        $SourceMap
+    )
+
+    $totals = @{ }
+
+    foreach ($package in $Document.report.package)
+    {
+        foreach ($sourceFile in $package.sourcefile)
+        {
+            foreach ($line in $sourceFile.line)
+            {
+                $sourcePath = [System.String] $SourceMap[[int] $line.nr]
+
+                if (-not $totals.ContainsKey($sourcePath))
+                {
+                    $totals[$sourcePath] = [PSCustomObject] @{
+                        SourcePath = $sourcePath
+                        Analyzed   = 0
+                        Executed   = 0
+                        Missed     = 0
+                    }
+                }
+
+                $totals[$sourcePath].Missed += [int] $line.mi
+                $totals[$sourcePath].Executed += [int] $line.ci
+                $totals[$sourcePath].Analyzed += ([int] $line.mi + [int] $line.ci)
+            }
+        }
+    }
+
+    return [PSCustomObject[]] @($totals.Values | Sort-Object -Property 'SourcePath')
+}
+
+<#
+    .SYNOPSIS
+        Splits the measured commands into the surface the running test profile
+        can execute and the surface only the domain-lab acceptance executes.
+
+    .DESCRIPTION
+        The default Pester profile has no domain controller, no member server,
+        and no disposable fixture set, so it structurally cannot execute the
+        enterprise families. Asserting one threshold over both surfaces reports
+        "insufficiently tested" for code the profile was never able to run.
+
+        Only a source file that matches a declared pattern leaves the asserted
+        scope. Everything else, including a line the source map cannot attribute
+        and every file added later, stays in scope. `DomainLabOnlySource`
+        carries the per-file counts so a caller can refuse a declaration the
+        measured run contradicts.
+#>
+function Get-JaCoCoScopedCommandCount
+{
+    [CmdletBinding()]
+    [OutputType([PSCustomObject])]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [System.Xml.XmlDocument]
+        $Document,
+
+        [Parameter(Mandatory = $true)]
+        [System.Collections.Hashtable]
+        $SourceMap,
+
+        [Parameter()]
+        [AllowEmptyCollection()]
+        [System.String[]]
+        $DomainLabOnlySourcePath = @()
+    )
+
+    $inScopeExecuted = 0
+    $inScopeMissed = 0
+    $domainLabOnlyExecuted = 0
+    $domainLabOnlyMissed = 0
+    $unattributedExecuted = 0
+    $unattributedMissed = 0
+    $matchedPattern = @{ }
+    $domainLabOnlySource = [System.Collections.Generic.List[PSCustomObject]]::new()
+
+    foreach ($source in (Get-JaCoCoSourceCoverage -Document $Document -SourceMap $SourceMap))
+    {
+        if (-not $source.SourcePath)
+        {
+            $unattributedExecuted += $source.Executed
+            $unattributedMissed += $source.Missed
+        }
+
+        $pattern = @(
+            $DomainLabOnlySourcePath | Where-Object -FilterScript {
+                $source.SourcePath -and $source.SourcePath -like $_
+            }
+        )
+
+        if ($pattern.Count -gt 0)
+        {
+            foreach ($name in $pattern)
+            {
+                $matchedPattern[$name] = $true
+            }
+
+            $domainLabOnlyExecuted += $source.Executed
+            $domainLabOnlyMissed += $source.Missed
+            $domainLabOnlySource.Add($source)
+
+            continue
+        }
+
+        $inScopeExecuted += $source.Executed
+        $inScopeMissed += $source.Missed
+    }
+
+    return [PSCustomObject] @{
+        InScope             = Get-JaCoCoCountResult -Executed $inScopeExecuted -Missed $inScopeMissed
+        DomainLabOnly       = Get-JaCoCoCountResult -Executed $domainLabOnlyExecuted -Missed $domainLabOnlyMissed
+        Unattributed        = Get-JaCoCoCountResult -Executed $unattributedExecuted -Missed $unattributedMissed
+        DomainLabOnlySource = $domainLabOnlySource.ToArray()
+        UnmatchedPattern    = @(
+            $DomainLabOnlySourcePath | Where-Object -FilterScript { -not $matchedPattern.ContainsKey($_) }
+        )
+    }
+}
+
+<#
+    .SYNOPSIS
+        Returns one command-count result from an executed and a missed count.
+#>
+function Get-JaCoCoCountResult
+{
+    [CmdletBinding()]
+    [OutputType([PSCustomObject])]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        [System.Int32]
+        $Executed,
+
+        [Parameter(Mandatory = $true)]
+        [System.Int32]
+        $Missed
+    )
+
+    $analyzed = $Executed + $Missed
+
+    return [PSCustomObject] @{
+        Analyzed = $analyzed
+        Executed = $Executed
+        Missed   = $Missed
+        Percent  = if ($analyzed -eq 0) { 0 } else { $Executed / $analyzed * 100 }
+    }
+}

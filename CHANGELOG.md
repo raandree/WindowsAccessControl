@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add ADR 0027, which records that the coverage threshold is asserted over the
+    commands the running test profile can execute, why the whole-module number
+    is reported rather than asserted, and why a source file may only be declared
+    domain-lab-only while the local profile executes no command of it
 - Add certificate private-key portability and desired state. Every private-key
     command gains a `Key` parameter set that selects the key by CNG provider,
     persisted key name, and `Machine` or `User` key scope, so a portability
@@ -63,6 +67,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Assert the 80 percent code-coverage threshold over the commands the running
+    test profile can execute rather than over the whole module, so the same gate
+    produces a verdict in the hosted build and on a host that has run the domain
+    lab. Every measured line of the built module is attributed to its source file
+    through the `#Region` markers ModuleBuilder writes, and only the fifteen
+    Active Directory and SMB share files the local profile executes no command of
+    are declared out of scope. The threshold is unchanged, the whole-module and
+    domain-lab-only numbers are reported on every run together with whether
+    domain-lab evidence was merged, and the build fails both when a declared path
+    matches no source file and when the local profile does execute a declared
+    file
+- Treat a domain-lab coverage document that measures another build as absent
+    with a warning instead of failing the build. It is still never merged, so a
+    union of disjoint line sets stays impossible, but a contributor who cannot
+    run the lab is no longer blocked by evidence only the lab can refresh
 - Assert the 80 percent code-coverage threshold over the local run merged with
     the domain-lab acceptance instead of over the local run alone, so the gate
     measures the Active Directory, certificate private-key, SMB share, and Task

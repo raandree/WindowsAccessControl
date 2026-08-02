@@ -14,12 +14,30 @@ bounded Active Directory command families are complete for their accepted
 increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
 and fail-closed CNG private-key mutation are independently reviewed. OI-11,
-ENT-8, OI-18, OI-22, OI-23, and OI-24 are closed. The 80 percent coverage gate is
-currently unmet at 78.61 percent; ADR 0025 keeps the threshold and tracks the
-measurement fix as OI-27.
+ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, and OI-28 are closed. The 80 percent
+coverage gate is met at 83.16 percent over the 7,671 commands the test profile
+can execute; ADR 0027 records the asserted scope and ADR 0025 keeps the
+threshold. OI-23 is the only remaining focused issue and is closed by decision.
 
 ## Recent milestones
 
+- 2026-08-02: Closed OI-28 by asserting the coverage threshold over the commands
+    the running test profile can execute instead of over the whole module, so the
+    hosted build and a lab-capable host run the same rule. Every measured line of
+    the built module is attributed to its source file through ModuleBuilder's
+    `#Region` markers, and only the fifteen Active Directory and SMB share files
+    the local profile executes no command of are declared out of scope. Two
+    guards keep the declaration honest: a declared path that matches no source
+    file fails the build, and so does a declared file the local run does execute.
+    ADR 0027 records the decision. Evidence: 83.16 percent asserted over 7,671
+    commands against 80.36 percent over the whole module, 16 build-helper unit
+    tests and 10 QA specification tests passing, both failure branches proved
+    live, and one independent review that returned REQUEST CHANGES with seven
+    Major findings, all resolved.
+- 2026-08-02: Found that the committed domain-lab coverage document measures
+    4,720 lines the module built from `main` does not have. The identity guard
+    refuses it, so the merged 90.34 percent verdict recorded for OI-27 does not
+    currently exist and the document needs a lab rerun.
 - 2026-08-02: Implemented OI-24, private-key portability and desired state
     (KEY-5 and KEY-6). The write boundary stopped taking a certificate outright,
     so a restore and the two new DSC resources cannot reach it with a weaker

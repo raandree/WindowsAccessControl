@@ -75,6 +75,26 @@ source file or a line the reference document does not is refused, because such
 a merge produces a union of disjoint sets and moves the reported percentage
 without measuring anything new.
 
+A threshold is asserted over what the running profile can execute, never over
+what some other environment could execute. Normative record:
+[ADR 0027](../specs/decisions/0027-assert-coverage-over-executable-scope.md).
+The generalizable parts:
+
+- A gate that only one environment can meet is two verdicts, not one. Assert the
+    same rule everywhere and let the reported numbers differ with the evidence.
+- Evidence that cannot be verified is absent evidence, not a defect. A stale
+    document is reported and ignored rather than merged or turned into a red
+    build nobody can fix.
+- A declaration that removes code from a gate needs a check derived from
+    measurement, not a sentence in a decision record. Here the rule is that the
+    local profile must execute nothing of a declared file, and the build proves
+    it against the locally measured document on every run.
+- Declare exact paths rather than globs when the list decides what is asserted.
+    `-like` is case-insensitive and a glob silently absorbs files added later.
+- The `-f` format operator binds tighter than `+`, so a concatenated format
+    string leaves the first placeholders unformatted unless the concatenation is
+    parenthesized. Force an error branch to run rather than reading it.
+
 ## Decisions
 
 ### Decision 1: Use the canonical Memory Bank base

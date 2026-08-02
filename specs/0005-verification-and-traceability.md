@@ -169,8 +169,8 @@ Cross-cutting checks add Unit-level mutator `WhatIf` specifications in
 The durable contract defines required evidence levels and release gates, not a
 fixed test-run snapshot. Current run counts and review outcomes are recorded in
 `.memory-bank/progress.md`, while executable artifacts are written under
-`output/testResults`. The build enforces an 80 percent merged-module coverage
-threshold.
+`output/testResults`. The build enforces an 80 percent coverage threshold over
+the commands the running test profile can execute.
 
 `NtfsBatchPermissions.Tests.ps1` proves canonical wildcard/explicit-path
 deduplication, metric deltas, complete prevalidation before dispatch, bounded
@@ -204,13 +204,26 @@ hard timing assertion.
 
 ## Code coverage measurement
 
-The 80 percent threshold is asserted over the merged module, and the merged
-module is measured by both profiles that execute it. The default Pester profile
-cannot reach a domain controller or a member server, so it structurally cannot
-execute the Active Directory, certificate private-key, SMB share, and Task
-Scheduler families. Measuring that profile alone reports those families as
-untested when the domain-lab suites do test them. ADR 0025 records the decision
-to fix the measurement rather than the threshold.
+The 80 percent threshold is asserted over the commands the running test profile
+can execute, and the merged module is measured by both profiles that execute it.
+The default Pester profile cannot reach a domain controller or a member server,
+so it executes no command at all of fifteen Active Directory and SMB share
+source files. Asserting the whole module against that profile reports those
+files as insufficiently tested when the domain-lab suites do test them. ADR 0025
+records the decision to fix the measurement rather than the threshold, and ADR
+0027 records the scope the threshold is asserted over.
+
+Every measured line of the built module is attributed to the source file it was
+merged from, through the `#Region` and `#EndRegion` comments ModuleBuilder
+writes around each file. The source files listed in `build.yaml` under
+`CodeCoverage: DomainLabOnlySourcePath` are subtracted from both sides of the
+ratio; everything else, including a line that cannot be attributed and every
+source file added later, is asserted. Two declarations fail the build: a path
+that matches no source file, and a declared file whose locally measured document
+reports an executed command. The whole-module percentage and the domain-lab-only
+percentage are reported on every run alongside whether domain-lab evidence was
+merged, and neither is asserted, because only a host that ran the lab could meet
+the whole-module number.
 
 `Invoke-WindowsAccessControlDomainLabAcceptance` therefore collects coverage
 for every family it exercises and writes one JaCoCo document.
@@ -232,14 +245,14 @@ for every family it exercises and writes one JaCoCo document.
 
 `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` carries the document
 back through the same session channel as the redacted evidence and writes it
-outside `output`, which the build deletes. The `test` workflow imports it,
+outside `output`, which the build deletes. The `test` workflow imports it and
 merges it with the locally measured document through Sampler's
-`Merge_CodeCoverage_Files` task, and asserts the threshold over the merged
-result. A domain-lab document that measures a source file or a line the local
-run does not measure is refused, because such a merge would produce a union of
-disjoint sets and change the reported percentage without measuring anything
-new. When no domain-lab document exists the build says so and asserts the same
-threshold over the locally measured commands alone.
+`Merge_CodeCoverage_Files` task. A domain-lab document that measures a source
+file or a line the local run does not measure is refused, because such a merge
+would produce a union of disjoint sets and change the reported percentage
+without measuring anything new. A refused or absent document is reported as
+missing evidence and does not fail the build, because the asserted scope does
+not depend on it.
 
 ## Exact descriptor DSC evidence
 

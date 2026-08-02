@@ -33,8 +33,9 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0022 | [Defer Active Directory effective access](0022-defer-active-directory-effective-access.md) | Accepted |
 | 0023 | [Qualify Task Scheduler identity by computer and use schema version 2](0023-qualify-task-scheduler-identity-by-computer.md) | Accepted |
 | 0024 | [Reject CAPI private keys at the provider boundary](0024-reject-capi-private-keys-at-the-provider-boundary.md) | Accepted |
-| 0025 | [Fix the coverage measurement instead of the coverage threshold](0025-fix-coverage-measurement-not-threshold.md) | Accepted |
+| 0025 | [Fix the coverage measurement instead of the coverage threshold](0025-fix-coverage-measurement-not-threshold.md) | Accepted, asserted scope refined by 0027 |
 | 0026 | [Address private-key writes by key identity, not by certificate](0026-address-private-key-writes-by-key-identity.md) | Accepted |
+| 0027 | [Assert the coverage threshold over the executable scope](0027-assert-coverage-over-executable-scope.md) | Accepted |
 
 ## See also
 

@@ -80,7 +80,7 @@ sample was chosen as the baseline rather than a single-domain one.
 | [Start-WindowsAccessControlDomainLabAcceptance.ps1](Start-WindowsAccessControlDomainLabAcceptance.ps1) | Starts the profile in a child console process inside the lab, because a session runspace allows far fewer nested script frames than a console host. |
 | [WindowsAccessControl.DomainLab.psm1](WindowsAccessControl.DomainLab.psm1) | Test-only harness: fixture plan, setup, status, teardown, coverage arming, and the unattended acceptance profile. |
 | `*.Live.Tests.ps1` | The six acceptance suites. |
-| `coverage/` | The JaCoCo document the acceptance carries back. The build merges it into the coverage threshold; see decision 0025. |
+| `coverage/` | The JaCoCo document the acceptance carries back. The build merges it into the reported coverage when it measures the current build; see decisions 0025 and 0027. |
 
 ## Run the lab
 

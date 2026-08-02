@@ -76,8 +76,9 @@ to 0005 and the linked ADRs.
 - **NFR-4**: Every exported function has direct Pester evidence and complete
   comment-based help; primary interactive result types have curated format
   views.
-- **NFR-5**: Source passes PSScriptAnalyzer and the merged module meets the
-  configured 80 percent executable coverage threshold.
+- **NFR-5**: Source passes PSScriptAnalyzer and the commands the running test
+  profile can execute meet the configured 80 percent executable coverage
+  threshold.
 - **NFR-6**: Identity and restore validation fail closed before persistence;
   errors are not suppressed to obtain a passing build.
 - **NFR-7**: Privileged acceptance scenarios remain discovered and report an

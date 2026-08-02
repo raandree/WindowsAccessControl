@@ -771,13 +771,15 @@ PSScriptAnalyzer.
 
 The test matrix covers PowerShell 7 and Windows PowerShell 5.1 on Windows.
 Builds and Pester runs should be launched from a clean process when developing
-in VS Code. Sampler enforces at least 80% executable coverage for the merged
-module.
+in VS Code. Sampler enforces at least 80% executable coverage over the commands
+the running test profile can execute.
 
 The Active Directory, SMB share, Task Scheduler, and certificate private-key
 families need a domain, so their acceptance suites run in a disposable
-multi-forest AutomatedLab environment instead of on the build host, and the
-coverage they measure is merged into the same threshold. See the
+multi-forest AutomatedLab environment instead of on the build host. The coverage
+they measure is merged into the reported numbers when it measures the current
+build, and the fifteen source files no test profile executes a single command of
+are reported rather than asserted. See the
 [lab guide](tests/Lab/README.md) for the topology, the AutomatedLab sample it
 is based on, and the deployment and acceptance workflow.
 

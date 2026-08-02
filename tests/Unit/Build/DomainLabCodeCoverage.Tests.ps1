@@ -49,6 +49,30 @@ BeforeAll {
                 '</report>'
             ) -join '')
     }
+
+    function script:New-TestBuiltModule {
+        param(
+            [hashtable[]]$Region
+        )
+
+        $lines = [System.Collections.Generic.List[string]]::new()
+
+        foreach ($entry in $Region) {
+            $lines.Add(("#Region '{0}' -1" -f $entry.Path))
+
+            for ($index = 1; $index -le [int]$entry.LineCount; $index++) {
+                $lines.Add(('$null = {0}' -f $index))
+            }
+
+            $lines.Add(("#EndRegion '{0}' {1}" -f $entry.Path, $entry.LineCount))
+            $lines.Add('')
+        }
+
+        $path = Join-Path -Path $TestDrive -ChildPath ('{0}.psm1' -f [guid]::NewGuid())
+        Set-Content -Path $path -Value $lines -Encoding 'ascii'
+
+        $path
+    }
 }
 
 Describe 'Domain-lab code coverage merge inputs' {
@@ -108,5 +132,141 @@ Describe 'Domain-lab code coverage merge inputs' {
                 -ReferenceDocument $localDocument `
                 -Document $domainLabDocument
         } | Should -Throw -ExpectedMessage '*measures 1 line(s) the local run does not*'
+    }
+}
+
+Describe 'Domain-lab code coverage scope' {
+    BeforeAll {
+        $script:builtModulePath = script:New-TestBuiltModule -Region @(
+            @{ Path = '.\Public\Get-Thing.ps1'; LineCount = 3 }
+            @{ Path = '.\Private\Get-Secret.ps1'; LineCount = 3 }
+        )
+    }
+
+    It 'Should map only the lines a source region encloses' {
+        $map = Get-BuiltModuleSourceMap -Path $script:builtModulePath
+
+        $map[2] | Should -Be 'Public/Get-Thing.ps1'
+        $map[4] | Should -Be 'Public/Get-Thing.ps1'
+        $map[8] | Should -Be 'Private/Get-Secret.ps1'
+        $map.ContainsKey(1) | Should -BeFalse
+        $map.ContainsKey(5) | Should -BeFalse
+        $map.ContainsKey(6) | Should -BeFalse
+    }
+
+    It 'Should attribute measured commands to the source file they were merged from' {
+        $map = Get-BuiltModuleSourceMap -Path $script:builtModulePath
+        $document = script:New-TestJaCoCoDocument -Lines @{ 2 = @(1, 3); 8 = @(2, 0) }
+
+        $coverage = Get-JaCoCoSourceCoverage -Document $document -SourceMap $map
+
+        ($coverage | Where-Object { $_.SourcePath -eq 'Public/Get-Thing.ps1' }).Executed | Should -Be 3
+        ($coverage | Where-Object { $_.SourcePath -eq 'Private/Get-Secret.ps1' }).Missed | Should -Be 2
+    }
+
+    It 'Should keep a line the source map cannot attribute inside the asserted scope' {
+        $map = Get-BuiltModuleSourceMap -Path $script:builtModulePath
+        $document = script:New-TestJaCoCoDocument -Lines @{ 6 = @(5, 0); 8 = @(0, 1) }
+
+        $scoped = Get-JaCoCoScopedCommandCount `
+            -Document $document `
+            -SourceMap $map `
+            -DomainLabOnlySourcePath @('Private/*')
+
+        $scoped.InScope.Analyzed | Should -Be 5
+        $scoped.DomainLabOnly.Analyzed | Should -Be 1
+    }
+
+    It 'Should raise the in-scope percentage above the whole-module percentage when a declared source file is missed' {
+        $map = Get-BuiltModuleSourceMap -Path $script:builtModulePath
+        $document = script:New-TestJaCoCoDocument -Lines @{ 2 = @(1, 9); 8 = @(10, 0) }
+
+        $whole = Get-JaCoCoCommandCount -Document $document
+        $scoped = Get-JaCoCoScopedCommandCount `
+            -Document $document `
+            -SourceMap $map `
+            -DomainLabOnlySourcePath @('Private/Get-Secret.ps1')
+
+        [math]::Round($whole.Percent, 2) | Should -Be 45
+        [math]::Round($scoped.InScope.Percent, 2) | Should -Be 90
+        $scoped.DomainLabOnly.Executed | Should -Be 0
+        $scoped.DomainLabOnlySource.SourcePath | Should -Be 'Private/Get-Secret.ps1'
+    }
+
+    It 'Should report the executed commands of a declared source file so the build can refuse it' {
+        $map = Get-BuiltModuleSourceMap -Path $script:builtModulePath
+        $document = script:New-TestJaCoCoDocument -Lines @{ 2 = @(0, 1); 8 = @(3, 4) }
+
+        $scoped = Get-JaCoCoScopedCommandCount `
+            -Document $document `
+            -SourceMap $map `
+            -DomainLabOnlySourcePath @('Private/Get-Secret.ps1')
+
+        @($scoped.DomainLabOnlySource | Where-Object { $_.Executed -gt 0 }).Count | Should -Be 1
+        ($scoped.DomainLabOnlySource | Where-Object { $_.Executed -gt 0 }).Executed | Should -Be 4
+    }
+
+    It 'Should report the commands the source map cannot attribute' {
+        $map = Get-BuiltModuleSourceMap -Path $script:builtModulePath
+        $document = script:New-TestJaCoCoDocument -Lines @{ 6 = @(5, 2); 8 = @(0, 1) }
+
+        $scoped = Get-JaCoCoScopedCommandCount `
+            -Document $document `
+            -SourceMap $map `
+            -DomainLabOnlySourcePath @('Private/*')
+
+        $scoped.Unattributed.Analyzed | Should -Be 7
+        $scoped.Unattributed.Executed | Should -Be 2
+    }
+
+    It 'Should report a declared pattern that matches no source file' {
+        $map = Get-BuiltModuleSourceMap -Path $script:builtModulePath
+        $document = script:New-TestJaCoCoDocument -Lines @{ 2 = @(0, 1) }
+
+        $scoped = Get-JaCoCoScopedCommandCount `
+            -Document $document `
+            -SourceMap $map `
+            -DomainLabOnlySourcePath @('Public/Get-Thing.ps1', 'Public/Get-Removed.ps1')
+
+        $scoped.UnmatchedPattern | Should -Be 'Public/Get-Removed.ps1'
+    }
+
+    It 'Should measure every command when nothing is declared domain-lab-only' {
+        $map = Get-BuiltModuleSourceMap -Path $script:builtModulePath
+        $document = script:New-TestJaCoCoDocument -Lines @{ 2 = @(1, 3); 8 = @(2, 0) }
+
+        $whole = Get-JaCoCoCommandCount -Document $document
+        $scoped = Get-JaCoCoScopedCommandCount -Document $document -SourceMap $map
+
+        $scoped.InScope.Analyzed | Should -Be $whole.Analyzed
+        $scoped.InScope.Executed | Should -Be $whole.Executed
+        $scoped.DomainLabOnly.Analyzed | Should -Be 0
+    }
+}
+
+Describe 'Declared domain-lab-only source paths' {
+    BeforeAll {
+        Import-Module -Name 'powershell-yaml' -ErrorAction Stop
+
+        $script:buildConfiguration = ConvertFrom-Yaml -Yaml (
+            Get-Content -LiteralPath (Join-Path $script:repositoryRoot 'build.yaml') -Raw
+        )
+        $script:declaredPath = @($script:buildConfiguration.CodeCoverage.DomainLabOnlySourcePath)
+    }
+
+    It 'Should declare at least one source path' {
+        $script:declaredPath.Count | Should -BeGreaterThan 0
+    }
+
+    It 'Should declare only source files that exist' {
+        foreach ($relativePath in $script:declaredPath) {
+            Join-Path $script:repositoryRoot (Join-Path 'source' $relativePath) | Should -Exist
+        }
+    }
+
+    It 'Should declare exact paths rather than wildcards' {
+        foreach ($relativePath in $script:declaredPath) {
+            $relativePath | Should -Not -Match '[\*\?\[]'
+        }
     }
 }
