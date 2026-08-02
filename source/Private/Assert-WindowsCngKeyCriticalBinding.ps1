@@ -3,10 +3,13 @@ function Assert-WindowsCngKeyCriticalBinding {
     [OutputType([void])]
     param(
         [Parameter(Mandatory)]
-        [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate
+        [Security.Cryptography.CngKey]$Key
     )
 
-    $bindings = @(Get-WindowsCertificateCriticalBinding -Certificate $Certificate)
+    # The gate is keyed on the key rather than on a certificate, so it applies
+    # identically whether the caller addressed the key through a certificate or
+    # through its provider and key name.
+    $bindings = @(Get-WindowsCertificateCriticalBinding -Key $Key)
     if ($bindings.Count -eq 0) {
         return
     }
@@ -15,8 +18,8 @@ function Assert-WindowsCngKeyCriticalBinding {
     ) -join ' '
     throw [InvalidOperationException]::new(
         (
-            'Refusing to change the private key of certificate ' +
-            "'$($Certificate.Thumbprint)' because the same key serves a critical binding. $summary"
+            "Refusing to change the DACL of private key '$($Key.KeyName)' in " +
+            "'$($Key.Provider.Provider)' because that key serves a critical binding. $summary"
         )
     )
 }

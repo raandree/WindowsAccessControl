@@ -40,6 +40,17 @@ specification 0015 reviews.
     for its correctness, even when every current caller applies that gate.
 - A read-only probe settles a disputed claim faster than an argument. Two review
     findings in this family were refuted by measuring the platform instead.
+- Delete the parameter rather than trust the caller. The private-key write
+    boundary stopped taking a certificate at all, so a restore and a
+    desired-state resource cannot reach it with a weaker binding check. A gate
+    that cannot be addressed incorrectly does not need a reviewer to confirm
+    that every caller addressed it correctly.
+- A replay path inherits every gate of the direct path or it is a bypass. A
+    portability restore adds no parameter, no exemption, and no override switch;
+    it composes the same write command an operator would run.
+- Prove a refusal with a test, not with an argument that it cannot happen. Each
+    fail-closed write gate has a restore-level refusal test, because a gate that
+    is only reachable in theory is a gate nobody notices going inert.
 
 ## Decisions
 

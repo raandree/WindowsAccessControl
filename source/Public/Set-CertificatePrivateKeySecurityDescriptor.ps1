@@ -20,12 +20,19 @@ function Set-CertificatePrivateKeySecurityDescriptor {
         The exact expected CNG provider.
     .PARAMETER KeyName
         The exact expected persisted CNG key name.
+    .PARAMETER KeyScope
+        Selects the machine or current-user key store when the key is addressed
+        without a certificate. Every gate still applies.
     .PARAMETER Sddl
         The complete desired DACL in SDDL form.
     .PARAMETER ConcurrencyToken
         The ConcurrencyToken of an earlier
         Get-CertificatePrivateKeySecurityDescriptor result. The write is rejected
         when the stored DACL changed after that read.
+    .PARAMETER ExpectedCanonicalTarget
+        The canonical key identity an earlier read resolved. The write is
+        rejected when the provider and key name now resolve to a different key
+        container, which a delete and recreate under the same key name produces.
     .PARAMETER PassThru
         Returns the stored private-key descriptor after persistence.
     .EXAMPLE
@@ -35,16 +42,28 @@ function Set-CertificatePrivateKeySecurityDescriptor {
             -KeyName 'WorkloadKey' -Sddl 'D:P(A;;FA;;;SY)(A;;FA;;;BA)' -WhatIf
 
         Previews replacing the private-key DACL with the exact desired state.
+    .EXAMPLE
+        Set-CertificatePrivateKeySecurityDescriptor `
+            -ProviderName 'Microsoft Software Key Storage Provider' `
+            -KeyName 'WorkloadKey' -KeyScope Machine `
+            -Sddl 'D:P(A;;FA;;;SY)(A;;FA;;;BA)' -Confirm:$false
+
+        Writes the same desired state without a certificate, which is how a
+        restore and a desired-state resource address the key.
     .INPUTS
         System.Security.Cryptography.X509Certificates.X509Certificate2
     .OUTPUTS
         None
         WindowsAccessControl.CertificatePrivateKeySecurityDescriptor
     #>
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        ConfirmImpact = 'High',
+        DefaultParameterSetName = 'Certificate'
+    )]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory, ValueFromPipeline)]
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'Certificate')]
         [ValidateNotNull()]
         [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
 
@@ -56,6 +75,10 @@ function Set-CertificatePrivateKeySecurityDescriptor {
         [ValidateNotNullOrEmpty()]
         [string]$KeyName,
 
+        [Parameter(Mandatory, ParameterSetName = 'Key')]
+        [ValidateSet('Machine', 'User')]
+        [string]$KeyScope,
+
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$Sddl,
@@ -65,12 +88,16 @@ function Set-CertificatePrivateKeySecurityDescriptor {
         [string]$ConcurrencyToken,
 
         [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]$ExpectedCanonicalTarget,
+
+        [Parameter()]
         [switch]$PassThru
     )
 
     process {
         $operation = {
-            param($Target, $Key, $Cmdlet, $DesiredSddl, $Token, $BindingCertificate)
+            param($Target, $Key, $Cmdlet, $DesiredSddl, $Token)
 
             if (-not $Cmdlet.ShouldProcess(
                     $Target.CanonicalTarget,
@@ -85,15 +112,18 @@ function Set-CertificatePrivateKeySecurityDescriptor {
                 )
             }
             # The provider is read and written with DACL_SECURITY_INFORMATION
-            # only, so a caller-supplied owner or group is dropped here rather
-            # than silently carried into the write.
-            $candidate.Owner = $null
-            $candidate.Group = $null
+            # only, so the candidate is rebuilt from its access section alone.
+            # Any owner, group, or SACL in Sddl is dropped here rather than
+            # carried into the binary form the provider receives.
+            $candidate = [Security.AccessControl.RawSecurityDescriptor]::new(
+                $candidate.GetSddlForm(
+                    [Security.AccessControl.AccessControlSections]::Access
+                )
+            )
             $candidateBytes = [byte[]]::new($candidate.BinaryLength)
             $candidate.GetBinaryForm($candidateBytes, 0)
             $setParameters = @{
                 Target             = $Target
-                Certificate        = $BindingCertificate
                 Key                = $Key
                 SecurityDescriptor = $candidateBytes
             }
@@ -108,24 +138,28 @@ function Set-CertificatePrivateKeySecurityDescriptor {
         else {
             $null
         }
-        Invoke-WithWindowsCertificatePrivateKeyTarget `
+        $targetParameters = New-WindowsCertificatePrivateKeyTargetParameter `
+            -ParameterSetName $PSCmdlet.ParameterSetName `
             -Certificate $Certificate `
             -ProviderName $ProviderName `
             -KeyName $KeyName `
+            -KeyScope $KeyScope
+        if ($PSBoundParameters.ContainsKey('ExpectedCanonicalTarget')) {
+            $targetParameters['ExpectedCanonicalTarget'] = $ExpectedCanonicalTarget
+        }
+        Invoke-WithWindowsCertificatePrivateKeyTarget `
+            @targetParameters `
             -Operation $operation `
             -ArgumentList @(
                 $PSCmdlet
                 $Sddl
                 $expectedToken
-                $Certificate
             ) `
             -ForMutation
 
         if ($PassThru -and -not $WhatIfPreference) {
-            Get-CertificatePrivateKeySecurityDescriptor `
-                -Certificate $Certificate `
-                -ProviderName $ProviderName `
-                -KeyName $KeyName
+            $null = $targetParameters.Remove('ExpectedCanonicalTarget')
+            Get-CertificatePrivateKeySecurityDescriptor @targetParameters
         }
     }
 }

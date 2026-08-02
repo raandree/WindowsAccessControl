@@ -367,6 +367,22 @@ Describe 'Certificate private-key ACE support gate' -Tag 'Unit', 'WindowsOnly' {
         } | Should -Throw -ExpectedMessage '*Only plain allow and deny ACEs*'
     }
 
+    It 'Should attribute a non-plain ACE to the stored DACL when it came from there' {
+        # A desired-state pass reasserts the stored DACL, so the offending ACE is
+        # the key's own. Blaming the request would send the operator looking in
+        # the wrong place.
+        $stored = 'D:P(A;;FA;;;SY)(A;;FA;;;BA)(XA;;FA;;;BU;(@USER.Title=="x"))'
+        $current = script:ConvertTo-Descriptor $stored
+        $candidate = script:ConvertTo-Descriptor $stored
+
+        {
+            & $script:module {
+                param($Current, $Candidate)
+                Assert-WindowsCngKeyAceSupport -CurrentDescriptor $Current -CandidateDescriptor $Candidate
+            } $current $candidate
+        } | Should -Throw -ExpectedMessage '*stored private-key DACL already contains*'
+    }
+
     It 'Should not let a conditional allow ACE satisfy the recovery grant' {
         $current = script:ConvertTo-Descriptor $script:baselineSddl
         $candidate = script:ConvertTo-Descriptor 'D:P(XA;;FA;;;SY;(@USER.Title=="x"))(XA;;FA;;;BA;(@USER.Title=="x"))'
@@ -589,7 +605,6 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
 
     It 'Should keep an exact reassert a no-op that never reaches the binding gate' {
         InModuleScope WindowsAccessControl {
-            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
             $ephemeralKey = [Security.Cryptography.CngKey]::Create(
                 [Security.Cryptography.CngAlgorithm]::Rsa
             )
@@ -604,7 +619,6 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
 
                 $result = Set-WindowsCngKeySecurityDescriptor `
                     -Target ([pscustomobject]@{ CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0' }) `
-                    -Certificate $certificate `
                     -Key $ephemeralKey `
                     -SecurityDescriptor $storedBytes
 
@@ -619,7 +633,6 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
 
     It 'Should refuse a reordering rather than perform a write it cannot verify' {
         InModuleScope WindowsAccessControl {
-            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
             $ephemeralKey = [Security.Cryptography.CngKey]::Create(
                 [Security.Cryptography.CngAlgorithm]::Rsa
             )
@@ -642,7 +655,6 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
                 {
                     Set-WindowsCngKeySecurityDescriptor `
                         -Target ([pscustomobject]@{ CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0' }) `
-                        -Certificate $certificate `
                         -Key $ephemeralKey `
                         -SecurityDescriptor $reorderedBytes
                 } | Should -Throw -ExpectedMessage '*in a different order*'
@@ -657,7 +669,6 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
 
     It 'Should accept an allow-only DACL written in another order as already converged' {
         InModuleScope WindowsAccessControl {
-            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
             $ephemeralKey = [Security.Cryptography.CngKey]::Create(
                 [Security.Cryptography.CngAlgorithm]::Rsa
             )
@@ -677,7 +688,6 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
 
                 $result = Set-WindowsCngKeySecurityDescriptor `
                     -Target ([pscustomobject]@{ CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0' }) `
-                    -Certificate $certificate `
                     -Key $ephemeralKey `
                     -SecurityDescriptor $reorderedBytes
 
@@ -692,7 +702,6 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
 
     It 'Should reject a protection-state change before any provider write' {
         InModuleScope WindowsAccessControl {
-            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
             $ephemeralKey = [Security.Cryptography.CngKey]::Create(
                 [Security.Cryptography.CngAlgorithm]::Rsa
             )
@@ -713,7 +722,6 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
                 {
                     Set-WindowsCngKeySecurityDescriptor `
                         -Target ([pscustomobject]@{ CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0' }) `
-                        -Certificate $certificate `
                         -Key $ephemeralKey `
                         -SecurityDescriptor $unprotectedBytes
                 } | Should -Throw -ExpectedMessage '*protection state does not match*'

@@ -3,7 +3,7 @@ function Find-WindowsAccessControlDscAccessRule {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask', 'CertificatePrivateKey')]
         [string]$ObjectFamily,
         [Parameter()] [string]$Target,
         [Parameter()] [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
@@ -11,6 +11,8 @@ function Find-WindowsAccessControlDscAccessRule {
         [Parameter()] [int64]$CreationTimeFileTime,
         [Parameter()] [string]$Server,
         [Parameter()] [string]$TaskName,
+        [Parameter()] [string]$ProviderName,
+        [Parameter()] [string]$KeyScope,
         [Parameter()] [ValidateRange(1, 300)] [int]$TimeoutSeconds = 10,
         [Parameter(Mandatory)] [ValidateNotNullOrEmpty()] [string]$Account,
         [Parameter(Mandatory)] [ValidateRange(0, [uint32]::MaxValue)] [uint64]$AccessMask,
@@ -46,6 +48,15 @@ function Find-WindowsAccessControlDscAccessRule {
         )
         $AccessMask = [uint64](
             [int64][int]$normalizedRule.FileSystemRights -band 0xFFFFFFFFL
+        )
+    }
+    if ($ObjectFamily -eq 'CertificatePrivateKey') {
+        # The key storage provider expands and discards generic bits, so a
+        # requested GenericRead can never equal the effective mask of the ACE it
+        # created. Normalizing the request is what keeps a removal from matching
+        # nothing and reporting the grant already absent.
+        $AccessMask = [uint64](
+            ConvertTo-WindowsCryptoKeyEffectiveMask -AccessMask ([long]$AccessMask)
         )
     }
     $rules = switch ($ObjectFamily) {
@@ -169,11 +180,30 @@ function Find-WindowsAccessControlDscAccessRule {
                 -ErrorAction Stop)
             break
         }
+        'CertificatePrivateKey' {
+            if ([string]::IsNullOrWhiteSpace($Target) -or
+                [string]::IsNullOrWhiteSpace($ProviderName) -or
+                $KeyScope -notin @('Machine', 'User')) {
+                throw 'A CNG provider, persisted key name, and key scope are required.'
+            }
+            @(Get-CertificatePrivateKeyAccessRule `
+                -ProviderName $ProviderName `
+                -KeyName $Target `
+                -KeyScope $KeyScope `
+                -Account $securityIdentifier.Value `
+                -ErrorAction Stop |
+                Where-Object { -not $_.IsInherited })
+            break
+        }
     }
 
     foreach ($rule in @($rules)) {
         $ruleMask = if ($ObjectFamily -eq 'FileSystem') {
             [uint64]([int64][int]$rule.AccessRights -band 0xFFFFFFFFL)
+        } elseif ($ObjectFamily -eq 'CertificatePrivateKey') {
+            # The provider stores a candidate ACE with the matching generic bit
+            # added, so the raw stored mask never equals the requested mask.
+            [uint64]$rule.EffectiveAccessMask
         } elseif ($rule.PSObject.Properties['AccessMask']) {
             [uint64]$rule.AccessMask
         } else {
@@ -188,6 +218,16 @@ function Find-WindowsAccessControlDscAccessRule {
         }
         if ($ObjectFamily -in @('FileSystem', 'RegistryKey', 'TaskFolder') -and
             [string]$rule.AppliesTo -ne $AppliesTo) {
+            continue
+        }
+        # ACE type rather than ACE qualifier decides whether an ACE grants
+        # unconditionally, so a conditional allow ACE must not report a grant as
+        # present. This mirrors the private-key write boundary.
+        if ($ObjectFamily -eq 'CertificatePrivateKey' -and
+            $rule.NativeAce.AceType -notin @(
+                [System.Security.AccessControl.AceType]::AccessAllowed
+                [System.Security.AccessControl.AceType]::AccessDenied
+            )) {
             continue
         }
         if ($ObjectFamily -eq 'ADObject' -and (

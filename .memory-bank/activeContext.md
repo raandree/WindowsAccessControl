@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-01
+last-verified: 2026-08-02
 owner: active-agent
 source: current task evidence
 ---
@@ -9,14 +9,90 @@ source: current task evidence
 
 ## Current focus
 
-OI-22 is closed. The fail-closed CNG private-key mutation of specification 0015
-went through the repository's review convention in full: one feature review, then
-three fix rounds each followed by its own scoped re-review. The third re-review
-returned APPROVE WITH MINOR FINDINGS with no Blocker and no Major, and the
-remaining Minor and Nit findings were fixed as well. The register entry and the
-conformance test now record the issue as closed.
+OI-24 delivers KEY-5 and KEY-6: certificate private-key portability and desired
+state. The implementation, specification 0017, ADR 0026, tests, and the review
+loop are complete. One item is open: the six-suite domain-lab acceptance has not
+produced live evidence yet, because the lab is contended.
 
-## OI-22 close-out
+The work lives in a separate worktree at `V:\Git\WindowsAccessControl-oi24` on
+branch `ai/cng-private-key-mutation-and-multi-forest-lab`, so the OI-27 session
+holding uncommitted changes in the main worktree stays untouched.
+
+## OI-24 design
+
+- The write boundary no longer accepts a certificate at all.
+    `Set-WindowsCngKeySecurityDescriptor` lost its `Certificate` parameter, so a
+    restore and a desired-state resource cannot reach it with a weaker binding
+    check. The gate cannot be addressed incorrectly rather than merely being
+    documented as correct.
+- Every private-key command gained a `Key` parameter set selecting the key by
+    CNG provider, persisted key name, and `Machine` or `User` scope. That path
+    verifies the opened key is RSA and that its scope matches, because
+    `CngKey.Open` would otherwise answer from the other key store.
+- The critical-binding gate is keyed on the write target's own public key, read
+    from the `CngKey` as a `BCRYPT_RSAKEY_BLOB`. It throws when the public key
+    cannot be read, because a gate input that cannot be evaluated must not
+    default to permit. `Test-CertificatePrivateKeyCriticalBinding` keeps the
+    certificate-to-certificate comparison for a caller holding a certificate.
+- Records are schema version 2 carrying `Server`, `ProviderName`, `KeyName`,
+    `KeyScope`, and `CertificateThumbprint`. The thumbprint is evidence only and
+    never a selector, because a renewal that reuses the key changes it. The four
+    fields are hashed for this family alone, so every record written before this
+    increment keeps validating.
+- The foreign-computer check was hoisted out of per-record preparation into a
+    whole-document pre-pass covering the SMB share, Task Scheduler, and
+    private-key families, so a foreign record cannot be reached after an earlier
+    record was already written.
+- Restore adds no parameter and no override switch. It composes
+    `Set-CertificatePrivateKeySecurityDescriptor` and passes
+    `ExpectedCanonicalTarget`, reasserted against the handle the write holds, so
+    a key deleted and recreated between preparation and write is refused.
+
+## OI-24 evidence
+
+- Unit and QA: 1306 passed, 0 failed, 0 skipped, against a 1242 baseline.
+- Every specification 0015 gate a restore could bypass has a refusal test: an
+    unsupported provider, a live critical binding, an added deny ACE, a
+    conditional ACE, a dropped SYSTEM or Administrators grant, a removed service
+    grant, and a protection-state change. Two restore-specific rejections cover a
+    record replayed on another computer and a key whose identity changed.
+- The merged module was parsed explicitly after the build, because ModuleBuilder
+    does not parse what it writes.
+- PSScriptAnalyzer over all 43 changed files produced no finding category absent
+    from the committed baseline. `DscResourceInvalidKeyProperty` and
+    `TypeNotFound` fire on the unchanged baseline file too, because a class file
+    analyzed standalone cannot resolve the module's enum types.
+- One independent `security-reviewer` review returned one Major and four Minor
+    findings, all fixed. The scoped re-review of the fix diff returned APPROVE
+    WITH MINOR FINDINGS with no Blocker and no Major; the three new Nits were
+    cleared as well.
+
+## Open item: live lab evidence
+
+Four acceptance attempts failed for two unrelated environmental reasons, neither
+a defect in the change.
+
+- The host had rebooted, and the first attempt started while the lab machines
+    had seven minutes of uptime. `Should repair a missing certificate whose
+    managed CNG key remains` allows its repair job 30 seconds and calls
+    `Stop-Job` on timeout, which left a certificate whose private key could not
+    be read. `Remove-WindowsAccessControlDomainLab` cannot match such a
+    certificate, so a later initialize created a second one beside it and every
+    later run failed with `Multiple domain-lab certificates have the same managed
+    identity`. A cleanup keyed on subject and friendly name alone restored the
+    fixture to exactly one certificate.
+- The OI-27 session drives the same `WindowsAccessControlLab` and the same
+    `C:\WacRepo` payload directory. It wiped and re-copied that directory at
+    08:18:30 while this session's run started at 08:18:40, so Pester found no
+    test files. `C:\WacRepo` now holds the OI-27 tree, whose
+    `CertificatePrivateKeyPermissions.Live.Tests.ps1` is 19,687 bytes against
+    37,844 bytes here.
+
+The user chose to wait for the OI-27 run to finish, then redeploy the full OI-24
+payload without `-SkipPayload`. The lab is a shared resource and the two sessions
+must be serialized on it.
+
+## Superseded: OI-22 close-out
 
 - The first re-review of the earlier fixes found one dead gate and three defects
     no unit test could have caught by construction. The `NTDS\My` store had been
@@ -116,9 +192,9 @@ rejection boundary remains.
 
 ## Next step
 
-OI-22 is closed, so the two remaining focused issues are unblocked. OI-24 adds
-private-key portability and desired state; its three binding constraints are
-recorded in the open-issues register, and it must pass through the specification
-0015 write boundary rather than around it. OI-27 merges domain-lab coverage into
-the threshold gate so the 80 percent measurement reflects what the suites
-actually exercise.
+Run the domain-lab acceptance from `V:\Git\WindowsAccessControl-oi24` once the
+OI-27 session releases the lab, confirm the four new live private-key cases, and
+record the result. Both branches modify `CHANGELOG.md`, `specs/open-issues.md`,
+and `tests/Lab/CertificatePrivateKeyPermissions.Live.Tests.ps1`, so merging them
+will need a deliberate conflict resolution. OI-27 remains open for the coverage
+measurement.

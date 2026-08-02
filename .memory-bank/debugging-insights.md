@@ -522,3 +522,27 @@ explicitly before applying the allowed-base check.
 `AuthType.Negotiate` does not prove Kerberos because it can fall back to NTLM.
 Use `AuthType.Kerberos` with an explicit FQDN server, signing, sealing, disabled
 referrals, and bounded timeouts when the contract requires strict Kerberos.
+
+## Cold-lab timeouts corrupt the shared certificate fixture
+
+A domain-lab acceptance started shortly after the Hyper-V host reboots runs
+against cold machines. `Should repair a missing certificate whose managed CNG
+key remains` allows the repair job only 30 seconds, and on timeout its `finally`
+calls `Stop-Job`. Killing that job mid-flight leaves a certificate in
+`LocalMachine\My` whose private key is gone, so `GetRSAPrivateKey` fails with
+`Invalid provider type specified`.
+
+That orphan poisons every later run. `Remove-WindowsAccessControlDomainLab` does
+not match a certificate whose key it cannot read, so the orphan survives the
+removal while `Initialize-WindowsAccessControlDomainLab` creates a fresh one
+beside it. `Test-WindowsAccessControlDomainLab` still reports ready because it
+finds one good certificate, but the next initialize throws `Multiple domain-lab
+certificates have the same managed identity` and fails all four tests in the
+first suite. Because the harness fails fast on the first failed suite, no later
+suite runs at all.
+
+Recovering needs a delete keyed on subject and friendly name alone, ignoring the
+private key, followed by one rebuild and an explicit assertion that exactly one
+certificate remains. Readiness is not a sufficient check; count the
+certificates. Let the lab settle after a host reboot before starting an
+acceptance, and read machine uptime rather than assuming the lab is warm.

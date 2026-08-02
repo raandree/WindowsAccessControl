@@ -1,9 +1,12 @@
 function Get-WindowsCertificateCriticalBinding {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Certificate')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory)]
-        [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate
+        [Parameter(Mandatory, ParameterSetName = 'Certificate')]
+        [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+
+        [Parameter(Mandatory, ParameterSetName = 'Key')]
+        [Security.Cryptography.CngKey]$Key
     )
 
     # The write target is the private key, not the certificate. A renewal that
@@ -14,6 +17,16 @@ function Get-WindowsCertificateCriticalBinding {
     $bindings = @(Get-WindowsBoundCertificateThumbprint)
     if ($bindings.Count -eq 0) {
         return
+    }
+
+    # A key-addressed write has no certificate, so the target public key comes
+    # from the key itself. It is read once, after a binding exists, so an
+    # unreadable public key cannot fail an otherwise unbound machine.
+    $keyIdentity = if ($PSCmdlet.ParameterSetName -eq 'Key') {
+        Get-WindowsRsaPublicKeyIdentity -Key $Key
+    }
+    else {
+        $null
     }
 
     $wanted = [Collections.Generic.HashSet[string]]::new(
@@ -72,9 +85,18 @@ function Get-WindowsCertificateCriticalBinding {
                     )
                 )
             }
-            if (Test-WindowsCertificateSharesPrivateKey `
+            $sharesKey = if ($PSCmdlet.ParameterSetName -eq 'Key') {
+                $keyIdentity -ceq (
+                    Get-WindowsRsaPublicKeyIdentity `
+                        -Certificate $resolved[$binding.Thumbprint]
+                )
+            }
+            else {
+                Test-WindowsCertificateSharesPrivateKey `
                     -Left $Certificate `
-                    -Right $resolved[$binding.Thumbprint]) {
+                    -Right $resolved[$binding.Thumbprint]
+            }
+            if ($sharesKey) {
                 [pscustomobject]@{
                     Binding    = $binding.Binding
                     Thumbprint = $binding.Thumbprint

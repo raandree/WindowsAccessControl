@@ -507,3 +507,59 @@ class WindowsAccessControlScheduledTaskAccessRule {
         return @($reason)
     }
 }
+
+[DscResource()]
+class WindowsAccessControlCertificatePrivateKeyAccessRule {
+    [DscProperty(Key)] [string]$ProviderName
+    [DscProperty(Key)] [string]$KeyName
+    [DscProperty(Key)]
+    [ValidateSet('Machine', 'User')]
+    [string]$KeyScope
+    [DscProperty(Key)] [string]$Account
+    [DscProperty(Key)] [WindowsCryptoKeyRights]$AccessRights
+    [DscProperty(Key)] [System.Security.AccessControl.AccessControlType]$AccessControlType
+    [DscProperty()] [WindowsAccessControlDscEnsure]$Ensure =
+        [WindowsAccessControlDscEnsure]::Present
+    [DscProperty(NotConfigurable)] [WindowsAccessControlDscReason[]]$Reasons
+
+    [WindowsAccessControlCertificatePrivateKeyAccessRule] Get() {
+        $present = Get-WindowsAccessControlDscAccessRule `
+            -ObjectFamily CertificatePrivateKey -Target $this.KeyName `
+            -ProviderName $this.ProviderName -KeyScope $this.KeyScope `
+            -Account $this.Account `
+            -AccessMask ([uint64]([int64][int]$this.AccessRights -band 0xFFFFFFFFL)) `
+            -AccessControlType $this.AccessControlType -ErrorAction Stop
+        $currentState = [WindowsAccessControlCertificatePrivateKeyAccessRule]::new()
+        $currentState.ProviderName = $this.ProviderName
+        $currentState.KeyName = $this.KeyName
+        $currentState.KeyScope = $this.KeyScope
+        $currentState.Account = $this.Account
+        $currentState.AccessRights = $this.AccessRights
+        $currentState.AccessControlType = $this.AccessControlType
+        $currentState.Ensure = if ($present) {
+            [WindowsAccessControlDscEnsure]::Present
+        } else {
+            [WindowsAccessControlDscEnsure]::Absent
+        }
+        $currentState.Reasons = $this.GetReasons($currentState.Ensure)
+        return $currentState
+    }
+
+    [bool] Test() { return $this.Get().Reasons.Count -eq 0 }
+    [void] Set() {
+        Set-WindowsAccessControlDscAccessRule `
+            -ObjectFamily CertificatePrivateKey -Target $this.KeyName `
+            -ProviderName $this.ProviderName -KeyScope $this.KeyScope `
+            -Account $this.Account `
+            -AccessMask ([uint64]([int64][int]$this.AccessRights -band 0xFFFFFFFFL)) `
+            -AccessControlType $this.AccessControlType -Ensure $this.Ensure `
+            -ErrorAction Stop
+    }
+    [WindowsAccessControlDscReason[]] GetReasons([WindowsAccessControlDscEnsure]$Current) {
+        if ($Current -eq $this.Ensure) { return @() }
+        $reason = [WindowsAccessControlDscReason]::new()
+        $reason.Code = '{0}:{0}:Ensure' -f $this.GetType().Name
+        $reason.Phrase = "The exact private-key access rule on '$($this.KeyName)' is $Current but should be $($this.Ensure)."
+        return @($reason)
+    }
+}

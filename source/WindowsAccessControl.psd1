@@ -195,6 +195,7 @@ DscResourcesToExport = @(
     'WindowsAccessControlADObjectSecurityDescriptor'
     'WindowsAccessControlTaskFolderSecurityDescriptor'
     'WindowsAccessControlScheduledTaskSecurityDescriptor'
+    'WindowsAccessControlCertificatePrivateKeySecurityDescriptor'
     'WindowsAccessControlNtfsAccessRule'
     'WindowsAccessControlRegistryKeyAccessRule'
     'WindowsAccessControlServiceAccessRule'
@@ -204,6 +205,7 @@ DscResourcesToExport = @(
     'WindowsAccessControlADObjectAccessRule'
     'WindowsAccessControlTaskFolderAccessRule'
     'WindowsAccessControlScheduledTaskAccessRule'
+    'WindowsAccessControlCertificatePrivateKeyAccessRule'
 )
 
 # List of all modules packaged with this module

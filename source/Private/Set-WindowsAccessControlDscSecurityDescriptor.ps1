@@ -7,7 +7,7 @@ function Set-WindowsAccessControlDscSecurityDescriptor {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask', 'CertificatePrivateKey')]
         [string]$ObjectFamily,
 
         [Parameter()]
@@ -27,6 +27,12 @@ function Set-WindowsAccessControlDscSecurityDescriptor {
 
         [Parameter()]
         [string]$TaskName,
+
+        [Parameter()]
+        [string]$ProviderName,
+
+        [Parameter()]
+        [string]$KeyScope,
 
         [Parameter()]
         [string]$AllowedRootPath,
@@ -52,7 +58,7 @@ function Set-WindowsAccessControlDscSecurityDescriptor {
     if ([int]$Sections -le 0 -or [int]$Sections -gt 15) {
         throw [System.ArgumentOutOfRangeException]::new('Sections')
     }
-    if ($ObjectFamily -in @('SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask') -and
+    if ($ObjectFamily -in @('SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask', 'CertificatePrivateKey') -and
         $Sections -ne [WindowsSecurityDescriptorSection]::Access) {
         throw [System.ArgumentException]::new(
             "Object family $ObjectFamily manages only the access section."
@@ -224,6 +230,23 @@ function Set-WindowsAccessControlDscSecurityDescriptor {
                 -AllowedRootPath $AllowedRootPath `
                 -Sddl $Sddl `
                 -ThrottleLimit 1 `
+                -Confirm:$false `
+                -ErrorAction Stop
+            break
+        }
+        'CertificatePrivateKey' {
+            if ([string]::IsNullOrWhiteSpace($Target) -or
+                [string]::IsNullOrWhiteSpace($ProviderName) -or
+                $KeyScope -notin @('Machine', 'User')) {
+                throw [System.ArgumentException]::new(
+                    'A CNG provider, persisted key name, and key scope are required.'
+                )
+            }
+            Set-CertificatePrivateKeySecurityDescriptor `
+                -ProviderName $ProviderName `
+                -KeyName $Target `
+                -KeyScope $KeyScope `
+                -Sddl $Sddl `
                 -Confirm:$false `
                 -ErrorAction Stop
             break

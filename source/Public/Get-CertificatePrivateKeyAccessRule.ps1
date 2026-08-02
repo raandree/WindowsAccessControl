@@ -3,10 +3,12 @@ function Get-CertificatePrivateKeyAccessRule {
     .SYNOPSIS
         Gets typed access rules from a supported certificate private-key DACL.
     .DESCRIPTION
-        Uses an exact caller-owned X.509 certificate plus expected CNG provider
-        and key name to read the persisted private-key DACL and emit typed
-        rules. The provider must be the Microsoft Software Key Storage Provider
-        and must report a software-only implementation.
+        Reads the persisted private-key DACL and emits typed rules. The key is
+        addressed either through an exact caller-owned X.509 certificate plus the
+        expected CNG provider and key name, or, when no certificate is available,
+        through the provider, key name, and key scope alone. The provider must be
+        the Microsoft Software Key Storage Provider and must report a
+        software-only implementation.
     .PARAMETER Certificate
         An exact X509Certificate2 object with the private key to inspect. The
         command does not dispose the caller-owned certificate.
@@ -14,6 +16,9 @@ function Get-CertificatePrivateKeyAccessRule {
         The exact expected CNG provider.
     .PARAMETER KeyName
         The exact expected persisted CNG key name.
+    .PARAMETER KeyScope
+        Selects the machine or current-user key store when the key is addressed
+        without a certificate.
     .PARAMETER Account
         Filters results by account names, SIDs, identity references, or module identities.
     .EXAMPLE
@@ -28,10 +33,10 @@ function Get-CertificatePrivateKeyAccessRule {
     .OUTPUTS
         WindowsAccessControl.CertificatePrivateKeyAccessRule
     #>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Certificate')]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory, ValueFromPipeline)]
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'Certificate')]
         [ValidateNotNull()]
         [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
 
@@ -42,6 +47,10 @@ function Get-CertificatePrivateKeyAccessRule {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$KeyName,
+
+        [Parameter(Mandatory, ParameterSetName = 'Key')]
+        [ValidateSet('Machine', 'User')]
+        [string]$KeyScope,
 
         [Parameter()]
         [Alias('IdentityReference', 'ID')]
@@ -82,10 +91,14 @@ function Get-CertificatePrivateKeyAccessRule {
                     -TypeName 'WindowsAccessControl.CertificatePrivateKeyAccessRule'
             }
         }
-        Invoke-WithWindowsCertificatePrivateKeyTarget `
+        $targetParameters = New-WindowsCertificatePrivateKeyTargetParameter `
+            -ParameterSetName $PSCmdlet.ParameterSetName `
             -Certificate $Certificate `
             -ProviderName $ProviderName `
             -KeyName $KeyName `
+            -KeyScope $KeyScope
+        Invoke-WithWindowsCertificatePrivateKeyTarget `
+            @targetParameters `
             -Operation $operation `
             -ArgumentList @(, $accountSids)
     }

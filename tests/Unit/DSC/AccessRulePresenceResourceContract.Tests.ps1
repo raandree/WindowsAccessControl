@@ -109,6 +109,17 @@ Describe 'Access-rule presence DSC resource contract' -Tag 'Unit', 'WindowsOnly'
                 'AccessControlType', 'AllowedRootPath', 'Ensure', 'Reasons'
             )
         }
+        @{
+            Name = 'WindowsAccessControlCertificatePrivateKeyAccessRule'
+            KeyNames = @(
+                'ProviderName', 'KeyName', 'KeyScope', 'Account', 'AccessRights',
+                'AccessControlType'
+            )
+            Properties = @(
+                'ProviderName', 'KeyName', 'KeyScope', 'Account', 'AccessRights',
+                'AccessControlType', 'Ensure', 'Reasons'
+            )
+        }
     ) {
         $script:manifestData.DscResourcesToExport | Should -Contain $Name
         (Get-DscResource -Name $Name -Module WindowsAccessControl -ErrorAction Stop).Name |

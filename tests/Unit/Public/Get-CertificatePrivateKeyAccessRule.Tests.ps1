@@ -2,7 +2,7 @@
 
 Register-EnterpriseCommandContract `
     -Name 'Get-CertificatePrivateKeyAccessRule' `
-    -RequiredParameters @('Certificate', 'ProviderName', 'KeyName', 'Account') `
+    -RequiredParameters @('Certificate', 'ProviderName', 'KeyName', 'KeyScope', 'Account') `
     -SupportsShouldProcess $false `
     -SupportsTargetArrays $false
 

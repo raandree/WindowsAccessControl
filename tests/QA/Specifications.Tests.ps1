@@ -225,10 +225,10 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             Join-Path $script:decisionRoot 'README.md'
         ) -Raw
 
-        foreach ($closedIssue in 5, 6, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 25, 26) {
+        foreach ($closedIssue in 5, 6, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 24, 25, 26) {
             $openIssues | Should -Not -Match "(?m)^## OI-$closedIssue`:"
         }
-        foreach ($focusedIssue in 23, 24, 27) {
+        foreach ($focusedIssue in 23, 27) {
             $openIssues | Should -Match "(?m)^## OI-$focusedIssue`:"
         }
         $openIssues | Should -Not -Match '(?m)^## OI-12:'

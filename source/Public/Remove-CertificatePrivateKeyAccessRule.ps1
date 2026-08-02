@@ -17,6 +17,9 @@ function Remove-CertificatePrivateKeyAccessRule {
         The exact expected CNG provider.
     .PARAMETER KeyName
         The exact expected persisted CNG key name.
+    .PARAMETER KeyScope
+        Selects the machine or current-user key store when the key is addressed
+        without a certificate. Every gate still applies.
     .PARAMETER Account
         One or more account names, SIDs, identity references, or module identities.
     .PARAMETER AccessRights
@@ -39,10 +42,14 @@ function Remove-CertificatePrivateKeyAccessRule {
     .OUTPUTS
         None
     #>
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        ConfirmImpact = 'High',
+        DefaultParameterSetName = 'Certificate'
+    )]
     [OutputType([void])]
     param(
-        [Parameter(Mandatory, ValueFromPipeline)]
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'Certificate')]
         [ValidateNotNull()]
         [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
 
@@ -53,6 +60,10 @@ function Remove-CertificatePrivateKeyAccessRule {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$KeyName,
+
+        [Parameter(Mandatory, ParameterSetName = 'Key')]
+        [ValidateSet('Machine', 'User')]
+        [string]$KeyScope,
 
         [Parameter(Mandatory)]
         [Alias('IdentityReference', 'ID')]
@@ -83,7 +94,7 @@ function Remove-CertificatePrivateKeyAccessRule {
     }
     process {
         $operation = {
-            param($Target, $Key, $Cmdlet, $Identities, $Rights, $RuleType, $Token, $BindingCertificate)
+            param($Target, $Key, $Cmdlet, $Identities, $Rights, $RuleType, $Token)
 
             if (-not $Cmdlet.ShouldProcess(
                     $Target.CanonicalTarget,
@@ -138,7 +149,6 @@ function Remove-CertificatePrivateKeyAccessRule {
             }
             $setParameters = @{
                 Target             = $Target
-                Certificate        = $BindingCertificate
                 Key                = $Key
                 SecurityDescriptor = $candidateBytes
             }
@@ -162,10 +172,14 @@ function Remove-CertificatePrivateKeyAccessRule {
         else {
             $null
         }
-        Invoke-WithWindowsCertificatePrivateKeyTarget `
+        $targetParameters = New-WindowsCertificatePrivateKeyTargetParameter `
+            -ParameterSetName $PSCmdlet.ParameterSetName `
             -Certificate $Certificate `
             -ProviderName $ProviderName `
             -KeyName $KeyName `
+            -KeyScope $KeyScope
+        Invoke-WithWindowsCertificatePrivateKeyTarget `
+            @targetParameters `
             -Operation $operation `
             -ArgumentList @(
                 $PSCmdlet
@@ -173,7 +187,6 @@ function Remove-CertificatePrivateKeyAccessRule {
                 ([long][int]$AccessRights -band 0xFFFFFFFFL)
                 $AccessControlType
                 $expectedToken
-                $Certificate
             ) `
             -ForMutation
     }

@@ -7,7 +7,7 @@ function Set-WindowsAccessControlDscAccessRule {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask', 'CertificatePrivateKey')]
         [string]$ObjectFamily,
         [Parameter()] [string]$Target,
         [Parameter()] [WindowsRegistryView]$RegistryView = [WindowsRegistryView]::Default,
@@ -15,6 +15,8 @@ function Set-WindowsAccessControlDscAccessRule {
         [Parameter()] [int64]$CreationTimeFileTime,
         [Parameter()] [string]$Server,
         [Parameter()] [string]$TaskName,
+        [Parameter()] [string]$ProviderName,
+        [Parameter()] [string]$KeyScope,
         [Parameter()] [string]$AllowedRootPath,
         [Parameter()] [string]$AllowedBaseDistinguishedName,
         [Parameter()] [ValidateRange(1, 300)] [int]$TimeoutSeconds = 10,
@@ -38,6 +40,16 @@ function Set-WindowsAccessControlDscAccessRule {
     if ($ObjectFamily -in @('TaskFolder', 'ScheduledTask') -and
         [string]::IsNullOrWhiteSpace($AllowedRootPath)) {
         throw 'AllowedRootPath is required for Task Scheduler writes.'
+    }
+    # A deny ACE naming a group that contains SYSTEM or Administrators locks the
+    # key while every per-account grant check still passes, so specification 0015
+    # refuses a new deny ACE outright. Removing one that already exists stays
+    # supported.
+    if ($ObjectFamily -eq 'CertificatePrivateKey' -and
+        $Ensure -eq [WindowsAccessControlDscEnsure]::Present -and
+        $AccessControlType -eq
+            [System.Security.AccessControl.AccessControlType]::Deny) {
+        throw 'A certificate private-key deny rule cannot be created; only Absent is supported for Deny.'
     }
     if ($ObjectFamily -eq 'ADObject') {
         # Pin one domain controller so the compliance read and the write cannot
@@ -207,7 +219,48 @@ function Set-WindowsAccessControlDscAccessRule {
                     -ErrorAction Stop
                 break
             }
+            'CertificatePrivateKey' {
+                Add-CertificatePrivateKeyAccessRule `
+                    -ProviderName $ProviderName `
+                    -KeyName $Target `
+                    -KeyScope $KeyScope `
+                    -Account $Account `
+                    -AccessRights ([System.Enum]::ToObject(
+                        [WindowsCryptoKeyRights],
+                        $signedMask
+                    )) `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                break
+            }
         }
+        return
+    }
+
+    if ($ObjectFamily -eq 'CertificatePrivateKey') {
+        # One removal clears every duplicate matching ACE, so looping per
+        # matching rule would make the second pass match nothing and raise the
+        # warning that exists to expose a revocation that removed nothing.
+        if ($matchingRules.Count -eq 0) {
+            return
+        }
+        Remove-CertificatePrivateKeyAccessRule `
+            -ProviderName $ProviderName `
+            -KeyName $Target `
+            -KeyScope $KeyScope `
+            -Account ([string]$matchingRules[0].SID) `
+            -AccessRights ([System.Enum]::ToObject(
+                [WindowsCryptoKeyRights],
+                [System.BitConverter]::ToInt32(
+                    [System.BitConverter]::GetBytes(
+                        [uint32]$matchingRules[0].EffectiveAccessMask
+                    ),
+                    0
+                )
+            )) `
+            -AccessControlType $AccessControlType `
+            -Confirm:$false `
+            -ErrorAction Stop
         return
     }
 

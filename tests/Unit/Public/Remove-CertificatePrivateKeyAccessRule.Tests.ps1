@@ -6,6 +6,7 @@ Register-EnterpriseCommandContract `
         'Certificate'
         'ProviderName'
         'KeyName'
+        'KeyScope'
         'Account'
         'AccessRights'
         'AccessControlType'

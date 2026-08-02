@@ -3,7 +3,7 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
-        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask')]
+        [ValidateSet('FileSystem', 'RegistryKey', 'Service', 'ServiceControlManager', 'Process', 'SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask', 'CertificatePrivateKey')]
         [string]$ObjectFamily,
 
         [Parameter()]
@@ -25,6 +25,12 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
         [string]$TaskName,
 
         [Parameter()]
+        [string]$ProviderName,
+
+        [Parameter()]
+        [string]$KeyScope,
+
+        [Parameter()]
         [ValidateRange(1, 300)]
         [int]$TimeoutSeconds = 10,
 
@@ -35,7 +41,7 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
     if ([int]$Sections -le 0 -or [int]$Sections -gt 15) {
         throw [System.ArgumentOutOfRangeException]::new('Sections')
     }
-    if ($ObjectFamily -in @('SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask') -and
+    if ($ObjectFamily -in @('SmbShare', 'ADObject', 'TaskFolder', 'ScheduledTask', 'CertificatePrivateKey') -and
         $Sections -ne [WindowsSecurityDescriptorSection]::Access) {
         throw [System.ArgumentException]::new(
             "Object family $ObjectFamily manages only the access section."
@@ -162,6 +168,21 @@ function Get-WindowsAccessControlDscSecurityDescriptor {
                 -TaskPath $Target `
                 -TaskName $TaskName `
                 -ThrottleLimit 1 `
+                -ErrorAction Stop
+            break
+        }
+        'CertificatePrivateKey' {
+            if ([string]::IsNullOrWhiteSpace($Target) -or
+                [string]::IsNullOrWhiteSpace($ProviderName) -or
+                $KeyScope -notin @('Machine', 'User')) {
+                throw [System.ArgumentException]::new(
+                    'A CNG provider, persisted key name, and key scope are required.'
+                )
+            }
+            Get-CertificatePrivateKeySecurityDescriptor `
+                -ProviderName $ProviderName `
+                -KeyName $Target `
+                -KeyScope $KeyScope `
                 -ErrorAction Stop
             break
         }

@@ -2,7 +2,7 @@
 
 Register-EnterpriseCommandContract `
     -Name 'Get-CertificatePrivateKeySecurityDescriptor' `
-    -RequiredParameters @('Certificate', 'ProviderName', 'KeyName') `
+    -RequiredParameters @('Certificate', 'ProviderName', 'KeyName', 'KeyScope') `
     -SupportsShouldProcess $false `
     -SupportsTargetArrays $false
 
