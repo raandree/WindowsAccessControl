@@ -1,8 +1,8 @@
 # Specifications
 
 This directory contains the normative requirements and design contracts for
-the current `NTFSPermission` implementation and its accepted rename and
-expansion to `WindowsAccessControl`. Specifications are the source of truth for
+`WindowsAccessControl`, including the rename from `NTFSPermission` and the
+accepted enterprise expansion. Specifications are the source of truth for
 what the module does and how its public and security boundaries behave.
 Comment-based help is the source of truth for exhaustive per-command parameter
 reference.
@@ -41,7 +41,7 @@ them.
 | 0005 | Verification and traceability | Accepted |
 | 0006 | WindowsAccessControl expansion | Accepted |
 | 0007 | In-memory descriptor mutation | Accepted |
-| 0008 | Enterprise access-control expansion | Draft |
+| 0008 | Enterprise access-control expansion | Accepted |
 | 0009 | SMB share and Active Directory DACL management | Accepted |
 | 0010 | Task Scheduler DACL management | Accepted |
 | 0011 | SMB share-only effective access | Accepted |
@@ -57,10 +57,12 @@ Specification 0006 is the accepted contract for the implemented and verified
 registry-key, service/SCM, pinned-process, portability, bounded-execution, and
 DSC expansion. Specification 0007 accepts the implemented filesystem and
 registry-key descriptor-editing model, including opt-in optimistic concurrency.
-Specification 0008 plans the
-domain-lab-gated Task Scheduler, certificate private-key, SMB-share, and Active
-Directory expansion. Specification 0009 accepts the first SMB-share and Active
-Directory DACL-management increment without claiming replication work.
+Specification 0008 is the accepted roadmap contract for the domain-lab-gated
+Task Scheduler, certificate private-key, SMB-share, and Active Directory
+expansion; it approves the entry gates, work packages, and boundaries rather
+than claiming that every package is implemented. Specification 0009 accepts
+the first SMB-share and Active Directory DACL-management increment without
+claiming replication work.
 Specification 0010 accepts local
 Task Scheduler folder and registered-task DACL descriptor management without
 claiming typed rules, portability, DSC, SACL, or direct remote APIs.

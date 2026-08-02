@@ -9,62 +9,52 @@ source: current task evidence
 
 ## Current focus
 
-OI-28 is closed. The 80 percent coverage threshold is now asserted over the
-commands the running test profile can execute, so the hosted build and a host
-that can run the domain lab apply the same rule instead of producing two
-different verdicts. The threshold itself is unchanged and no test was added to
-reach it.
+Specification 0008 is accepted. It was the last `Draft` in the specification
+index, and it had blocked itself: its own text required stable requirement
+identifiers and a roadmap-to-evidence mapping that did not exist yet.
 
 OI-23 remains listed only as a decision record: ADR 0024 withdrew the
 implementation half, and it should be reopened only for a concrete
 `CryptAcquireContext` plus `PP_KEYSET_SEC_DESCR` requirement.
 
-## OI-28 design
+## Specification 0008 acceptance
 
-- The verdict is scoped rather than lowered. Every measured line of the built
-    `.psm1` is attributed to the source file it was merged from through the
-    `#Region '<path>'` and `#EndRegion '<path>'` comments ModuleBuilder writes.
-    All 7,938 measured commands attribute to 254 source files with none left
-    over, so the attribution is exact rather than approximate.
-- Only fifteen source files leave the asserted scope, listed as exact paths in
-    `build.yaml` under `CodeCoverage: DomainLabOnlySourcePath`. They are the
-    Active Directory and SMB share files the local profile executes no command
-    of at all. The SMB share family belongs there for the same reason the
-    directory family does: `SmbSharePermissions.Live.Tests.ps1` resolves a
-    domain user through the `ActiveDirectory` module and drives the module
-    through a Kerberos session against the disposable member server.
-- Two guards keep the declaration honest and both were proved live. A declared
-    path that matches no source file fails the build. A declared file whose
-    locally measured document reports an executed command fails the build with
-    that file and its counts named. The second check reads the local document,
-    not the merged one, because the merged one would accept anything the lab
-    happens to cover.
-- Everything else stays in scope by default: a line the source map cannot
-    attribute, every source file added later, and the eight further files that
-    also measure zero locally but belong to families a local profile can reach.
-- The whole-module and domain-lab-only numbers are reported and neither is
-    asserted, together with whether domain-lab evidence was merged into that run.
-- A domain-lab document that cannot be read or cannot merge is now treated as
-    absent with a warning instead of failing the build. It is still never merged.
+- The contract is accepted, not a claim of complete implementation. The
+    specification now says so, and every work package closes either through
+    executable evidence or through an accepted decision record that defers it.
+    `SMB-6` is deferred by ADR 0017, `AD-7` by ADR 0022, and the CAPI half of
+    the private-key package by ADR 0024.
+- Specification 0002 gained `FR-24` through `FR-27` and `NFR-17` through
+    `NFR-20`. Everything shipped after read-only private-key inspection had no
+    stable identifier: fail-closed private-key mutation (0015), key-addressed
+    portability and desired state (0017), schema-version-2 enterprise
+    portability and the SMB and directory resources (0013), the Task Scheduler
+    equivalents (0014), and immutable directory identity (0016). `FR-23` was
+    left as written, because inspection is still supported; mutation is a new
+    requirement rather than a rewrite of an accepted one.
+- Specification 0005 gained a roadmap task traceability section: all 39
+    `ENT-*`, `TASK-*`, `KEY-*`, `SMB-*`, and `AD-*` tasks with their state and
+    the test file, decision record, or artifact that closes them.
+- Two statements in 0008 were contradicted by 0016 and are gone: that
+    replication evidence remained blocked, and that OI-18 tracked it. The QA
+    suite asserts OI-18 is absent from the register, so the specification was
+    pointing at an issue that could not exist.
+- The seven open questions are answered in place from the contracts that
+    resolved them rather than deleted.
 
-## OI-28 evidence
+## Acceptance evidence
 
-- Asserted scope 83.16 percent, 6,379 of 7,671 commands, against 80.36 percent,
-    6,379 of 7,938, over the whole module. The declared files contribute 0 of 267
-    commands, so no measured local evidence left the gate.
-- 16 build-helper unit tests and 10 QA specification tests pass, in PowerShell 7
-    and in Windows PowerShell 5.1. Both new failure branches were driven live:
-    the unmatched-path guard and the executed declaration guard.
-- PSScriptAnalyzer over every changed file produces only the pre-existing
-    `PSReviewUnusedParameter` category, which the committed task file already
-    produced for the Invoke-Build parameter convention.
-- One independent review returned REQUEST CHANGES with seven Major findings. All
-    are resolved. The first declaration used family globs that removed 553
-    executed commands and nine fully covered files from the gate, `-like` matched
-    case-insensitively so a future `*-WindowsAdapter*` file would have left the
-    scope silently, nothing detected over-declaration, the build printed an
-    assertion that did not exist, and the ADR's stated anti-gaming safeguard was
-    false. Exact paths plus the executed-declaration guard replace all of it.
+- The QA specification suite passes 10 of 10, including the two checks that
+    govern this change: requirement identifiers are unique, and every identifier
+    in 0002 is traced in 0005.
+- No prose line added to the four files exceeds 80 characters, and
+    `Get-ChangelogData` still parses `CHANGELOG.md`.
+- The public command evidence table in 0005 was deliberately not extended.
+    Fifteen exported commands have no row, but the `Direct specs` count equals
+    neither the `It`, the `Context`, nor the `Describe` count of the command's
+    test file, so the column follows a curated rule from the original audit.
+    Filling it under a different rule would corrupt the column. Each of the
+    fifteen does have a dedicated test file.
 
 ## Two findings worth keeping
 
@@ -94,20 +84,13 @@ implementation half, and it should be reopened only for a concrete
 
 ## Next step
 
-No focused issue remains open, so the next candidates come from the
-specifications rather than the register.
+No specification is in `Draft` and no focused issue is open. Two candidates
+remain, both operational rather than contractual.
 
-1. Promote specification 0008 from `Draft` to `Accepted`. Its own acceptance
-    criteria are the last gap: specification 0002 needs stable identifiers for
-    the behavior shipped after FR-23 and NFR-16, specification 0005 needs the
-    roadmap-task mapping, and specification 0008 still calls replication
-    evidence blocked and points at the closed OI-18. The existing QA test that
-    traces every requirement to evidence verifies the result.
-2. Rerun the domain-lab coverage document. The committed one measures a module
-    that no longer exists, so the merged whole-module number cannot be reported.
-3. Diagnose `Should reconverge all NTFS descriptor sections together`, which
-    fails on this host across commits and is currently tolerated without a
-    written ruling.
+1. Rerun the domain-lab coverage document so the merged whole-module number can
+    be reported with lab evidence again.
+2. Diagnose `Should reconverge all NTFS descriptor sections together`, which
+    fails on this host across commits and is tolerated without a written ruling.
 
 Every other candidate (SMB-6, AD-7, directory audit rules, directory
 inheritance and owner/group mutation, CAPI) is a written deferral and needs a

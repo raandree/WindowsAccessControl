@@ -1,26 +1,23 @@
 # Enterprise access-control expansion
 
-Status: Draft. This specification records the planned expansion into scheduled
-tasks and task folders, certificate private keys, SMB shares, and Active
-Directory objects. It does not describe implemented behavior. Implementation
-starts only after the domain-lab and security entry gates below pass.
+Status: Accepted. This specification is the durable roadmap contract for the
+expansion into scheduled tasks and task folders, certificate private keys, SMB
+shares, and Active Directory objects. It defines the entry gates, work
+packages, and boundaries every family must satisfy. The per-family
+specifications define the behavior that shipped, and specification 0005 maps
+every roadmap task to its evidence.
 
-Specification 0009 accepts the first SMB-share and Active Directory DACL
-descriptor/rule increment. This broader roadmap remains Draft because SACL,
-backup, DSC, effective-access, schema-resolution, and replication packages are
-not complete.
+Acceptance approves the contract, not a claim of complete implementation. A
+work package closes either through executable evidence or through an accepted
+decision record that defers it.
 
-Specification 0010 accepts the first local Task Scheduler folder and
-registered-task DACL descriptor increment. Typed rules, portability, DSC, SACL,
-and direct remote APIs remain outside that accepted slice.
-
-Specification 0011 accepts SMB-5 as a bounded local SID-derived share-only
-result. SMB-6 remains deferred by ADR 0017.
-
-Specification 0012 accepts read-only inspection of an exact persisted RSA key
-in Microsoft Software Key Storage Provider. CNG/CAPI mutation, portability,
-DSC, critical-binding detection, and cryptographic review remain focused
-follow-up packages.
+Specifications 0009 through 0017 accept the behavior delivered against this
+roadmap: SMB-share and Active Directory DACL management, local Task Scheduler
+DACL management, bounded share-only effective access, private-key inspection
+and fail-closed mutation, schema-version-2 portability and desired state for
+every enterprise family, and multi-controller directory behavior. `SMB-6` is
+deferred by ADR 0017, `AD-7` by ADR 0022, and the Certificate Application
+Programming Interface half of the private-key package by ADR 0024.
 
 ## Purpose
 
@@ -220,12 +217,13 @@ queries remain outside the accepted SACL boundary. `AD-5` covers add, set, exact
 removal, rights removal, account purge, and clear. ADR 0021 amended the `AD-1`
 server-selection contract to
 allow a discovered and pinned domain controller. `AD-6` is delivered for
-schema-version-2 backup and restore and for the existing write-boundary
-concurrency check; directory inheritance and owner/group mutation stay outside
-the accepted boundary and replication evidence remains blocked. `AD-7` is
+schema-version-2 backup and restore, for the existing write-boundary
+concurrency check, and for replication convergence; directory inheritance and
+owner/group mutation stay outside the accepted boundary. `AD-7` is
 closed as an explicit evidence-based deferral in ADR 0022. `AD-8` is delivered
-by the two directory DSC resources in specification 0013. Open issue OI-18
-tracks the remaining replication work.
+by the two directory DSC resources in specification 0013. Specification 0016
+records the multi-controller identity, replication, and pinned-controller
+outage behavior and closed the replication work.
 
 ## Cross-cutting foundation tasks
 
@@ -299,10 +297,10 @@ waive a failed gate in an earlier package.
 ## Requirement identifiers
 
 The `ENT-*`, `TASK-*`, `KEY-*`, `SMB-*`, and `AD-*` identifiers are durable
-roadmap task identifiers, not functional or non-functional requirements. Before
-this Draft becomes `Accepted`, specification 0002 receives additional stable
-`FR-*` and `NFR-*` identifiers and specification 0005 maps each requirement and
-roadmap task to executable evidence.
+roadmap task identifiers, not functional or non-functional requirements.
+Specification 0002 carries the stable `FR-*` and `NFR-*` identifiers for the
+behavior delivered against this roadmap, and specification 0005 maps every
+requirement and every roadmap task to executable evidence.
 
 ## Verification and completion
 
@@ -320,10 +318,22 @@ Every shipped family requires:
 - independent review for every remote, credential, cryptographic, and directory
   security boundary
 
-The Draft becomes `Accepted` only after the lab inventory, API probes, remote
-security contract, backup-schema decision, per-family public API contracts, and
-stable requirement identifiers are approved. Acceptance does not claim
-implementation; executable traceability closes each work package.
+## Acceptance conditions
+
+Acceptance required the lab inventory, the API probes, the remote security
+contract, the backup-schema decision, the per-family public API contracts, and
+stable requirement identifiers. Each is satisfied by a durable artifact rather
+than by a completed run.
+
+| Condition | Satisfied by |
+| --- | --- |
+| Lab inventory | `docs/domain-lab-inventory.md`, verified topology, isolation, reset capability, and `ENT-1` through `ENT-7` foundation |
+| API probes | The `TASK-1`, `KEY-1`, `SMB-1`, and `AD-1` capability evidence traced in specification 0005 |
+| Remote security contract | ADR 0015, ADR 0018, and ADR 0021 |
+| Backup-schema decision | ADR 0016 as extended by ADR 0023, realized by specifications 0013, 0014, and 0017 |
+| Per-family public API contracts | Specifications 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, and 0017, plus specification 0003 |
+| Stable requirement identifiers | `FR-18` through `FR-27` and `NFR-11` through `NFR-20` in specification 0002 |
+| Roadmap traceability | The roadmap task traceability tables in specification 0005 |
 
 ## Deferred candidates
 
@@ -335,22 +345,34 @@ separate scope decision before implementation. The exclusions for window
 stations/desktops, named synchronization objects, JEA/session endpoints, and
 other candidates in specification 0006 and ADR 0011 remain unchanged.
 
-## Open questions
+## Resolved questions
 
-1. Which machines, operating-system versions, domain/forest topology, and reset
-   mechanisms will the supplied lab provide?
-2. Which approved direct, secure transport does each remote operation use, and
-  when are explicit per-hop credentials required?
-3. Is one-domain behavior the initial Active Directory boundary, with
-   cross-domain and cross-forest trusts deferred?
-4. Which certificate providers and key storage providers are mandatory, and
-   are hardware-backed keys inspection-only or excluded?
-5. Does unified backup move to schema version 2 for server and immutable object
-   identities?
-6. Which new families require exact-descriptor DSC, exact-rule DSC, or no DSC
-   surface?
-7. Which remote effective-access claims can be proven from a real logon token
-   or server-side authorization context?
+The questions this specification opened are answered by the accepted contracts
+below. Reopening one requires a new decision record.
+
+1. The supplied lab is recorded in `docs/domain-lab-inventory.md`: three
+   forests, five domains, five writable domain controllers, a replication
+   partner pair, an enterprise root certification authority, five member
+   servers, and full reproduction from the deployment script.
+2. SMB, Task Scheduler, and private-key operations run locally on the target
+   under ADR 0015 and ADR 0018. Active Directory uses direct Kerberos LDAP with
+   signing and sealing under ADR 0015 and ADR 0021. CredSSP, unconstrained
+   delegation, and per-hop credential chains stay prohibited.
+3. Yes. One explicitly selected domain partition is the boundary, and
+   specification 0016 keeps read-only domain controllers, inter-site
+   replication scheduling, and other partitions outside the contract.
+4. Microsoft Software Key Storage Provider is the only supported provider.
+   ADR 0024 rejects every Certificate Application Programming Interface
+   provider at the boundary, and hardware, smart-card, and remote providers
+   stay unsupported.
+5. Yes. ADR 0016 requires schema version 2 for enterprise targets, ADR 0023
+   extends it to Task Scheduler, and specification 0017 extends it to the
+   private-key family.
+6. Every enterprise family receives both an exact-descriptor and a rule-presence
+   resource, defined by specifications 0013, 0014, and 0017.
+7. None beyond the bounded local SID-derived share-only result of
+   specification 0011. ADR 0017 defers combined and remote effective access,
+   and ADR 0022 defers directory effective access on measured evidence.
 
 ## See also
 

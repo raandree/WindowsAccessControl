@@ -1,7 +1,8 @@
 # Verification and traceability
 
 Status: Accepted. This specification defines the evidence levels, requirement
-mapping, command coverage, and release gates for `WindowsAccessControl`.
+mapping, roadmap task mapping, command coverage, and release gates for
+`WindowsAccessControl`.
 
 ## Evidence levels
 
@@ -47,6 +48,10 @@ is not reported as a successful live write.
 | FR-21 | SMB effective-access contract/behavior Unit tests plus delegated local share Authz, canonical deduplication, context-label, and backing-NTFS exclusion live evidence |
 | FR-22 | `Edit-NTFSItemSecurityDescriptor.Tests.ps1` Unit contract plus bounded live add, pass-through, callback-failure, and non-persistence tests; `NtfsDescriptorMutators.Tests.ps1` and `RegistryDescriptorMutators.Tests.ps1` descriptor parameter-set contract, in-memory staging, unloaded-section rejection, and concurrency-token tests; live `NtfsInMemoryDescriptorEditing` and `RegistryInMemoryDescriptorEditing` round-trip, bounded-scope, `RequireUnchanged` stale-rejection, and target-unchanged evidence |
 | FR-23 | Certificate-private-key command/identity Unit tests plus cross-edition read-only non-exportable CNG fixture acceptance |
+| FR-24 | `WindowsCngKeyMutation.Tests.ps1`, `Set-CertificatePrivateKeySecurityDescriptor.Tests.ps1`, `Add-CertificatePrivateKeyAccessRule.Tests.ps1`, `Remove-CertificatePrivateKeyAccessRule.Tests.ps1`, `Get-CertificatePrivateKeyAccessRule.Tests.ps1`, and `Test-CertificatePrivateKeyCriticalBinding.Tests.ps1`, plus live typed read, add, idempotent add, exact SDDL-preserving removal, and the HTTP.sys binding cycle in `CertificatePrivateKeyPermissions.Live.Tests.ps1` |
+| FR-25 | `WindowsEnterpriseBackupRecord.Tests.ps1` and `WindowsCertificatePrivateKeyPortability.Tests.ps1` version-2 construction for all five enterprise families plus the live backup and restore round trips in the SMB, directory, Task Scheduler, and private-key lab suites |
+| FR-26 | `ExactSecurityDescriptorResourceContract.Tests.ps1` and `AccessRulePresenceResourceContract.Tests.ps1` export, composite-key, and property-set contracts, `WindowsAccessControlDscSecurityDescriptorAdapter.Tests.ps1` and `WindowsAccessControlDscAccessRuleAdapter.Tests.ps1` routing for the five enterprise families, and live domain-lab convergence with a repeated consistency pass |
+| FR-27 | `ADObjectReplication.Live.Tests.ps1` canonical-target, rename, move, deleted-object, and distinguished-name-reuse cases plus the object-GUID restore rejection in `WindowsEnterpriseBackupRecord.Tests.ps1` |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |
@@ -63,9 +68,84 @@ is not reported as a successful live write.
 | NFR-14 | SMB complete-descriptor section regression, existing Authz native cleanup tests, and explicit local/share-only output assertions |
 | NFR-15 | Bounded edit one-read/one-write mocks, `WhatIf`, unloaded-section, callback-failure, batch, and live target-state assertions |
 | NFR-16 | Provider/key mismatch rejection, hashed canonical identity, caller-certificate lifetime, RSA cleanup, no-private-key-output, and lab readiness checks |
+| NFR-17 | `WindowsCngKeyMutation.Tests.ps1` provider, critical-binding, deny-ACE, non-plain-ACE, required-grant, protection-state, null-DACL, and concurrency-token refusals, the same gates re-proved for restore in `Restore-WindowsSecurityDescriptor.PrivateKey.Tests.ps1`, and the live refusal scenarios |
+| NFR-18 | `Get-WindowsSecurityDescriptorRecordHash.Tests.ps1` version-1 digest pin plus tampered-identity detection, version and family pairing, envelope-version selection, allowed-base, domain-partition, and foreign-computer rejection in `WindowsEnterpriseBackupRecord.Tests.ps1` and `WindowsCertificatePrivateKeyPortability.Tests.ps1` |
+| NFR-19 | Generic-bit-tolerant, order-insensitive, and duplicate-sensitive compliance tests in the two DSC adapter suites plus the live repeated-consistency passes for the Task Scheduler and private-key resources |
+| NFR-20 | `ADObjectReplication.Live.Tests.ps1` pinned-controller outage and recovery cases plus `WindowsADAccessControl.Tests.ps1` connection, discovery, and per-invocation pinning tests |
 | ADR-0013 | Dispatcher Unit tests, family command contracts, live canonical deduplication and metric tests, cross-edition focused runs, and the repeatable NTFS benchmark |
 | ADR-0012 | Exact resource schema/orchestration/adapter Unit tests, live five-target convergence, Desktop MOF compilation, and `Invoke-DscResource` acceptance |
 | ADR-0012 rule presence | Rule schema/orchestration/adapter Unit tests, live five-target Present/Absent convergence, ten-resource MOF compilation, and Desktop LCM invocation |
+
+## Roadmap task traceability
+
+Specification 0008 defines durable roadmap task identifiers rather than
+requirements. Each one maps to its current state and to the evidence that
+proves it. A deferred task is closed by an accepted decision record, not by an
+absent implementation.
+
+### Cross-cutting foundation
+
+| Task | State | Evidence |
+| --- | --- | --- |
+| ENT-1 | Delivered | `docs/domain-lab-inventory.md` topology, safety-gate, and role-capability tables; the QA specification suite asserts its verified status and route isolation |
+| ENT-2 | Delivered | The marked initialize, status, repair, and remove lifecycle in `tests/Lab/WindowsAccessControl.DomainLab.psm1` plus the per-suite cleanup ledger the runner verifies |
+| ENT-3 | Delivered | Specification 0009 and ADR 0018 record the per-family data, authority, outbound-channel, credential, and containment boundaries; the live directory suite performs ordinary operations as a delegated non-administrative identity |
+| ENT-4 | Delivered | ADR 0015, ADR 0018, and ADR 0021 plus the NFR-11 evidence |
+| ENT-5 | Delivered | ADR 0016 and ADR 0023 plus the NFR-18 evidence |
+| ENT-6 | Delivered | `Invoke-WindowsAccessControlBatch.Tests.ps1`, `Get-WindowsAccessControlMetric.Tests.ps1`, and the per-family command-contract suites |
+| ENT-7 | Delivered | `Invoke-WindowsAccessControlDomainLabAcceptance` suite heartbeats, exact sanitized skip reasons, cleanup-ledger gate, and atomic evidence |
+| ENT-8 | Delivered for the shipped families | Cross-edition runs, analyzer and package QA, the six-suite lab acceptance, and the recorded independent reviews; every release candidate reruns the gate |
+
+### Task Scheduler
+
+| Task | State | Evidence |
+| --- | --- | --- |
+| TASK-1 | Delivered | `WindowsTaskSchedulerAccessControl.Tests.ps1` descriptor round trip and section behavior in both editions |
+| TASK-2 | Delivered | ADR 0018 and ADR 0023 plus allowed-root containment, system-tree rejection, and Local System preservation tests |
+| TASK-3 | Delivered | COM release-on-success and release-on-failure tests under NFR-13 |
+| TASK-4 | Delivered for DACL access rules | Typed folder and registered-task rule Unit tests plus live add and remove; audit rules stay outside the accepted SACL boundary |
+| TASK-5 | Delivered | Version-2 task records in `WindowsEnterpriseBackupRecord.Tests.ps1` plus the live round trip and same-target serialization |
+| TASK-6 | Delivered | The specification 0014 folder and registered-task DSC resources with contract, adapter, and live convergence evidence |
+| TASK-7 | Delivered | `TaskSchedulerPermissions.Live.Tests.ps1` cross-edition acceptance with a ready cleanup ledger |
+
+### Certificate private key
+
+| Task | State | Evidence |
+| --- | --- | --- |
+| KEY-1 | Delivered | The cross-edition provider probe recorded in ADR 0024 plus the CAPI rejection boundary tested in both editions |
+| KEY-2 | Delivered | `WindowsCertificatePrivateKeyTarget.Tests.ps1` hashed canonical identity, provider and key mismatch, and key-scope agreement |
+| KEY-3 | Delivered | Key-wrapper disposal and no-key-material evidence under NFR-16 |
+| KEY-4 | Delivered for DACL access rules | The FR-24 evidence; audit rules and SACL remain outside the contract |
+| KEY-5 | Delivered | `WindowsCertificatePrivateKeyPortability.Tests.ps1` plus the live backup and restore round trip |
+| KEY-6 | Delivered | The two specification 0017 private-key DSC resources with contract, adapter, and live convergence evidence |
+| KEY-7 | Delivered | `Test-CertificatePrivateKeyCriticalBinding.Tests.ps1`, the live HTTP.sys binding cycle, and the directory-service store evidence; ADR 0024 documents the unsupported provider |
+| KEY-8 | Delivered | The recorded independent cryptographic reviews with no unresolved Blocker or Major finding |
+
+### SMB share
+
+| Task | State | Evidence |
+| --- | --- | --- |
+| SMB-1 | Delivered | The cross-edition share descriptor probe behind ADR 0015 |
+| SMB-2 | Delivered | Remote-syntax and special-share rejection tests plus the recorded independent security review |
+| SMB-3 | Delivered | `Resolve-WindowsSmbShareTarget.Tests.ps1` and the share descriptor and rule command suites |
+| SMB-4 | Delivered | Server-qualified version-2 records and the foreign-computer restore rejection under FR-25 |
+| SMB-5 | Delivered | The FR-21 and NFR-14 evidence |
+| SMB-6 | Deferred by ADR 0017 | No command claims combined share and NTFS access; the QA specification suite asserts the decision record and the security-contract statement |
+| SMB-7 | Delivered | The two specification 0013 share DSC resources plus `SmbSharePermissions.Live.Tests.ps1` |
+
+### Active Directory
+
+| Task | State | Evidence |
+| --- | --- | --- |
+| AD-1 | Delivered | `WindowsADAccessControl.Tests.ps1` signed and sealed connection, downgrade rejection, discovery, and pinning; ADR 0015 as amended by ADR 0021 |
+| AD-2 | Delivered | Schema, property-set, extended-right, and object-class GUID resolution with caching over the bound connection under ADR 0020 |
+| AD-3 | Delivered | The FR-27 evidence |
+| AD-4 | Delivered for DACL descriptors and access rules | Inheritance provenance and resolved GUID names; audit-rule queries stay outside the accepted SACL boundary |
+| AD-5 | Delivered | Add, set, exact removal, rights removal, account purge, and clear proved against native descriptors with unrelated-ACE preservation |
+| AD-6 | Delivered for portability, concurrency, and replication | The FR-25 and NFR-20 evidence plus the replication convergence cases; directory inheritance and owner or group mutation stay outside the accepted boundary |
+| AD-7 | Deferred by ADR 0022 | The measured directory evidence in the decision record; no directory effective-access command exists |
+| AD-8 | Delivered | The two specification 0013 directory DSC resources with contract, adapter, and live convergence evidence |
+| AD-9 | Delivered | The recorded independent directory security review with no unresolved Blocker or Major finding |
 
 ## Public command evidence
 

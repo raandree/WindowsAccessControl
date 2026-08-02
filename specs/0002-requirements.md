@@ -1,8 +1,8 @@
 # Requirements
 
 Status: Accepted. These stable, testable identifiers define the implemented
-`NTFSPermission` contract. Design details are resolved by specifications 0003
-to 0005 and the linked ADRs.
+`WindowsAccessControl` contract. Design details are resolved by specifications
+0003 to 0005 and the linked ADRs.
 
 ## Functional requirements
 
@@ -65,6 +65,21 @@ to 0005 and the linked ADRs.
 - **FR-23**: Inspect the DACL descriptor of an exact persisted RSA CNG private
   key selected by a caller-owned certificate plus matching provider and key
   identity, without exporting or serializing private-key material.
+- **FR-24**: Manage the DACL of an exact persisted RSA CNG software private key
+  through typed access rules and exact descriptor writes, addressing the key
+  either by a caller-owned certificate or by provider name, key name, and key
+  scope, and report the critical service bindings a key serves.
+- **FR-25**: Back up and restore SMB share, Active Directory object, task
+  folder, registered task, and certificate private-key descriptors in schema
+  version 2, carrying the server or computer that owns the target and the
+  immutable identity that binds it.
+- **FR-26**: Provide exact-descriptor and access-rule-presence desired-state
+  resources for the SMB share, Active Directory object, task folder,
+  registered-task, and certificate private-key families, keyed on the same
+  canonical identity the commands use.
+- **FR-27**: Bind an Active Directory target to its immutable `objectGUID`, so
+  a rename or a move resolves the same canonical identity and a reused
+  distinguished name is refused rather than silently accepted.
 
 ## Non-functional requirements
 
@@ -111,6 +126,22 @@ to 0005 and the linked ADRs.
   software CNG provider, rejects CAPI/ephemeral/mismatched targets, keeps the
   certificate caller-owned, disposes module-owned key wrappers, and uses a
   hashed canonical target identity.
+- **NFR-17**: Private-key writes fail closed before the provider is reached. An
+  unsupported provider, a key that serves a critical service binding, a new deny
+  ACE, a non-plain ACE, removal of a required SYSTEM, Administrators, or
+  existing service grant, a protection-state change, a null DACL, and a stale
+  concurrency token are refused, and no key material is emitted.
+- **NFR-18**: Schema-version-2 records digest the added server, computer, and
+  immutable-identity fields, a version-1 record still validates unchanged, and a
+  record restores only on the authority, domain partition, and allowed base it
+  records.
+- **NFR-19**: Desired-state compliance for the enterprise families compares what
+  the provider stores rather than the literal request, so a converged target
+  reports no drift on a repeated consistency pass despite generic-bit expansion
+  and service-canonicalized ACE order.
+- **NFR-20**: A pinned domain controller that cannot serve a request produces a
+  terminating error instead of a silent failover, and no command promises
+  read-your-write consistency across controllers.
 
 ## Traceability
 

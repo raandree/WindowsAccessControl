@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add stable identifiers `FR-24` through `FR-27` and `NFR-17` through `NFR-20`
+    for the behavior delivered after read-only private-key inspection:
+    fail-closed private-key DACL mutation, schema-version-2 enterprise
+    portability, the enterprise desired-state resources, and immutable directory
+    identity. Each is traced to executable evidence in specification 0005
+- Add roadmap task traceability to specification 0005, which maps every `ENT-*`,
+    `TASK-*`, `KEY-*`, `SMB-*`, and `AD-*` task to its current state and to the
+    evidence or the decision record that closes it
 - Add ADR 0027, which records that the coverage threshold is asserted over the
     commands the running test profile can execute, why the whole-module number
     is reported rather than asserted, and why a source file may only be declared
@@ -67,6 +75,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Accept specification 0008. The enterprise roadmap is no longer a Draft: the
+    acceptance conditions are recorded against the artifacts that satisfy them,
+    the seven open questions are answered by the contracts that resolved them,
+    and the claims that replication evidence was blocked and that open issue
+    OI-18 tracked it are removed, because specification 0016 closed both
 - Assert the 80 percent code-coverage threshold over the commands the running
     test profile can execute rather than over the whole module, so the same gate
     produces a verdict in the hosted build and on a host that has run the domain

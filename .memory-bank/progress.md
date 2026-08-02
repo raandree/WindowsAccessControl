@@ -18,9 +18,23 @@ ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, and OI-28 are closed. The 80 percent
 coverage gate is met at 83.16 percent over the 7,671 commands the test profile
 can execute; ADR 0027 records the asserted scope and ADR 0025 keeps the
 threshold. OI-23 is the only remaining focused issue and is closed by decision.
+Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-02: Accepted specification 0008, the last Draft in the index. It had
+    blocked itself: acceptance required stable requirement identifiers and a
+    roadmap-to-evidence mapping that did not exist. Specification 0002 gained
+    `FR-24` through `FR-27` and `NFR-17` through `NFR-20` for private-key
+    mutation, schema-version-2 enterprise portability, the enterprise
+    desired-state resources, and immutable directory identity; `FR-23` was left
+    intact because inspection is still supported. Specification 0005 gained a
+    roadmap traceability section covering all 39 `ENT-*`, `TASK-*`, `KEY-*`,
+    `SMB-*`, and `AD-*` tasks. The two statements 0016 had contradicted are
+    gone, and the seven open questions are answered in place. Evidence: the QA
+    specification suite green at 10 of 10, including the unique-identifier and
+    requirement-traced checks, and `Get-ChangelogData` still parses the
+    changelog.
 - 2026-08-02: Audited the remaining backlog. The register holds only OI-23, which
     is closed by decision, so the next candidates come from the specifications
     themselves. Specification 0008 is the only `Draft` and its own acceptance
