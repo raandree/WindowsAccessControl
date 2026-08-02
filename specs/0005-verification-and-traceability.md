@@ -202,6 +202,45 @@ sequential and bounded-parallel NTFS owner reads over disposable targets. It
 emits elapsed time and throughput plus optional JSON evidence without a flaky
 hard timing assertion.
 
+## Code coverage measurement
+
+The 80 percent threshold is asserted over the merged module, and the merged
+module is measured by both profiles that execute it. The default Pester profile
+cannot reach a domain controller or a member server, so it structurally cannot
+execute the Active Directory, certificate private-key, SMB share, and Task
+Scheduler families. Measuring that profile alone reports those families as
+untested when the domain-lab suites do test them. ADR 0025 records the decision
+to fix the measurement rather than the threshold.
+
+`Invoke-WindowsAccessControlDomainLabAcceptance` therefore collects coverage
+for every family it exercises and writes one JaCoCo document.
+
+- Suites that execute the module in the harness runspace are measured by Pester
+  itself, with `CodeCoverage.UseBreakpoints` disabled. The tracer is required
+  rather than preferred: a breakpoint action adds call frames, and the
+  directory suites then fail with a call-depth overflow in Windows PowerShell.
+- Suites whose real work runs through a session against the member server are
+  measured where that code actually runs. The runner publishes the measurable
+  locations of the module under test, the suite arms those locations in the
+  member runspace, and the hit counts are returned in publication order and
+  added to the harness-side counts. A member module file whose content differs
+  from the measured one is refused rather than measured.
+- The document is rendered from the harness-side locations, so its package,
+  class, and source-file names are relative to the built module directory and
+  are identical to the names the repository build produces for the same module
+  version.
+
+`tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` carries the document
+back through the same session channel as the redacted evidence and writes it
+outside `output`, which the build deletes. The `test` workflow imports it,
+merges it with the locally measured document through Sampler's
+`Merge_CodeCoverage_Files` task, and asserts the threshold over the merged
+result. A domain-lab document that measures a source file or a line the local
+run does not measure is refused, because such a merge would produce a union of
+disjoint sets and change the reported percentage without measuring anything
+new. When no domain-lab document exists the build says so and asserts the same
+threshold over the locally measured commands alone.
+
 ## Exact descriptor DSC evidence
 
 `ExactSecurityDescriptorResourceContract.Tests.ps1` verifies nine manifest

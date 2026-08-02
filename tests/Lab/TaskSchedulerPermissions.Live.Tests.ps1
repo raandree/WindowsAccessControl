@@ -34,6 +34,12 @@ BeforeAll {
         -Force `
         -ErrorAction Stop
     $script:remoteManifest = Join-Path $script:remoteModulePath 'WindowsAccessControl.psd1'
+    Import-Module `
+        -Name (Join-Path $PSScriptRoot 'WindowsAccessControl.DomainLab.psm1') `
+        -ErrorAction Stop
+    $null = Enter-WindowsAccessControlMemberCoverage `
+        -Session $script:session `
+        -ModulePath (Join-Path $script:remoteModulePath 'WindowsAccessControl.psm1')
 
     $script:original = Invoke-Command `
         -Session $script:session `
@@ -183,6 +189,9 @@ AfterAll {
                     Remove-Item -LiteralPath $ModulePath -Recurse -Force -ErrorAction SilentlyContinue
                 } `
                 -ErrorAction SilentlyContinue
+            $null = Exit-WindowsAccessControlMemberCoverage `
+                -Session $script:session `
+                -Name 'TaskSchedulerPermissions.Live.Tests.ps1'
             Remove-PSSession $script:session
         }
     }

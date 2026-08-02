@@ -5,22 +5,6 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-27: Merge domain-lab coverage into the threshold gate
-
-Specification: 0005. Decision: ADR 0025.
-
-The 80 percent threshold is red at 78.61 percent because the default Pester
-profile cannot execute the Active Directory, certificate private-key, and SMB
-share families; those three account for 48.3 percent of all missed commands,
-and the measurable surface is at 85.7 percent. Excluding them is not possible
-because ModuleBuilder emits one merged file.
-
-Make `Invoke-WindowsAccessControlDomainLabAcceptance` collect code coverage,
-carry the JaCoCo file back to the repository host, and enable Sampler's
-`Merge_CodeCoverage_Files` task so the threshold is asserted over the merged
-result. Do not lower the threshold and do not add synthetic unit tests over code
-the live suites already exercise.
-
 ## OI-23: Add CAPI private-key capability and mutation
 
 Specification: 0008. Tasks: KEY-1 to KEY-4 and KEY-7.
@@ -32,11 +16,10 @@ managed CAPI object this issue assumed is never returned, the bridge still
 reports the CAPI provider name, and the bridged key cannot serve a descriptor at
 all. The implementation half is withdrawn.
 
-What remains is a deliberate non-goal rather than open work. Reopen this issue
-only with a concrete requirement for the legacy `CryptAcquireContext` plus
-`PP_KEYSET_SEC_DESCR` surface, which needs its own handle lifetime, rights
-model, and fail-closed gates. Do not infer CAPI key-file paths or reuse CNG
-assumptions.
+Only reopen this issue with a concrete requirement for the legacy
+`CryptAcquireContext` plus `PP_KEYSET_SEC_DESCR` surface, which needs its own
+handle lifetime, rights model, and fail-closed gates. Do not infer CAPI key-file
+paths or reuse CNG assumptions.
 
 ## OI-24: Add private-key portability and desired state
 

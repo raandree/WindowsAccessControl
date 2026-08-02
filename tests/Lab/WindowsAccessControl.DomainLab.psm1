@@ -1175,6 +1175,480 @@ function ConvertTo-WindowsAccessControlDomainLabEvidenceText {
     $sanitized
 }
 
+function Get-WindowsAccessControlLabCoveragePlan {
+    <#
+        .SYNOPSIS
+            Reads the measurable code locations published by the acceptance
+            runner for the current lab run.
+
+        .DESCRIPTION
+            The acceptance runner owns the coverage session. It publishes the
+            measurable locations of the module under test into the directory
+            named by WAC_DOMAIN_LAB_COVERAGE so that suites which execute the
+            module in a remote session can arm the same locations there. The
+            plan is absent when a suite runs outside the acceptance profile, in
+            which case remote coverage is skipped rather than failing the suite.
+    #>
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param()
+
+    if ([string]::IsNullOrWhiteSpace($env:WAC_DOMAIN_LAB_COVERAGE)) {
+        return $null
+    }
+
+    $planPath = Join-Path -Path $env:WAC_DOMAIN_LAB_COVERAGE -ChildPath 'breakpoints.json'
+    if (-not (Test-Path -LiteralPath $planPath -PathType Leaf)) {
+        return $null
+    }
+
+    $plan = Get-Content -LiteralPath $planPath -Raw | ConvertFrom-Json
+    if ([int]$plan.SchemaVersion -ne 1) {
+        throw [InvalidOperationException]::new(
+            "Unsupported domain-lab coverage plan version: '$($plan.SchemaVersion)'."
+        )
+    }
+
+    [pscustomobject]@{
+        Directory  = $env:WAC_DOMAIN_LAB_COVERAGE
+        ModuleHash = [string]$plan.ModuleHash
+        Lines      = [int[]]$plan.Lines
+        Columns    = [int[]]$plan.Columns
+    }
+}
+
+function Enter-WindowsAccessControlMemberCoverage {
+    <#
+        .SYNOPSIS
+            Arms code-coverage collection for the module copy that a suite
+            drives inside a member-server session.
+
+        .DESCRIPTION
+            Code coverage instruments the runspace that executes the code, so a
+            suite whose real work runs through Invoke-Command against the member
+            server records nothing on the harness side. This arms the same
+            measurable locations in the member runspace, keyed by position in the
+            plan the acceptance runner published, and refuses to arm a module
+            file whose content differs from the measured one.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidGlobalVars',
+        '',
+        Justification = 'The armed breakpoints must outlive the remote scriptblock that sets them.'
+    )]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseUsingScopeModifierInNewRunspaces',
+        '',
+        Justification = 'Remote parameters are supplied explicitly through Invoke-Command ArgumentList.'
+    )]
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory)]
+        [System.Management.Automation.Runspaces.PSSession]$Session,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ModulePath
+    )
+
+    $plan = Get-WindowsAccessControlLabCoveragePlan
+    if ($null -eq $plan) {
+        return 0
+    }
+
+    [int](Invoke-Command `
+        -Session $Session `
+        -ArgumentList $ModulePath, $plan.Lines, $plan.Columns, $plan.ModuleHash `
+        -ErrorAction Stop `
+        -ScriptBlock {
+            param($ModulePath, $Lines, $Columns, $ModuleHash)
+
+            $ErrorActionPreference = 'Stop'
+            $algorithm = [Security.Cryptography.SHA256]::Create()
+            try {
+                $stream = [IO.File]::OpenRead($ModulePath)
+                try {
+                    $actualHash = [BitConverter]::ToString(
+                        $algorithm.ComputeHash($stream)
+                    ).Replace('-', '')
+                }
+                finally {
+                    $stream.Dispose()
+                }
+            }
+            finally {
+                $algorithm.Dispose()
+            }
+            if ($actualHash -cne $ModuleHash) {
+                throw [InvalidOperationException]::new(
+                    'The member module under test does not match the measured module.'
+                )
+            }
+
+            $action = { $null = Remove-PSBreakpoint -Id $_.Id }
+            $global:WindowsAccessControlCoverageBreakpoints = @(
+                for ($index = 0; $index -lt $Lines.Count; $index++) {
+                    Set-PSBreakpoint `
+                        -Script $ModulePath `
+                        -Line $Lines[$index] `
+                        -Column $Columns[$index] `
+                        -Action $action
+                }
+            )
+            @($global:WindowsAccessControlCoverageBreakpoints).Count
+        })
+}
+
+function Exit-WindowsAccessControlMemberCoverage {
+    <#
+        .SYNOPSIS
+            Harvests the member-runspace coverage hits of one suite and retains
+            them for the acceptance runner.
+
+        .DESCRIPTION
+            Hit counts are returned in plan order so the runner can add them to
+            the locations it measured on the harness side. A count that does not
+            match the plan is refused rather than attributed to the wrong
+            locations.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSAvoidGlobalVars',
+        '',
+        Justification = 'The armed breakpoints outlive the remote scriptblock that set them.'
+    )]
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory)]
+        [System.Management.Automation.Runspaces.PSSession]$Session,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+
+    $plan = Get-WindowsAccessControlLabCoveragePlan
+    if ($null -eq $plan) {
+        return 0
+    }
+
+    $hitCounts = [int[]]@(Invoke-Command `
+        -Session $Session `
+        -ErrorAction Stop `
+        -ScriptBlock {
+            $breakpoints = @($global:WindowsAccessControlCoverageBreakpoints)
+            Remove-Variable `
+                -Name 'WindowsAccessControlCoverageBreakpoints' `
+                -Scope Global `
+                -ErrorAction SilentlyContinue
+            $unhit = @($breakpoints | Where-Object { $_.HitCount -eq 0 })
+            if ($unhit.Count -gt 0) {
+                Remove-PSBreakpoint -Breakpoint $unhit -ErrorAction SilentlyContinue
+            }
+            $breakpoints | ForEach-Object { [int]$_.HitCount }
+        })
+
+    if ($hitCounts.Count -ne $plan.Lines.Count) {
+        throw [InvalidOperationException]::new(
+            ("Suite '$Name' returned $($hitCounts.Count) member coverage counts " +
+                "but the plan measures $($plan.Lines.Count) locations.")
+        )
+    }
+
+    $hitsPath = Join-Path -Path $plan.Directory -ChildPath (
+        'hits-{0}.json' -f [IO.Path]::GetFileNameWithoutExtension($Name)
+    )
+    [IO.File]::WriteAllText(
+        $hitsPath,
+        ([pscustomobject]@{
+            SchemaVersion = 1
+            Suite         = $Name
+            HitCounts     = $hitCounts
+        } | ConvertTo-Json -Depth 4 -Compress),
+        [Text.UTF8Encoding]::new($false)
+    )
+
+    @($hitCounts | Where-Object { $_ -gt 0 }).Count
+}
+
+function Get-WindowsAccessControlLabPesterModule {
+    [CmdletBinding()]
+    [OutputType([psmoduleinfo])]
+    param()
+
+    $pesterModule = @(
+        Get-Module -Name 'Pester' |
+            Where-Object { $_.Version -ge [version]'5.7.1' } |
+            Sort-Object -Property Version -Descending
+    ) | Select-Object -First 1
+    if ($null -eq $pesterModule) {
+        Import-Module -Name 'Pester' -MinimumVersion 5.7.1 -ErrorAction Stop
+        $pesterModule = @(
+            Get-Module -Name 'Pester' |
+                Where-Object { $_.Version -ge [version]'5.7.1' } |
+                Sort-Object -Property Version -Descending
+        ) | Select-Object -First 1
+    }
+    if ($null -eq $pesterModule) {
+        throw [InvalidOperationException]::new(
+            'Code coverage requires Pester 5.7.1 or later in the lab session.'
+        )
+    }
+
+    $pesterModule
+}
+
+function Enter-WindowsAccessControlLabCoverage {
+    <#
+        .SYNOPSIS
+            Starts the acceptance-wide code-coverage session over the built
+            module the lab runs.
+
+        .DESCRIPTION
+            Coverage is accumulated once for the whole acceptance rather than
+            once per suite, so a single JaCoCo document covers every family.
+            This discovers the measurable locations without instrumenting
+            anything: the harness side is measured by Pester itself while each
+            suite runs, and the same locations are published for the suites that
+            execute the module in a member-server session.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'The public acceptance runner enforces ShouldProcess before starting coverage.'
+    )]
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateScript({ Test-Path -LiteralPath $_ -PathType Leaf })]
+        [string]$ModulePath,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$WorkingDirectory
+    )
+
+    $pesterModule = Get-WindowsAccessControlLabPesterModule
+    $resolvedModulePath = (Resolve-Path -LiteralPath $ModulePath).ProviderPath
+    $breakpoints = @(& $pesterModule {
+            param($Path)
+
+            Set-StrictMode -Off
+            Enter-CoverageAnalysis -CodeCoverage $Path -UseBreakpoints $false
+        } $resolvedModulePath)
+    if ($breakpoints.Count -eq 0) {
+        throw [InvalidOperationException]::new(
+            "No measurable code locations were found in '$resolvedModulePath'."
+        )
+    }
+
+    $positionIndex = @{ }
+    for ($index = 0; $index -lt $breakpoints.Count; $index++) {
+        $key = '{0}:{1}' -f $breakpoints[$index].StartLine, $breakpoints[$index].StartColumn
+        if (-not $positionIndex.ContainsKey($key)) {
+            $positionIndex[$key] = $index
+        }
+    }
+
+    $null = New-Item -Path $WorkingDirectory -ItemType Directory -Force
+    Get-ChildItem -LiteralPath $WorkingDirectory -Filter 'hits-*.json' -File |
+        Remove-Item -Force -ErrorAction Stop
+
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try {
+        $stream = [IO.File]::OpenRead($resolvedModulePath)
+        try {
+            $moduleHash = [BitConverter]::ToString($algorithm.ComputeHash($stream)).Replace('-', '')
+        }
+        finally {
+            $stream.Dispose()
+        }
+    }
+    finally {
+        $algorithm.Dispose()
+    }
+
+    $plan = [pscustomobject]@{
+        SchemaVersion = 1
+        ModuleHash    = $moduleHash
+        Lines         = [int[]]@($breakpoints | ForEach-Object { [int]$_.StartLine })
+        Columns       = [int[]]@($breakpoints | ForEach-Object { [int]$_.StartColumn })
+    }
+    [IO.File]::WriteAllText(
+        (Join-Path -Path $WorkingDirectory -ChildPath 'breakpoints.json'),
+        ($plan | ConvertTo-Json -Depth 4 -Compress),
+        [Text.UTF8Encoding]::new($false)
+    )
+
+    $previousDirectory = $env:WAC_DOMAIN_LAB_COVERAGE
+    $env:WAC_DOMAIN_LAB_COVERAGE = $WorkingDirectory
+
+    [pscustomobject]@{
+        Breakpoints       = $breakpoints
+        PositionIndex     = $positionIndex
+        HarnessHits       = [int[]]::new($breakpoints.Count)
+        Directory         = $WorkingDirectory
+        ModulePath        = $resolvedModulePath
+        PesterModule      = $pesterModule
+        StartedAtUtc      = [datetime]::UtcNow
+        PreviousDirectory = $previousDirectory
+    }
+}
+
+function Add-WindowsAccessControlLabCoverageHit {
+    <#
+        .SYNOPSIS
+            Accumulates the commands one suite executed in the harness runspace.
+
+        .DESCRIPTION
+            Pester measures each suite with its own tracer-based coverage run.
+            Breakpoints are not used on this side: their per-hit action adds
+            call frames, and the directory suites already sit close to the
+            call-depth budget of the runspace that runs them.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'The public acceptance runner enforces ShouldProcess before collecting coverage.'
+    )]
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory)]
+        [pscustomobject]$CoverageSession,
+
+        [Parameter(Mandatory)]
+        [object]$PesterResult
+    )
+
+    $executed = @($PesterResult.CodeCoverage.CommandsExecuted)
+    foreach ($command in $executed) {
+        $key = '{0}:{1}' -f $command.StartLine, $command.StartColumn
+        if (-not $CoverageSession.PositionIndex.ContainsKey($key)) {
+            throw [InvalidOperationException]::new(
+                "Pester reported a covered location the session does not measure: '$key'."
+            )
+        }
+        $position = $CoverageSession.PositionIndex[$key]
+        $CoverageSession.HarnessHits[$position] += [math]::Max(1, [int]$command.HitCount)
+    }
+
+    $executed.Count
+}
+
+function Exit-WindowsAccessControlLabCoverage {
+    <#
+        .SYNOPSIS
+            Closes the acceptance-wide coverage session and writes one JaCoCo
+            document that combines harness-side and member-session hits.
+
+        .DESCRIPTION
+            The document is generated from the harness-side locations, so every
+            class, method, and source-file name is relative to the built module
+            directory and matches the document the repository build produces for
+            the same version. Member-session hits are added by plan position.
+    #>
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions',
+        '',
+        Justification = 'The public acceptance runner enforces ShouldProcess before writing coverage.'
+    )]
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)]
+        [pscustomobject]$CoverageSession,
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$OutputPath
+    )
+
+    $breakpoints = @($CoverageSession.Breakpoints)
+    $harnessHits = [int[]]$CoverageSession.HarnessHits
+
+    $memberHits = [int[]]::new($harnessHits.Count)
+    $suiteNames = [Collections.Generic.List[string]]::new()
+    foreach ($hitsFile in @(
+            Get-ChildItem -LiteralPath $CoverageSession.Directory -Filter 'hits-*.json' -File |
+                Sort-Object -Property Name
+        )) {
+        $hits = Get-Content -LiteralPath $hitsFile.FullName -Raw | ConvertFrom-Json
+        $counts = [int[]]$hits.HitCounts
+        if ($counts.Count -ne $harnessHits.Count) {
+            throw [InvalidOperationException]::new(
+                ("Member coverage file '$($hitsFile.Name)' reports $($counts.Count) " +
+                    "locations but the session measures $($harnessHits.Count).")
+            )
+        }
+        for ($index = 0; $index -lt $counts.Count; $index++) {
+            $memberHits[$index] += $counts[$index]
+        }
+        $suiteNames.Add([string]$hits.Suite)
+    }
+
+    $memberOnly = 0
+    for ($index = 0; $index -lt $breakpoints.Count; $index++) {
+        if ($harnessHits[$index] -eq 0 -and $memberHits[$index] -gt 0) {
+            $memberOnly++
+        }
+        $breakpoints[$index].Breakpoint = @{
+            HitCount = $harnessHits[$index] + $memberHits[$index]
+        }
+    }
+
+    $elapsed = [long][math]::Max(
+        1,
+        ([datetime]::UtcNow - $CoverageSession.StartedAtUtc).TotalMilliseconds
+    )
+    $report = & $CoverageSession.PesterModule {
+        param($Coverage)
+
+        Set-StrictMode -Off
+        Get-CoverageReport -CommandCoverage $Coverage
+    } $breakpoints
+    $documentXml = & $CoverageSession.PesterModule {
+        param($Coverage, $Report, $Milliseconds)
+
+        Set-StrictMode -Off
+        Get-JaCoCoReportXml `
+            -CommandCoverage $Coverage `
+            -CoverageReport $Report `
+            -TotalMilliseconds $Milliseconds `
+            -Format 'JaCoCo'
+    } $breakpoints $report $elapsed
+    if ([string]::IsNullOrWhiteSpace($documentXml)) {
+        throw [InvalidOperationException]::new(
+            'The domain-lab coverage session produced no JaCoCo document.'
+        )
+    }
+
+    [IO.File]::WriteAllText(
+        [IO.Path]::GetFullPath($OutputPath),
+        $documentXml,
+        [Text.Encoding]::ASCII
+    )
+
+    if ($null -eq $CoverageSession.PreviousDirectory) {
+        Remove-Item Env:WAC_DOMAIN_LAB_COVERAGE -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:WAC_DOMAIN_LAB_COVERAGE = $CoverageSession.PreviousDirectory
+    }
+
+    [pscustomobject]@{
+        CommandsAnalyzed   = [int]$report.NumberOfCommandsAnalyzed
+        CommandsExecuted   = [int]$report.NumberOfCommandsExecuted
+        CoveragePercent    = [math]::Round([double]$report.CoveragePercent, 2)
+        HarnessCommands    = @($harnessHits | Where-Object { $_ -gt 0 }).Count
+        MemberCommands     = @($memberHits | Where-Object { $_ -gt 0 }).Count
+        MemberOnlyCommands = $memberOnly
+        MemberSuites       = $suiteNames.ToArray()
+    }
+}
+
 function Invoke-WindowsAccessControlDomainLabAcceptance {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     [OutputType([pscustomobject])]
@@ -1193,7 +1667,11 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
 
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$OutputPath
+        [string]$OutputPath,
+
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]$CoverageOutputPath
     )
 
     $repositoryPath = (Resolve-Path -LiteralPath $RepositoryRoot).ProviderPath
@@ -1204,6 +1682,26 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
         throw [IO.FileNotFoundException]::new(
             'RepositoryRoot does not contain the WindowsAccessControl source manifest.'
         )
+    }
+    $builtModulePath = $null
+    if ($PSBoundParameters.ContainsKey('CoverageOutputPath')) {
+        $builtModule = @(
+            Get-ChildItem -Path (
+                Join-Path $repositoryPath 'output\module\WindowsAccessControl\*'
+            ) -Directory -ErrorAction Stop |
+                Sort-Object -Property { [version]$_.Name } -Descending
+        ) | Select-Object -First 1
+        if ($null -eq $builtModule) {
+            throw [IO.DirectoryNotFoundException]::new(
+                'RepositoryRoot does not contain a built module to measure.'
+            )
+        }
+        $builtModulePath = Join-Path $builtModule.FullName 'WindowsAccessControl.psm1'
+        if (-not (Test-Path -LiteralPath $builtModulePath -PathType Leaf)) {
+            throw [IO.FileNotFoundException]::new(
+                "The built module to measure does not exist: '$builtModulePath'."
+            )
+        }
     }
     $suiteNames = @(
         'WindowsAccessControl.DomainLab.Live.Tests.ps1'
@@ -1260,15 +1758,37 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
         -Name ConvertTo-WindowsAccessControlDomainLabEvidenceText `
         -CommandType Function `
         -ErrorAction Stop).ScriptBlock
+    $addCoverageHit = (Get-Command `
+        -Name Add-WindowsAccessControlLabCoverageHit `
+        -CommandType Function `
+        -ErrorAction Stop).ScriptBlock
+    $exitCoverage = (Get-Command `
+        -Name Exit-WindowsAccessControlLabCoverage `
+        -CommandType Function `
+        -ErrorAction Stop).ScriptBlock
     $startedAtUtc = [datetime]::UtcNow
     $suiteResults = [Collections.Generic.List[object]]::new()
     $cleanupLedger = [Collections.Generic.List[object]]::new()
     $previousMemberServer = $env:WAC_DOMAIN_LAB_MEMBER
+    $coverageSession = $null
+    $coverage = $null
     $summary = $null
     $terminalError = $null
     $secondaryErrors = [Collections.Generic.List[Exception]]::new()
     try {
         $env:WAC_DOMAIN_LAB_MEMBER = $MemberServer
+        if ($null -ne $builtModulePath) {
+            $coverageSession = Enter-WindowsAccessControlLabCoverage `
+                -ModulePath $builtModulePath `
+                -WorkingDirectory (Join-Path `
+                    ([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($CoverageOutputPath))) `
+                    'lab-coverage')
+            Write-Information (
+                '[{0:O}] COVERAGE START locations={1}' -f
+                    [datetime]::UtcNow,
+                    @($coverageSession.Breakpoints).Count
+            ) -InformationAction Continue
+        }
         foreach ($suitePath in $suitePaths) {
             $suiteName = [IO.Path]::GetFileName($suitePath)
             $suiteStartedAtUtc = [datetime]::UtcNow
@@ -1276,10 +1796,30 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
                 '[{0:O}] SUITE START {1}' -f $suiteStartedAtUtc, $suiteName
             ) -InformationAction Continue
 
-            $pesterResult = Invoke-Pester `
-                -Path $suitePath `
-                -Output Detailed `
-                -PassThru
+            $pesterResult = if ($null -eq $coverageSession) {
+                Invoke-Pester `
+                    -Path $suitePath `
+                    -Output Detailed `
+                    -PassThru
+            }
+            else {
+                $suiteConfiguration = New-PesterConfiguration
+                $suiteConfiguration.Run.Path = $suitePath
+                $suiteConfiguration.Run.PassThru = $true
+                $suiteConfiguration.Output.Verbosity = 'Detailed'
+                $suiteConfiguration.CodeCoverage.Enabled = $true
+                $suiteConfiguration.CodeCoverage.Path = $coverageSession.ModulePath
+                $suiteConfiguration.CodeCoverage.UseBreakpoints = $false
+                $suiteConfiguration.CodeCoverage.OutputPath = Join-Path `
+                    $coverageSession.Directory `
+                    ('suite-{0}.xml' -f [IO.Path]::GetFileNameWithoutExtension($suiteName))
+                Invoke-Pester -Configuration $suiteConfiguration
+            }
+            if ($null -ne $coverageSession) {
+                $null = & $addCoverageHit `
+                    -CoverageSession $coverageSession `
+                    -PesterResult $pesterResult
+            }
             $skips = @(
                 foreach ($test in @($pesterResult.Tests)) {
                     if ([string]$test.Result -eq 'Skipped') {
@@ -1375,6 +1915,25 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
             $env:WAC_DOMAIN_LAB_MEMBER = $previousMemberServer
         }
 
+        if ($null -ne $coverageSession) {
+            try {
+                $coverage = & $exitCoverage `
+                    -CoverageSession $coverageSession `
+                    -OutputPath $CoverageOutputPath
+                Write-Information (
+                    '[{0:O}] COVERAGE WRITTEN analyzed={1} executed={2} percent={3} member-only={4}' -f
+                        [datetime]::UtcNow,
+                        $coverage.CommandsAnalyzed,
+                        $coverage.CommandsExecuted,
+                        $coverage.CoveragePercent,
+                        $coverage.MemberOnlyCommands
+                ) -InformationAction Continue
+            }
+            catch {
+                $secondaryErrors.Add($_.Exception)
+            }
+        }
+
         $summary = [pscustomobject]@{
             Format             = 'WindowsAccessControl.DomainLabAcceptance'
             SchemaVersion      = 1
@@ -1384,6 +1943,7 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
             CredentialHandling = 'SuiteEphemeralRuntime'
             Suites             = $suiteResults.ToArray()
             CleanupLedger      = $cleanupLedger.ToArray()
+            CodeCoverage       = $coverage
         }
         try {
             & $writeEvidence `
@@ -1433,4 +1993,6 @@ Export-ModuleMember -Function @(
     'Invoke-WindowsAccessControlDomainLabAcceptance'
     'Test-WindowsAccessControlDomainLab'
     'Remove-WindowsAccessControlDomainLab'
+    'Enter-WindowsAccessControlMemberCoverage'
+    'Exit-WindowsAccessControlMemberCoverage'
 )

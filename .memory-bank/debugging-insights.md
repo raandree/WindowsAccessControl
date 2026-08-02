@@ -41,6 +41,28 @@ Working artifacts written under `output/` are destroyed by the build's clean
 task, including an in-flight log the build itself is writing. Keep review
 packages, reports, and job logs outside the repository.
 
+## A session runspace has a far smaller call-depth budget than a console host
+
+Measured on the fixture domain controller: an AutomatedLab session runspace
+allows 165 nested script frames, while a child console process on the same
+machine allows 4694. The directory suites drive deep validation chains through
+worker runspaces and already sit close to the session limit, so enabling code
+coverage there failed six rejection tests with `ScriptCallDepthException`
+instead of the rejection they assert. Both instrumentation mechanisms hit it:
+breakpoint actions add frames per hit, and the tracer adds its own. The same
+suites passed with coverage when run alone, which made the mechanism look
+guilty until the budget was measured directly. Run work that needs depth in a
+console process rather than trading instrumentation mechanisms.
+
+## Pester renders JaCoCo names relative to the measured file, not absolutely
+
+A JaCoCo document from Pester never contains an absolute path. The package name
+is the leaf of the measured file's parent directory, the class name is that leaf
+plus the file name without its extension, and the source-file name is the file
+name. For a built module that means the package is the module version, so two
+runs of the same version merge cleanly from different absolute paths. Two runs
+of different versions silently produce disjoint packages instead.
+
 ## Section-scoped ACL persistence
 
 `Set-Acl` requested `SeSecurityPrivilege` while re-enabling DACL inheritance in

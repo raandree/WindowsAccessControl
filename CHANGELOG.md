@@ -37,9 +37,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     surviving controller
 - Add specification 0016, which records the Active Directory multi-controller
     identity, replication, and outage behavior that specification 0009 deferred
+- Add a lab guide (`tests/Lab/README.md`) that names the AutomatedLab sample
+    scenario the domain acceptance lab is based on, lists every addition made on
+    top of that baseline with the suite that requires it, maps each machine to
+    the behavior it serves, and documents the deployment and acceptance workflow
 
 ### Changed
 
+- Assert the 80 percent code-coverage threshold over the local run merged with
+    the domain-lab acceptance instead of over the local run alone, so the gate
+    measures the Active Directory, certificate private-key, SMB share, and Task
+    Scheduler families that the default Pester profile structurally cannot
+    execute; the threshold is unchanged and no test was added to reach it
+- Collect code coverage in `Invoke-WindowsAccessControlDomainLabAcceptance`,
+    including for the suites whose real work runs in a member-server session,
+    by publishing the measurable locations of the module under test, arming them
+    in the member runspace, and adding the returned hit counts to the
+    harness-side counts
+- Run the domain-lab acceptance in a child console process on the management
+    domain controller, because a session runspace allows only 165 nested script
+    frames there against 4694 in a console host, and the directory suites fail
+    with a call-depth overflow rather than their asserted rejection once
+    coverage instrumentation is added
 - Resolve a bound certificate against every local machine certificate store that
     exists plus the `NTDS` service store, instead of a fixed list of four
     stores, so a binding created against another store no longer blocks every
@@ -63,6 +82,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix the domain lab inventory claiming that a lab web server produces the
+    HTTP.sys binding evidence; the evidence comes from a disposable `netsh http`
+    binding on the fixture member server, and the web-server role is reserved
 - Fix the private-key service-preservation gate refusing an exact reassert of a
     stored DACL that contains an inherit-only service ACE, which grants nothing
     and must not count as access the candidate has to preserve

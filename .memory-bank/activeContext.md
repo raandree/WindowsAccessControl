@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-01
+last-verified: 2026-08-02
 owner: active-agent
 source: current task evidence
 ---
@@ -9,117 +9,75 @@ source: current task evidence
 
 ## Current focus
 
-The acceptance lab now documents its own basis. `tests/Lab/README.md` records
-the AutomatedLab sample scenario the topology derives from, every addition made
-on top of it with the suite that fails without it, the machine map with reserved
-machines named as reserved, and the deployment and acceptance workflow. The
-inventory, the specification index, the project README, and the deployment
-script header all point at it.
+OI-27 is closed. The 80 percent code-coverage threshold is now asserted over the
+locally measured commands merged with the domain-lab acceptance, so the gate
+measures what the suites actually exercise. The threshold is unchanged and no
+test was added to reach it.
 
-## OI-22 close-out
+## OI-27 outcome
 
-- The first re-review of the earlier fixes found one dead gate and three defects
-    no unit test could have caught by construction. The `NTDS\My` store had been
-    opened as a `StoreLocation::LocalMachine` name, which cannot address a service
-    certificate store, so the LDAPS branch of the binding gate was inert on every
-    domain controller. It is now opened natively under
-    `CERT_SYSTEM_STORE_SERVICES` and proven against a real service store.
-- A bound thumbprint that resolved to none of four hard-coded stores threw, which
-    denied every private-key write on the machine. Resolution now searches every
-    machine store that exists plus the `NTDS` service store, searches the stores a
-    binding names first, and stops as soon as every thumbprint resolves.
-- `Remove-CertificatePrivateKeyAccessRule` matched rights exactly and reported
-    success when it matched nothing. It now names every account the request left
-    unchanged, including when the same request matched another account.
-- The service-preservation gate skipped inherit-only ACEs on the candidate side
-    but not on the stored side, so it refused an exact reassert of a DACL that
-    carried one.
-- Two rounds argued about ACE ordering before the right rule emerged: allow ACEs
-    are additive, so an allow-only reordering is already the requested state and
-    is a no-op, while a reordering with a deny present is refused because order
-    then decides the access check and the provider owns the stored order.
-- Two review claims were refuted with read-only probes rather than argument. A
-    completed service-store enumeration always reports `CRYPT_E_NOT_FOUND`,
-    including for an empty store, and the services location opens an empty
-    collection for a service name it does not know, so the test that was said
-    never to reach the tightened check does reach it.
-- One finding was parked with a written ruling. The HTTP.sys thumbprint match is
-    deliberately shape-based and over-matches, because a label-and-value pattern
-    would depend on a separator that is not stable across display languages, and
-    a pattern that stops matching detects no binding at all, which is fail-open.
+- The re-measured local number was 79.41 percent, not the 78.61 percent the
+    issue recorded. The OI-22 close-out had already moved it, so the design
+    started from a current number.
+- The merged number is 90.34 percent, 6,941 of 7,683 commands, against 79.41
+    percent, 6,101 of 7,683, locally. Both documents measure exactly 7,683
+    commands, no line exists in one and not the other, and the analyzed count is
+    unchanged, so the gain is coverage rather than a path mismatch.
+- 840 commands over 765 lines and 66 functions were newly covered, and 24
+    functions moved from no local coverage at all. They are the families the
+    default profile structurally cannot execute, including
+    `Get-ADObjectSecurityDescriptor`, `Set-ADObjectSecurityDescriptor`,
+    `Get-SmbShareSecurityDescriptor`, `Set-SmbShareSecurityDescriptor`,
+    `Get-WindowsTaskSchedulerSecurityDescriptor`,
+    `Get-WindowsCngKeySecurityDescriptor`, and
+    `Get-WindowsBoundCertificateThumbprint`.
 
-## Environment change
+## How the measurement works
 
-- The development host is the Hyper-V host and is a workgroup machine. It sits
-    on the lab virtual switch and drives the lab through AutomatedLab, which
-    uses credential delegation, so a directory call inside a lab session holds a
-    real ticket-granting ticket.
-- The module pins Kerberos for its LDAP bind. A probe proved a workgroup host
-    can bind with Negotiate but not Kerberos, so the enterprise suites must run
-    inside the lab. Falling back to NTLM was rejected as a security regression.
-- `tests/Lab/Deploy-WindowsAccessControlLab.ps1` now owns the lab: three
-    forests, two child domains, a second writable domain controller in the
-    fixture domain, an enterprise root certification authority, four member
-    servers, plus PowerShell 7 and Pester 5 on every machine.
-- The interim single-DC lab ran the complete existing acceptance unchanged on
-    the first attempt: five suites, 32 tests, zero failures and zero skips. The
-    harness is topology-portable.
-- A lab teardown that fails partway leaves the virtual switch behind. The host
-    adapter then keeps the retired subnet while the new lab picks the next free
-    one, and every new machine is stranded with no route to the host. The
-    deployment script now removes an orphaned switch, but only when no virtual
-    machine is attached.
+- Suites that execute the module in the harness runspace are measured by Pester
+    itself with `CodeCoverage.UseBreakpoints` disabled.
+- The three suites whose real work runs through a session against the member
+    server are measured where that code runs. The runner publishes the
+    measurable locations, the suite arms them in the member runspace, and the
+    hit counts come back in publication order and are added to the harness-side
+    counts. 1,526 commands were covered only by that relay.
+- The document is rendered from the harness-side locations. Pester never writes
+    an absolute path into a JaCoCo document: the package name is the leaf of the
+    measured file's parent directory, which for a built module is the module
+    version. Two runs of the same version therefore merge from different
+    absolute paths, and two runs of different versions silently produce disjoint
+    packages. `Import_DomainLab_Code_Coverage` refuses a document that measures
+    a source file or a line the local run does not.
 
-## OI-22 evidence
+## Two findings that cost time
 
-- Live probes established the rights model rather than assuming it. A fresh
-    machine key carries
-    `D:P(A;;0xd01f01ff;;;CO)(A;;0xd01f01ff;;;SY)(A;;0xd01f01ff;;;BA)`, and the
-    provider stores a candidate ACE with the matching generic bit added, so a
-    requested `0x00120089` reads back as `0x80120089`. Every comparison expands
-    generic bits before comparing.
-- `NCryptGetProperty('Impl Type')` reports `0x22` for the software provider and
-    `0x0B` for the smart card provider, so hardware rejection is confirmed
-    against the provider itself rather than trusting the name.
-- One independent security review returned REQUEST CHANGES with one Blocker and
-    six Major findings. All were fixed and verified live.
-- The Blocker was real and non-adversarial: the binding gate compared the
-    certificate thumbprint while the write target is the key, so a certificate
-    renewed with key reuse would bypass it. Detection now enumerates every bound
-    thumbprint, resolves it to a stored certificate, and compares subject public
-    keys, which identifies the private key without opening a key handle.
-- Two Major findings collapsed into one rule: a new deny ACE is refused outright
-    and a non-plain ACE type is refused, because a deny naming a containing
-    group and a conditional allow ACE both defeat any per-account grant check.
-    `Add-CertificatePrivateKeyAccessRule` therefore has no `AccessControlType`.
-- `RequireUnchanged` compared two reads taken inside the same write lock and
-    proved nothing. It was replaced by a caller-supplied `ConcurrencyToken`,
-    matching every other family.
-- Three tool-level defects were found by tests rather than by inspection: an
-    array argument flattening and shifting later positional arguments, an `if`
-    without `else` contributing zero array elements and doing the same, and a
-    lower-case local variable writing into a typed parameter that differed only
-    by case. All three are recorded in `debugging-insights.md`.
-- ModuleBuilder writes the merged module without parsing it, so a build can
-    report success for a file that cannot be imported. Every build now parses
-    the merged module explicitly.
+- A session runspace has a far smaller script call-depth budget than a console
+    host. On the fixture domain controller the session allows 165 nested frames
+    and a child console process allows 4,694. The directory suites already sit
+    close to the session limit, so adding coverage instrumentation there failed
+    six rejection tests with `ScriptCallDepthException` instead of the rejection
+    they assert. The acceptance now runs in a child console process on the
+    management domain controller.
+- A build reported a coverage document that could not merge, because the lab had
+    measured an older built module. The identity guard caught it rather than
+    letting the merge produce a union of two disjoint sets.
 
-## OI-23 outcome
+## Environment notes
 
-ADR 0024 closes the CAPI question with a cross-edition probe instead of an
-implementation. Both PowerShell editions route a legacy CSP key through the CNG
-legacy bridge and return `RSACng`, so the separate managed CAPI object the issue
-assumed is never returned. The bridge still reports the CAPI provider name, so
-the existing allow-list already separates the two, and the bridged key cannot
-serve a descriptor at all. The implementation half is withdrawn; the tested
-rejection boundary remains.
+- The development host is the Hyper-V host and is a workgroup machine. The
+    module pins Kerberos for its LDAP bind, so the enterprise suites run inside
+    the lab through AutomatedLab credential delegation.
+- `WindowsAccessControlLab` has 13 machines across three forests. After a host
+    reboot the machines must be started before the acceptance runs, and the
+    member fixture reports not ready for a short time while its services start.
+- The full Sampler gate on this machine has one environmental failure,
+    `Should reconverge all NTFS descriptor sections together`, which also fails
+    on committed `4852a18`. The certificate private-key unit tests are flaky here
+    for the same reason: they exercise the live key storage provider.
 
 ## Next step
 
-OI-22 and OI-23 are closed, so the two remaining focused issues are unblocked.
-OI-24 adds private-key portability and desired state; its three binding
-constraints are recorded in the open-issues register, and it must pass through
-the specification 0015 write boundary rather than around it. The lab itself has
-two recorded gaps: no read-only domain controller, which AutomatedLab cannot
-promote, and no second site, so neither read-only directory behavior nor
-inter-site replication may be claimed yet.
+OI-23 is closed by decision and OI-24 is the only remaining focused issue. It
+adds private-key portability and desired state, its three binding constraints
+are recorded in the open-issues register, and it must pass through the
+specification 0015 write boundary rather than around it.

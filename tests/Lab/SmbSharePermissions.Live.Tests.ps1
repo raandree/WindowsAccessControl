@@ -36,6 +36,12 @@ BeforeAll {
         -Force `
         -ErrorAction Stop
     $script:remoteManifest = Join-Path $script:remoteModulePath 'WindowsAccessControl.psd1'
+    Import-Module `
+        -Name (Join-Path $PSScriptRoot 'WindowsAccessControl.DomainLab.psm1') `
+        -ErrorAction Stop
+    $null = Enter-WindowsAccessControlMemberCoverage `
+        -Session $script:session `
+        -ModulePath (Join-Path $script:remoteModulePath 'WindowsAccessControl.psm1')
     $script:originalDescriptor = Invoke-Command `
         -Session $script:session `
         -ArgumentList $script:remoteManifest, $script:shareName `
@@ -170,6 +176,9 @@ AfterAll {
                     $script:WacSmbCredential = $null
                 } `
                 -ErrorAction SilentlyContinue
+            $null = Exit-WindowsAccessControlMemberCoverage `
+                -Session $script:session `
+                -Name 'SmbSharePermissions.Live.Tests.ps1'
             Remove-PSSession $script:session
         }
     }

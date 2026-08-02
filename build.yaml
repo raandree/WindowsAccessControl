@@ -68,12 +68,12 @@ BuildWorkflow:
     # Use this task if pipeline uses code coverage and the module is using the
     # pattern of Public, Private, Enum, Classes.
     #- Convert_Pester_Coverage
-    - Pester_if_Code_Coverage_Under_Threshold
-
-  # Use this task when you have multiple parallel tests, which produce multiple
-  # code coverage files and needs to get merged into one file.
-  #merge:
-    #- Merge_CodeCoverage_Files
+    # The default Pester profile cannot execute the Active Directory, certificate
+    # private-key, SMB share, and Task Scheduler families, so the threshold is
+    # asserted over the local run merged with the domain-lab acceptance. See ADR 0025.
+    - Import_DomainLab_Code_Coverage
+    - Merge_CodeCoverage_Files
+    - Assert_Merged_Code_Coverage_Threshold
 
   publish:
 
@@ -108,14 +108,18 @@ Pester:
       OutputEncoding: ascii
   ExcludeFromCodeCoverage:
 
-# Use this to merged code coverage from several pipeline test jobs.
-# CodeCoverageFilePattern      - the pattern used to search all pipeline test job artifacts
-#                                after the file specified in CodeCoverageOutputFile.
+# Merge the locally measured code coverage with the domain-lab acceptance coverage.
+# CodeCoverageFilePattern      - the pattern used to search all code coverage files
+#                                that are merged into one document.
 # CodeCoverageMergedOutputFile - the file that is created by the merge build task and
-#                                is the file that should be uploaded to code coverage services.
-#CodeCoverage:
-  #CodeCoverageFilePattern: JaCoCo_Merge.xml # the pattern used to search all pipeline test job artifacts
-  #CodeCoverageMergedOutputFile: JaCoCo_coverage.xml # the file that is created for the merged code coverage
+#                                that the threshold is asserted over.
+# DomainLabCodeCoverageFile    - the JaCoCo document that the domain-lab acceptance
+#                                runner carries back from the lab. It is outside
+#                                'output' because the build deletes that tree.
+CodeCoverage:
+  CodeCoverageFilePattern: JaCoCo_coverage*.xml
+  CodeCoverageMergedOutputFile: JaCoCo_merged.xml
+  DomainLabCodeCoverageFile: tests/Lab/coverage/JaCoCo_coverage_DomainLab.xml
 
 
 # Import ModuleBuilder tasks from a specific PowerShell module using the build

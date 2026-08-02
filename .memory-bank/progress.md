@@ -622,6 +622,18 @@ measurement fix as OI-27.
     binding evidence that actually comes from a disposable `netsh http` binding
     on the fixture member server. `F1DC2`, `F1AFile2`, the second child domain,
     and the second and third forests are reserved: no suite reaches them today.
+- 2026-08-02: Closed OI-27 by fixing the coverage measurement. The domain-lab
+    acceptance now collects code coverage for every family it exercises and
+    carries one JaCoCo document back through the existing evidence channel, and
+    the `test` workflow merges it with the local document before asserting the
+    threshold. The full acceptance passed 41 of 41 tests across six suites with
+    zero skips and six ready cleanup checks. Locally measured coverage is 79.41
+    percent, 6,101 of 7,683 commands; merged coverage is 90.34 percent, 6,941 of
+    7,683. The analyzed count is identical and no line exists in only one
+    document, so the gain is 840 newly covered commands across 66 functions
+    rather than a path mismatch, and 24 functions moved from no local coverage
+    at all. 1,526 of those commands were covered only by the member-session
+    relay. The threshold stayed at 80 and no test was added to reach it.
 
 ## Open work
 
@@ -636,5 +648,6 @@ measurement fix as OI-27.
     disproved its premise and withdraws the implementation half.
 - OI-24 is unblocked and not started. Its three binding design constraints are
     recorded in the open-issues register.
-- The 80 percent coverage gate still needs a decision.
+- OI-27 is complete. The threshold is asserted over the merged document and the
+    build says so explicitly when no domain-lab document exists.
 - Remote publication remains user-controlled.

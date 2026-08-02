@@ -3,6 +3,9 @@
 *.nupkg
 *.coverage
 
+# Domain-lab acceptance evidence carried back from the lab
+/tests/Lab/coverage/
+
 # Local project state
 /.memory-bank/promptHistory.md
 *.local.*

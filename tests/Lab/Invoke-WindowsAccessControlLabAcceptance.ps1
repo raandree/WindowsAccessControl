@@ -34,6 +34,12 @@
     .PARAMETER EvidencePath
         The local file that receives the redacted acceptance evidence.
 
+    .PARAMETER CoverageEvidencePath
+        The local file that receives the domain-lab JaCoCo code-coverage
+        document. It is deliberately outside `output` because the Sampler build
+        deletes that tree, and the repository build imports it from here before
+        merging.
+
     .PARAMETER SkipPayload
         Reuses the tree already present on the management domain controller
         instead of copying it again.
@@ -71,6 +77,10 @@ param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
     [string]$EvidencePath = (Join-Path $env:TEMP 'wac-domain-lab-evidence.json'),
+
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$CoverageEvidencePath = (Join-Path $PSScriptRoot 'coverage\JaCoCo_coverage_DomainLab.xml'),
 
     [Parameter()]
     [switch]$SkipPayload
@@ -127,30 +137,45 @@ if (-not $SkipPayload) {
 }
 
 $remoteEvidencePath = Join-Path $RemoteRepositoryPath 'lab-evidence.json'
-$summary = Invoke-LabCommand `
+$remoteCoveragePath = Join-Path $RemoteRepositoryPath 'lab-coverage.xml'
+$acceptanceOutput = Invoke-LabCommand `
     -ComputerName $ManagementDomainController `
     -ActivityName 'WindowsAccessControl domain-lab acceptance' `
     -ScriptBlock {
-        param($RepositoryPath, $DomainDn, $Member, $OutputPath)
+        param($RepositoryPath, $DomainDn, $Member, $OutputPath, $CoveragePath)
 
-        Import-Module (
-            Join-Path $RepositoryPath 'tests\Lab\WindowsAccessControl.DomainLab.psm1'
-        ) -Force -ErrorAction Stop
-        $null = Initialize-WindowsAccessControlDomainLab `
-            -DomainDistinguishedName $DomainDn `
-            -MemberServer $Member `
-            -Confirm:$false
-        Invoke-WindowsAccessControlDomainLabAcceptance `
+        $starter = Join-Path `
+            $RepositoryPath `
+            'tests\Lab\Start-WindowsAccessControlDomainLabAcceptance.ps1'
+        $output = & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
+            -NoProfile `
+            -NonInteractive `
+            -ExecutionPolicy Bypass `
+            -File $starter `
             -RepositoryRoot $RepositoryPath `
             -DomainDistinguishedName $DomainDn `
             -MemberServer $Member `
             -OutputPath $OutputPath `
-            -Confirm:$false `
-            -InformationAction Continue
+            -CoverageOutputPath $CoveragePath 2>&1 |
+            ForEach-Object { [string]$_ }
+        [pscustomobject]@{
+            ExitCode = $LASTEXITCODE
+            Output   = $output
+        }
     } `
-    -ArgumentList $RemoteRepositoryPath, $DomainDistinguishedName, $MemberServer, $remoteEvidencePath `
+    -ArgumentList $RemoteRepositoryPath, $DomainDistinguishedName, $MemberServer, $remoteEvidencePath, $remoteCoveragePath `
     -PassThru `
     -NoDisplay
+
+$acceptanceOutput.Output | Write-Information -InformationAction Continue
+if ($acceptanceOutput.ExitCode -ne 0) {
+    throw "The domain-lab acceptance failed with exit code $($acceptanceOutput.ExitCode)."
+}
+
+$coverageDirectory = Split-Path -Path $CoverageEvidencePath -Parent
+if (-not (Test-Path -LiteralPath $coverageDirectory -PathType Container)) {
+    $null = New-Item -Path $coverageDirectory -ItemType Directory -Force
+}
 
 $session = New-LabPSSession -ComputerName $ManagementDomainController
 try {
@@ -160,10 +185,17 @@ try {
         -FromSession $session `
         -Force `
         -ErrorAction Stop
+    Copy-Item `
+        -Path $remoteCoveragePath `
+        -Destination $CoverageEvidencePath `
+        -FromSession $session `
+        -Force `
+        -ErrorAction Stop
 }
 finally {
     Remove-PSSession $session -ErrorAction SilentlyContinue
 }
 
 Write-Information "Evidence written to '$EvidencePath'." -InformationAction Continue
-$summary
+Write-Information "Code coverage written to '$CoverageEvidencePath'." -InformationAction Continue
+Get-Content -LiteralPath $EvidencePath -Raw | ConvertFrom-Json

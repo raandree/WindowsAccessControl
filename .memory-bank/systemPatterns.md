@@ -50,6 +50,20 @@ as reserved rather than described as required.
 [tests/Lab/README.md](../tests/Lab/README.md) holds that delta and is the
 operator entry point.
 
+## Coverage measurement
+
+Coverage is measured where the code runs, not where the test harness runs. A
+suite that drives the module through a session against another machine records
+nothing on the harness side, so the acceptance runner publishes the measurable
+locations once, each such suite arms them in the remote runspace, and the hit
+counts return in publication order and are added to the harness-side counts.
+One JaCoCo document is rendered from the harness-side locations so its package,
+class, and source-file names match the document the repository build produces
+for the same module version. Before any merge, a document that measures a
+source file or a line the reference document does not is refused, because such
+a merge produces a union of disjoint sets and moves the reported percentage
+without measuring anything new.
+
 ## Decisions
 
 ### Decision 1: Use the canonical Memory Bank base
