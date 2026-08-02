@@ -1175,6 +1175,66 @@ function ConvertTo-WindowsAccessControlDomainLabEvidenceText {
     $sanitized
 }
 
+function Invoke-WindowsAccessControlDomainLabSuiteRun {
+    <#
+        .SYNOPSIS
+            Runs one acceptance suite in its own runspace.
+
+        .DESCRIPTION
+            Running every suite in one session accumulates scope depth until an
+            unrelated later suite fails with ScriptCallDepthException, which made
+            the harness sensitive to how many tests ran before a suite rather
+            than to the code under test. A runspace in this process keeps the
+            Pester result object live, so nothing is lost to serialization, and
+            the child information stream is relayed so the per-test log survives.
+
+            This is the seam the harness tests replace; it is deliberately the
+            only place that calls Invoke-Pester.
+    #>
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Path
+    )
+
+    $runspace = [runspacefactory]::CreateRunspace()
+    $runspace.Open()
+    try {
+        $shell = [powershell]::Create()
+        $shell.Runspace = $runspace
+        try {
+            $null = $shell.AddScript({
+                param($SuitePath)
+
+                Import-Module Pester -MinimumVersion 5.7.1 -ErrorAction Stop
+                Invoke-Pester -Path $SuitePath -Output Detailed -PassThru
+            }).AddArgument($Path)
+            $output = @($shell.Invoke())
+            foreach ($record in $shell.Streams.Information) {
+                Write-Information (
+                    [string]$record.MessageData
+                ) -InformationAction Continue
+            }
+            if ($shell.Streams.Error.Count -gt 0) {
+                throw $shell.Streams.Error[0].Exception
+            }
+            $result = @($output | Where-Object { $null -ne $_.Result })[-1]
+            if ($null -eq $result) {
+                throw "Suite '$Path' returned no Pester result."
+            }
+            $result
+        }
+        finally {
+            $shell.Dispose()
+        }
+    }
+    finally {
+        $runspace.Dispose()
+    }
+}
+
 function Invoke-WindowsAccessControlDomainLabAcceptance {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     [OutputType([pscustomobject])]
@@ -1276,10 +1336,8 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
                 '[{0:O}] SUITE START {1}' -f $suiteStartedAtUtc, $suiteName
             ) -InformationAction Continue
 
-            $pesterResult = Invoke-Pester `
-                -Path $suitePath `
-                -Output Detailed `
-                -PassThru
+            $pesterResult = Invoke-WindowsAccessControlDomainLabSuiteRun `
+                -Path $suitePath
             $skips = @(
                 foreach ($test in @($pesterResult.Tests)) {
                     if ([string]$test.Result -eq 'Skipped') {

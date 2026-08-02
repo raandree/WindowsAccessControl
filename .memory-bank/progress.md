@@ -14,10 +14,9 @@ bounded Active Directory command families are complete for their accepted
 increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
 and fail-closed CNG private-key mutation are independently reviewed. OI-11,
-ENT-8, OI-18, OI-22, and OI-23 are closed. OI-24 is code-complete and reviewed
-but awaits live domain-lab evidence, which is blocked on lab contention with the
-OI-27 session. The 80 percent coverage gate is currently unmet at 78.61 percent;
-ADR 0025 keeps the threshold and tracks the measurement fix as OI-27.
+ENT-8, OI-18, OI-22, OI-23, and OI-24 are closed. The 80 percent coverage gate is
+currently unmet at 78.61 percent; ADR 0025 keeps the threshold and tracks the
+measurement fix as OI-27.
 
 ## Recent milestones
 
@@ -34,6 +33,14 @@ ADR 0025 keeps the threshold and tracks the measurement fix as OI-27.
     category absent from the baseline, and one security review plus a scoped
     re-review of the fix diff that returned no Blocker and no Major. Live lab
     coverage is written but not yet executed.
+- 2026-08-02: Closed OI-24 with live evidence. The six-suite domain-lab
+    acceptance is green at 45 passed, 0 failed, 0 skipped, including all four new
+    private-key cases.
+- 2026-08-02: Fixed a harness fault that OI-24 exposed. All six suites shared one
+    Windows PowerShell session, so scope depth accumulated and four added tests
+    pushed two unrelated Active Directory tests into `ScriptCallDepthException`.
+    An A/B against the committed suite proved the causal chain, and each suite
+    now runs in its own runspace.
 - 2026-08-02: Found and repaired a domain-lab fixture corruption that predates
     this work. A cold-lab 30-second job timeout plus `Stop-Job` leaves a
     certificate whose key cannot be read; the fixture removal cannot match it, so

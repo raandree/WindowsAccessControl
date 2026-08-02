@@ -10,9 +10,8 @@ source: current task evidence
 ## Current focus
 
 OI-24 delivers KEY-5 and KEY-6: certificate private-key portability and desired
-state. The implementation, specification 0017, ADR 0026, tests, and the review
-loop are complete. One item is open: the six-suite domain-lab acceptance has not
-produced live evidence yet, because the lab is contended.
+state. It is complete. The implementation, specification 0017, ADR 0026, tests,
+the review loop, and live domain-lab evidence are all done.
 
 The work lives in a separate worktree at `V:\Git\WindowsAccessControl-oi24` on
 branch `ai/cng-private-key-mutation-and-multi-forest-lab`, so the OI-27 session
@@ -67,30 +66,35 @@ holding uncommitted changes in the main worktree stays untouched.
     WITH MINOR FINDINGS with no Blocker and no Major; the three new Nits were
     cleared as well.
 
-## Open item: live lab evidence
+## Live lab evidence
 
-Four acceptance attempts failed for two unrelated environmental reasons, neither
-a defect in the change.
+The six-suite domain-lab acceptance is green: 45 passed, 0 failed, 0 skipped.
+All four new private-key cases pass live — the computer-scoped record round
+trip, the foreign-computer rejection captured on the member and replayed on the
+domain controller, the refusal while a real HTTP.sys binding holds the key, and
+the convergence of both desired-state resources with a repeated consistency pass.
 
-- The host had rebooted, and the first attempt started while the lab machines
-    had seven minutes of uptime. `Should repair a missing certificate whose
-    managed CNG key remains` allows its repair job 30 seconds and calls
-    `Stop-Job` on timeout, which left a certificate whose private key could not
-    be read. `Remove-WindowsAccessControlDomainLab` cannot match such a
-    certificate, so a later initialize created a second one beside it and every
-    later run failed with `Multiple domain-lab certificates have the same managed
-    identity`. A cleanup keyed on subject and friendly name alone restored the
-    fixture to exactly one certificate.
-- The OI-27 session drives the same `WindowsAccessControlLab` and the same
-    `C:\WacRepo` payload directory. It wiped and re-copied that directory at
-    08:18:30 while this session's run started at 08:18:40, so Pester found no
-    test files. `C:\WacRepo` now holds the OI-27 tree, whose
-    `CertificatePrivateKeyPermissions.Live.Tests.ps1` is 19,687 bytes against
-    37,844 bytes here.
+Getting there required three environmental repairs, none of them a defect in the
+change.
 
-The user chose to wait for the OI-27 run to finish, then redeploy the full OI-24
-payload without `-SkipPayload`. The lab is a shared resource and the two sessions
-must be serialized on it.
+- The host had rebooted, and the first attempt ran against machines with seven
+    minutes of uptime. `Should repair a missing certificate whose managed CNG key
+    remains` allows its repair job 30 seconds and calls `Stop-Job` on timeout,
+    which left a certificate whose private key could not be read.
+    `Remove-WindowsAccessControlDomainLab` cannot match such a certificate, so a
+    later initialize created a second one beside it and every later run failed
+    with `Multiple domain-lab certificates have the same managed identity`. A
+    cleanup keyed on subject and friendly name alone restored exactly one.
+- The OI-27 session drove the same lab and the same `C:\WacRepo` payload
+    directory and re-copied it mid-run. The two sessions must be serialized on
+    the lab.
+- The harness ran all six suites in one Windows PowerShell session, so scope
+    depth accumulated and the four added private-key tests pushed the two
+    Active Directory tests that call `New-ADOrganizationalUnit` into
+    `ScriptCallDepthException`. An A/B proved it: the committed three-test suite
+    left the acceptance green, the seven-test suite failed it, and the Active
+    Directory suite passed 12 of 12 on its own. Each suite now runs in its own
+    runspace, which made the full acceptance green.
 
 ## Superseded: OI-22 close-out
 
@@ -192,9 +196,9 @@ rejection boundary remains.
 
 ## Next step
 
-Run the domain-lab acceptance from `V:\Git\WindowsAccessControl-oi24` once the
-OI-27 session releases the lab, confirm the four new live private-key cases, and
-record the result. Both branches modify `CHANGELOG.md`, `specs/open-issues.md`,
-and `tests/Lab/CertificatePrivateKeyPermissions.Live.Tests.ps1`, so merging them
-will need a deliberate conflict resolution. OI-27 remains open for the coverage
-measurement.
+OI-24 is closed. OI-27 remains open for the coverage measurement. Both branches
+modify `CHANGELOG.md`, `specs/open-issues.md`,
+`tests/Lab/CertificatePrivateKeyPermissions.Live.Tests.ps1`, and now
+`tests/Lab/WindowsAccessControl.DomainLab.psm1`, so merging them needs a
+deliberate conflict resolution. The lab is a shared resource; serialize the two
+sessions on it.

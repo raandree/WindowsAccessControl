@@ -93,6 +93,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Run each domain-lab acceptance suite in its own runspace. Every suite shared
+    one Windows PowerShell session on the management domain controller, so scope
+    depth accumulated across suites until the two Active Directory tests that
+    create a disposable organizational unit failed with
+    `ScriptCallDepthException`. The harness was therefore sensitive to how many
+    tests ran before a suite rather than to the code under test
 - Fix the private-key service-preservation gate refusing an exact reassert of a
     stored DACL that contains an inherit-only service ACE, which grants nothing
     and must not count as access the candidate has to preserve

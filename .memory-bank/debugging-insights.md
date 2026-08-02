@@ -546,3 +546,30 @@ private key, followed by one rebuild and an explicit assertion that exactly one
 certificate remains. Readiness is not a sufficient check; count the
 certificates. Let the lab settle after a host reboot before starting an
 acceptance, and read machine uptime rather than assuming the lab is warm.
+
+## One shared session made the acceptance sensitive to test count
+
+The acceptance ran all six suites through separate `Invoke-Pester` calls in one
+Windows PowerShell session on the management domain controller. Scope depth
+accumulated across suites, so adding four tests to the private-key suite made
+the two Active Directory tests that call `New-ADOrganizationalUnit` fail with
+`ScriptCallDepthException`. Those two are the only tests in that suite creating a
+disposable organizational unit, and that cmdlet is CDXML-backed, so it carries
+more script frames than a compiled cmdlet.
+
+The symptom pointed away from the cause in three ways. The failing tests touched
+none of the changed code. The Active Directory suite passed 12 of 12 twice when
+run on its own. And the two tests immediately after the failures passed, which
+ruled out simple monotonic exhaustion and made the failure look transient.
+
+An A/B settled it: with the committed three-test private-key suite the full
+acceptance was green, and with the seven-test suite the Active Directory suite
+failed, reproduced twice. A first fix that hoisted a per-test module import to
+suite scope did not help and was reverted rather than left behind a disproven
+rationale. The fix is to give each suite its own runspace. Use a runspace in the
+same process rather than a job, because the Pester result object then stays live
+instead of being serialized, and relay the child runspace's information stream so
+the per-test log survives.
+
+When a test fails only in a longer sequence, suspect the runner before the code,
+and prove it by varying the sequence rather than by reasoning about it.

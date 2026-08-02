@@ -116,7 +116,7 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
         $outputPath = Join-Path $TestDrive 'domain-lab-acceptance.json'
         Set-Content -LiteralPath $outputPath -Value 'stale evidence'
         $script:invokedPaths = [Collections.Generic.List[string]]::new()
-        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-WindowsAccessControlDomainLabSuiteRun {
             param($Path)
             $script:invokedPaths.Add([IO.Path]::GetFileName($Path))
             [pscustomobject]@{
@@ -171,7 +171,7 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
 
     It 'Should not run Pester or write evidence under WhatIf' {
         $outputPath = Join-Path $TestDrive 'domain-lab-whatif.json'
-        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-WindowsAccessControlDomainLabSuiteRun
 
         Invoke-WindowsAccessControlDomainLabAcceptance `
             -RepositoryRoot (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')) `
@@ -181,13 +181,13 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
             -WhatIf
 
         Should -Invoke -ModuleName 'WindowsAccessControl.DomainLab' `
-            Invoke-Pester -Times 0 -Exactly
+            Invoke-WindowsAccessControlDomainLabSuiteRun -Times 0 -Exactly
         $outputPath | Should -Not -Exist
     }
 
     It 'Should retain exact skip reasons without infrastructure identifiers' {
         $outputPath = Join-Path $TestDrive 'domain-lab-skip.json'
-        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-WindowsAccessControlDomainLabSuiteRun {
             [pscustomobject]@{
                 Result = 'Passed'
                 TotalCount = 2
@@ -240,7 +240,7 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
 
     It 'Should reject a Pester-passed suite when every test is skipped' {
         $outputPath = Join-Path $TestDrive 'domain-lab-all-skipped.json'
-        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-WindowsAccessControlDomainLabSuiteRun {
             [pscustomobject]@{
                 Result = 'Passed'
                 TotalCount = 1
@@ -285,7 +285,7 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
 
     It 'Should reject a Pester-passed suite that discovers zero tests' {
         $outputPath = Join-Path $TestDrive 'domain-lab-zero-tests.json'
-        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-WindowsAccessControlDomainLabSuiteRun {
             [pscustomobject]@{
                 Result = 'Passed'
                 TotalCount = 0
@@ -321,7 +321,7 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
     It 'Should stop after a suite leaves the lab unready and retain failed evidence' {
         $outputPath = Join-Path $TestDrive 'domain-lab-failed.json'
         $script:statusCall = 0
-        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-WindowsAccessControlDomainLabSuiteRun {
             [pscustomobject]@{
                 Result = 'Passed'
                 TotalCount = 1
@@ -357,12 +357,12 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
         $summary.Result | Should -BeExactly 'Failed'
         $summary.CleanupLedger[-1].Ready | Should -BeFalse
         Should -Invoke -ModuleName 'WindowsAccessControl.DomainLab' `
-            Invoke-Pester -Times 2 -Exactly
+            Invoke-WindowsAccessControlDomainLabSuiteRun -Times 2 -Exactly
     }
 
     It 'Should retain its evidence writer when a nested suite reloads the harness module' {
         $outputPath = Join-Path $TestDrive 'domain-lab-reload.json'
-        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-WindowsAccessControlDomainLabSuiteRun {
             Remove-Item `
                 Function:Write-WindowsAccessControlDomainLabAcceptanceEvidence `
                 -Force `
@@ -412,7 +412,7 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
         $outputPath = Join-Path `
             $TestDrive `
             'missing-evidence-directory\domain-lab-primary-error.json'
-        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-WindowsAccessControlDomainLabSuiteRun {
             [pscustomobject]@{
                 Result = 'Failed'
                 TotalCount = 1
