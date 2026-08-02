@@ -605,6 +605,23 @@ measurement fix as OI-27.
 - 2026-08-01: The complete six-suite acceptance passed 40 of 40 tests with zero
     skips, six ready cleanup checks, both controllers serving afterwards, and no
     leaked organizational unit or HTTP.sys binding.
+- 2026-08-02: Recorded the lab baseline. The AutomatedLab sample scenario
+    `Multi-AD Forest with Trusts.ps1` supplies the domain, machine-name, and
+    trust shape but is not sufficient on its own, and the gap was established
+    against the suites rather than assumed. Without the enterprise root
+    certification authority the private-key directory-service binding assertion
+    fails, because a domain controller only holds a server-authentication
+    certificate when a certification authority is in the forest. Without the
+    second writable domain controller the replication suite throws in
+    `BeforeAll`. Without PowerShell 7 and Pester 5 no suite is discovered at all.
+    `tests/Lab/README.md` now carries the baseline, the delta, the machine map,
+    and the operator workflow.
+- 2026-08-02: Corrected two stale claims found while writing that guide. The
+    deployment script pointed at `WindowsAccessControl.LabHost.psm1`, which does
+    not exist, and the inventory credited a lab web server with the HTTP.sys
+    binding evidence that actually comes from a disposable `netsh http` binding
+    on the fixture member server. `F1DC2`, `F1AFile2`, the second child domain,
+    and the second and third forests are reserved: no suite reaches them today.
 
 ## Open work
 

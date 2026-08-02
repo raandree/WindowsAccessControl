@@ -772,6 +772,13 @@ Builds and Pester runs should be launched from a clean process when developing
 in VS Code. Sampler enforces at least 80% executable coverage for the merged
 module.
 
+The Active Directory, SMB share, Task Scheduler, and certificate private-key
+families need a domain, so their acceptance suites run in a disposable
+multi-forest AutomatedLab environment instead of on the build host, and the
+coverage they measure is merged into the same threshold. See the
+[lab guide](tests/Lab/README.md) for the topology, the AutomatedLab sample it
+is based on, and the deployment and acceptance workflow.
+
 Seven `RequiresElevation` acceptance specifications perform real SACL CRUD,
 audit inheritance, SACL backup/restore/copy, and arbitrary-owner operations.
 They run automatically when the test process contains the required privileges

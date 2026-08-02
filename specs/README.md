@@ -107,4 +107,6 @@ recorded in the changelog.
 ## See also
 
 - [Research sources](../docs/research.md)
+- [Domain lab inventory](../docs/domain-lab-inventory.md)
+- [Lab deployment and acceptance guide](../tests/Lab/README.md)
 - [Project README](../README.md)

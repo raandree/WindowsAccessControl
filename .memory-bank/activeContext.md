@@ -9,12 +9,12 @@ source: current task evidence
 
 ## Current focus
 
-OI-22 is closed. The fail-closed CNG private-key mutation of specification 0015
-went through the repository's review convention in full: one feature review, then
-three fix rounds each followed by its own scoped re-review. The third re-review
-returned APPROVE WITH MINOR FINDINGS with no Blocker and no Major, and the
-remaining Minor and Nit findings were fixed as well. The register entry and the
-conformance test now record the issue as closed.
+The acceptance lab now documents its own basis. `tests/Lab/README.md` records
+the AutomatedLab sample scenario the topology derives from, every addition made
+on top of it with the suite that fails without it, the machine map with reserved
+machines named as reserved, and the deployment and acceptance workflow. The
+inventory, the specification index, the project README, and the deployment
+script header all point at it.
 
 ## OI-22 close-out
 
@@ -116,9 +116,10 @@ rejection boundary remains.
 
 ## Next step
 
-OI-22 is closed, so the two remaining focused issues are unblocked. OI-24 adds
-private-key portability and desired state; its three binding constraints are
-recorded in the open-issues register, and it must pass through the specification
-0015 write boundary rather than around it. OI-27 merges domain-lab coverage into
-the threshold gate so the 80 percent measurement reflects what the suites
-actually exercise.
+OI-22 and OI-23 are closed, so the two remaining focused issues are unblocked.
+OI-24 adds private-key portability and desired state; its three binding
+constraints are recorded in the open-issues register, and it must pass through
+the specification 0015 write boundary rather than around it. The lab itself has
+two recorded gaps: no read-only domain controller, which AutomatedLab cannot
+promote, and no second site, so neither read-only directory behavior nor
+inter-site replication may be claimed yet.

@@ -41,6 +41,15 @@ specification 0015 reviews.
 - A read-only probe settles a disputed claim faster than an argument. Two review
     findings in this family were refuted by measuring the platform instead.
 
+## Acceptance lab
+
+The domain acceptance lab derives from the AutomatedLab sample scenario
+`Multi-AD Forest with Trusts.ps1`. Every addition on top of that baseline must
+name the suite that fails without it, and a machine no suite reaches is recorded
+as reserved rather than described as required.
+[tests/Lab/README.md](../tests/Lab/README.md) holds that delta and is the
+operator entry point.
+
 ## Decisions
 
 ### Decision 1: Use the canonical Memory Bank base

@@ -19,6 +19,13 @@ any stale host-file entry, because a switch that outlives its lab keeps a host
 adapter on the retired subnet while the new lab picks the next free one and
 silently strands every new machine.
 
+The domain, machine-name, and trust shape comes from the AutomatedLab sample
+scenario `Multi-AD Forest with Trusts.ps1`. That sample is not sufficient on its
+own: it deploys no certification authority, no replication partner, and neither
+PowerShell 7 nor Pester 5. The
+[lab guide](../tests/Lab/README.md) records every addition and the suite that
+requires it.
+
 The development host is not domain joined. It sits on the lab virtual switch and
 orchestrates the lab through AutomatedLab, which uses credential delegation, so
 a directory call inside a lab session holds a real ticket-granting ticket. The
@@ -49,8 +56,8 @@ contracts.
 | Domain | 5 | One forest root with two child domains, plus two single-domain forests |
 | Writable domain controller | 5 | Every domain controller is a global catalog on Windows Server 2025 |
 | Replication partner | 1 pair | The fixture domain has two writable domain controllers, so replication, convergence, and domain-controller switch are testable |
-| Certification authority | 1 | Enterprise root certification authority in the forest root domain |
-| Member server | 5 | Domain joined; one hosts the shared fixtures and one additionally runs a web server for HTTP.sys binding evidence |
+| Certification authority | 1 | Enterprise root certification authority in the forest root domain, so every domain controller enrolls a server-authentication certificate |
+| Member server | 5 | Domain joined; one hosts the shared fixtures. A second carries a reserved web-server role; the HTTP.sys binding evidence itself uses a disposable `netsh http` binding on the fixture member server |
 | Management host | 1 | The Hyper-V host, not domain joined; orchestrates through AutomatedLab |
 
 The forest root domain also holds a second writable domain controller, so the
@@ -215,6 +222,7 @@ by later gates:
 
 ## See also
 
+- [Lab deployment and acceptance guide](../tests/Lab/README.md)
 - [Enterprise access-control expansion](../specs/0008-enterprise-access-control-expansion.md)
 - [Enterprise domain-lab decision](../specs/decisions/0014-stage-enterprise-expansion-behind-domain-lab.md)
 - [Task and software-key authority decision](../specs/decisions/0018-use-local-task-and-software-key-authority.md)

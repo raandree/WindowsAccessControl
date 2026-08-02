@@ -9,6 +9,12 @@
         root certification authority, and member servers for SMB share, Task
         Scheduler, and private-key fixtures.
 
+        The domain, machine-name, and trust shape comes from the AutomatedLab
+        sample scenario 'Multi-AD Forest with Trusts.ps1' in
+        <LabSources>\SampleScripts\Scenarios. tests\Lab\README.md records the
+        additions this script makes on top of that baseline and the suite that
+        requires each one.
+
         The lab is disposable. It must never be attached to a production
         network and never holds production data. No credential, key, or
         recovery value is stored in this repository; the operator supplies the
@@ -60,6 +66,9 @@
 
     .NOTES
         Requires an elevated host session with Hyper-V and AutomatedLab.
+
+    .LINK
+        tests/Lab/README.md
 #>
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
@@ -113,9 +122,9 @@ $secondChildDomain = "b.$rootDomain"
 $secondForest = 'forest2.net'
 $thirdForest = 'forest3.net'
 
-# Symbolic role -> machine mapping. Get-WindowsAccessControlLabTopology in
-# WindowsAccessControl.LabHost.psm1 resolves the same roles from the installed
-# lab, so both files must describe the same topology.
+# Symbolic role -> machine mapping. README.md in this directory and
+# docs/domain-lab-inventory.md describe the same topology, so all three must be
+# changed together.
 $machineDefinitions = @(
     @{ Name = 'F1DC1'; Domain = $rootDomain; Roles = 'RootDC'; Memory = $DomainControllerMemoryMB }
     @{ Name = 'F1DC2'; Domain = $rootDomain; Roles = 'DC'; Memory = $DomainControllerMemoryMB }
