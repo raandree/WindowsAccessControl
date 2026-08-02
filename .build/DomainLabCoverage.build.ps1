@@ -62,7 +62,7 @@ task Import_DomainLab_Code_Coverage {
         Write-Build -Color 'Yellow' -Text (
             'No domain-lab code coverage was found. The threshold is asserted over the ' +
             'locally measured commands alone, which cannot execute the Active Directory, ' +
-            'certificate private-key, and SMB share families. Run ' +
+            'certificate private-key, SMB share, and Task Scheduler families. Run ' +
             'tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1 to produce it.'
         )
 

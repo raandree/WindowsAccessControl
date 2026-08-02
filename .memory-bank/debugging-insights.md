@@ -374,6 +374,14 @@ The build output can also stay locked for a moment after `Clean` deletes it, so
 `Set-Content` fails with "used by another process". The next build succeeds;
 treat one retry as normal rather than a source defect.
 
+A leftover Windows PowerShell 5.1 remoting host is a different and worse case.
+A test that opens a session or a 5.1 job and does not dispose it leaves a
+`powershell.exe -Version 5.1 -s` process behind that holds the built module
+open for as long as it lives. That is not transient: it failed a whole test
+container mid-run with the same message, reporting thirteen tests as failed for
+a reason none of them caused. When the message appears outside the first build,
+look for an orphaned host process before suspecting the build.
+
 ## Case-insensitive variable names collide with typed parameters
 
 PowerShell variable names are case-insensitive, so a loop variable named

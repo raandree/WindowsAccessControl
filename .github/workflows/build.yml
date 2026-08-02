@@ -111,5 +111,6 @@ jobs:
           path: |
             output/testResults/NUnitXml_*.xml
             output/testResults/JaCoCo_coverage.xml
+            output/testResults/JaCoCo_merged.xml
           if-no-files-found: warn
           retention-days: 7
