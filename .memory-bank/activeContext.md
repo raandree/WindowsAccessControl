@@ -94,5 +94,21 @@ implementation half, and it should be reopened only for a concrete
 
 ## Next step
 
-No focused issue remains open. The domain-lab coverage document needs a lab
-rerun before the whole-module number can be reported with lab evidence again.
+No focused issue remains open, so the next candidates come from the
+specifications rather than the register.
+
+1. Promote specification 0008 from `Draft` to `Accepted`. Its own acceptance
+    criteria are the last gap: specification 0002 needs stable identifiers for
+    the behavior shipped after FR-23 and NFR-16, specification 0005 needs the
+    roadmap-task mapping, and specification 0008 still calls replication
+    evidence blocked and points at the closed OI-18. The existing QA test that
+    traces every requirement to evidence verifies the result.
+2. Rerun the domain-lab coverage document. The committed one measures a module
+    that no longer exists, so the merged whole-module number cannot be reported.
+3. Diagnose `Should reconverge all NTFS descriptor sections together`, which
+    fails on this host across commits and is currently tolerated without a
+    written ruling.
+
+Every other candidate (SMB-6, AD-7, directory audit rules, directory
+inheritance and owner/group mutation, CAPI) is a written deferral and needs a
+new accepted scope decision before implementation.

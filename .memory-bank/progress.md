@@ -21,6 +21,18 @@ threshold. OI-23 is the only remaining focused issue and is closed by decision.
 
 ## Recent milestones
 
+- 2026-08-02: Audited the remaining backlog. The register holds only OI-23, which
+    is closed by decision, so the next candidates come from the specifications
+    themselves. Specification 0008 is the only `Draft` and its own acceptance
+    criteria are the last gap: specification 0002 stops at FR-23 and NFR-16, so
+    private-key mutation (0015), private-key portability (0017), enterprise
+    schema-2 portability and DSC (0013), Task Scheduler portability and DSC
+    (0014), and multi-controller behavior (0016) carry no stable identifier, and
+    FR-23 still describes the key family as inspection-only. Specification 0005
+    maps no roadmap task identifier to evidence. Two statements in specification
+    0008 are also stale: it says replication evidence remains blocked and that
+    OI-18 tracks the remaining work, but specification 0016 delivers that
+    evidence through `Sync-ADObject` and closed OI-18.
 - 2026-08-02: Closed OI-28 by asserting the coverage threshold over the commands
     the running test profile can execute instead of over the whole module, so the
     hosted build and a lab-capable host run the same rule. Every measured line of
