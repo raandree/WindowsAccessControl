@@ -228,7 +228,7 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         foreach ($closedIssue in 5, 6, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 25, 26, 27) {
             $openIssues | Should -Not -Match "(?m)^## OI-$closedIssue`:"
         }
-        foreach ($focusedIssue in 23, 24) {
+        foreach ($focusedIssue in 23, 24, 28) {
             $openIssues | Should -Match "(?m)^## OI-$focusedIssue`:"
         }
         $openIssues | Should -Not -Match '(?m)^## OI-12:'
