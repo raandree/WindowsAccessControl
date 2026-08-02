@@ -11,9 +11,6 @@ function Set-WindowsCngKeySecurityDescriptor {
         [pscustomobject]$Target,
 
         [Parameter(Mandatory)]
-        [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
-
-        [Parameter(Mandatory)]
         [Security.Cryptography.CngKey]$Key,
 
         [Parameter(Mandatory)]
@@ -109,7 +106,7 @@ function Set-WindowsCngKeySecurityDescriptor {
         )
     }
 
-    Assert-WindowsCngKeyCriticalBinding -Certificate $Certificate
+    Assert-WindowsCngKeyCriticalBinding -Key $Key
 
     $daclAndSilent = [Security.Cryptography.CngPropertyOptions]68
     $writeError = $null

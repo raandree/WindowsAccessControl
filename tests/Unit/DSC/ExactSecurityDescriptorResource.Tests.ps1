@@ -125,6 +125,16 @@ Describe 'Exact security descriptor DSC resource behavior' -Tag 'Unit', 'Windows
                 Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
             }
         }
+        @{
+            ClassName    = 'WindowsAccessControlCertificatePrivateKeySecurityDescriptor'
+            ObjectFamily = 'CertificatePrivateKey'
+            Target       = 'WacUnitKey'
+            Properties   = @{
+                ProviderName = 'Microsoft Software Key Storage Provider'
+                KeyName = 'WacUnitKey'; KeyScope = 'Machine'
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
     ) {
         $instance = New-ExactDescriptorResourceInstance `
             -ClassName $ClassName `
@@ -196,6 +206,14 @@ Describe 'Exact security descriptor DSC resource behavior' -Tag 'Unit', 'Windows
                 Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
             }
         }
+        @{
+            ClassName = 'WindowsAccessControlCertificatePrivateKeySecurityDescriptor'
+            Properties = @{
+                ProviderName = 'Microsoft Software Key Storage Provider'
+                KeyName = 'WacUnitKey'; KeyScope = 'Machine'
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
     ) {
         $script:currentSddl = 'D:(A;;0x00000001;;;WD)'
         $instance = New-ExactDescriptorResourceInstance `
@@ -253,6 +271,14 @@ Describe 'Exact security descriptor DSC resource behavior' -Tag 'Unit', 'Windows
                 Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
             }
         }
+        @{
+            ClassName = 'WindowsAccessControlCertificatePrivateKeySecurityDescriptor'
+            Properties = @{
+                ProviderName = 'Microsoft Software Key Storage Provider'
+                KeyName = 'WacUnitKey'; KeyScope = 'Machine'
+                Sections = 'Access'; Sddl = 'D:(A;;0x00000001;;;WD)'
+            }
+        }
     ) {
         $instance = New-ExactDescriptorResourceInstance `
             -ClassName $ClassName `
@@ -267,5 +293,37 @@ Describe 'Exact security descriptor DSC resource behavior' -Tag 'Unit', 'Windows
             -ParameterFilter {
                 $Sddl -ceq $expectedSddl
             }
+    }
+
+    It 'Should tolerate the generic bit the key storage provider adds' {
+        # The provider stores a candidate ACE with the matching generic bit
+        # added, so a converged key must not report drift forever.
+        $script:currentSddl = 'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x80120089;;;BU)'
+        $instance = New-ExactDescriptorResourceInstance `
+            -ClassName 'WindowsAccessControlCertificatePrivateKeySecurityDescriptor' `
+            -Properties @{
+                ProviderName = 'Microsoft Software Key Storage Provider'
+                KeyName      = 'WacUnitKey'
+                KeyScope     = 'Machine'
+                Sections     = 'Access'
+                Sddl         = 'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120089;;;BU)'
+            }
+
+        $instance.Test() | Should -BeTrue
+    }
+
+    It 'Should still report drift when a private-key ACE differs' {
+        $script:currentSddl = 'D:P(A;;FA;;;SY)(A;;FA;;;BA)'
+        $instance = New-ExactDescriptorResourceInstance `
+            -ClassName 'WindowsAccessControlCertificatePrivateKeySecurityDescriptor' `
+            -Properties @{
+                ProviderName = 'Microsoft Software Key Storage Provider'
+                KeyName      = 'WacUnitKey'
+                KeyScope     = 'Machine'
+                Sections     = 'Access'
+                Sddl         = 'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x00120089;;;BU)'
+            }
+
+        $instance.Test() | Should -BeFalse
     }
 }

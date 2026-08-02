@@ -43,6 +43,7 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
             'ADObject' { 2; break }
             'TaskFolder' { 2; break }
             'ScheduledTask' { 2; break }
+            'CertificatePrivateKey' { 2; break }
             default {
                 throw [System.IO.InvalidDataException]::new(
                     "The backup record contains unsupported object family '$($Record.ObjectFamily)'."
@@ -319,6 +320,43 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
                     )
                 }
             }
+        } elseif ([string]$Record.ObjectFamily -eq 'CertificatePrivateKey') {
+            if ($sections -ne [int][WindowsSecurityDescriptorSection]::Access) {
+                throw [System.IO.InvalidDataException]::new(
+                    'A certificate private-key backup record selects only the access section.'
+                )
+            }
+            $keyServer = [string]$Record.Server
+            $keyProviderName = [string]$Record.ProviderName
+            $keyName = [string]$Record.KeyName
+            $keyScope = [string]$Record.KeyScope
+            $keyThumbprint = [string]$Record.CertificateThumbprint
+            if ([string]::IsNullOrWhiteSpace($keyServer) -or
+                [string]::IsNullOrWhiteSpace($keyProviderName) -or
+                [string]::IsNullOrWhiteSpace($keyName) -or
+                $keyScope -cnotin @('Machine', 'User') -or
+                $keyName -cne [string]$Record.Target) {
+                throw [System.IO.InvalidDataException]::new(
+                    'A certificate private-key backup record requires a matching server, provider, key name, and key scope.'
+                )
+            }
+            # The key scope is constrained to two literals above, so it can be
+            # composed into the canonical-target pattern without carrying regular
+            # expression metacharacters into it.
+            if ([string]$Record.CanonicalTarget -cnotmatch (
+                    '^CertificatePrivateKey:Cng:{0}:[0-9A-F]{{64}}$' -f $keyScope)) {
+                throw [System.IO.InvalidDataException]::new(
+                    'A certificate private-key backup record requires a canonical key identity that matches its key scope.'
+                )
+            }
+            # The thumbprint is recorded as evidence and is never a selector, so
+            # it only has to be absent or well formed.
+            if (-not [string]::IsNullOrEmpty($keyThumbprint) -and
+                $keyThumbprint -cnotmatch '^[0-9A-F]{40}$') {
+                throw [System.IO.InvalidDataException]::new(
+                    'A certificate private-key backup record contains a malformed certificate thumbprint.'
+                )
+            }
         }
 
         [pscustomobject]@{
@@ -373,6 +411,30 @@ function ConvertFrom-WindowsSecurityDescriptorBackupRecord {
             }
             TaskName             = if ([string]$Record.ObjectFamily -eq 'ScheduledTask') {
                 $scheduledTaskName
+            } else {
+                $null
+            }
+            ProviderName         = if ([string]$Record.ObjectFamily -eq
+                'CertificatePrivateKey') {
+                $keyProviderName
+            } else {
+                $null
+            }
+            KeyName              = if ([string]$Record.ObjectFamily -eq
+                'CertificatePrivateKey') {
+                $keyName
+            } else {
+                $null
+            }
+            KeyScope             = if ([string]$Record.ObjectFamily -eq
+                'CertificatePrivateKey') {
+                $keyScope
+            } else {
+                $null
+            }
+            CertificateThumbprint = if ([string]$Record.ObjectFamily -eq
+                'CertificatePrivateKey') {
+                $keyThumbprint
             } else {
                 $null
             }

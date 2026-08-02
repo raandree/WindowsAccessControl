@@ -17,15 +17,33 @@ function Assert-WindowsCngKeyAceSupport {
     $currentDenies = [Collections.Generic.HashSet[string]]::new(
         [StringComparer]::Ordinal
     )
+    $currentAceKeys = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::Ordinal
+    )
     foreach ($ace in @($CurrentDescriptor.DiscretionaryAcl)) {
+        $aceKey = ConvertTo-WindowsCngKeyAceKey -Ace $ace
+        $currentAceKeys.Add($aceKey) | Out-Null
         if ($ace.AceType -ne [Security.AccessControl.AceType]::AccessDenied) {
             continue
         }
-        $currentDenies.Add((ConvertTo-WindowsCngKeyAceKey -Ace $ace)) | Out-Null
+        $currentDenies.Add($aceKey) | Out-Null
     }
 
     foreach ($ace in @($CandidateDescriptor.DiscretionaryAcl)) {
         if ($ace.AceType -notin $plainTypes) {
+            # The ACE can come from the stored DACL rather than from the caller,
+            # for example when a desired-state pass reasserts a key that already
+            # carries a conditional ACE. Naming the source makes the refusal
+            # actionable instead of blaming the request.
+            if ($currentAceKeys.Contains((ConvertTo-WindowsCngKeyAceKey -Ace $ace))) {
+                throw [NotSupportedException]::new(
+                    (
+                        "The stored private-key DACL already contains an ACE of type " +
+                        "'$($ace.AceType)', which cannot be verified after a write. Remove that " +
+                        'ACE before managing this key.'
+                    )
+                )
+            }
             throw [NotSupportedException]::new(
                 (
                     "The candidate private-key DACL contains an ACE of type '$($ace.AceType)'. " +

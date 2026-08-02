@@ -80,6 +80,18 @@ Describe 'Exact security descriptor DSC resource contract' -Tag 'Unit', 'Windows
                 'Reasons'
             )
         }
+        @{
+            Name       = 'WindowsAccessControlCertificatePrivateKeySecurityDescriptor'
+            KeyNames   = @('ProviderName', 'KeyName', 'KeyScope', 'Sections')
+            Properties = @(
+                'ProviderName'
+                'KeyName'
+                'KeyScope'
+                'Sections'
+                'Sddl'
+                'Reasons'
+            )
+        }
     ) {
         $script:manifestData.DscResourcesToExport | Should -Contain $Name
 

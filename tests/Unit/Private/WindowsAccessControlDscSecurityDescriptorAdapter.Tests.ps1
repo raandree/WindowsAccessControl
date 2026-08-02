@@ -32,6 +32,7 @@ Describe 'Windows access control DSC security descriptor adapters' -Tag 'Unit', 
             Mock Get-ADObjectSecurityDescriptor { $script:descriptor }
             Mock Get-TaskFolderSecurityDescriptor { $script:descriptor }
             Mock Get-ScheduledTaskSecurityDescriptor { $script:descriptor }
+            Mock Get-CertificatePrivateKeySecurityDescriptor { $script:descriptor }
             Mock Resolve-WindowsADServer { 'dc01.contoso.test' }
             Mock Set-WindowsNtfsDscSecurityDescriptor
             Mock Set-RegistryKeySecurityDescriptor
@@ -41,6 +42,7 @@ Describe 'Windows access control DSC security descriptor adapters' -Tag 'Unit', 
             Mock Set-ADObjectSecurityDescriptor
             Mock Set-TaskFolderSecurityDescriptor
             Mock Set-ScheduledTaskSecurityDescriptor
+            Mock Set-CertificatePrivateKeySecurityDescriptor
         }
 
         It 'Should route a filesystem descriptor read' {
@@ -352,6 +354,63 @@ Describe 'Windows access control DSC security descriptor adapters' -Tag 'Unit', 
                     -ObjectFamily TaskFolder `
                     -Target '\Operations' `
                     -Sections Owner
+            } | Should -Throw '*access section*'
+        }
+
+        It 'Should route a private-key descriptor read and write by key identity' {
+            $result = Get-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily CertificatePrivateKey `
+                -Target 'WacUnitKey' `
+                -ProviderName 'Microsoft Software Key Storage Provider' `
+                -KeyScope Machine `
+                -Sections Access
+
+            $result | Should -Be $script:descriptor
+            Should -Invoke Get-CertificatePrivateKeySecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $ProviderName -ceq 'Microsoft Software Key Storage Provider' -and
+                        $KeyName -ceq 'WacUnitKey' -and
+                        $KeyScope -ceq 'Machine' -and
+                        -not $PSBoundParameters.ContainsKey('Certificate')
+                }
+
+            Set-WindowsAccessControlDscSecurityDescriptor `
+                -ObjectFamily CertificatePrivateKey `
+                -Target 'WacUnitKey' `
+                -ProviderName 'Microsoft Software Key Storage Provider' `
+                -KeyScope Machine `
+                -Sections Access `
+                -Sddl 'D:P(A;;FA;;;SY)(A;;FA;;;BA)'
+
+            Should -Invoke Set-CertificatePrivateKeySecurityDescriptor -Exactly -Times 1 `
+                -ParameterFilter {
+                    $ProviderName -ceq 'Microsoft Software Key Storage Provider' -and
+                        $KeyName -ceq 'WacUnitKey' -and
+                        $KeyScope -ceq 'Machine' -and
+                        $Confirm -eq $false
+                }
+        }
+
+        It 'Should require a complete private-key selector before a write' {
+            {
+                Set-WindowsAccessControlDscSecurityDescriptor `
+                    -ObjectFamily CertificatePrivateKey `
+                    -Target 'WacUnitKey' `
+                    -ProviderName 'Microsoft Software Key Storage Provider' `
+                    -Sections Access `
+                    -Sddl 'D:P(A;;FA;;;SY)(A;;FA;;;BA)'
+            } | Should -Throw '*key scope are required*'
+            Should -Invoke Set-CertificatePrivateKeySecurityDescriptor -Exactly -Times 0
+        }
+
+        It 'Should reject a non-access section for the private-key family' {
+            {
+                Get-WindowsAccessControlDscSecurityDescriptor `
+                    -ObjectFamily CertificatePrivateKey `
+                    -Target 'WacUnitKey' `
+                    -ProviderName 'Microsoft Software Key Storage Provider' `
+                    -KeyScope Machine `
+                    -Sections Audit
             } | Should -Throw '*access section*'
         }
     }

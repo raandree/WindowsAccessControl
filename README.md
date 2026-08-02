@@ -574,6 +574,7 @@ target type:
 - `WindowsAccessControlADObjectSecurityDescriptor`
 - `WindowsAccessControlTaskFolderSecurityDescriptor`
 - `WindowsAccessControlScheduledTaskSecurityDescriptor`
+- `WindowsAccessControlCertificatePrivateKeySecurityDescriptor`
 
 It also exports exact access-rule presence resources:
 
@@ -586,6 +587,7 @@ It also exports exact access-rule presence resources:
 - `WindowsAccessControlADObjectAccessRule`
 - `WindowsAccessControlTaskFolderAccessRule`
 - `WindowsAccessControlScheduledTaskAccessRule`
+- `WindowsAccessControlCertificatePrivateKeyAccessRule`
 
 Each resource owns only its selected owner, group, DACL, or SACL sections.
 System-maintained DACL/SACL `AUTO_INHERITED` flags are ignored during

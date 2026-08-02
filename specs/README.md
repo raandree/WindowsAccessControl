@@ -28,6 +28,7 @@ them.
 14. [Task Scheduler portability and desired state](0014-task-scheduler-portability-and-desired-state.md)
 15. [CNG private-key DACL mutation](0015-cng-private-key-dacl-mutation.md)
 16. [Active Directory multi-controller behavior](0016-active-directory-multi-controller-behavior.md)
+17. [Certificate private-key portability and desired state](0017-certificate-private-key-portability-and-desired-state.md)
 
 ## Status
 
@@ -49,6 +50,7 @@ them.
 | 0014 | Task Scheduler portability and desired state | Accepted |
 | 0015 | CNG private-key DACL mutation | Accepted |
 | 0016 | Active Directory multi-controller behavior | Accepted |
+| 0017 | Certificate private-key portability and desired state | Accepted |
 
 Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
 Specification 0006 is the accepted contract for the implemented and verified
@@ -76,8 +78,10 @@ with computer-qualified canonical identity. Specification 0015 supersedes the
 read-only boundary of specification 0012 with fail-closed typed private-key DACL
 mutation for the software key storage provider. Specification 0016 records the
 multi-controller identity, replication, and pinned-controller outage behavior
-that specification 0009 deferred. A future
-change starts as `Draft` and
+that specification 0009 deferred. Specification 0017 extends the portability and
+desired-state model to the certificate private-key family, addressing the key by
+provider, persisted key name, and key scope rather than by a certificate. A
+future change starts as `Draft` and
 becomes `Accepted` when approved.
 
 ## Architecture decisions

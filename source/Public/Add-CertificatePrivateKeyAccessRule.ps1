@@ -21,6 +21,9 @@ function Add-CertificatePrivateKeyAccessRule {
         The exact expected CNG provider.
     .PARAMETER KeyName
         The exact expected persisted CNG key name.
+    .PARAMETER KeyScope
+        Selects the machine or current-user key store when the key is addressed
+        without a certificate. Every gate still applies.
     .PARAMETER Account
         One or more account names, SIDs, identity references, or module identities.
     .PARAMETER AccessRights
@@ -44,10 +47,14 @@ function Add-CertificatePrivateKeyAccessRule {
         None
         WindowsAccessControl.CertificatePrivateKeyAccessRule
     #>
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(
+        SupportsShouldProcess,
+        ConfirmImpact = 'High',
+        DefaultParameterSetName = 'Certificate'
+    )]
     [OutputType([pscustomobject])]
     param(
-        [Parameter(Mandatory, ValueFromPipeline)]
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'Certificate')]
         [ValidateNotNull()]
         [Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
 
@@ -58,6 +65,10 @@ function Add-CertificatePrivateKeyAccessRule {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$KeyName,
+
+        [Parameter(Mandatory, ParameterSetName = 'Key')]
+        [ValidateSet('Machine', 'User')]
+        [string]$KeyScope,
 
         [Parameter(Mandatory)]
         [Alias('IdentityReference', 'ID')]
@@ -87,7 +98,7 @@ function Add-CertificatePrivateKeyAccessRule {
     }
     process {
         $operation = {
-            param($Target, $Key, $Cmdlet, $Identities, $Rights, $Token, $BindingCertificate)
+            param($Target, $Key, $Cmdlet, $Identities, $Rights, $Token)
 
             if (-not $Cmdlet.ShouldProcess(
                     $Target.CanonicalTarget,
@@ -103,7 +114,6 @@ function Add-CertificatePrivateKeyAccessRule {
                 -AccessMask $Rights
             $setParameters = @{
                 Target             = $Target
-                Certificate        = $BindingCertificate
                 Key                = $Key
                 SecurityDescriptor = $candidateBytes
             }
@@ -130,26 +140,27 @@ function Add-CertificatePrivateKeyAccessRule {
         else {
             $null
         }
-        Invoke-WithWindowsCertificatePrivateKeyTarget `
+        $targetParameters = New-WindowsCertificatePrivateKeyTargetParameter `
+            -ParameterSetName $PSCmdlet.ParameterSetName `
             -Certificate $Certificate `
             -ProviderName $ProviderName `
             -KeyName $KeyName `
+            -KeyScope $KeyScope
+        Invoke-WithWindowsCertificatePrivateKeyTarget `
+            @targetParameters `
             -Operation $operation `
             -ArgumentList @(
                 $PSCmdlet
                 (, $identities)
                 $requestedMask
                 $expectedToken
-                $Certificate
             ) `
             -ForMutation
 
         if ($PassThru -and -not $WhatIfPreference) {
             $expectedMask = ConvertTo-WindowsCryptoKeyEffectiveMask -AccessMask $requestedMask
             Get-CertificatePrivateKeyAccessRule `
-                -Certificate $Certificate `
-                -ProviderName $ProviderName `
-                -KeyName $KeyName `
+                @targetParameters `
                 -Account $identities.Value |
                 Where-Object {
                     -not $_.IsInherited -and

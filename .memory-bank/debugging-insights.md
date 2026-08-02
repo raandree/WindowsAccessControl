@@ -552,3 +552,61 @@ explicitly before applying the allowed-base check.
 `AuthType.Negotiate` does not prove Kerberos because it can fall back to NTLM.
 Use `AuthType.Kerberos` with an explicit FQDN server, signing, sealing, disabled
 referrals, and bounded timeouts when the contract requires strict Kerberos.
+
+## Cold-lab timeouts corrupt the shared certificate fixture
+
+A domain-lab acceptance started shortly after the Hyper-V host reboots runs
+against cold machines. `Should repair a missing certificate whose managed CNG
+key remains` allows the repair job only 30 seconds, and on timeout its `finally`
+calls `Stop-Job`. Killing that job mid-flight leaves a certificate in
+`LocalMachine\My` whose private key is gone, so `GetRSAPrivateKey` fails with
+`Invalid provider type specified`.
+
+That orphan poisons every later run. `Remove-WindowsAccessControlDomainLab` does
+not match a certificate whose key it cannot read, so the orphan survives the
+removal while `Initialize-WindowsAccessControlDomainLab` creates a fresh one
+beside it. `Test-WindowsAccessControlDomainLab` still reports ready because it
+finds one good certificate, but the next initialize throws `Multiple domain-lab
+certificates have the same managed identity` and fails all four tests in the
+first suite. Because the harness fails fast on the first failed suite, no later
+suite runs at all.
+
+Recovering needs a delete keyed on subject and friendly name alone, ignoring the
+private key, followed by one rebuild and an explicit assertion that exactly one
+certificate remains. Readiness is not a sufficient check; count the
+certificates. Let the lab settle after a host reboot before starting an
+acceptance, and read machine uptime rather than assuming the lab is warm.
+
+## One shared session made the acceptance sensitive to test count
+
+The acceptance ran all six suites through separate `Invoke-Pester` calls in one
+Windows PowerShell session on the management domain controller. Scope depth
+accumulated across suites, so adding four tests to the private-key suite made
+the two Active Directory tests that call `New-ADOrganizationalUnit` fail with
+`ScriptCallDepthException`. Those two are the only tests in that suite creating a
+disposable organizational unit, and that cmdlet is CDXML-backed, so it carries
+more script frames than a compiled cmdlet.
+
+The symptom pointed away from the cause in three ways. The failing tests touched
+none of the changed code. The Active Directory suite passed 12 of 12 twice when
+run on its own. And the two tests immediately after the failures passed, which
+ruled out simple monotonic exhaustion and made the failure look transient.
+
+An A/B settled the trigger: with the committed three-test private-key suite the
+full acceptance was green, and with the seven-test suite the Active Directory
+suite failed, reproduced twice. Two candidate fixes were then tried and both were
+withdrawn. Hoisting a per-test module import to suite scope did not help. Giving
+each suite its own runspace did make the acceptance green, but only until it met
+code coverage: a bare runspace has no host, so Pester's `Write-Host` throws
+`NullReferenceException`, the acceptance fails outright, and the coverage
+document records zero executed commands against a full analyzed count.
+
+The fix that holds is the one OI-27 found independently: run the acceptance in a
+child console process on the domain controller. A session runspace there allows
+only 165 nested script frames against 4694 in a console host, so the frame budget
+was the real constraint and per-suite isolation was only masking it.
+
+Two lessons. When a test fails only in a longer sequence, suspect the runner
+before the code, and prove it by varying the sequence rather than by reasoning
+about it. And a harness fix is not done until it has run with every gate the
+harness feeds; this one passed the tests and broke the coverage document.

@@ -40,6 +40,19 @@ function Get-WindowsSecurityDescriptorRecordHash {
                     'DomainNamingContext'
                 )
             }
+            # The private-key family binds its own selector. Those fields are
+            # appended only for that family, because adding them to every
+            # version-2 record would change the digest of records written before
+            # this increment. ObjectFamily is hashed first, so the field set a
+            # record uses is itself covered by the digest.
+            if ([string]$Record.ObjectFamily -eq 'CertificatePrivateKey') {
+                $hashedProperties += @(
+                    'ProviderName'
+                    'KeyName'
+                    'KeyScope'
+                    'CertificateThumbprint'
+                )
+            }
             foreach ($propertyName in $hashedProperties) {
                 $property = $Record.PSObject.Properties[$propertyName]
                 $propertyValue = if ($property -and $null -ne $property.Value) {

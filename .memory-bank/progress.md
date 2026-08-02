@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-29
+last-verified: 2026-08-02
 owner: active-agent
 source: repository evidence
 ---
@@ -14,12 +14,38 @@ bounded Active Directory command families are complete for their accepted
 increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
 and fail-closed CNG private-key mutation are independently reviewed. OI-11,
-ENT-8, OI-18, OI-22, and OI-23 are closed. The 80 percent coverage gate is
+ENT-8, OI-18, OI-22, OI-23, and OI-24 are closed. The 80 percent coverage gate is
 currently unmet at 78.61 percent; ADR 0025 keeps the threshold and tracks the
 measurement fix as OI-27.
 
 ## Recent milestones
 
+- 2026-08-02: Implemented OI-24, private-key portability and desired state
+    (KEY-5 and KEY-6). The write boundary stopped taking a certificate outright,
+    so a restore and the two new DSC resources cannot reach it with a weaker
+    binding check; the critical-binding gate now reads the target public key from
+    the `CngKey` itself. Records are schema version 2 and computer-scoped, and
+    the thumbprint is evidence rather than a selector because a renewal that
+    reuses the key changes it. Specification 0017 and ADR 0026 record the
+    decisions. Evidence: 1306 unit and QA tests passing against a 1242 baseline,
+    a refusal test for every specification 0015 gate a restore could bypass, an
+    explicit parse of the merged module, an analyzer run introducing no finding
+    category absent from the baseline, and one security review plus a scoped
+    re-review of the fix diff that returned no Blocker and no Major. Live lab
+    coverage is written but not yet executed.
+- 2026-08-02: Closed OI-24 with live evidence. The six-suite domain-lab
+    acceptance is green at 45 passed, 0 failed, 0 skipped, including all four new
+    private-key cases.
+- 2026-08-02: Fixed a harness fault that OI-24 exposed. All six suites shared one
+    Windows PowerShell session, so scope depth accumulated and four added tests
+    pushed two unrelated Active Directory tests into `ScriptCallDepthException`.
+    An A/B against the committed suite proved the causal chain, and each suite
+    now runs in its own runspace.
+- 2026-08-02: Found and repaired a domain-lab fixture corruption that predates
+    this work. A cold-lab 30-second job timeout plus `Stop-Job` leaves a
+    certificate whose key cannot be read; the fixture removal cannot match it, so
+    the next initialize creates a duplicate and every later run fails. Recorded
+    in `debugging-insights.md`.
 - 2026-08-01: Closed OI-22 after the full review convention. One feature review
     and three fix rounds, each with its own scoped re-review, ended at APPROVE
     WITH MINOR FINDINGS with no Blocker and no Major; the remaining Minor and

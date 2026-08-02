@@ -114,6 +114,7 @@ Describe 'Certificate private-key DACL inspection' `
         $descriptor.ProviderName | Should -BeExactly $result.ProviderName
         $descriptor.KeyName | Should -BeExactly $result.KeyName
         $descriptor.KeyScope | Should -BeExactly 'Machine'
+        $descriptor.Server | Should -Be $env:WAC_DOMAIN_LAB_MEMBER
         $descriptor.CanonicalTarget |
             Should -Match '^CertificatePrivateKey:Cng:Machine:[0-9A-F]{64}$'
         $descriptor.Sddl | Should -Match '^D:'
@@ -339,6 +340,379 @@ Describe 'Certificate private-key DACL mutation' `
         $result.BoundRefusal | Should -BeLike '*serves a critical binding*'
         $result.BindingsAfter | Should -Be 0
         $result.ReleasedWriteSucceeded | Should -BeTrue
+        $result.FinalSddl | Should -BeExactly $result.OriginalSddl
+    }
+}
+
+Describe 'Certificate private-key portability and desired state' `
+    -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    BeforeAll {
+        $script:resolveFixture = {
+            $certificate = @(
+                Get-ChildItem Cert:\LocalMachine\My |
+                    Where-Object {
+                        $_.Subject -ceq 'CN=WindowsAccessControl Lab Key' -and
+                        $_.FriendlyName -ceq 'WindowsAccessControl Lab Key'
+                    }
+            )[0]
+            $privateKey = $null
+            try {
+                $privateKey = [Security.Cryptography.X509Certificates.RSACertificateExtensions]::
+                    GetRSAPrivateKey($certificate)
+                [pscustomobject]@{
+                    Certificate  = $certificate
+                    ProviderName = $privateKey.Key.Provider.Provider
+                    KeyName      = $privateKey.Key.KeyName
+                }
+            }
+            finally {
+                if ($privateKey) {
+                    $privateKey.Dispose()
+                }
+            }
+        }
+    }
+
+    It 'Should round-trip the private-key DACL through a computer-scoped record' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:remoteManifest, $script:resolveFixture.ToString() `
+            -ScriptBlock {
+                param($Manifest, $ResolveFixture)
+
+                Import-Module $Manifest -Force -ErrorAction Stop
+                $fixture = & ([scriptblock]::Create($ResolveFixture))
+                # The capture is certificate-addressed, which is how an operator
+                # takes a backup, and the restore is key-addressed, which is the
+                # only selector a record can carry.
+                $capture = @{
+                    Certificate  = $fixture.Certificate
+                    ProviderName = $fixture.ProviderName
+                    KeyName      = $fixture.KeyName
+                }
+                $relocate = @{
+                    ProviderName = $fixture.ProviderName
+                    KeyName      = $fixture.KeyName
+                    KeyScope     = 'Machine'
+                }
+
+                $backupPath = Join-Path $env:TEMP (
+                    'wac-key-backup-{0}.json' -f [guid]::NewGuid().ToString('N')
+                )
+                try {
+                    $originalSddl = (Get-CertificatePrivateKeySecurityDescriptor @capture).Sddl
+                    Get-CertificatePrivateKeySecurityDescriptor @capture |
+                        Backup-WindowsSecurityDescriptor `
+                            -DestinationPath $backupPath `
+                            -Confirm:$false
+                    $json = Get-Content -LiteralPath $backupPath -Raw
+                    $document = $json | ConvertFrom-Json
+
+                    Add-CertificatePrivateKeyAccessRule @relocate `
+                        -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                    $driftedSddl = (Get-CertificatePrivateKeySecurityDescriptor @relocate).Sddl
+
+                    Restore-WindowsSecurityDescriptor `
+                        -BackupPath $backupPath `
+                        -Confirm:$false `
+                        -WarningAction SilentlyContinue
+                    $restoredSddl = (Get-CertificatePrivateKeySecurityDescriptor @relocate).Sddl
+
+                    [pscustomobject]@{
+                        SchemaVersion         = $document.SchemaVersion
+                        RecordVersion         = $document.Records[0].RecordVersion
+                        ObjectFamily          = $document.Records[0].ObjectFamily
+                        RecordServer          = $document.Records[0].Server
+                        RecordProviderName    = $document.Records[0].ProviderName
+                        RecordKeyName         = $document.Records[0].KeyName
+                        RecordKeyScope        = $document.Records[0].KeyScope
+                        RecordThumbprint      = $document.Records[0].CertificateThumbprint
+                        RecordCanonicalTarget = $document.Records[0].CanonicalTarget
+                        CertificateThumbprint = $fixture.Certificate.Thumbprint.ToUpperInvariant()
+                        ContainsKeyMaterial   = $json -match 'BEGIN [A-Z ]*PRIVATE KEY|RawData'
+                        OriginalSddl          = $originalSddl
+                        DriftedSddl           = $driftedSddl
+                        RestoredSddl          = $restoredSddl
+                        ComputerName          = $env:COMPUTERNAME
+                    }
+                }
+                finally {
+                    Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+                }
+            }
+
+        $result.SchemaVersion | Should -Be 2
+        $result.RecordVersion | Should -Be 2
+        $result.ObjectFamily | Should -BeExactly 'CertificatePrivateKey'
+        $result.RecordServer | Should -Be $result.ComputerName
+        $result.RecordProviderName |
+            Should -BeExactly 'Microsoft Software Key Storage Provider'
+        $result.RecordKeyName | Should -Not -BeNullOrEmpty
+        $result.RecordKeyScope | Should -BeExactly 'Machine'
+        $result.RecordThumbprint | Should -BeExactly $result.CertificateThumbprint
+        $result.RecordCanonicalTarget |
+            Should -Match '^CertificatePrivateKey:Cng:Machine:[0-9A-F]{64}$'
+        $result.ContainsKeyMaterial | Should -BeFalse
+        $result.DriftedSddl | Should -Not -BeExactly $result.OriginalSddl
+        $result.RestoredSddl | Should -BeExactly $result.OriginalSddl
+    }
+
+    It 'Should refuse to replay a private-key record on another computer' {
+        $backupJson = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:remoteManifest, $script:resolveFixture.ToString() `
+            -ScriptBlock {
+                param($Manifest, $ResolveFixture)
+
+                Import-Module $Manifest -Force -ErrorAction Stop
+                $fixture = & ([scriptblock]::Create($ResolveFixture))
+                $backupPath = Join-Path $env:TEMP (
+                    'wac-key-backup-{0}.json' -f [guid]::NewGuid().ToString('N')
+                )
+                try {
+                    Get-CertificatePrivateKeySecurityDescriptor `
+                        -ProviderName $fixture.ProviderName `
+                        -KeyName $fixture.KeyName `
+                        -KeyScope Machine |
+                        Backup-WindowsSecurityDescriptor `
+                            -DestinationPath $backupPath `
+                            -Confirm:$false
+                    Get-Content -LiteralPath $backupPath -Raw
+                }
+                finally {
+                    Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+                }
+            }
+
+        $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
+            Sort-Object -Property { [version]$_.Directory.Name } -Descending |
+            Select-Object -First 1
+        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+        $localPath = Join-Path $env:TEMP (
+            'wac-key-foreign-{0}.json' -f [guid]::NewGuid().ToString('N')
+        )
+        try {
+            [IO.File]::WriteAllText($localPath, $backupJson)
+
+            # This host is the management domain controller, so the record names
+            # a different computer than the one replaying it.
+            {
+                Restore-WindowsSecurityDescriptor `
+                    -BackupPath $localPath `
+                    -Confirm:$false `
+                    -WarningAction SilentlyContinue
+            } | Should -Throw '*captured on another computer*'
+        }
+        finally {
+            Remove-Item -LiteralPath $localPath -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'Should refuse a restore while the key serves a critical binding' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:remoteManifest, $script:resolveFixture.ToString() `
+            -ScriptBlock {
+                param($Manifest, $ResolveFixture)
+
+                Import-Module $Manifest -Force -ErrorAction Stop
+                $fixture = & ([scriptblock]::Create($ResolveFixture))
+                $relocate = @{
+                    ProviderName = $fixture.ProviderName
+                    KeyName      = $fixture.KeyName
+                    KeyScope     = 'Machine'
+                }
+                $backupPath = Join-Path $env:TEMP (
+                    'wac-key-backup-{0}.json' -f [guid]::NewGuid().ToString('N')
+                )
+                $netshPath = Join-Path $env:SystemRoot 'System32\netsh.exe'
+                $bindingPort = 48444
+                $bindingApplicationId = '{6f1cbf6b-1c1a-4d1e-9d2e-4c1b4d3f5a21}'
+                $originalSddl = (Get-CertificatePrivateKeySecurityDescriptor @relocate).Sddl
+                try {
+                    Get-CertificatePrivateKeySecurityDescriptor @relocate |
+                        Backup-WindowsSecurityDescriptor `
+                            -DestinationPath $backupPath `
+                            -Confirm:$false
+
+                    # The record must differ from the live DACL, because an
+                    # already-converged restore is a no-op that never reaches the
+                    # binding gate.
+                    Add-CertificatePrivateKeyAccessRule @relocate `
+                        -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+
+                    $boundRefusal = $null
+                    try {
+                        $null = & $netshPath http add sslcert `
+                            "ipport=0.0.0.0:$bindingPort" `
+                            "certhash=$($fixture.Certificate.Thumbprint)" `
+                            "appid=$bindingApplicationId" `
+                            'certstorename=MY' 2>&1
+                        if ($LASTEXITCODE -ne 0) {
+                            throw "Unable to create the disposable HTTP.sys binding; netsh returned $LASTEXITCODE."
+                        }
+                        try {
+                            Restore-WindowsSecurityDescriptor `
+                                -BackupPath $backupPath `
+                                -Confirm:$false `
+                                -WarningAction SilentlyContinue `
+                                -ErrorAction Stop
+                        }
+                        catch {
+                            $boundRefusal = $_.Exception.Message
+                        }
+                    }
+                    finally {
+                        $null = & $netshPath http delete sslcert "ipport=0.0.0.0:$bindingPort" 2>&1
+                    }
+                    $boundSddl = (Get-CertificatePrivateKeySecurityDescriptor @relocate).Sddl
+
+                    Restore-WindowsSecurityDescriptor `
+                        -BackupPath $backupPath `
+                        -Confirm:$false `
+                        -WarningAction SilentlyContinue
+                    $releasedSddl = (Get-CertificatePrivateKeySecurityDescriptor @relocate).Sddl
+
+                    [pscustomobject]@{
+                        OriginalSddl = $originalSddl
+                        BoundRefusal = $boundRefusal
+                        BoundSddl    = $boundSddl
+                        ReleasedSddl = $releasedSddl
+                    }
+                }
+                finally {
+                    Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+                }
+            }
+
+        $result.BoundRefusal | Should -BeLike '*serves a critical binding*'
+        $result.BoundSddl | Should -Not -BeExactly $result.OriginalSddl
+        $result.ReleasedSddl | Should -BeExactly $result.OriginalSddl
+    }
+
+    It 'Should converge the private-key descriptor and rule DSC resources' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:remoteManifest, $script:resolveFixture.ToString() `
+            -ScriptBlock {
+                param($Manifest, $ResolveFixture)
+
+                Import-Module $Manifest -Force -ErrorAction Stop
+                $module = Get-Module WindowsAccessControl
+                $fixture = & ([scriptblock]::Create($ResolveFixture))
+                $relocate = @{
+                    ProviderName = $fixture.ProviderName
+                    KeyName      = $fixture.KeyName
+                    KeyScope     = 'Machine'
+                }
+                $originalSddl = (Get-CertificatePrivateKeySecurityDescriptor @relocate).Sddl
+                try {
+                    $ruleState = & $module {
+                        param($ProviderName, $KeyName)
+
+                        $resource = [WindowsAccessControlCertificatePrivateKeyAccessRule]::new()
+                        $resource.ProviderName = $ProviderName
+                        $resource.KeyName = $KeyName
+                        $resource.KeyScope = 'Machine'
+                        $resource.Account = 'BUILTIN\Users'
+                        $resource.AccessRights = [WindowsCryptoKeyRights]::Read
+                        $resource.AccessControlType =
+                            [Security.AccessControl.AccessControlType]::Allow
+                        $resource.Ensure = [WindowsAccessControlDscEnsure]::Present
+
+                        $initial = $resource.Test()
+                        $resource.Set()
+                        $afterSet = $resource.Test()
+                        $resource.Ensure = [WindowsAccessControlDscEnsure]::Absent
+                        $resource.Set()
+                        $afterRemove = $resource.Test()
+                        [pscustomobject]@{
+                            Initial     = $initial
+                            AfterSet    = $afterSet
+                            AfterRemove = $afterRemove
+                        }
+                    } $fixture.ProviderName $fixture.KeyName
+
+                    # Drift the key so the descriptor resource has something to
+                    # converge, then prove a repeated consistency pass stays
+                    # green despite the generic bit the provider adds.
+                    Add-CertificatePrivateKeyAccessRule @relocate `
+                        -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+
+                    $descriptorState = & $module {
+                        param($ProviderName, $KeyName, $Sddl)
+
+                        $resource =
+                            [WindowsAccessControlCertificatePrivateKeySecurityDescriptor]::new()
+                        $resource.ProviderName = $ProviderName
+                        $resource.KeyName = $KeyName
+                        $resource.KeyScope = 'Machine'
+                        $resource.Sections = [WindowsSecurityDescriptorSection]::Access
+                        $resource.Sddl = $Sddl
+
+                        $drifted = $resource.Test()
+                        $resource.Set()
+                        $afterSet = $resource.Test()
+                        $repeated = $resource.Test()
+                        [pscustomobject]@{
+                            Drifted  = $drifted
+                            AfterSet = $afterSet
+                            Repeated = $repeated
+                            Reasons  = @($resource.Get().Reasons).Count
+                        }
+                    } $fixture.ProviderName $fixture.KeyName $originalSddl
+
+                    $denyRefusal = $null
+                    try {
+                        & $module {
+                            param($ProviderName, $KeyName)
+
+                            $resource =
+                                [WindowsAccessControlCertificatePrivateKeyAccessRule]::new()
+                            $resource.ProviderName = $ProviderName
+                            $resource.KeyName = $KeyName
+                            $resource.KeyScope = 'Machine'
+                            $resource.Account = 'Everyone'
+                            $resource.AccessRights = [WindowsCryptoKeyRights]::Read
+                            $resource.AccessControlType =
+                                [Security.AccessControl.AccessControlType]::Deny
+                            $resource.Ensure = [WindowsAccessControlDscEnsure]::Present
+                            $resource.Set()
+                        } $fixture.ProviderName $fixture.KeyName
+                    }
+                    catch {
+                        $denyRefusal = $_.Exception.Message
+                    }
+
+                    [pscustomobject]@{
+                        RuleInitial         = $ruleState.Initial
+                        RuleAfterSet        = $ruleState.AfterSet
+                        RuleAfterRemove     = $ruleState.AfterRemove
+                        DescriptorDrifted   = $descriptorState.Drifted
+                        DescriptorAfterSet  = $descriptorState.AfterSet
+                        DescriptorRepeated  = $descriptorState.Repeated
+                        DescriptorReasons   = $descriptorState.Reasons
+                        DenyRefusal         = $denyRefusal
+                        OriginalSddl        = $originalSddl
+                        FinalSddl           = (
+                            Get-CertificatePrivateKeySecurityDescriptor @relocate
+                        ).Sddl
+                    }
+                }
+                finally {
+                    Set-CertificatePrivateKeySecurityDescriptor @relocate `
+                        -Sddl $originalSddl -Confirm:$false
+                }
+            }
+
+        $result.RuleInitial | Should -BeFalse
+        $result.RuleAfterSet | Should -BeTrue
+        $result.RuleAfterRemove | Should -BeTrue
+        $result.DescriptorDrifted | Should -BeFalse
+        $result.DescriptorAfterSet | Should -BeTrue
+        $result.DescriptorRepeated | Should -BeTrue
+        $result.DescriptorReasons | Should -Be 0
+        $result.DenyRefusal | Should -BeLike '*deny rule cannot be created*'
         $result.FinalSddl | Should -BeExactly $result.OriginalSddl
     }
 }

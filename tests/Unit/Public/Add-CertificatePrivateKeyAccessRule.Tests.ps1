@@ -6,6 +6,7 @@ Register-EnterpriseCommandContract `
         'Certificate'
         'ProviderName'
         'KeyName'
+        'KeyScope'
         'Account'
         'AccessRights'
         'ConcurrencyToken'
@@ -97,22 +98,47 @@ Describe 'Add-CertificatePrivateKeyAccessRule behavior' -Tag 'Unit', 'WindowsOnl
         }
     }
 
-    It 'Should pass the certificate through so the binding gate can compare keys' {
+    It 'Should key the binding gate on the resolved key rather than on the certificate' {
         InModuleScope WindowsAccessControl {
             $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
-            $script:bindingCertificate = $null
-            Mock Invoke-WithWindowsCertificatePrivateKeyTarget {
-                $script:bindingCertificate = $ArgumentList[4]
+            $ephemeralKey = [Security.Cryptography.CngKey]::Create(
+                [Security.Cryptography.CngAlgorithm]::Rsa
+            )
+            try {
+                $stored = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    'D:P(A;;FA;;;SY)(A;;FA;;;BA)'
+                )
+                $storedBytes = [byte[]]::new($stored.BinaryLength)
+                $stored.GetBinaryForm($storedBytes, 0)
+                $script:gateKey = $null
+                Mock Get-WindowsCngKeySecurityDescriptor { , $storedBytes }
+                # The gate is asserted by what it receives, so it stops the write
+                # rather than letting an ephemeral key reach the provider.
+                Mock Assert-WindowsCngKeyCriticalBinding {
+                    $script:gateKey = $Key
+                    throw [InvalidOperationException]::new('WacUnitBindingGateReached')
+                }
+                Mock Invoke-WithWindowsCertificatePrivateKeyTarget {
+                    $target = [pscustomobject]@{
+                        CanonicalTarget = 'CertificatePrivateKey:Cng:Machine:0'
+                    }
+                    & $Operation $target $ephemeralKey @ArgumentList
+                }
+
+                {
+                    $certificate | Add-CertificatePrivateKeyAccessRule `
+                        -ProviderName 'Microsoft Software Key Storage Provider' `
+                        -KeyName 'TestKey' `
+                        -Account 'S-1-5-32-545' `
+                        -AccessRights Read `
+                        -Confirm:$false
+                } | Should -Throw '*WacUnitBindingGateReached*'
+
+                $script:gateKey | Should -Be $ephemeralKey
             }
-
-            $certificate | Add-CertificatePrivateKeyAccessRule `
-                -ProviderName 'Microsoft Software Key Storage Provider' `
-                -KeyName 'TestKey' `
-                -Account 'S-1-5-32-545' `
-                -AccessRights Read `
-                -Confirm:$false
-
-            $script:bindingCertificate | Should -Be $certificate
+            finally {
+                $ephemeralKey.Dispose()
+            }
         }
     }
 

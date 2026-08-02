@@ -24,6 +24,7 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             Mock Get-ADObjectAccessRule { $script:rules }
             Mock Get-TaskFolderAccessRule { $script:rules }
             Mock Get-ScheduledTaskAccessRule { $script:rules }
+            Mock Get-CertificatePrivateKeyAccessRule { $script:rules }
             Mock Resolve-WindowsADServer { 'dc01.contoso.test' }
             Mock Add-NTFSAccessRule
             Mock Add-RegistryKeyAccessRule
@@ -33,6 +34,7 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             Mock Add-ADObjectAccessRule
             Mock Add-TaskFolderAccessRule
             Mock Add-ScheduledTaskAccessRule
+            Mock Add-CertificatePrivateKeyAccessRule
             Mock Remove-NTFSAccessRule
             Mock Remove-RegistryKeyAccessRule
             Mock Remove-ServiceAccessRule
@@ -41,6 +43,7 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
             Mock Remove-ADObjectAccessRule
             Mock Remove-TaskFolderAccessRule
             Mock Remove-ScheduledTaskAccessRule
+            Mock Remove-CertificatePrivateKeyAccessRule
         }
 
         It 'Should find one exact <ObjectFamily> rule' -ForEach @(
@@ -455,6 +458,168 @@ Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'Windows
                 -AccessControlType Allow `
                 -AppliesTo ThisFolderOnly |
                 Should -BeFalse
+        }
+
+        It 'Should match a private-key rule on the effective rights mask' {
+            # The provider stores a candidate ACE with the matching generic bit
+            # added, so the raw stored mask never equals the requested mask.
+            $script:rules = @([pscustomobject]@{
+                SID = 'S-1-1-0'
+                AccessMask = [uint64]2148663433
+                EffectiveAccessMask = [uint64]1179785
+                AccessControlType = 'Allow'
+                IsInherited = $false
+                NativeAce = [pscustomobject]@{
+                    AceType = [System.Security.AccessControl.AceType]::AccessAllowed
+                }
+            })
+
+            Get-WindowsAccessControlDscAccessRule `
+                -ObjectFamily CertificatePrivateKey `
+                -Target 'WacUnitKey' `
+                -ProviderName 'Microsoft Software Key Storage Provider' `
+                -KeyScope Machine `
+                -Account Everyone `
+                -AccessMask 1179785 `
+                -AccessControlType Allow |
+                Should -BeTrue
+
+            Should -Invoke Get-CertificatePrivateKeyAccessRule -Exactly -Times 1 `
+                -ParameterFilter {
+                    $ProviderName -ceq 'Microsoft Software Key Storage Provider' -and
+                        $KeyName -ceq 'WacUnitKey' -and
+                        $KeyScope -ceq 'Machine'
+                }
+        }
+
+        It 'Should match a generic private-key right against its effective mask' {
+            # GENERIC_READ is 0x80000000; the ACE it creates reads back as the
+            # expanded 0x00120089. Comparing the raw request would report the
+            # grant absent and make a removal a silent no-op.
+            $script:rules = @([pscustomobject]@{
+                SID = 'S-1-1-0'
+                AccessMask = [uint64]2148663433
+                EffectiveAccessMask = [uint64]1179785
+                AccessControlType = 'Allow'
+                IsInherited = $false
+                NativeAce = [pscustomobject]@{
+                    AceType = [System.Security.AccessControl.AceType]::AccessAllowed
+                }
+            })
+
+            Get-WindowsAccessControlDscAccessRule `
+                -ObjectFamily CertificatePrivateKey `
+                -Target 'WacUnitKey' `
+                -ProviderName 'Microsoft Software Key Storage Provider' `
+                -KeyScope Machine `
+                -Account Everyone `
+                -AccessMask ([uint64](
+                    [int64][int][WindowsCryptoKeyRights]::GenericRead -band 0xFFFFFFFFL
+                )) `
+                -AccessControlType Allow |
+                Should -BeTrue
+        }
+
+        It 'Should not let a conditional allow ACE report a private-key grant as present' {
+            $script:rules = @([pscustomobject]@{
+                SID = 'S-1-1-0'
+                AccessMask = [uint64]2148663433
+                EffectiveAccessMask = [uint64]1179785
+                AccessControlType = 'Allow'
+                IsInherited = $false
+                NativeAce = [pscustomobject]@{
+                    AceType = [System.Security.AccessControl.AceType]::AccessAllowedCallback
+                }
+            })
+
+            Get-WindowsAccessControlDscAccessRule `
+                -ObjectFamily CertificatePrivateKey `
+                -Target 'WacUnitKey' `
+                -ProviderName 'Microsoft Software Key Storage Provider' `
+                -KeyScope Machine `
+                -Account Everyone `
+                -AccessMask 1179785 `
+                -AccessControlType Allow |
+                Should -BeFalse
+        }
+
+        It 'Should add a missing private-key allow rule by key identity' {
+            Set-WindowsAccessControlDscAccessRule `
+                -ObjectFamily CertificatePrivateKey `
+                -Target 'WacUnitKey' `
+                -ProviderName 'Microsoft Software Key Storage Provider' `
+                -KeyScope Machine `
+                -Account Everyone `
+                -AccessMask 1179785 `
+                -AccessControlType Allow `
+                -Ensure Present
+
+            Should -Invoke Add-CertificatePrivateKeyAccessRule -Exactly -Times 1 `
+                -ParameterFilter {
+                    $ProviderName -ceq 'Microsoft Software Key Storage Provider' -and
+                        $KeyName -ceq 'WacUnitKey' -and
+                        $KeyScope -ceq 'Machine' -and
+                        $Confirm -eq $false
+                }
+        }
+
+        It 'Should remove a matching private-key rule by its effective rights' {
+            $script:rules = @(
+                [pscustomobject]@{
+                    SID = 'S-1-1-0'
+                    AccessMask = [uint64]2148663433
+                    EffectiveAccessMask = [uint64]1179785
+                    AccessControlType = 'Allow'
+                    IsInherited = $false
+                    NativeAce = [pscustomobject]@{
+                        AceType = [System.Security.AccessControl.AceType]::AccessAllowed
+                    }
+                }
+                [pscustomobject]@{
+                    SID = 'S-1-1-0'
+                    AccessMask = [uint64]2148663433
+                    EffectiveAccessMask = [uint64]1179785
+                    AccessControlType = 'Allow'
+                    IsInherited = $false
+                    NativeAce = [pscustomobject]@{
+                        AceType = [System.Security.AccessControl.AceType]::AccessAllowed
+                    }
+                }
+            )
+
+            Set-WindowsAccessControlDscAccessRule `
+                -ObjectFamily CertificatePrivateKey `
+                -Target 'WacUnitKey' `
+                -ProviderName 'Microsoft Software Key Storage Provider' `
+                -KeyScope Machine `
+                -Account Everyone `
+                -AccessMask 1179785 `
+                -AccessControlType Allow `
+                -Ensure Absent
+
+            # One removal clears every duplicate, so a second call would only
+            # produce the warning that a revocation matched nothing.
+            Should -Invoke Remove-CertificatePrivateKeyAccessRule -Exactly -Times 1 `
+                -ParameterFilter {
+                    $KeyName -ceq 'WacUnitKey' -and
+                        [long][int]$AccessRights -eq 1179785 -and
+                        $Confirm -eq $false
+                }
+        }
+
+        It 'Should refuse to create a private-key deny rule' {
+            {
+                Set-WindowsAccessControlDscAccessRule `
+                    -ObjectFamily CertificatePrivateKey `
+                    -Target 'WacUnitKey' `
+                    -ProviderName 'Microsoft Software Key Storage Provider' `
+                    -KeyScope Machine `
+                    -Account Everyone `
+                    -AccessMask 1179785 `
+                    -AccessControlType Deny `
+                    -Ensure Present
+            } | Should -Throw '*deny rule cannot be created*'
+            Should -Invoke Add-CertificatePrivateKeyAccessRule -Exactly -Times 0
         }
     }
 }

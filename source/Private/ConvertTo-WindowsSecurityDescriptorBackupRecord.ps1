@@ -26,22 +26,26 @@ function ConvertTo-WindowsSecurityDescriptorBackupRecord {
 
         $recordValues = [ordered]@{
             RecordVersion         = 1
-            ObjectFamily         = $null
-            Target               = $null
-            Path                 = $null
-            CanonicalTarget      = $null
-            ItemType             = $null
-            RegistryView         = $null
-            ProcessId            = $null
-            CreationTimeFileTime = $null
-            Server               = $null
-            ShareName            = $null
-            DistinguishedName    = $null
-            ObjectGuid           = $null
-            DomainNamingContext  = $null
-            Sections             = 0
-            Sddl                 = [string]$InputObject.Sddl
-            Integrity            = $null
+            ObjectFamily          = $null
+            Target                = $null
+            Path                  = $null
+            CanonicalTarget       = $null
+            ItemType              = $null
+            RegistryView          = $null
+            ProcessId             = $null
+            CreationTimeFileTime  = $null
+            Server                = $null
+            ShareName             = $null
+            DistinguishedName     = $null
+            ObjectGuid            = $null
+            DomainNamingContext   = $null
+            ProviderName          = $null
+            KeyName               = $null
+            KeyScope              = $null
+            CertificateThumbprint = $null
+            Sections              = 0
+            Sddl                  = [string]$InputObject.Sddl
+            Integrity             = $null
         }
 
         if ($InputObject.PSObject.Properties['ItemType'] -and
@@ -188,6 +192,37 @@ function ConvertTo-WindowsSecurityDescriptorBackupRecord {
                     $recordValues.Target = [string]$InputObject.Path
                     $recordValues.CanonicalTarget = [string]$InputObject.CanonicalTarget
                     $recordValues.Server = [string]$InputObject.Server
+                    break
+                }
+                'CertificatePrivateKey' {
+                    if ($recordValues.Sections -ne
+                        [int][WindowsSecurityDescriptorSection]::Access) {
+                        throw [System.ArgumentException]::new(
+                            'A certificate private-key backup selects only the access section.'
+                        )
+                    }
+                    if ([string]::IsNullOrWhiteSpace([string]$InputObject.Server) -or
+                        [string]::IsNullOrWhiteSpace([string]$InputObject.ProviderName) -or
+                        [string]::IsNullOrWhiteSpace([string]$InputObject.KeyName) -or
+                        [string]$InputObject.KeyScope -notin @('Machine', 'User')) {
+                        throw [System.ArgumentException]::new(
+                            'A certificate private-key backup requires a server identity, provider, key name, and key scope.'
+                        )
+                    }
+                    # The record carries the provider and persisted key name
+                    # because those relocate the key on the originating machine.
+                    # The certificate thumbprint is evidence only: a renewal that
+                    # reuses the key changes it while the key stays the same.
+                    $recordValues.RecordVersion = 2
+                    $recordValues.ObjectFamily = 'CertificatePrivateKey'
+                    $recordValues.Target = [string]$InputObject.KeyName
+                    $recordValues.CanonicalTarget = [string]$InputObject.CanonicalTarget
+                    $recordValues.Server = [string]$InputObject.Server
+                    $recordValues.ProviderName = [string]$InputObject.ProviderName
+                    $recordValues.KeyName = [string]$InputObject.KeyName
+                    $recordValues.KeyScope = [string]$InputObject.KeyScope
+                    $recordValues.CertificateThumbprint =
+                        ([string]$InputObject.CertificateThumbprint).ToUpperInvariant()
                     break
                 }
                 default {

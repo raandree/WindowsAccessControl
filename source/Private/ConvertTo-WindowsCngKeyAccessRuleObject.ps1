@@ -38,6 +38,7 @@ function ConvertTo-WindowsCngKeyAccessRuleObject {
     $result = [pscustomobject]@{
         ObjectType            = $Target.ObjectType
         Path                  = $Target.Path
+        Server                = $Target.Server
         ProviderName          = $Target.ProviderName
         KeyName               = $Target.KeyName
         KeyScope              = $Target.KeyScope

@@ -11,7 +11,10 @@ function Restore-WindowsSecurityDescriptor {
         writable domain controller inside an explicit allowed organizational
         unit, matched by immutable object GUID and domain partition. Task
         Scheduler records restore on their originating computer inside an
-        explicit allowed root path.
+        explicit allowed root path. Certificate private-key records restore on
+        their originating computer, relocate the key by provider, key name, and
+        key scope, and pass through the same fail-closed write gates as every
+        other private-key write.
     .PARAMETER BackupPath
         The literal path to a unified backup created by
         Backup-WindowsSecurityDescriptor.
@@ -131,6 +134,33 @@ function Restore-WindowsSecurityDescriptor {
         }).Count -gt 0 -and [string]::IsNullOrWhiteSpace($AllowedRootPath)) {
         throw 'AllowedRootPath is required to restore Task Scheduler records.'
     }
+    # Every computer-scoped family binds the machine that produced the record.
+    # The check runs over the whole document before any target is opened, so a
+    # foreign record cannot be reached after an earlier record was written.
+    foreach ($record in $validatedRecords) {
+        $foreignComputerMessage = switch ($record.ObjectFamily) {
+            'SmbShare' {
+                "SMB share backup record '$($record.CanonicalTarget)' was captured on another server. Run the restore on that computer."
+                break
+            }
+            { $_ -in @('TaskFolder', 'ScheduledTask') } {
+                "Task Scheduler backup record '$($record.CanonicalTarget)' was captured on another computer. Run the restore on that computer."
+                break
+            }
+            'CertificatePrivateKey' {
+                "Certificate private-key backup record '$($record.CanonicalTarget)' was captured on another computer. Run the restore on that computer."
+                break
+            }
+            default { $null }
+        }
+        if ($null -ne $foreignComputerMessage -and -not [string]::Equals(
+                [string]$record.Server,
+                [System.Environment]::MachineName,
+                [System.StringComparison]::OrdinalIgnoreCase
+            )) {
+            throw $foreignComputerMessage
+        }
+    }
 
     $preparedRecords = [System.Collections.Generic.List[object]]::new()
     foreach ($record in $validatedRecords) {
@@ -216,13 +246,6 @@ function Restore-WindowsSecurityDescriptor {
                 }
             }
             'SmbShare' {
-                if (-not [string]::Equals(
-                        [string]$record.Server,
-                        [System.Environment]::MachineName,
-                        [System.StringComparison]::OrdinalIgnoreCase
-                    )) {
-                    throw "SMB share backup record '$($record.CanonicalTarget)' was captured on another server. Run the restore on that computer."
-                }
                 $descriptor = Get-SmbShareSecurityDescriptor `
                     -Name $record.ShareName `
                     -ThrottleLimit 1
@@ -262,13 +285,6 @@ function Restore-WindowsSecurityDescriptor {
                 }
             }
             { $_ -in @('TaskFolder', 'ScheduledTask') } {
-                if (-not [string]::Equals(
-                        [string]$record.Server,
-                        [System.Environment]::MachineName,
-                        [System.StringComparison]::OrdinalIgnoreCase
-                    )) {
-                    throw "Task Scheduler backup record '$($record.CanonicalTarget)' was captured on another computer. Run the restore on that computer."
-                }
                 # Resolve for write so the root, Microsoft system tree, and
                 # allowed root path all reject a bad record before any earlier
                 # record is written.
@@ -293,6 +309,30 @@ function Restore-WindowsSecurityDescriptor {
                     Get-TaskFolderSecurityDescriptor `
                         -Path $record.TaskPath `
                         -ThrottleLimit 1
+                }
+                [pscustomobject]@{
+                    Record          = $record
+                    Item            = $null
+                    ManagedSections = $null
+                    Security        = $null
+                    Descriptor      = $descriptor
+                }
+            }
+            'CertificatePrivateKey' {
+                # The canonical identity hashes the provider's per-machine
+                # container name, so a record can only match on the computer
+                # that produced it. Reading the key here recomputes that
+                # identity, and the comparison below rejects a record that names
+                # a different key or a different machine before the first write.
+                $descriptor = Get-CertificatePrivateKeySecurityDescriptor `
+                    -ProviderName $record.ProviderName `
+                    -KeyName $record.KeyName `
+                    -KeyScope $record.KeyScope
+                # The canonical identity is uppercase hex, and the write compares
+                # it case-sensitively, so preparation uses the same comparison
+                # rather than the case-insensitive one the path families need.
+                if ($descriptor.CanonicalTarget -cne $record.CanonicalTarget) {
+                    throw "Certificate private-key backup target '$($record.Target)' does not match its canonical identity."
                 }
                 [pscustomobject]@{
                     Record          = $record
@@ -441,6 +481,19 @@ function Restore-WindowsSecurityDescriptor {
                         PassThru        = $PassThru
                     }
                     Set-ScheduledTaskSecurityDescriptor @setParameters
+                    break
+                }
+                'CertificatePrivateKey' {
+                    $setParameters = @{
+                        ProviderName            = $preparedRecord.Record.ProviderName
+                        KeyName                 = $preparedRecord.Record.KeyName
+                        KeyScope                = $preparedRecord.Record.KeyScope
+                        ExpectedCanonicalTarget = $preparedRecord.Record.CanonicalTarget
+                        Sddl                    = $preparedRecord.Record.Sddl
+                        Confirm                 = $false
+                        PassThru                = $PassThru
+                    }
+                    Set-CertificatePrivateKeySecurityDescriptor @setParameters
                     break
                 }
                 default {

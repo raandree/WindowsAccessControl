@@ -6,8 +6,10 @@ Register-EnterpriseCommandContract `
         'Certificate'
         'ProviderName'
         'KeyName'
+        'KeyScope'
         'Sddl'
         'ConcurrencyToken'
+        'ExpectedCanonicalTarget'
         'PassThru'
     ) `
     -SupportsShouldProcess $true `
@@ -40,6 +42,27 @@ Describe 'Set-CertificatePrivateKeySecurityDescriptor behavior' -Tag 'Unit', 'Wi
                 -Times 1 `
                 -Exactly `
                 -ParameterFilter { $ForMutation }
+        }
+    }
+
+    It 'Should pin the resolved key to the expected canonical identity' {
+        InModuleScope WindowsAccessControl {
+            $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new()
+            Mock Invoke-WithWindowsCertificatePrivateKeyTarget { }
+
+            $certificate | Set-CertificatePrivateKeySecurityDescriptor `
+                -ProviderName 'Microsoft Software Key Storage Provider' `
+                -KeyName 'TestKey' `
+                -Sddl 'D:P(A;;FA;;;SY)(A;;FA;;;BA)' `
+                -ExpectedCanonicalTarget 'CertificatePrivateKey:Cng:Machine:0' `
+                -Confirm:$false
+
+            Should -Invoke Invoke-WithWindowsCertificatePrivateKeyTarget `
+                -Times 1 `
+                -Exactly `
+                -ParameterFilter {
+                    $ExpectedCanonicalTarget -ceq 'CertificatePrivateKey:Cng:Machine:0'
+                }
         }
     }
 
@@ -80,6 +103,18 @@ Describe 'Set-CertificatePrivateKeySecurityDescriptor behavior' -Tag 'Unit', 'Wi
 
                 $script:writtenSddl | Should -Not -BeLike '*O:*'
                 $script:writtenSddl | Should -Not -BeLike '*G:*'
+                $script:writtenSddl | Should -BeLike '*BU*'
+
+                # A SACL in the caller's SDDL must not survive into the binary
+                # form either: the provider is written with the access section
+                # alone and audit policy is outside this contract.
+                $certificate | Set-CertificatePrivateKeySecurityDescriptor `
+                    -ProviderName 'Microsoft Software Key Storage Provider' `
+                    -KeyName 'TestKey' `
+                    -Sddl 'D:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x120089;;;BU)S:P(AU;SA;FA;;;WD)' `
+                    -Confirm:$false
+
+                $script:writtenSddl | Should -Not -BeLike '*S:*'
                 $script:writtenSddl | Should -BeLike '*BU*'
 
                 {

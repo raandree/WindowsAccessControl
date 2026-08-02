@@ -505,10 +505,17 @@ DSC, and direct remote APIs remain outside this contract.
 | `Set-CertificatePrivateKeySecurityDescriptor` | exact `X509Certificate2` | none / `CertificatePrivateKeySecurityDescriptor` |
 | `Test-CertificatePrivateKeyCriticalBinding` | thumbprints | `CertificateCriticalBinding` |
 
-Every command requires the exact expected CNG provider and persisted key name
-in addition to the certificate selector. They support only RSA keys in
-Microsoft Software Key Storage Provider and never search stores, export key
-material, or dispose the caller certificate.
+Every command requires the exact expected CNG provider and persisted key name.
+The first five accept two selectors: the default `Certificate` parameter set
+adds an exact caller-owned certificate, and the `Key` parameter set replaces it
+with `KeyScope`, which is `Machine` or `User`. Both resolve the same key, take
+the same canonical write lock, and pass through the same gates; the
+key-addressed form exists because a portability record and a desired-state
+resource cannot carry a certificate. A certificate thumbprint is never a
+selector, because a renewal that reuses the key changes it while the key stays
+the same. They support only RSA keys in Microsoft Software Key Storage Provider
+and never search stores, export key material, or dispose the caller
+certificate. Query output reports the owning computer as `Server`.
 
 `Get-CertificatePrivateKeySecurityDescriptor` and
 `Get-CertificatePrivateKeyAccessRule` are read-only. The three mutating
@@ -516,10 +523,17 @@ commands manage the access section only, serialize on the canonical key
 identity, verify the stored result, and roll back exactly when the write cannot
 be verified. Specification 0015 defines the fail-closed gates they enforce:
 software-only provider implementation, critical-binding refusal, and
-preservation of SYSTEM, Administrators, and every existing service grant.
+preservation of SYSTEM, Administrators, and every existing service grant. The
+binding refusal is keyed on the key's own public key, so it applies identically
+to both selectors.
 `Test-CertificatePrivateKeyCriticalBinding` reports the bindings that cause a
-refusal without changing state. Audit rules, SACL, owner and group mutation,
-key creation, key deletion, portability, and DSC remain outside this contract.
+refusal without changing state; it takes a certificate, because a caller holding
+one asks about the certificate it holds.
+`Set-CertificatePrivateKeySecurityDescriptor` additionally accepts
+`ExpectedCanonicalTarget`, which refuses the write when the provider and key
+name now resolve to a different key container. Audit rules, SACL, owner and
+group mutation, key creation, and key deletion remain outside this contract.
+Specification 0017 owns portability and desired state for this family.
 
 ## Active Directory object commands
 
@@ -649,6 +663,7 @@ process resets the counters.
 | `WindowsAccessControlADObjectSecurityDescriptor` | `DistinguishedName`, `Sections` | `AllowedBaseDistinguishedName`, `Sddl` |
 | `WindowsAccessControlTaskFolderSecurityDescriptor` | `Path`, `Sections` | `AllowedRootPath`, `Sddl` |
 | `WindowsAccessControlScheduledTaskSecurityDescriptor` | `TaskPath`, `TaskName`, `Sections` | `AllowedRootPath`, `Sddl` |
+| `WindowsAccessControlCertificatePrivateKeySecurityDescriptor` | `ProviderName`, `KeyName`, `KeyScope`, `Sections` | `Sddl` |
 
 Every resource is class-based, has `Get()`, `Test()`, and `Set()` methods, and
 returns `WindowsAccessControlDscReason` entries for selected-section SDDL
@@ -688,6 +703,14 @@ in order, so they cannot detect a reordering that promotes an allow ACE above a
 deny ACE. Specification 0014 owns
 this contract.
 
+`WindowsAccessControlCertificatePrivateKeySecurityDescriptor` manages the
+access section only and addresses the key by provider, persisted key name, and
+key scope, so a MOF never carries a certificate thumbprint or key material. Its
+compliance check expands generic bits before comparing, because the key storage
+provider adds the matching generic bit to a stored ACE, and it ignores ACE order
+for the same reason the write boundary treats an allow-only reordering as
+already converged. Specification 0017 owns this contract.
+
 ## Access-rule presence DSC resources
 
 | Resource | Composite keys | Configurable state |
@@ -701,6 +724,7 @@ this contract.
 | `WindowsAccessControlADObjectAccessRule` | `DistinguishedName`, `Account`, `AccessRights`, `AccessControlType`, `InheritanceType`, `ObjectType`, `InheritedObjectType` | `Ensure` |
 | `WindowsAccessControlTaskFolderAccessRule` | `Path`, `Account`, `AccessRights`, `AccessControlType`, `AppliesTo` | `Ensure` |
 | `WindowsAccessControlScheduledTaskAccessRule` | `TaskPath`, `TaskName`, `Account`, `AccessRights`, `AccessControlType` | `Ensure` |
+| `WindowsAccessControlCertificatePrivateKeyAccessRule` | `ProviderName`, `KeyName`, `KeyScope`, `Account`, `AccessRights`, `AccessControlType` | `Ensure` |
 
 `WindowsAccessControlDscEnsure` exposes `Absent` and `Present`; the resource
 default is `Present`. Exact identity is SID, normalized unsigned 32-bit rights
@@ -718,6 +742,11 @@ strings for an unscoped ACE and must otherwise parse as a GUID.
 Task folder rule identity includes the folder inheritance scope; a registered
 task is a leaf object and exposes no `AppliesTo`. Both Task Scheduler rule
 resources require `AllowedRootPath`.
+Private-key rule identity matches the effective rights mask, because the key
+storage provider adds the matching generic bit to a stored ACE.
+`Ensure = Present` with `AccessControlType = Deny` is refused, because
+specification 0015 admits no way to create a private-key deny ACE; `Absent`
+removes one that already exists.
 Because Windows can merge same-account, qualifier, and scope ACEs, a narrower
 exact `Present` rule cannot converge beside an existing rights superset; callers
 model the superset or use an exact-descriptor resource.

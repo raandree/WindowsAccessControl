@@ -109,6 +109,16 @@ Describe 'Access-rule presence DSC resource behavior' -Tag 'Unit', 'WindowsOnly'
                 AccessControlType = 'Allow'
             }
         }
+        @{
+            ClassName = 'WindowsAccessControlCertificatePrivateKeyAccessRule'
+            Family = 'CertificatePrivateKey'
+            Properties = @{
+                ProviderName = 'Microsoft Software Key Storage Provider'
+                KeyName = 'WacUnitKey'; KeyScope = 'Machine'
+                Account = 'S-1-1-0'; AccessRights = 'Read'
+                AccessControlType = 'Allow'
+            }
+        }
     ) {
         $instance = New-AccessRulePresenceResourceInstance `
             -ClassName $ClassName `
@@ -183,6 +193,15 @@ Describe 'Access-rule presence DSC resource behavior' -Tag 'Unit', 'WindowsOnly'
                 AccessControlType = 'Allow'
             }
         }
+        @{
+            ClassName = 'WindowsAccessControlCertificatePrivateKeyAccessRule'
+            Properties = @{
+                ProviderName = 'Microsoft Software Key Storage Provider'
+                KeyName = 'WacUnitKey'; KeyScope = 'Machine'
+                Account = 'S-1-1-0'; AccessRights = 'Read'
+                AccessControlType = 'Allow'
+            }
+        }
     ) {
         $script:rulePresent = $true
         $instance = New-AccessRulePresenceResourceInstance `
@@ -244,6 +263,15 @@ Describe 'Access-rule presence DSC resource behavior' -Tag 'Unit', 'WindowsOnly'
                 TaskPath = '\Operations'; TaskName = 'Cleanup'
                 AllowedRootPath = '\Operations'
                 Account = 'S-1-1-0'; AccessRights = 'RunTask'
+                AccessControlType = 'Allow'
+            }
+        }
+        @{
+            ClassName = 'WindowsAccessControlCertificatePrivateKeyAccessRule'
+            Properties = @{
+                ProviderName = 'Microsoft Software Key Storage Provider'
+                KeyName = 'WacUnitKey'; KeyScope = 'Machine'
+                Account = 'S-1-1-0'; AccessRights = 'Read'
                 AccessControlType = 'Allow'
             }
         }

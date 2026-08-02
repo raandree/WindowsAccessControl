@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add certificate private-key portability and desired state. Every private-key
+    command gains a `Key` parameter set that selects the key by CNG provider,
+    persisted key name, and `Machine` or `User` key scope, so a portability
+    record and a Managed Object Format document never carry a certificate.
+    `Backup-WindowsSecurityDescriptor` emits a schema-version-2
+    `CertificatePrivateKey` record and `Restore-WindowsSecurityDescriptor`
+    replays it only on the computer that produced it, through the same
+    fail-closed write boundary as a direct write. A certificate thumbprint is
+    recorded as evidence and is never used to find a key, because a renewal that
+    reuses the key changes it while the key stays the same
+- Add `WindowsAccessControlCertificatePrivateKeySecurityDescriptor` and
+    `WindowsAccessControlCertificatePrivateKeyAccessRule`, which manage the
+    private-key DACL as desired state. Compliance expands the generic bit the key
+    storage provider adds to a stored ACE, so a converged key does not report
+    drift on every consistency run. Creating a deny rule is refused, because the
+    write boundary admits no way to create one
+- Add specification 0017 and ADR 0026, which record the key-addressed selector,
+    the computer-scoped record, and the rule that a restore inherits every
+    fail-closed private-key write gate without an override
 - Add fail-closed DACL mutation for a persisted RSA private key in Microsoft
     Software Key Storage Provider through
     `Add-CertificatePrivateKeyAccessRule`,
@@ -59,6 +78,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     frames there against 4694 in a console host, and the directory suites fail
     with a call-depth overflow rather than their asserted rejection once
     coverage instrumentation is added
+- Key the private-key critical-binding gate on the write target's own public
+    key, read from the key rather than from a certificate, so it applies
+    identically whether the key was addressed through a certificate or through
+    its provider and key name. A public key that cannot be read throws instead of
+    reporting no binding
+- Report the owning computer as `Server` on every certificate private-key
+    descriptor and access rule, so evidence and portability records name the
+    machine that produced them
+- Rebuild a private-key candidate descriptor from its access section before the
+    provider write, so an owner, group, or SACL supplied in `Sddl` is dropped
+    rather than carried into the binary form
 - Resolve a bound certificate against every local machine certificate store that
     exists plus the `NTDS` service store, instead of a fixed list of four
     stores, so a binding created against another store no longer blocks every
