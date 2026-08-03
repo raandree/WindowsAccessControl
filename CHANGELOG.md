@@ -144,6 +144,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix `-Sections All` reporting inherited NTFS access rules as explicit rules.
+    `GetNamedSecurityInfo` clears `INHERITED_ACE` on every DACL entry when the
+    SACL is requested in the same call, so a whole-descriptor capture recorded
+    inherited entries as explicit ones. Replaying that descriptor wrote them as
+    explicit entries and detached the target from its parent, and the exact
+    NTFS descriptor DSC resource never converged. The DACL now always comes
+    from a read that omits the SACL, and the audited SACL is grafted onto it.
+    See ADR 0028
 - Fix the domain lab inventory claiming that a lab web server produces the
     HTTP.sys binding evidence; the evidence comes from a disposable `netsh http`
     binding on the fixture member server, and the web-server role is reserved

@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-02
+last-verified: 2026-08-03
 owner: active-agent
 source: current task evidence
 ---
@@ -9,52 +9,43 @@ source: current task evidence
 
 ## Current focus
 
-Specification 0008 is accepted. It was the last `Draft` in the specification
-index, and it had blocked itself: its own text required stable requirement
-identifiers and a roadmap-to-evidence mapping that did not exist yet.
+`Should reconverge all NTFS descriptor sections together` is fixed. It was not
+environmental and not a privilege gate. `GetNamedSecurityInfo` clears
+`INHERITED_ACE` on every DACL ACE when the same call also requests the SACL, so
+`-Sections All` reported inherited ACEs as explicit ones. ADR 0028 records the
+ruling and the fix.
 
-OI-23 remains listed only as a decision record: ADR 0024 withdrew the
-implementation half, and it should be reopened only for a concrete
-`CryptAcquireContext` plus `PP_KEYSET_SEC_DESCR` requirement.
+## The failing test was a real defect
 
-## Specification 0008 acceptance
-
-- The contract is accepted, not a claim of complete implementation. The
-    specification now says so, and every work package closes either through
-    executable evidence or through an accepted decision record that defers it.
-    `SMB-6` is deferred by ADR 0017, `AD-7` by ADR 0022, and the CAPI half of
-    the private-key package by ADR 0024.
-- Specification 0002 gained `FR-24` through `FR-27` and `NFR-17` through
-    `NFR-20`. Everything shipped after read-only private-key inspection had no
-    stable identifier: fail-closed private-key mutation (0015), key-addressed
-    portability and desired state (0017), schema-version-2 enterprise
-    portability and the SMB and directory resources (0013), the Task Scheduler
-    equivalents (0014), and immutable directory identity (0016). `FR-23` was
-    left as written, because inspection is still supported; mutation is a new
-    requirement rather than a rewrite of an accepted one.
-- Specification 0005 gained a roadmap task traceability section: all 39
-    `ENT-*`, `TASK-*`, `KEY-*`, `SMB-*`, and `AD-*` tasks with their state and
-    the test file, decision record, or artifact that closes them.
-- Two statements in 0008 were contradicted by 0016 and are gone: that
-    replication evidence remained blocked, and that OI-18 tracked it. The QA
-    suite asserts OI-18 is absent from the register, so the specification was
-    pointing at an issue that could not exist.
-- The seven open questions are answered in place from the contracts that
-    resolved them rather than deleted.
+- The leading hypothesis was falsified immediately: the token is elevated and
+    holds `SeSecurityPrivilege`, and the failure was not an exception. `Set()`
+    completed and `Test()` still reported drift, which is a convergence defect
+    rather than an access failure.
+- Root cause was isolated by reading the ACE header bytes from
+    `GetNamedSecurityInfoW` directly. The DACL ACE flag bytes are `0x10` for
+    `SECURITY_INFORMATION` `0x4` and `0x7`, and `0x00` for `0xF`, on one file at
+    one moment with the privilege held. Both editions see it.
+- The blast radius was wider than the test. Replaying an `All` capture wrote
+    inherited ACEs as explicit ACEs, so `Copy-NTFSItemSecurityDescriptor`,
+    `Backup-NTFSItemSecurityDescriptor`, and restore silently detached a target
+    from its parent ACL.
+- `Get-NTFSSecurityDescriptorForItem` now takes the DACL from a read that omits
+    the SACL and grafts the audited SACL on. Grafting marks only the audit
+    section modified, which was measured rather than assumed, so ADR 0003 stays
+    intact for `Access`-only and `Audit`-only work.
+- The scenario is now privilege gated per NFR-7 as well, because it genuinely
+    needs `SeSecurityPrivilege` in the token even though that was not the cause.
 
 ## Acceptance evidence
 
-- The QA specification suite passes 10 of 10, including the two checks that
-    govern this change: requirement identifiers are unique, and every identifier
-    in 0002 is traced in 0005.
-- No prose line added to the four files exceeds 80 characters, and
-    `Get-ChangelogData` still parses `CHANGELOG.md`.
-- The public command evidence table in 0005 was deliberately not extended.
-    Fifteen exported commands have no row, but the `Direct specs` count equals
-    neither the `It`, the `Context`, nor the `Describe` count of the command's
-    test file, so the column follows a curated rule from the original audit.
-    Filling it under a different rule would corrupt the column. Each of the
-    fifteen does have a dedicated test file.
+- All unit and integration suites pass 857 of 857 in PowerShell 7 with no
+    skips, and the previously failing scenario passes.
+- `Get-NTFSItemSecurityDescriptor.Tests.ps1` guards the invariant directly: the
+    DACL reported with `-Sections All` must equal the DACL reported with
+    `-Sections Access` for an inherited ACE. Measured pre-fix, those two differed.
+- Two wrappers disagreed during diagnosis. `icacls` printed no `(I)` for ACEs
+    that `Get-Acl` reported as inherited, which pointed at the wrong component
+    until the raw descriptor bytes settled it.
 
 ## Two findings worth keeping
 
@@ -76,21 +67,17 @@ implementation half, and it should be reopened only for a concrete
 - `WindowsAccessControlLab` has 13 machines across three forests. After a host
     reboot the machines must be started before the acceptance runs, and the
     member fixture reports not ready for a short time while its services start.
-- The full Sampler gate on this machine has one environmental failure,
-    `Should reconverge all NTFS descriptor sections together`, which also fails
-    on committed `4852a18` and on `7d1a9d4`. The certificate private-key unit
-    tests are flaky here for the same reason: they exercise the live key storage
-    provider.
+- A standalone Pester run must prepend `output/module` and
+    `output/RequiredModules` to `PSModulePath`. Without them, 36 DSC discovery
+    and Sampler-dependent tests fail for a reason none of them caused.
+- The certificate private-key unit tests remain flaky here because they
+    exercise the live key storage provider.
 
 ## Next step
 
-No specification is in `Draft` and no focused issue is open. Two candidates
-remain, both operational rather than contractual.
-
-1. Rerun the domain-lab coverage document so the merged whole-module number can
-    be reported with lab evidence again.
-2. Diagnose `Should reconverge all NTFS descriptor sections together`, which
-    fails on this host across commits and is tolerated without a written ruling.
+No specification is in `Draft` and no focused issue is open. One operational
+candidate remains: rerun the domain-lab coverage document so the merged
+whole-module number can be reported with lab evidence again.
 
 Every other candidate (SMB-6, AD-7, directory audit rules, directory
 inheritance and owner/group mutation, CAPI) is a written deferral and needs a

@@ -5,6 +5,14 @@
     Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
     $script:module = Get-Module -Name 'WindowsAccessControl'
 
+    # NFR-7: the audit section needs SeSecurityPrivilege in the token, so the
+    # scenario stays discovered and reports why it was skipped.
+    $script:auditSkipReason = $null
+    if (-not (@(Get-WindowsPrivilege).Name -contains 'SeSecurityPrivilege')) {
+        $script:auditSkipReason =
+            'The process token does not contain SeSecurityPrivilege, which the audit section requires.'
+    }
+
     function New-ExactDscResourceInstance {
         [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
             'PSUseShouldProcessForStateChangingFunctions',
@@ -61,6 +69,10 @@ Describe 'Exact security descriptor DSC resources' -Tag 'Integration', 'WindowsO
     }
 
     It 'Should reconverge all NTFS descriptor sections together' {
+        if ($script:auditSkipReason) {
+            Set-ItResult -Skipped -Because $script:auditSkipReason
+            return
+        }
         $path = Join-Path $TestDrive 'exact-dsc-all.txt'
         Set-Content -LiteralPath $path -Value 'test'
         $descriptor = Get-NTFSItemSecurityDescriptor `

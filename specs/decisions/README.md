@@ -36,6 +36,7 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0025 | [Fix the coverage measurement instead of the coverage threshold](0025-fix-coverage-measurement-not-threshold.md) | Accepted, asserted scope refined by 0027 |
 | 0026 | [Address private-key writes by key identity, not by certificate](0026-address-private-key-writes-by-key-identity.md) | Accepted |
 | 0027 | [Assert the coverage threshold over the executable scope](0027-assert-coverage-over-executable-scope.md) | Accepted |
+| 0028 | [Read the DACL without the SACL and graft the audited SACL](0028-read-the-dacl-without-the-sacl.md) | Accepted |
 
 ## See also
 

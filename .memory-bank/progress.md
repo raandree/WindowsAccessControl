@@ -22,6 +22,26 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-03: Fixed `Should reconverge all NTFS descriptor sections together`,
+    which had been tolerated as environmental without a written ruling. It was
+    neither environmental nor a privilege gate: the token is elevated and holds
+    `SeSecurityPrivilege`, and `Set()` completed without error while `Test()`
+    still reported drift. `GetNamedSecurityInfo` clears `INHERITED_ACE` on every
+    DACL ACE when the same call also requests the SACL, proved by reading the
+    ACE header bytes for `SECURITY_INFORMATION` `0x4`, `0x7`, and `0xF` on one
+    file at one moment with the privilege held. `-Sections All` therefore
+    captured inherited ACEs as explicit ones, replay wrote them as explicit
+    ACEs, Windows re-applied inheritance, and the descriptor could never
+    converge; copy, backup, and restore silently detached targets from their
+    parent ACL for the same reason. `Get-NTFSSecurityDescriptorForItem` now
+    takes the DACL from a read that omits the SACL and grafts the audited SACL
+    on, which was chosen after measuring that grafting marks only that section
+    modified. ADR 0028 records the ruling; the scenario is also privilege gated
+    per NFR-7. Evidence: 857 of 857 unit and integration tests pass in
+    PowerShell 7 with no skips, and a new invariant test asserts that the DACL
+    reported with `-Sections All` equals the DACL reported with
+    `-Sections Access` for an inherited ACE.
+
 - 2026-08-02: Accepted specification 0008, the last Draft in the index. It had
     blocked itself: acceptance required stable requirement identifiers and a
     roadmap-to-evidence mapping that did not exist. Specification 0002 gained

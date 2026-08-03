@@ -63,6 +63,39 @@ name. For a built module that means the package is the module version, so two
 runs of the same version merge cleanly from different absolute paths. Two runs
 of different versions silently produce disjoint packages instead.
 
+## Requesting the SACL changes the DACL that Windows returns
+
+`GetNamedSecurityInfo` clears `INHERITED_ACE` on every DACL ACE when the same
+call also requests `SACL_SECURITY_INFORMATION`. Measured on one file, at one
+moment, with `SeSecurityPrivilege` held: the DACL ACE flag bytes are `0x10` for
+`SECURITY_INFORMATION` `0x4` and `0x7`, and `0x00` for `0xF`. The difference is
+in the returned descriptor bytes, not in a serializer, because converting the
+`0xF` descriptor with DACL-only information reproduces the cleared flags. Both
+editions observe it, since both reach the same Win32 entry point.
+
+A combined `Get-Acl -Audit` therefore reports inherited ACEs as explicit.
+Replaying that SDDL writes them as explicit ACEs, Windows re-applies
+inheritance on the unprotected DACL, and the object ends up with both copies,
+so an exact descriptor never converges. Read the DACL without the SACL and
+graft the SACL onto that descriptor.
+
+The quirk only appears while the DACL has no `SE_DACL_AUTO_INHERITED` bit,
+which is the state of an object that has never been written to. Any
+`SetNamedSecurityInfo` write sets it, and the combined read is then correct.
+A regression test whose fixture adds an inheritable ACE to the parent first
+passes without the fix, because creating the child under a written parent sets
+the bit. Use a file that no descriptor write has touched, and assert something
+that proves the fixture still inherits so the comparison cannot go vacuous.
+
+Grafting through `SetSecurityDescriptorBinaryForm` marks the grafted section
+modified, and `SetAccessControl` then writes it, which was proved by making an
+out-of-band SACL change between the read and the persist and watching it
+disappear. Graft only a section the caller already selected.
+
+`icacls` did not print `(I)` for the same inherited ACEs, which pointed at the
+wrong component for a while. Two wrappers disagreeing is not evidence; go to
+`GetNamedSecurityInfoW` and read the ACE header bytes.
+
 ## Section-scoped ACL persistence
 
 `Set-Acl` requested `SeSecurityPrivilege` while re-enabling DACL inheritance in

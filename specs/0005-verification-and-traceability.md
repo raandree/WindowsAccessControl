@@ -350,7 +350,14 @@ before a directory write.
 `ExactSecurityDescriptorDscResources.Tests.ps1` reconverges disposable NTFS
 and HKCU DACLs, reconverges all NTFS sections including explicit absent-SACL
 state, then exercises named-service, SCM, and pinned-process exact query paths
-over real descriptors in both editions. Unit tests reject omitted selected
+over real descriptors in both editions. The all-section NTFS scenario is
+privilege gated per NFR-7 and reports an exact skip reason when the token has
+no `SeSecurityPrivilege`. It reconverges only because ADR 0028 takes the DACL
+from a read that omits the SACL;
+`Get-NTFSItemSecurityDescriptor.Tests.ps1` guards that invariant directly by
+asserting that the DACL reported with `-Sections All` equals the DACL reported
+with `-Sections Access` for an inherited ACE.
+Unit tests reject omitted selected
 owner, group, DACL, and SACL data and cover present/absent combined protection.
 Desktop-only LCM evidence compiles all five resources into one MOF and invokes
 the all-section NTFS resource through `Invoke-DscResource`. The fixture installs

@@ -13,23 +13,42 @@ function Get-NTFSSecurityDescriptorForItem {
         LiteralPath = $Item.FullName
         ErrorAction = 'Stop'
     }
-    if (($Sections -band [System.Security.AccessControl.AccessControlSections]::Audit) -ne 0) {
-        $getAclParameters.Audit = $true
-    }
     $readDescriptor = {
         param($parameters)
 
         Get-Acl @parameters
     }
-    $readArguments = ,$getAclParameters
-    if (($Sections -band [System.Security.AccessControl.AccessControlSections]::Audit) -ne 0) {
-        $privilegeParameters = @{
-            Name         = 'SeSecurityPrivilege'
-            ScriptBlock  = $readDescriptor
-            ArgumentList = $readArguments
-        }
-        Invoke-WithWindowsPrivilege @privilegeParameters
-    } else {
-        & $readDescriptor @readArguments
+    $auditSelected = ($Sections -band
+        [System.Security.AccessControl.AccessControlSections]::Audit) -ne 0
+    $accessSelected = ($Sections -band
+        [System.Security.AccessControl.AccessControlSections]::Access) -ne 0
+
+    if (-not $auditSelected) {
+        return (& $readDescriptor $getAclParameters)
     }
+
+    $auditParameters = $getAclParameters.Clone()
+    $auditParameters.Audit = $true
+    $privilegeParameters = @{
+        Name         = 'SeSecurityPrivilege'
+        ScriptBlock  = $readDescriptor
+        ArgumentList = ,$auditParameters
+    }
+    $auditSecurity = Invoke-WithWindowsPrivilege @privilegeParameters
+
+    if (-not $accessSelected) {
+        return $auditSecurity
+    }
+
+    # GetNamedSecurityInfo clears INHERITED_ACE on every DACL ACE when the SACL
+    # is requested, so a combined read reports inherited ACEs as explicit and
+    # replays them as explicit. Take the DACL from a read that omits the SACL
+    # and graft the audited SACL onto it. Grafting marks only the audit section
+    # modified, so a later persist writes the SACL the caller already selected.
+    $security = & $readDescriptor $getAclParameters
+    $security.SetSecurityDescriptorBinaryForm(
+        $auditSecurity.GetSecurityDescriptorBinaryForm(),
+        [System.Security.AccessControl.AccessControlSections]::Audit
+    )
+    $security
 }
