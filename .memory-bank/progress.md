@@ -33,8 +33,8 @@ Every numbered specification is Accepted; 0008 was the last Draft.
     `output/WindowsAccessControl.0.0.1.nupkg`; `-Tasks publish` resolves and
     skips both release tasks with no token set; both YAML documents parse; and
     `DomainLabCodeCoverage.Tests.ps1` passes 16 of 16. ADR is recorded as
-    systemPatterns Decision 75. The two repository secrets are not yet
-    configured, so no release has run end to end.
+    systemPatterns Decision 75. Merged to `main` as `004fc84` and confirmed
+    working by the user on the same day.
 
 - 2026-08-03: Fixed `Should reconverge all NTFS descriptor sections together`,
     which had been tolerated as environmental without a written ruling. It was

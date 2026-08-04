@@ -55,14 +55,21 @@ first instead.
     the jobs `build`, `test`, and `publish`.
 - `tests/Unit/Build/DomainLabCodeCoverage.Tests.ps1`, the only test that reads
     `build.yaml`, passes 16 of 16.
+- 2026-08-04: the change is merged to `main` as `004fc84`, pushed, and the user
+    confirmed the pipeline works. The work is closed.
 
-## Repository setup still required
+## Repository setup
 
 The `publish` job needs two repository secrets under Settings > Secrets and
-variables > Actions: `GitHubToken` and `GalleryApiToken`. Until both exist, the
-job fails on its verification step rather than publishing a partial release. The
+variables > Actions: `GitHubToken` and `GalleryApiToken`. Without both, the job
+fails on its verification step rather than publishing a partial release. The
 module manifest still has no `LicenseUri` and no `ProjectUri`; the Gallery
 accepts the package without them but shows no links.
+
+One detail was not reconciled: at the moment of confirmation
+`git ls-remote --tags origin` listed no `v*` tag, and the repository is private
+so the run could not be read from here. Confirm the tag, the GitHub release, and
+the Gallery version agree on the next release.
 
 ## Environment notes
 
@@ -82,10 +89,6 @@ accepts the package without them but shows no links.
     reported rather than asserted until the lab acceptance is rerun.
 
 ## Next step
-
-Add the two repository secrets, then let one `main` build publish a pre-release
-end to end and confirm that the tag, the GitHub release, and the Gallery version
-agree.
 
 No specification is in `Draft` and no focused issue is open. The remaining
 operational candidate is to rerun the domain-lab coverage document so the merged
