@@ -75,6 +75,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Remove any PowerShell 7 `$PSHOME\Modules` directory from the machine module
+    search path before the Windows PowerShell 5.1 test job runs. PowerShell 7
+    ships `Core`-only copies of the in-box `Microsoft.PowerShell.*` modules, and
+    when its module directory precedes the in-box one, Windows PowerShell
+    resolves those first and cannot load them. Every host that has to autoload
+    one then fails: `build.ps1` reports `Import-PowerShellDataFile` as
+    unrecognized, and the DSC engine reports that `Get-Acl` was found but its
+    module could not be loaded. The step is a no-op on a worker that does not
+    carry such an entry
 - Accept specification 0008. The enterprise roadmap is no longer a Draft: the
     acceptance conditions are recorded against the artifacts that satisfy them,
     the seven open questions are answered by the contracts that resolved them,
@@ -144,6 +153,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix two registry inheritance-source unit tests failing on Windows PowerShell
+    5.1. `Get-Acl -LiteralPath` cannot resolve a registry key there and returns
+    nothing, and `-bor` on two `AceFlags` values throws `InvalidCastException`
+    because that enum is backed by `Byte`. The tests now read the key with
+    `-Path` and build the ACE flags through `[int]` operands
 - Fix `-Sections All` reporting inherited NTFS access rules as explicit rules.
     `GetNamedSecurityInfo` clears `INHERITED_ACE` on every DACL entry when the
     SACL is requested in the same call, so a whole-descriptor capture recorded

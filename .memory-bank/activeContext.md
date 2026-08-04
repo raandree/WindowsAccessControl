@@ -9,55 +9,66 @@ source: current task evidence
 
 ## Current focus
 
-`Should reconverge all NTFS descriptor sections together` is fixed. It was not
-environmental and not a privilege gate. `GetNamedSecurityInfo` clears
-`INHERITED_ACE` on every DACL ACE when the same call also requests the SACL, so
-`-Sections All` reported inherited ACEs as explicit ones. ADR 0028 records the
-ruling and the fix.
+Two unit tests failed only on Windows PowerShell 5.1. Both were defects in the
+test file, not in the module, and both are fixed in
+`tests/Unit/Private/WindowsRegistryInheritanceSource.Tests.ps1`.
 
-## The failing test was a real defect
+## Why the suite was green on PowerShell 7 and red on 5.1
 
-- The leading hypothesis was falsified immediately: the token is elevated and
-    holds `SeSecurityPrivilege`, and the failure was not an exception. `Set()`
-    completed and `Test()` still reported drift, which is a convergence defect
-    rather than an access failure.
-- Root cause was isolated by reading the ACE header bytes from
-    `GetNamedSecurityInfoW` directly. The DACL ACE flag bytes are `0x10` for
-    `SECURITY_INFORMATION` `0x4` and `0x7`, and `0x00` for `0xF`, on one file at
-    one moment with the privilege held. Both editions see it.
-- The blast radius was wider than the test. Replaying an `All` capture wrote
-    inherited ACEs as explicit ACEs, so `Copy-NTFSItemSecurityDescriptor`,
-    `Backup-NTFSItemSecurityDescriptor`, and restore silently detached a target
-    from its parent ACL.
-- `Get-NTFSSecurityDescriptorForItem` now takes the DACL from a read that omits
-    the SACL and grafts the audited SACL on. Grafting marks only the audit
-    section modified, which was measured rather than assumed, so ADR 0003 stays
-    intact for `Access`-only and `Audit`-only work.
-- The scenario is now privilege gated per NFR-7 as well, because it genuinely
-    needs `SeSecurityPrivilege` in the token even though that was not the cause.
+- `Get-Acl -LiteralPath 'HKCU:\Control Panel'` fails on 5.1 with
+    `GetAcl_PathNotFound` and returns nothing, so
+    `.GetSecurityDescriptorBinaryForm()` reported "You cannot call a method on a
+    null-valued expression" one line later. The registry provider is what breaks;
+    `-Path` returns the descriptor on 5.1 and PowerShell 7 accepts both. The
+    module itself only passes `-LiteralPath` a filesystem path, which works in
+    both editions, so this never reached production code.
+- `[AceFlags]::Inherited -bor [AceFlags]::ContainerInherit` throws
+    `InvalidCastException` on 5.1. The discriminator is the underlying type, and
+    it was measured rather than assumed: `AceFlags` and `AceType` are `Byte`,
+    while `ControlFlags`, `AuditFlags`, `ObjectAceFlags`, `AceQualifier`,
+    `AccessControlSections`, `InheritanceFlags`, and `PropagationFlags` are
+    `Int32` and combine directly. Every other `AceFlags` mask in the repository
+    already used `[int]` operands or the string form.
 
 ## Acceptance evidence
 
-- All unit and integration suites pass 857 of 857 in PowerShell 7 with no
-    skips, and the previously failing scenario passes.
-- `Get-NTFSItemSecurityDescriptor.Tests.ps1` guards the invariant directly: the
-    DACL reported with `-Sections All` must equal the DACL reported with
-    `-Sections Access` for an inherited ACE. Measured pre-fix, those two differed.
-- Two wrappers disagreed during diagnosis. `icacls` printed no `(I)` for ACEs
-    that `Get-Acl` reported as inherited, which pointed at the wrong component
-    until the raw descriptor bytes settled it.
+- The Windows PowerShell 5.1 `-Tasks test` workflow now passes 1,448 of 1,448
+    with zero skips, and the merged coverage gate reports SUCCESS at 80.69
+    percent over the 7,678 commands this profile can execute.
+- The same run before the fixes passed 1,444 of 1,448. Two failures were the
+    test defects above; the other two were the host defect below.
+- The fixed file passes 17 of 17 in Windows PowerShell 5.1 and 17 of 17 in
+    PowerShell 7.
+- `Invoke-ScriptAnalyzer` over the changed test file is clean.
 
-## Two findings worth keeping
+## Two of the four 5.1 failures were this host, not the repository
 
-- The committed domain-lab document measures 4,720 lines the module built from
-    `main` does not have. It was produced against an earlier built module, so the
-    merged 90.34 percent verdict recorded when OI-27 closed does not currently
-    exist. The identity guard caught it, which is the behavior that decided the
-    document should be reported rather than depended on.
-- The `-f` format operator binds tighter than `+`, so
-    `'a {0}' + 'b {1}' -f $x, $y` silently leaves `{0}` unformatted. One such
-    message shipped into the failure branch and was found by forcing the branch
-    rather than by reading it.
+`ExactSecurityDescriptorDscLcm.Tests.ps1` fails its two `Invoke-DscResource`
+cases with "The 'Get-Acl' command was found in the module
+'Microsoft.PowerShell.Security', but the module could not be loaded". It
+reproduces with that file alone, so it is not test-order contamination. The
+same host also aborts `.\build.ps1` in the VS Code PowerShell Extension
+terminal with "The term 'Import-PowerShellDataFile' is not recognized".
+
+Both are one cause. The machine `PSModulePath` carries
+`c:\program files\powershell\7\Modules` ahead of
+`C:\Windows\system32\WindowsPowerShell\v1.0\Modules`, so Windows PowerShell 5.1
+resolves PowerShell 7's `Core`-only `Microsoft.PowerShell.Security` and
+`Microsoft.PowerShell.Utility` first and cannot load either. Only a host that
+must autoload them is affected, which is why `powershell.exe -File build.ps1`
+succeeds while the extension terminal and the DSC engine fail. Removing that
+one path entry was measured to fix both lookups. Nothing in the repository
+writes that variable, and PowerShell 7's installer does not add its own
+`$PSHOME\Modules` there.
+
+The Windows PowerShell 5.1 test job now repairs the machine variable itself
+before it runs, because a build worker has the rights to do so and the repair
+must be reproducible rather than a manual step on one developer host. It
+removes every `\PowerShell\<n>\Modules` entry, republishes the corrected value
+to later steps, and restarts `Winmgmt` so `Invoke-DscResource` sees it. It is a
+no-op on a worker that carries no such entry. This developer host was repaired
+the same way, and `ExactSecurityDescriptorDscLcm.Tests.ps1` then passed 3 of 3
+without any source change, which is the proof that the diagnosis was right.
 
 ## Environment notes
 
@@ -72,6 +83,9 @@ ruling and the fix.
     and Sampler-dependent tests fail for a reason none of them caused.
 - The certificate private-key unit tests remain flaky here because they
     exercise the live key storage provider.
+- The committed domain-lab coverage document still measures a module the current
+    `main` build does not produce, so the merged whole-module verdict is
+    reported rather than asserted until the lab acceptance is rerun.
 
 ## Next step
 

@@ -94,6 +94,36 @@ jobs:
           $ErrorActionPreference = 'Stop'
           ./build.ps1 -Tasks test
 
+      - name: Remove PowerShell 7 module directories from the machine module search path
+        if: matrix.edition == 'powershell-5.1'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          # PowerShell 7 ships Core-only copies of the in-box Microsoft.PowerShell.* modules.
+          # When its $PSHOME\Modules is on the machine search path, Windows PowerShell resolves
+          # those first and cannot load them, so every host that has to autoload one fails:
+          # build.ps1 loses Import-PowerShellDataFile and the DSC engine loses Get-Acl.
+          $coreModuleDirectory = '\\PowerShell\\\d+\\Modules\\?$'
+          $machinePath = [System.Environment]::GetEnvironmentVariable('PSModulePath', 'Machine')
+          $entries = $machinePath -split ';'
+
+          if (-not @($entries | Where-Object { $_ -match $coreModuleDirectory })) {
+              Write-Host 'The machine module search path carries no PowerShell 7 module directory.'
+              exit 0
+          }
+
+          $repairedPath = ($entries | Where-Object { $_ -notmatch $coreModuleDirectory }) -join ';'
+          [System.Environment]::SetEnvironmentVariable('PSModulePath', $repairedPath, 'Machine')
+          "PSModulePath=$repairedPath" |
+              Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+          # Invoke-DscResource runs in WmiPrvSE, which takes its environment from the WMI
+          # service, so that service has to restart before the DSC tests see the repair.
+          Restart-Service -Name 'Winmgmt' -Force
+
+          Write-Host "Repaired machine PSModulePath: $repairedPath"
+
       - name: Run Sampler tests with Windows PowerShell 5.1
         if: matrix.edition == 'powershell-5.1'
         shell: powershell

@@ -724,6 +724,48 @@ Every numbered specification is Accepted; 0008 was the last Draft.
     rather than a path mismatch, and 24 functions moved from no local coverage
     at all. 1,526 of those commands were covered only by the member-session
     relay. The threshold stayed at 80 and no test was added to reach it.
+- 2026-08-03: Fixed the two Windows PowerShell 5.1 unit-test failures. A full
+    Desktop `-Tasks test` run reproduced exactly two failures, both in
+    `tests/Unit/Private/WindowsRegistryInheritanceSource.Tests.ps1` and both in
+    the test file rather than the module. `Get-Acl -LiteralPath` cannot resolve a
+    registry key on 5.1 and returns nothing, so the failure surfaced one line
+    later as a null method call; `-Path` works in both editions and the module
+    only ever passes `-LiteralPath` a filesystem path. `-bor` on two `AceFlags`
+    values throws `InvalidCastException` on 5.1 because that enum is `Byte`
+    backed. The underlying types were measured rather than assumed: `AceFlags`
+    and `AceType` are `Byte`, and `ControlFlags`, `AuditFlags`, `ObjectAceFlags`,
+    `AceQualifier`, `AccessControlSections`, `InheritanceFlags`, and
+    `PropagationFlags` are `Int32`. A repository-wide sweep found no other raw
+    bitwise use of a `Byte`-backed enum in source or tests. The fixed file passes
+    17 of 17 in both editions and static analysis is clean.
+- 2026-08-03: Ruled the two remaining Windows PowerShell 5.1 failures
+    environmental. Both `Invoke-DscResource` cases in
+    `ExactSecurityDescriptorDscLcm.Tests.ps1` fail with "The 'Get-Acl' command
+    was found in the module 'Microsoft.PowerShell.Security', but the module could
+    not be loaded", and they reproduce with that file alone. The machine
+    `PSModulePath` on this host lists `c:\program files\powershell\7\Modules`
+    ahead of the in-box module directory, so 5.1 resolves PowerShell 7's
+    `Core`-only Security module and its `ObjectSecurity` type data collides with
+    the copy already loaded. A normal 5.1 session never autoloads that module, so
+    only the DSC host sees it. Nothing in the repository writes that variable,
+    and correcting it is a machine-wide change left to the user.
+- 2026-08-04: The same host defect also aborts `.\build.ps1` in the VS Code
+    PowerShell Extension terminal with "The term 'Import-PowerShellDataFile' is
+    not recognized", because that host does not preload
+    `Microsoft.PowerShell.Utility` either. Measured in a minimal 5.1 runspace:
+    the lookup fails with the PowerShell 7 module directory on the path and
+    succeeds without it. The Windows PowerShell 5.1 test job now repairs the
+    machine `PSModulePath` as a prep step, republishes the corrected value to
+    later steps, and restarts `Winmgmt` so the DSC engine sees it. The step is a
+    no-op on a worker that carries no `\PowerShell\<n>\Modules` entry.
+- 2026-08-04: The developer host was repaired the same way and the diagnosis
+    held with no source change. `ExactSecurityDescriptorDscLcm.Tests.ps1` passed
+    3 of 3, and the complete Windows PowerShell 5.1 `-Tasks test` workflow then
+    passed 1,448 of 1,448 with zero skips and a SUCCESS coverage verdict of
+    80.69 percent over the 7,678 commands the local profile can execute. The
+    whole-module number stays at 77.97 percent, reported only, because the
+    committed domain-lab document still measures 4,683 lines this build does not
+    have and the identity guard keeps refusing to merge it.
 
 ## Open work
 

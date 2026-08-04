@@ -197,6 +197,51 @@ several .NET ACL enum values that PowerShell 7 coerces. Convert operands to
 integers, perform the mask operation, and cast back to `AceFlags`,
 `AuditFlags`, or `ControlFlags` only when calling a typed API.
 
+Measured on 5.1, the discriminator is the underlying type, not the enum family:
+`AceFlags` and `AceType` are `Byte`, while `ControlFlags`, `AuditFlags`,
+`ObjectAceFlags`, `AceQualifier`, `AccessControlSections`, `InheritanceFlags`,
+and `PropagationFlags` are `Int32` and combine directly. Only a `Byte`-backed
+enum needs the `[int]` operands. The string form
+`[AceFlags]'ContainerInherit, InheritOnly'` is also safe.
+
+## Get-Acl cannot take -LiteralPath for a registry key on 5.1
+
+Windows PowerShell 5.1 `Get-Acl -LiteralPath 'HKCU:\Control Panel'` fails with
+`GetAcl_PathNotFound` and returns nothing, so the next member access reports
+"You cannot call a method on a null-valued expression" one line later.
+`-Path` returns the `RegistrySecurity` for the same key, and PowerShell 7
+accepts both. The filesystem commands are unaffected: `-LiteralPath` works
+there in both editions. Use `-Path` for a registry key, or read the key with
+`Get-Item` and call `GetAccessControl()`.
+
+## PowerShell 7 module paths in the machine PSModulePath break autoloading on 5.1
+
+If `C:\Program Files\PowerShell\7\Modules` is on the *machine* `PSModulePath`,
+Windows PowerShell 5.1 resolves the in-box `Microsoft.PowerShell.*` modules to
+PowerShell 7's `Core`-only copies first and cannot load them. Two symptoms,
+one cause:
+
+- `Microsoft.PowerShell.Security` fails with "The member Path is already
+    present" for `System.Security.AccessControl.ObjectSecurity`, and the caller
+    sees "The 'Get-Acl' command was found in the module
+    'Microsoft.PowerShell.Security', but the module could not be loaded."
+- `Microsoft.PowerShell.Utility` fails outright, and the caller sees "The term
+    'Import-PowerShellDataFile' is not recognized", which aborts `build.ps1`
+    while it imports the Sampler task modules.
+
+Only a host that has to *autoload* the module is affected. The standard 5.1
+console preloads both, so `powershell.exe -File build.ps1` succeeds while the
+same command fails in the VS Code PowerShell Extension terminal, whose session
+state does not preload them; `Invoke-DscResource` fails for the same reason.
+Measured: dropping that one path entry makes both resolve to the Desktop copy
+and succeed.
+
+PowerShell 7's installer adds `%ProgramFiles%\PowerShell\Modules`, not its own
+`$PSHOME\Modules`, so the entry is hand-added. Fix the machine variable; do
+not work around it in module or test code. `Invoke-DscResource` reads the
+machine environment through WmiPrvSE, so a process-level `PSModulePath` cannot
+mask it.
+
 ## Remote RegistryKey objects
 
 `RegistryKey.OpenRemoteBaseKey()` returns an object whose `Name` is

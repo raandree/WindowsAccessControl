@@ -74,7 +74,8 @@ Describe 'Get-WindowsRegistryKeyInheritanceSource' -Tag 'Unit', 'WindowsOnly' {
     It 'Should reject an unsupported object type in the native entry point' {
         InModuleScope WindowsAccessControl {
             Initialize-WindowsAccessControlNativeType
-            $descriptor = (Get-Acl -LiteralPath 'HKCU:\Control Panel').
+            # Windows PowerShell 5.1 Get-Acl cannot resolve -LiteralPath for a registry key.
+            $descriptor = (Get-Acl -Path 'HKCU:\Control Panel').
                 GetSecurityDescriptorBinaryForm()
 
             {
@@ -119,9 +120,13 @@ Describe 'ConvertTo-WindowsAclRuleObject' -Tag 'Unit', 'WindowsOnly' {    It 'Sh
 
     It 'Should report the inheritance source of an inherited rule' {
         InModuleScope WindowsAccessControl {
+            # Windows PowerShell 5.1 cannot -bor two byte-backed AceFlags values directly.
+            $aceFlags = [System.Security.AccessControl.AceFlags](
+                [int][System.Security.AccessControl.AceFlags]::Inherited -bor
+                [int][System.Security.AccessControl.AceFlags]::ContainerInherit
+            )
             $ace = [System.Security.AccessControl.CommonAce]::new(
-                [System.Security.AccessControl.AceFlags]::Inherited -bor
-                    [System.Security.AccessControl.AceFlags]::ContainerInherit,
+                $aceFlags,
                 [System.Security.AccessControl.AceQualifier]::AccessAllowed,
                 131097,
                 [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0'),
