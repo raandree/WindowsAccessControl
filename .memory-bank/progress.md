@@ -15,12 +15,26 @@ increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
 and fail-closed CNG private-key mutation are independently reviewed. OI-11,
 ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, and OI-28 are closed. The 80 percent
-coverage gate is met at 83.16 percent over the 7,671 commands the test profile
-can execute; ADR 0027 records the asserted scope and ADR 0025 keeps the
-threshold. OI-23 is the only remaining focused issue and is closed by decision.
+coverage gate is met at 90.52 percent over the 7,678 commands the test profile
+can execute, with current domain-lab evidence merged; ADR 0027 records the
+asserted scope and ADR 0025 keeps the threshold. OI-23 is the only remaining
+focused issue and is closed by decision.
 Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
+
+- 2026-08-04: Reran the domain-lab acceptance against the module built from
+    `ce4eea0`, which was the last recorded operational candidate. The document
+    committed on 2026-08-02 measured a build `main` no longer produces, so the
+    identity guard refused it and the whole-module number had no evidence. The
+    six-suite acceptance is green at 45 passed, 0 failed, 0 skipped, and the new
+    document measures 42.83 percent (3,403 of 7,945 commands). `-Tasks test`
+    then succeeds with 10 tasks and 0 errors, 1,495 local tests passed with no
+    failure or skip, `Domain-lab evidence merged: yes`, whole-module coverage
+    90.48 percent (7,189 of 7,945) reported, and the asserted scope 90.52
+    percent (6,950 of 7,678) over the 80 percent threshold. No repository file
+    changed: `tests/Lab/coverage/` is gitignored, so the document is a local
+    artifact the build imports.
 
 - 2026-08-04: The continuous integration pipeline now publishes the module. The
     Sampler `publish` workflow runs `Publish_Release_To_GitHub` before

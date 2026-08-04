@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-03
+last-verified: 2026-08-04
 owner: active-agent
 source: current task evidence
 ---
@@ -9,54 +9,50 @@ source: current task evidence
 
 ## Current focus
 
-The continuous integration pipeline now publishes the module. The `publish`
-workflow and the GitHub Actions `publish` job were adapted from the
-`CopilotAtelier` repository, which already runs the same Sampler release flow.
+The domain-lab coverage document is current again, so the merged whole-module
+coverage number is measured evidence rather than a remembered figure. This was
+the last operational candidate recorded after the publish pipeline closed.
 
 ## What changed
 
-- `build.yaml` gained `Publish_Release_To_GitHub` in front of
-    `Publish_Module_To_Gallery`, and a `GitHubConfig` section with
-    `GitHubFilesToAdd: CHANGELOG.md`, the commit identity, and
-    `UpdateChangelogOnPrerelease: false`.
-- The build job runs `-Tasks pack` rather than `-Tasks build`, because
-    `Publish_Release_To_GitHub` attaches `output/<ProjectName>.<version>.nupkg`
-    to the release and only `package_module_nupkg` produces it.
-- The workflow gained a `publish` job that needs `build` and `test`, verifies
-    both release secrets, runs `-Tasks publish`, and then runs
-    `Create_ChangeLog_GitHub_PR`.
-- Push triggers gained the stable `v*` tags and exclude `v*-*`, so a pre-release
-    tag the release task creates itself cannot start another build.
-    `paths-ignore: CHANGELOG.md` stops the changelog pull request from doing the
-    same.
-- A release run is no longer cancelled by a newer one, so nothing can stop
-    between the GitHub release and the Gallery publish.
+No repository file changed. The run refreshed the local, gitignored artifact
+`tests/Lab/coverage/JaCoCo_coverage_DomainLab.xml`, which the build imports.
 
-## Why both secrets are required
-
-Both Sampler release tasks carry an `-if` on their own token and skip silently
-when it is empty. A missing `GitHubToken` alone would therefore still publish to
-the Gallery, but without the `v*` tag GitVersion anchors the next pre-release
-number on. The next build would recompute an already-published version and the
-Gallery would reject it with HTTP 409. The `Verify release secrets` step fails
-first instead.
+The stale document had been measured on 2026-08-02 against a module the current
+`main` no longer produces: it covered a 6,916-command profile with line numbers
+up to 26545, while the module built from `ce4eea0` has 27,413 lines.
+`Assert-JaCoCoDocumentIdentity` therefore refused it, and the build fell back to
+the empty "absent" document and reported the domain-lab-only files instead of
+asserting them.
 
 ## Acceptance evidence
 
-- `./build.ps1 -Tasks pack` succeeds: 9 tasks, 0 errors, 0 warnings, and it
-    writes `output/WindowsAccessControl.0.0.1.nupkg`, which is the exact asset
-    name `Publish_Release_To_GitHub` looks for.
-- `./build.ps1 -Tasks publish` resolves both task names and reports
-    `/publish/Publish_Release_To_GitHub skipped` and
-    `/publish/Publish_Module_To_Gallery skipped` with no token set, exit code 0.
-    That is the proof that the renamed task references bind, since Invoke-Build
-    matches task names case-insensitively.
-- Both YAML documents parse with `powershell-yaml`, and the workflow resolves to
-    the jobs `build`, `test`, and `publish`.
-- `tests/Unit/Build/DomainLabCodeCoverage.Tests.ps1`, the only test that reads
-    `build.yaml`, passes 16 of 16.
-- 2026-08-04: the change is merged to `main` as `004fc84`, pushed, and the user
-    confirmed the pipeline works. The work is closed.
+- All 13 `WindowsAccessControlLab` machines were Running; the host session was
+    elevated on PowerShell 7.6.3; the working tree was clean at `ce4eea0`.
+- `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` is green: 6 suites,
+    45 passed, 0 failed, 0 skipped, `Result = Passed`, 19:26:03Z to 19:41:48Z.
+    Per suite: DomainLab 4, CertificatePrivateKey 7, TaskScheduler 8, SmbShare
+    7, ADObjectPermissions 12, ADObjectReplication 7. Every suite reported
+    `Ready = True` on both the domain and the member boundary.
+- The new document measures 42.83 percent (3,403 of 7,945 commands), of which
+    1,699 are member-only.
+- `./build.ps1 -Tasks test` succeeds: 10 tasks, 0 errors, 0 warnings. Local
+    Pester is 1,495 passed, 0 failed, 0 skipped, 0 inconclusive, 0 not run.
+- `Import_DomainLab_Code_Coverage` accepted the document rather than falling
+    back, and `Assert_Merged_Code_Coverage_Threshold` reports
+    `Domain-lab evidence merged: yes`.
+- Whole-module coverage is 90.48 percent (7,189 of 7,945 commands), reported.
+    The asserted scope is 90.52 percent (6,950 of 7,678 commands the local test
+    profile can execute) against the 80 percent threshold, per ADR 0025 and
+    ADR 0027.
+
+## Why no rebuild was inserted
+
+The lab document and the local run must measure the identical merged `.psm1`,
+or the identity guard refuses the merge. The built module at `0.0.1` already
+matched `ce4eea0` (the last two commits touched only `build.yaml`, the workflow,
+and documentation), and the `test` workflow does not rebuild, so both runs
+measured the same file without a rebuild between them.
 
 ## Repository setup
 
@@ -90,9 +86,10 @@ the Gallery version agree on the next release.
 
 ## Next step
 
-No specification is in `Draft` and no focused issue is open. The remaining
-operational candidate is to rerun the domain-lab coverage document so the merged
-whole-module number can be reported with lab evidence again.
+No specification is in `Draft`, no focused issue is open, and no operational
+candidate remains. Rerun the lab acceptance whenever a source change moves the
+merged `.psm1`, because the identity guard then refuses the previous document
+and the whole-module number silently degrades to reported-only.
 
 Every other candidate (SMB-6, AD-7, directory audit rules, directory
 inheritance and owner/group mutation, CAPI) is a written deferral and needs a
