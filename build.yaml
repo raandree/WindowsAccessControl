@@ -76,9 +76,8 @@ BuildWorkflow:
     - Assert_Merged_Code_Coverage_Threshold
 
   publish:
-
-
-    - publish_module_to_gallery
+    - Publish_Release_To_GitHub
+    - Publish_Module_To_Gallery
 
 ####################################################
 #       PESTER  Configuration                      #
@@ -169,3 +168,17 @@ TaskHeader: |
   Write-Build DarkGray "  $Path"
   Write-Build DarkGray "  $($Task.InvocationInfo.ScriptName):$($Task.InvocationInfo.ScriptLineNumber)"
   ""
+
+####################################################
+#                 GitHub Release                   #
+####################################################
+
+# Read by Publish_Release_To_GitHub and Create_ChangeLog_GitHub_PR.
+# UpdateChangelogOnPrerelease is false so only a stable release moves the
+# Unreleased section of CHANGELOG.md into a released section.
+GitHubConfig:
+  GitHubFilesToAdd:
+    - CHANGELOG.md
+  GitHubConfigUserName: raandree
+  GitHubConfigUserEmail: raandree@users.noreply.github.com
+  UpdateChangelogOnPrerelease: false

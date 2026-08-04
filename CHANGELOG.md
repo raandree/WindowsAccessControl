@@ -75,6 +75,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Publish the module from the continuous integration pipeline. A build of the
+    default branch, or of a stable `v*` tag, now packages the module, creates the
+    GitHub release with the NuGet package attached, publishes to the PowerShell
+    Gallery, and raises the changelog pull request. The publish job requires both
+    the `GitHubToken` and the `GalleryApiToken` repository secret and fails when
+    either is missing, because a skipped GitHub release combined with a
+    successful Gallery publish ships a version without the tag the next version
+    calculation depends on. It runs only on the upstream repository, so a fork
+    and a pull request never reach the Gallery, and a release run is never
+    cancelled by a newer one
 - Remove any PowerShell 7 `$PSHOME\Modules` directory from the machine module
     search path before the Windows PowerShell 5.1 test job runs. PowerShell 7
     ships `Core`-only copies of the in-box `Microsoft.PowerShell.*` modules, and

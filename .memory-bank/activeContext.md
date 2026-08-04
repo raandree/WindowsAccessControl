@@ -9,66 +9,60 @@ source: current task evidence
 
 ## Current focus
 
-Two unit tests failed only on Windows PowerShell 5.1. Both were defects in the
-test file, not in the module, and both are fixed in
-`tests/Unit/Private/WindowsRegistryInheritanceSource.Tests.ps1`.
+The continuous integration pipeline now publishes the module. The `publish`
+workflow and the GitHub Actions `publish` job were adapted from the
+`CopilotAtelier` repository, which already runs the same Sampler release flow.
 
-## Why the suite was green on PowerShell 7 and red on 5.1
+## What changed
 
-- `Get-Acl -LiteralPath 'HKCU:\Control Panel'` fails on 5.1 with
-    `GetAcl_PathNotFound` and returns nothing, so
-    `.GetSecurityDescriptorBinaryForm()` reported "You cannot call a method on a
-    null-valued expression" one line later. The registry provider is what breaks;
-    `-Path` returns the descriptor on 5.1 and PowerShell 7 accepts both. The
-    module itself only passes `-LiteralPath` a filesystem path, which works in
-    both editions, so this never reached production code.
-- `[AceFlags]::Inherited -bor [AceFlags]::ContainerInherit` throws
-    `InvalidCastException` on 5.1. The discriminator is the underlying type, and
-    it was measured rather than assumed: `AceFlags` and `AceType` are `Byte`,
-    while `ControlFlags`, `AuditFlags`, `ObjectAceFlags`, `AceQualifier`,
-    `AccessControlSections`, `InheritanceFlags`, and `PropagationFlags` are
-    `Int32` and combine directly. Every other `AceFlags` mask in the repository
-    already used `[int]` operands or the string form.
+- `build.yaml` gained `Publish_Release_To_GitHub` in front of
+    `Publish_Module_To_Gallery`, and a `GitHubConfig` section with
+    `GitHubFilesToAdd: CHANGELOG.md`, the commit identity, and
+    `UpdateChangelogOnPrerelease: false`.
+- The build job runs `-Tasks pack` rather than `-Tasks build`, because
+    `Publish_Release_To_GitHub` attaches `output/<ProjectName>.<version>.nupkg`
+    to the release and only `package_module_nupkg` produces it.
+- The workflow gained a `publish` job that needs `build` and `test`, verifies
+    both release secrets, runs `-Tasks publish`, and then runs
+    `Create_ChangeLog_GitHub_PR`.
+- Push triggers gained the stable `v*` tags and exclude `v*-*`, so a pre-release
+    tag the release task creates itself cannot start another build.
+    `paths-ignore: CHANGELOG.md` stops the changelog pull request from doing the
+    same.
+- A release run is no longer cancelled by a newer one, so nothing can stop
+    between the GitHub release and the Gallery publish.
+
+## Why both secrets are required
+
+Both Sampler release tasks carry an `-if` on their own token and skip silently
+when it is empty. A missing `GitHubToken` alone would therefore still publish to
+the Gallery, but without the `v*` tag GitVersion anchors the next pre-release
+number on. The next build would recompute an already-published version and the
+Gallery would reject it with HTTP 409. The `Verify release secrets` step fails
+first instead.
 
 ## Acceptance evidence
 
-- The Windows PowerShell 5.1 `-Tasks test` workflow now passes 1,448 of 1,448
-    with zero skips, and the merged coverage gate reports SUCCESS at 80.69
-    percent over the 7,678 commands this profile can execute.
-- The same run before the fixes passed 1,444 of 1,448. Two failures were the
-    test defects above; the other two were the host defect below.
-- The fixed file passes 17 of 17 in Windows PowerShell 5.1 and 17 of 17 in
-    PowerShell 7.
-- `Invoke-ScriptAnalyzer` over the changed test file is clean.
+- `./build.ps1 -Tasks pack` succeeds: 9 tasks, 0 errors, 0 warnings, and it
+    writes `output/WindowsAccessControl.0.0.1.nupkg`, which is the exact asset
+    name `Publish_Release_To_GitHub` looks for.
+- `./build.ps1 -Tasks publish` resolves both task names and reports
+    `/publish/Publish_Release_To_GitHub skipped` and
+    `/publish/Publish_Module_To_Gallery skipped` with no token set, exit code 0.
+    That is the proof that the renamed task references bind, since Invoke-Build
+    matches task names case-insensitively.
+- Both YAML documents parse with `powershell-yaml`, and the workflow resolves to
+    the jobs `build`, `test`, and `publish`.
+- `tests/Unit/Build/DomainLabCodeCoverage.Tests.ps1`, the only test that reads
+    `build.yaml`, passes 16 of 16.
 
-## Two of the four 5.1 failures were this host, not the repository
+## Repository setup still required
 
-`ExactSecurityDescriptorDscLcm.Tests.ps1` fails its two `Invoke-DscResource`
-cases with "The 'Get-Acl' command was found in the module
-'Microsoft.PowerShell.Security', but the module could not be loaded". It
-reproduces with that file alone, so it is not test-order contamination. The
-same host also aborts `.\build.ps1` in the VS Code PowerShell Extension
-terminal with "The term 'Import-PowerShellDataFile' is not recognized".
-
-Both are one cause. The machine `PSModulePath` carries
-`c:\program files\powershell\7\Modules` ahead of
-`C:\Windows\system32\WindowsPowerShell\v1.0\Modules`, so Windows PowerShell 5.1
-resolves PowerShell 7's `Core`-only `Microsoft.PowerShell.Security` and
-`Microsoft.PowerShell.Utility` first and cannot load either. Only a host that
-must autoload them is affected, which is why `powershell.exe -File build.ps1`
-succeeds while the extension terminal and the DSC engine fail. Removing that
-one path entry was measured to fix both lookups. Nothing in the repository
-writes that variable, and PowerShell 7's installer does not add its own
-`$PSHOME\Modules` there.
-
-The Windows PowerShell 5.1 test job now repairs the machine variable itself
-before it runs, because a build worker has the rights to do so and the repair
-must be reproducible rather than a manual step on one developer host. It
-removes every `\PowerShell\<n>\Modules` entry, republishes the corrected value
-to later steps, and restarts `Winmgmt` so `Invoke-DscResource` sees it. It is a
-no-op on a worker that carries no such entry. This developer host was repaired
-the same way, and `ExactSecurityDescriptorDscLcm.Tests.ps1` then passed 3 of 3
-without any source change, which is the proof that the diagnosis was right.
+The `publish` job needs two repository secrets under Settings > Secrets and
+variables > Actions: `GitHubToken` and `GalleryApiToken`. Until both exist, the
+job fails on its verification step rather than publishing a partial release. The
+module manifest still has no `LicenseUri` and no `ProjectUri`; the Gallery
+accepts the package without them but shows no links.
 
 ## Environment notes
 
@@ -89,8 +83,12 @@ without any source change, which is the proof that the diagnosis was right.
 
 ## Next step
 
-No specification is in `Draft` and no focused issue is open. One operational
-candidate remains: rerun the domain-lab coverage document so the merged
+Add the two repository secrets, then let one `main` build publish a pre-release
+end to end and confirm that the tag, the GitHub release, and the Gallery version
+agree.
+
+No specification is in `Draft` and no focused issue is open. The remaining
+operational candidate is to rerun the domain-lab coverage document so the merged
 whole-module number can be reported with lab evidence again.
 
 Every other candidate (SMB-6, AD-7, directory audit rules, directory

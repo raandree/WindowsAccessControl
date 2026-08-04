@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-29
+last-verified: 2026-08-04
 owner: active-agent
 source: repository evidence
 ---
@@ -910,3 +910,17 @@ and Decision 42.
     plain DACL over a conditional one was a silent no-op, write verification
     accepted a stored DACL of a different ACE type, and rollback verification
     accepted a restored DACL of a different ACE type.
+
+### Decision 75: Tag the GitHub release before the Gallery publish
+
+- Choice: The `publish` workflow runs `Publish_Release_To_GitHub` first and
+    `Publish_Module_To_Gallery` second, and the pipeline fails before either
+    when the `GitHubToken` or the `GalleryApiToken` secret is missing. The job
+    runs only on the upstream repository, only for the default branch or a
+    stable `v*` tag, and is never cancelled by a newer run.
+- Rationale: Both Sampler release tasks skip themselves on an empty token, so a
+    missing `GitHubToken` alone would still ship a version to the Gallery
+    without the `v*` tag GitVersion anchors the next pre-release number on. The
+    following build would then recompute an already-published version and the
+    Gallery would reject it with HTTP 409. Failing on the missing secret, and
+    creating the tag before the package leaves, keeps the two in step.

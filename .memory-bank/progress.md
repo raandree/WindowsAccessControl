@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-02
+last-verified: 2026-08-04
 owner: active-agent
 source: repository evidence
 ---
@@ -21,6 +21,20 @@ threshold. OI-23 is the only remaining focused issue and is closed by decision.
 Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
+
+- 2026-08-04: The continuous integration pipeline now publishes the module. The
+    Sampler `publish` workflow runs `Publish_Release_To_GitHub` before
+    `Publish_Module_To_Gallery`, `build.yaml` carries the `GitHubConfig` section
+    those tasks read, and the GitHub Actions workflow gained a `publish` job that
+    verifies both release secrets, publishes, and raises the changelog pull
+    request. The build job packages the module so the release asset exists. The
+    flow was adapted from the `CopilotAtelier` repository. Evidence:
+    `-Tasks pack` succeeds with 9 tasks and 0 errors and writes
+    `output/WindowsAccessControl.0.0.1.nupkg`; `-Tasks publish` resolves and
+    skips both release tasks with no token set; both YAML documents parse; and
+    `DomainLabCodeCoverage.Tests.ps1` passes 16 of 16. ADR is recorded as
+    systemPatterns Decision 75. The two repository secrets are not yet
+    configured, so no release has run end to end.
 
 - 2026-08-03: Fixed `Should reconverge all NTFS descriptor sections together`,
     which had been tolerated as environmental without a written ruling. It was

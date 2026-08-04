@@ -5,6 +5,16 @@ on:
   push:
     branches:
       - main
+    tags:
+      # A stable release is published from its own tag. Pre-release tags are
+      # excluded because Publish_Release_To_GitHub creates them itself on a main
+      # build, and re-running the same version would be rejected by the Gallery.
+      - 'v*'
+      - '!v*-*'
+    paths-ignore:
+      # The changelog pull request that the publish job raises must not start
+      # another release build.
+      - CHANGELOG.md
   pull_request:
     branches:
       - main
@@ -13,9 +23,15 @@ on:
 permissions:
   contents: read
 
+env:
+  defaultBranch: main
+
 concurrency:
   group: build-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A release run is never cancelled. Cancelling between the GitHub release and
+  # the Gallery publish would leave the two out of step.
+  cancel-in-progress: >-
+    ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
   build:
@@ -44,13 +60,13 @@ jobs:
           "module-version=$moduleVersion" |
               Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-      - name: Resolve dependencies and build module
+      - name: Resolve dependencies and package module
         shell: pwsh
         env:
           ModuleVersion: ${{ steps.calculate-version.outputs.module-version }}
         run: |
           $ErrorActionPreference = 'Stop'
-          ./build.ps1 -ResolveDependency -Tasks build
+          ./build.ps1 -ResolveDependency -Tasks pack
 
       - name: Upload Sampler output
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -144,3 +160,71 @@ jobs:
             output/testResults/JaCoCo_merged.xml
           if-no-files-found: warn
           retention-days: 7
+
+  publish:
+    name: Publish module ${{ needs.build.outputs.module-version }}
+    needs: [build, test]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    # Publish only from the upstream repository, and only for the default branch
+    # or a version tag. A fork or a pull request never reaches the Gallery.
+    if: >-
+      github.repository_owner == 'raandree' &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out full repository history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Sampler output
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: sampler-output
+          path: output
+
+      # Both Sampler release tasks skip themselves when their token is empty, and
+      # a skipped Publish_Release_To_GitHub still lets the Gallery publish run.
+      # That ships a version without the v* tag GitVersion anchors the next
+      # pre-release number on, so the next build recomputes the published version
+      # and the Gallery rejects it with HTTP 409. Fail here instead.
+      - name: Verify release secrets
+        shell: pwsh
+        env:
+          GitHubToken: ${{ secrets.GitHubToken }}
+          GalleryApiToken: ${{ secrets.GalleryApiToken }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $missingSecret = @('GitHubToken', 'GalleryApiToken') |
+              Where-Object -FilterScript { -not [System.Environment]::GetEnvironmentVariable($_) }
+
+          if ($missingSecret) {
+              throw ("Missing repository secret: {0}. Add it under Settings > Secrets and variables > Actions." -f ($missingSecret -join ', '))
+          }
+
+      - name: Publish release to GitHub and the PowerShell Gallery
+        shell: pwsh
+        env:
+          GitHubToken: ${{ secrets.GitHubToken }}
+          GalleryApiToken: ${{ secrets.GalleryApiToken }}
+          ModuleVersion: ${{ needs.build.outputs.module-version }}
+          ReleaseBranch: ${{ env.defaultBranch }}
+          MainGitBranch: ${{ env.defaultBranch }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./build.ps1 -Tasks publish
+
+      - name: Send changelog pull request
+        shell: pwsh
+        env:
+          GitHubToken: ${{ secrets.GitHubToken }}
+          ModuleVersion: ${{ needs.build.outputs.module-version }}
+          ReleaseBranch: ${{ env.defaultBranch }}
+          MainGitBranch: ${{ env.defaultBranch }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./build.ps1 -Tasks Create_ChangeLog_GitHub_PR
