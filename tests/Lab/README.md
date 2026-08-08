@@ -58,28 +58,30 @@ without which an existing assertion fails.
 | `F1ADC2` | `a.forest1.net` | `DC` | Replication, convergence, controller switch, and pinned-controller outage |
 | `F1AFile1` | `a.forest1.net` | `FileServer` | Member fixtures: SMB share, Task Scheduler folder, and the private key |
 | `F1AFile2` | `a.forest1.net` | `FileServer`, `WebServer` | Reserved |
-| `F1BDC1` | `b.forest1.net` | `FirstChildDC` | Reserved |
+| `F1BDC1` | `b.forest1.net` | `FirstChildDC` | Cross-domain principal for the foreign-principal suite |
 | `F1BFile1` | `b.forest1.net` | `FileServer` | Reserved |
-| `F2DC1` | `forest2.net` | `RootDC` | Reserved |
+| `F2DC1` | `forest2.net` | `RootDC` | Cross-forest principal for the foreign-principal suite |
 | `F2File1` | `forest2.net` | `FileServer` | Reserved |
 | `F3DC1` | `forest3.net` | `RootDC` | Reserved |
 | `F3File1` | `forest3.net` | `FileServer` | Reserved |
 
 Reserved machines are deployed but not referenced by a suite today. `F1DC2`
 and `F1AFile2` are additions beyond the baseline; the rest come from the sample
-itself. They carry the cross-domain and cross-forest identity surface that the
-Active Directory family will need, and they are the reason the multi-forest
-sample was chosen as the baseline rather than a single-domain one.
+itself. `F1BDC1` and `F2DC1` are no longer reserved:
+`ForeignPrincipalPermissions.Live.Tests.ps1` takes one principal from each, so
+a cross-domain and a cross-forest security identifier are written and read for
+real. That identity surface is why the multi-forest sample was chosen as the
+baseline rather than a single-domain one.
 
 ## Files
 
 | File | Purpose |
 | --- | --- |
 | [Deploy-WindowsAccessControlLab.ps1](Deploy-WindowsAccessControlLab.ps1) | Defines and installs the lab, and removes a predecessor lab, its orphaned virtual switch, and stale host-file entries first. |
-| [Invoke-WindowsAccessControlLabAcceptance.ps1](Invoke-WindowsAccessControlLabAcceptance.ps1) | Copies the current build and the suites into the management domain controller, runs the unattended profile there, and carries the redacted evidence and the coverage document back to the host. |
+| [Invoke-WindowsAccessControlLabAcceptance.ps1](Invoke-WindowsAccessControlLabAcceptance.ps1) | Copies the current build and the suites into the management domain controller, runs one unattended profile per PowerShell edition there, and carries the redacted evidence and the coverage document back to the host. |
 | [Start-WindowsAccessControlDomainLabAcceptance.ps1](Start-WindowsAccessControlDomainLabAcceptance.ps1) | Starts the profile in a child console process inside the lab, because a session runspace allows far fewer nested script frames than a console host. |
 | [WindowsAccessControl.DomainLab.psm1](WindowsAccessControl.DomainLab.psm1) | Test-only harness: fixture plan, setup, status, teardown, coverage arming, and the unattended acceptance profile. |
-| `*.Live.Tests.ps1` | The six acceptance suites. |
+| `*.Live.Tests.ps1` | The seven acceptance suites. |
 | `coverage/` | The JaCoCo document the acceptance carries back. The build merges it into the reported coverage when it measures the current build; see decisions 0025 and 0027. |
 
 ## Run the lab
@@ -108,6 +110,13 @@ Build the module, then run the acceptance from the host:
 .\build.ps1 -Tasks build
 .\tests\Lab\Invoke-WindowsAccessControlLabAcceptance.ps1
 ```
+
+That runs one complete pass per supported PowerShell edition against the same
+fixture set. Only the pass named by `-CoverageEdition` arms code coverage:
+instrumentation is what makes a pass slow, and the second pass reaches no line
+the first cannot. Measured on 2026-08-08, the instrumented Windows PowerShell
+pass took 22 minutes and the uninstrumented PowerShell 7 pass 5 minutes. Run a
+single edition with `-PowerShellEdition Core`.
 
 Remove the lab:
 

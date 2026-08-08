@@ -15,13 +15,40 @@ increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
 and fail-closed CNG private-key mutation are independently reviewed. OI-11,
 ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, and OI-28 are closed. The 80 percent
-coverage gate is met at 90.52 percent over the 7,678 commands the test profile
+coverage gate is met at 90.54 percent over the 7,678 commands the test profile
 can execute, with current domain-lab evidence merged; ADR 0027 records the
-asserted scope and ADR 0025 keeps the threshold. OI-23 is the only remaining
-focused issue and is closed by decision.
+asserted scope and ADR 0025 keeps the threshold. The domain-lab acceptance runs
+in both supported PowerShell editions over seven suites. OI-23 is the only
+remaining focused issue and is closed by decision.
 Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
+
+- 2026-08-08: Closed the two largest gaps between what the lab deploys and what
+    it asserts. The acceptance runner started only Windows PowerShell, so the six
+    enterprise suites had no PowerShell 7 live evidence even though the
+    deployment installs it on every machine; it now takes `-PowerShellEdition`
+    and runs one complete pass per edition, with `-CoverageEdition` arming
+    instrumentation in exactly one pass. A seventh suite,
+    `ForeignPrincipalPermissions.Live.Tests.ps1`, writes and reads an access
+    control entry for a principal from another domain in the forest, from a
+    trusted forest, and for a security identifier no lookup can resolve; every
+    other suite had used one principal from the fixture domain. The enterprise
+    DSC resources gained engine-level evidence: a compile test for all ten and a
+    discovery assertion against the manifest export list, where before they were
+    only converged by direct class instantiation. Evidence: both editions green
+    at 7 suites, 50 passed, 0 failed, 0 skipped, every suite `Ready = True`;
+    `-Tasks test` 10 tasks, 0 errors, 1,495 passed, 0 failed, 0 skipped;
+    domain-lab coverage 43.07 percent merged; whole-module 90.51 percent
+    reported and asserted scope 90.54 percent over the 80 percent threshold.
+
+- 2026-08-08: Found and fixed a host regression that had silently turned the DSC
+    engine tests red. `Invoke-DscResource` failed for every resource that reads
+    an access control list because the machine-level `PSModulePath` contained
+    three PowerShell 7 entries, so the `SYSTEM` provider host loaded PowerShell
+    7's `Microsoft.PowerShell.Security` and refused it as duplicate type data. A
+    `SYSTEM` scheduled-task probe proved it in one step. Clearing the DSC cache
+    does not help. Recorded in `debugging-insights.md`.
 
 - 2026-08-04: Reran the domain-lab acceptance against the module built from
     `ce4eea0`, which was the last recorded operational candidate. The document

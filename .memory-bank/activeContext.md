@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-04
+last-verified: 2026-08-08
 owner: active-agent
 source: current task evidence
 ---
@@ -9,88 +9,76 @@ source: current task evidence
 
 ## Current focus
 
-The domain-lab coverage document is current again, so the merged whole-module
-coverage number is measured evidence rather than a remembered figure. This was
-the last operational candidate recorded after the publish pipeline closed.
+The domain-lab acceptance now runs in both supported PowerShell editions and
+covers a seventh suite for foreign and orphaned principals. Before this, every
+enterprise claim rested on one Windows PowerShell pass using one principal from
+the fixture domain.
 
 ## What changed
 
-No repository file changed. The run refreshed the local, gitignored artifact
-`tests/Lab/coverage/JaCoCo_coverage_DomainLab.xml`, which the build imports.
-
-The stale document had been measured on 2026-08-02 against a module the current
-`main` no longer produces: it covered a 6,916-command profile with line numbers
-up to 26545, while the module built from `ce4eea0` has 27,413 lines.
-`Assert-JaCoCoDocumentIdentity` therefore refused it, and the build fell back to
-the empty "absent" document and reported the domain-lab-only files instead of
-asserting them.
+- `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` takes
+    `-PowerShellEdition` and `-CoverageEdition`. It runs one complete pass per
+    edition against the same fixture set, writes one evidence file per pass, and
+    carries every artifact back before it fails the run. Only one pass arms
+    coverage: instrumentation is the cost, and the second pass reaches no line
+    the first cannot.
+- `tests/Lab/ForeignPrincipalPermissions.Live.Tests.ps1` is new. It writes and
+    reads an access control entry for a principal from another domain in the
+    forest, from a trusted forest, and for a security identifier no lookup can
+    resolve, across the share, task-folder, directory-object, and private-key
+    families.
+- `tests/Integration/ExactSecurityDescriptorDscLcm.Tests.ps1` gained a compile
+    test for all ten enterprise resources and a discovery test asserting that
+    `Get-DscResource` advertises every resource the manifest exports. The five
+    enterprise pairs had only ever been converged by direct class instantiation.
 
 ## Acceptance evidence
 
-- All 13 `WindowsAccessControlLab` machines were Running; the host session was
-    elevated on PowerShell 7.6.3; the working tree was clean at `ce4eea0`.
-- `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` is green: 6 suites,
-    45 passed, 0 failed, 0 skipped, `Result = Passed`, 19:26:03Z to 19:41:48Z.
-    Per suite: DomainLab 4, CertificatePrivateKey 7, TaskScheduler 8, SmbShare
-    7, ADObjectPermissions 12, ADObjectReplication 7. Every suite reported
-    `Ready = True` on both the domain and the member boundary.
-- The new document measures 42.83 percent (3,403 of 7,945 commands), of which
-    1,699 are member-only.
+- Two-edition lab acceptance green on 2026-08-08: 7 suites, 50 passed, 0 failed,
+    0 skipped in each edition, `Result = Passed`, every suite `Ready = True`.
+    Per suite: DomainLab 4, CertificatePrivateKey 7, TaskScheduler 8, SmbShare 7,
+    ADObjectPermissions 12, ForeignPrincipal 5, ADObjectReplication 7.
+- The instrumented Windows PowerShell pass took 22 minutes and the
+    uninstrumented PowerShell 7 pass 5 minutes, which is the measurement behind
+    the single-coverage-pass decision.
 - `./build.ps1 -Tasks test` succeeds: 10 tasks, 0 errors, 0 warnings. Local
-    Pester is 1,495 passed, 0 failed, 0 skipped, 0 inconclusive, 0 not run.
-- `Import_DomainLab_Code_Coverage` accepted the document rather than falling
-    back, and `Assert_Merged_Code_Coverage_Threshold` reports
-    `Domain-lab evidence merged: yes`.
-- Whole-module coverage is 90.48 percent (7,189 of 7,945 commands), reported.
-    The asserted scope is 90.52 percent (6,950 of 7,678 commands the local test
-    profile can execute) against the 80 percent threshold, per ADR 0025 and
-    ADR 0027.
+    Pester is 1,495 passed, 0 failed, 0 skipped.
+- Domain-lab coverage 43.07 percent (3,422 of 7,945 commands),
+    `Domain-lab evidence merged: yes`. Whole-module 90.51 percent (7,191 of
+    7,945) reported; asserted scope 90.54 percent (6,952 of 7,678) over the 80
+    percent threshold.
+- `ExactSecurityDescriptorDscLcm.Tests.ps1` passes 5 of 5 in Windows PowerShell.
 
-## Why no rebuild was inserted
+## Host fix that unblocked the DSC evidence
 
-The lab document and the local run must measure the identical merged `.psm1`,
-or the identity guard refuses the merge. The built module at `0.0.1` already
-matched `ce4eea0` (the last two commits touched only `build.yaml`, the workflow,
-and documentation), and the `test` workflow does not rebuild, so both runs
-measured the same file without a rebuild between them.
-
-## Repository setup
-
-The `publish` job needs two repository secrets under Settings > Secrets and
-variables > Actions: `GitHubToken` and `GalleryApiToken`. Without both, the job
-fails on its verification step rather than publishing a partial release. The
-module manifest still has no `LicenseUri` and no `ProjectUri`; the Gallery
-accepts the package without them but shows no links.
-
-One detail was not reconciled: at the moment of confirmation
-`git ls-remote --tags origin` listed no `v*` tag, and the repository is private
-so the run could not be read from here. Confirm the tag, the GitHub release, and
-the Gallery version agree on the next release.
+`Invoke-DscResource` failed for every resource that reads an access control
+list. The machine-level `PSModulePath` had grown three PowerShell 7 entries, so
+the DSC provider host running as `SYSTEM` loaded PowerShell 7's
+`Microsoft.PowerShell.Security` and refused it as duplicate type data. The
+machine value is now the two Windows PowerShell paths only, backed up at
+`$env:TEMP\wac-machine-psmodulepath.backup.txt`, and the WMI service was
+restarted so provider hosts inherit it. `debugging-insights.md` records the
+proof.
 
 ## Environment notes
 
-- The development host is the Hyper-V host and is a workgroup machine. The
-    module pins Kerberos for its LDAP bind, so the enterprise suites run inside
-    the lab through AutomatedLab credential delegation.
 - `WindowsAccessControlLab` has 13 machines across three forests. After a host
-    reboot the machines must be started before the acceptance runs, and the
-    member fixture reports not ready for a short time while its services start.
-- A standalone Pester run must prepend `output/module` and
-    `output/RequiredModules` to `PSModulePath`. Without them, 36 DSC discovery
-    and Sampler-dependent tests fail for a reason none of them caused.
-- The certificate private-key unit tests remain flaky here because they
-    exercise the live key storage provider.
-- The committed domain-lab coverage document still measures a module the current
-    `main` build does not produce, so the merged whole-module verdict is
-    reported rather than asserted until the lab acceptance is rerun.
+    reboot they must be started before an acceptance run.
+- `F1BDC1` and `F2DC1` are no longer reserved; the foreign-principal suite takes
+    one principal from each. `forest1.net` holds bidirectional forest-transitive
+    trusts to `forest2.net` and `forest3.net`, which is what makes the
+    cross-forest case resolvable from `a.forest1.net`.
+- A standalone Pester run must import Pester by explicit path or prepend
+    `output/RequiredModules` to `PSModulePath`.
+- The changelog QA check compares the working tree against the default branch,
+    so a gate started before `CHANGELOG.md` is edited fails on that one test.
 
 ## Next step
 
-No specification is in `Draft`, no focused issue is open, and no operational
-candidate remains. Rerun the lab acceptance whenever a source change moves the
-merged `.psm1`, because the identity guard then refuses the previous document
-and the whole-module number silently degrades to reported-only.
-
-Every other candidate (SMB-6, AD-7, directory audit rules, directory
-inheritance and owner/group mutation, CAPI) is a written deferral and needs a
-new accepted scope decision before implementation.
+The remaining lab-specific gaps, in order of the evidence they would add:
+concurrent writers on the two writable controllers to prove `RequireUnchanged`
+across replication; an enterprise certificate template plus a key-reusing
+renewal to test specification 0017's thumbprint claim against a real issued
+key; a second Active Directory site for inter-site replication; selective
+authentication on the forest trust; a read-only domain controller; and running
+the suites against the installed package rather than `output/module`.

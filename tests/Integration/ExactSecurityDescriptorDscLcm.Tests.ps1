@@ -164,6 +164,147 @@ Configuration WindowsAccessControlExactDescriptorConfiguration {
         }
     }
 
+    It 'Should compile every enterprise resource into one MOF' {
+        $outputPath = Join-Path $TestDrive 'EnterpriseDescriptorConfiguration'
+        $configurationText = @'
+Configuration WindowsAccessControlEnterpriseConfiguration {
+    Import-DscResource -ModuleName @{
+        ModuleName = 'WindowsAccessControl'
+        RequiredVersion = '__MODULE_VERSION__'
+    }
+    Node localhost {
+        WindowsAccessControlSmbShareSecurityDescriptor Share {
+            Name = 'WacDsc$'
+            Sections = 'Access'
+            Sddl = 'D:(A;;FA;;;BA)'
+        }
+        WindowsAccessControlADObjectSecurityDescriptor AdObject {
+            DistinguishedName = 'OU=WacDsc,DC=contoso,DC=com'
+            Sections = 'Access'
+            AllowedBaseDistinguishedName = 'OU=WacDsc,DC=contoso,DC=com'
+            Server = 'dc1.contoso.com'
+            Sddl = 'D:(A;;RP;;;S-1-1-0)'
+        }
+        WindowsAccessControlTaskFolderSecurityDescriptor TaskFolder {
+            Path = '\WacDsc'
+            Sections = 'Access'
+            AllowedRootPath = '\WacDsc'
+            Sddl = 'D:(A;;FA;;;BA)'
+        }
+        WindowsAccessControlScheduledTaskSecurityDescriptor ScheduledTask {
+            TaskPath = '\WacDsc'
+            TaskName = 'WacDscTask'
+            Sections = 'Access'
+            AllowedRootPath = '\WacDsc'
+            Sddl = 'D:(A;;FA;;;BA)'
+        }
+        WindowsAccessControlCertificatePrivateKeySecurityDescriptor PrivateKey {
+            ProviderName = 'Microsoft Software Key Storage Provider'
+            KeyName = 'WacDscKey'
+            KeyScope = 'Machine'
+            Sections = 'Access'
+            Sddl = 'D:(A;;FA;;;BA)'
+        }
+        WindowsAccessControlSmbShareAccessRule ShareRule {
+            Name = 'WacDsc$'
+            Account = 'S-1-1-0'
+            AccessRights = 'Read'
+            AccessControlType = 'Allow'
+            Ensure = 'Present'
+        }
+        WindowsAccessControlADObjectAccessRule AdObjectRule {
+            DistinguishedName = 'OU=WacDsc,DC=contoso,DC=com'
+            Account = 'S-1-1-0'
+            AccessRights = 'ReadProperty'
+            AccessControlType = 'Allow'
+            InheritanceType = 'None'
+            ObjectType = ''
+            InheritedObjectType = ''
+            AllowedBaseDistinguishedName = 'OU=WacDsc,DC=contoso,DC=com'
+            Server = 'dc1.contoso.com'
+            Ensure = 'Present'
+        }
+        WindowsAccessControlTaskFolderAccessRule TaskFolderRule {
+            Path = '\WacDsc'
+            Account = 'S-1-1-0'
+            AccessRights = 'Read'
+            AccessControlType = 'Allow'
+            AppliesTo = 'ThisFolderOnly'
+            AllowedRootPath = '\WacDsc'
+            Ensure = 'Present'
+        }
+        WindowsAccessControlScheduledTaskAccessRule ScheduledTaskRule {
+            TaskPath = '\WacDsc'
+            TaskName = 'WacDscTask'
+            Account = 'S-1-1-0'
+            AccessRights = 'Read'
+            AccessControlType = 'Allow'
+            AllowedRootPath = '\WacDsc'
+            Ensure = 'Present'
+        }
+        WindowsAccessControlCertificatePrivateKeyAccessRule PrivateKeyRule {
+            ProviderName = 'Microsoft Software Key Storage Provider'
+            KeyName = 'WacDscKey'
+            KeyScope = 'Machine'
+            Account = 'S-1-1-0'
+            AccessRights = 'Read'
+            AccessControlType = 'Allow'
+            Ensure = 'Present'
+        }
+    }
+}
+'@
+        $configurationDefinition = [scriptblock]::Create(
+            $configurationText.Replace(
+                '__MODULE_VERSION__',
+                $script:moduleVersion
+            )
+        )
+        . $configurationDefinition
+
+        WindowsAccessControlEnterpriseConfiguration `
+            -OutputPath $outputPath `
+            -ErrorAction Stop
+
+        $mofPath = Join-Path $outputPath 'localhost.mof'
+        Test-Path -LiteralPath $mofPath -PathType Leaf | Should -BeTrue
+        $mof = Get-Content -LiteralPath $mofPath -Raw
+        foreach ($resourceName in @(
+                'WindowsAccessControlSmbShareSecurityDescriptor'
+                'WindowsAccessControlADObjectSecurityDescriptor'
+                'WindowsAccessControlTaskFolderSecurityDescriptor'
+                'WindowsAccessControlScheduledTaskSecurityDescriptor'
+                'WindowsAccessControlCertificatePrivateKeySecurityDescriptor'
+                'WindowsAccessControlSmbShareAccessRule'
+                'WindowsAccessControlADObjectAccessRule'
+                'WindowsAccessControlTaskFolderAccessRule'
+                'WindowsAccessControlScheduledTaskAccessRule'
+                'WindowsAccessControlCertificatePrivateKeyAccessRule'
+            )) {
+            $mof | Should -Match ([regex]::Escape($resourceName))
+        }
+    }
+
+    It 'Should advertise every packaged resource to the DSC engine' {
+        $advertised = @(
+            Get-DscResource -Module @{
+                ModuleName      = 'WindowsAccessControl'
+                RequiredVersion = $script:moduleVersion
+            } -ErrorAction Stop
+        ).Name
+
+        $manifestResources = @(
+            (Import-PowerShellDataFile -LiteralPath (
+                Join-Path $script:machineModulePath 'WindowsAccessControl.psd1'
+            )).DscResourcesToExport
+        )
+
+        $manifestResources.Count | Should -BeGreaterThan 0
+        foreach ($resourceName in $manifestResources) {
+            $advertised | Should -Contain $resourceName
+        }
+    }
+
     It 'Should invoke an exact NTFS resource through the DSC engine' {
         $path = Join-Path $TestDrive 'invoke-dsc-resource.txt'
         Set-Content -LiteralPath $path -Value 'test'

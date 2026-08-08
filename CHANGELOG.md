@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add a PowerShell edition matrix to the domain-lab acceptance runner. The six
+    enterprise suites are cross-edition contracts, but the runner started only
+    Windows PowerShell, so PowerShell 7 had no live enterprise evidence even
+    though the deployment installs it on every lab machine. The runner now takes
+    `-PowerShellEdition` and runs one complete pass per edition against the same
+    fixture set, writes one evidence file per pass, and carries every artifact
+    back before it fails the run. `-CoverageEdition` arms code coverage in
+    exactly one pass, because instrumentation is what makes a pass slow and the
+    second pass measures no line the first cannot reach
+- Add two DSC engine contract tests. The five enterprise resource pairs were
+    converged only by direct class instantiation, so nothing proved the engine
+    could see them: a compile test now puts all ten into one Managed Object
+    Format document, and a discovery test asserts that `Get-DscResource`
+    advertises every resource the manifest exports
+- Add `ForeignPrincipalPermissions.Live.Tests.ps1`, a seventh acceptance suite
+    that writes and reads an access control entry for a principal from another
+    domain in the forest, from a trusted forest, and for a security identifier
+    no lookup can resolve. Every other suite uses a principal from the fixture
+    domain, so nothing proved that a foreign identity survives a write and a
+    read or that an orphaned entry is reported instead of failing the descriptor
 - Add stable identifiers `FR-24` through `FR-27` and `NFR-17` through `NFR-20`
     for the behavior delivered after read-only private-key inspection:
     fail-closed private-key DACL mutation, schema-version-2 enterprise

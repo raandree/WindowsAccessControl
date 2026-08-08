@@ -7,6 +7,27 @@ source: implementation and test evidence
 
 # Debugging insights
 
+## A PowerShell 7 path in the machine PSModulePath breaks every DSC resource
+
+`Invoke-DscResource` failed for every resource that reads an access control
+list, with `The 'Get-Acl' command was found in the module
+'Microsoft.PowerShell.Security', but the module could not be loaded.` The DSC
+provider host is `WmiPrvSE` running as `SYSTEM`, and it reads the machine-level
+`PSModulePath` rather than the caller's. That value had grown three PowerShell 7
+entries (`...\Documents\PowerShell\Modules`, `C:\Program Files\PowerShell\Modules`,
+`...\PowerShell\7\Modules`), so Windows PowerShell found PowerShell 7's
+`Microsoft.PowerShell.Security\Security.types.ps1xml` and refused it: every
+member it defines on `System.Security.AccessControl.ObjectSecurity` is already
+present in Windows PowerShell.
+
+A `SYSTEM` scheduled-task probe proved it in one step: with those paths present
+`Import-Module Microsoft.PowerShell.Security` fails, and with them removed for
+that process only both the import and `Get-Acl` succeed. Removing them from the
+machine variable is safe because PowerShell 7 adds all three itself at startup.
+The WMI service must then be restarted, because a provider host inherits the
+environment of the service that spawns it. Clearing the DSC cache does not help;
+the failure is environmental, not cached.
+
 ## An array wrapper inside an if does not survive assignment
 
 `$x = if ($c) { $a } else { @($b) }` discards the wrapper: the if-statement's
