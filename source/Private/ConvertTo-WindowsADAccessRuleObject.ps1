@@ -79,6 +79,9 @@ function ConvertTo-WindowsADAccessRuleObject {
             [WindowsActiveDirectoryRights],
             $knownAce.AccessMask
         )
+        AccessRightsDisplay = ConvertTo-WindowsAccessRightsDisplay `
+            -AccessMask ([int64]$knownAce.AccessMask -band 0xFFFFFFFFL) `
+            -RightsType ([WindowsActiveDirectoryRights])
         AccessControlType = if ($qualifiedAce.AceQualifier -eq
             [System.Security.AccessControl.AceQualifier]::AccessDenied) {
             [System.Security.AccessControl.AccessControlType]::Deny

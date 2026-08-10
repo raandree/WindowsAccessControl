@@ -190,6 +190,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix access rules reporting a signed integer instead of rights names. A .NET
+    rights enum has no name for the four `GENERIC_*` bits, and `Enum.ToString`
+    abandons every name it did resolve as soon as one bit is unnameable. Windows
+    splits an inheritable entry that carries generic rights into a mapped copy
+    and an inherit-only copy that keeps the generic bits, so any directory under
+    a volume root listed one `Authenticated Users` entry as `Modify,
+    Synchronize` and the next as `-536805376`. Every rule object now also
+    carries `AccessRightsDisplay`, which reuses the enum rendering wherever the
+    enum can name the mask and otherwise names the generic rights,
+    `ACCESS_SYSTEM_SECURITY`, and `MAXIMUM_ALLOWED`, leaving any remainder as
+    hexadecimal. The default table views report it, and NTFS rules gained the
+    `AccessMask` property the other object families already expose
+- Fix `Get-NTFSItemEffectiveAccess` failing outright on a granted mask that
+    `FileSystemRights` cannot name. The enum cast rejects such a value rather
+    than boxing it, so the command threw instead of reporting the access it had
+    just computed
 - Fix two registry inheritance-source unit tests failing on Windows PowerShell
     5.1. `Get-Acl -LiteralPath` cannot resolve a registry key there and returns
     nothing, and `-bor` on two `AceFlags` values throws `InvalidCastException`
@@ -214,6 +230,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix `Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` silently
     discarding a rule that matched an existing account and rights combination
     but declared a different `AppliesTo` inheritance scope
+- Fix the account column printing nothing for an access or audit rule whose
+    identity Windows cannot translate. A deleted account, an unreachable domain,
+    and a foreign principal all rendered as an empty cell, so the entry could
+    not be recognized without inspecting the object. Every rule table view now
+    falls back to the security identifier, while the `Account` property stays
+    empty and `IsOrphaned` keeps reporting the unresolved state
 
 ### Added
 

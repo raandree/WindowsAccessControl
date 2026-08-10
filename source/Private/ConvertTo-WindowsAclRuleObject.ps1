@@ -97,6 +97,12 @@ function ConvertTo-WindowsAclRuleObject {
         }
     }
 
+    $accessMask = if ($knownAce) {
+        [uint64]([int64]$knownAce.AccessMask -band 0xFFFFFFFFL)
+    } else {
+        $null
+    }
+
     $result = [pscustomobject]@{
         ObjectType         = $Target.ObjectType
         Path               = $Target.Path
@@ -121,11 +127,16 @@ function ConvertTo-WindowsAclRuleObject {
         Account            = $account
         SID                = if ($securityIdentifier) { $securityIdentifier.Value } else { $null }
         IsOrphaned         = $isOrphaned
-        AccessMask         = if ($knownAce) {
-            [uint64]([int64]$knownAce.AccessMask -band 0xFFFFFFFFL)
-        } else { $null }
+        AccessMask         = $accessMask
         AccessRights       = if ($knownAce) {
             [System.Enum]::ToObject($RightsType, $knownAce.AccessMask)
+        } else {
+            $null
+        }
+        AccessRightsDisplay = if ($knownAce) {
+            ConvertTo-WindowsAccessRightsDisplay `
+                -AccessMask $accessMask `
+                -RightsType $RightsType
         } else {
             $null
         }

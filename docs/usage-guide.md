@@ -180,8 +180,8 @@ To find out where an inherited rule comes from and what its GUIDs mean, read
 
 ```powershell
 Get-ADObjectAccessRule -DistinguishedName $targetDn -ExcludeExplicit |
-    Format-Table Account, AccessRights, ObjectTypeName, InheritedObjectTypeName,
-        InheritedFrom
+    Format-Table Account, AccessRightsDisplay, ObjectTypeName,
+        InheritedObjectTypeName, InheritedFrom
 ```
 
 `InheritedFrom` names the nearest ancestor object that holds the originating

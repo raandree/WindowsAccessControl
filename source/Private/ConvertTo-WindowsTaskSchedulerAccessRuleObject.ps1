@@ -54,6 +54,14 @@ function ConvertTo-WindowsTaskSchedulerAccessRuleObject {
         'Custom'
     }
 
+    $rightsType = if ($Target.ObjectType -eq 'ScheduledTask') {
+        [WindowsScheduledTaskRights]
+    }
+    else {
+        [WindowsTaskFolderRights]
+    }
+    $accessMask = [uint64]([int64]$knownAce.AccessMask -band 0xFFFFFFFFL)
+
     $result = [pscustomobject]@{
         ObjectType        = $Target.ObjectType
         Path              = $Target.Path
@@ -64,19 +72,11 @@ function ConvertTo-WindowsTaskSchedulerAccessRuleObject {
         Account           = $account
         SID               = $qualifiedAce.SecurityIdentifier.Value
         IsOrphaned        = $isOrphaned
-        AccessMask        = [uint64]([int64]$knownAce.AccessMask -band 0xFFFFFFFFL)
-        AccessRights      = if ($Target.ObjectType -eq 'ScheduledTask') {
-            [System.Enum]::ToObject(
-                [WindowsScheduledTaskRights],
-                $knownAce.AccessMask
-            )
-        }
-        else {
-            [System.Enum]::ToObject(
-                [WindowsTaskFolderRights],
-                $knownAce.AccessMask
-            )
-        }
+        AccessMask        = $accessMask
+        AccessRights      = [System.Enum]::ToObject($rightsType, $knownAce.AccessMask)
+        AccessRightsDisplay = ConvertTo-WindowsAccessRightsDisplay `
+            -AccessMask $accessMask `
+            -RightsType $rightsType
         AccessControlType = if ($qualifiedAce.AceQualifier -eq
             [System.Security.AccessControl.AceQualifier]::AccessDenied) {
             [System.Security.AccessControl.AccessControlType]::Deny

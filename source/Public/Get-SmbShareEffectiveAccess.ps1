@@ -109,6 +109,9 @@ function Get-SmbShareEffectiveAccess {
                 AccessMask          = $accessMask
                 EffectiveRights     = ConvertTo-WindowsSmbShareRights `
                     -AccessMask $accessMask
+                EffectiveRightsDisplay = ConvertTo-WindowsAccessRightsDisplay `
+                    -AccessMask $accessMask `
+                    -RightsType ([WindowsSmbShareRights])
                 RequestedRights     = if ($testRequestedRights) {
                     $AccessRights
                 }

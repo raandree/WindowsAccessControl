@@ -51,6 +51,9 @@ function ConvertTo-WindowsCngKeyAccessRuleObject {
         AccessMask            = [uint64]([int64]$knownAce.AccessMask -band 0xFFFFFFFFL)
         EffectiveAccessMask   = [uint64]$effectiveMask
         AccessRights          = [Enum]::ToObject([WindowsCryptoKeyRights], $effectiveMask)
+        AccessRightsDisplay   = ConvertTo-WindowsAccessRightsDisplay `
+            -AccessMask $effectiveMask `
+            -RightsType ([WindowsCryptoKeyRights])
         AccessControlType     = if ($qualifiedAce.AceQualifier -eq
             [Security.AccessControl.AceQualifier]::AccessDenied) {
             [Security.AccessControl.AccessControlType]::Deny

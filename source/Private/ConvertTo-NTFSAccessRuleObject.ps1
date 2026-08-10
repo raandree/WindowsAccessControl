@@ -38,19 +38,26 @@ function ConvertTo-NTFSAccessRuleObject {
         $null
     }
 
+    $accessMask = [uint64]([int64][int]$Rule.FileSystemRights -band 0xFFFFFFFFL)
+    $accessRightsDisplay = ConvertTo-WindowsAccessRightsDisplay `
+        -AccessMask $accessMask `
+        -RightsType ([System.Security.AccessControl.FileSystemRights])
+
     $result = [pscustomobject]@{
-        Path              = $Path
-        Account           = $account
-        SID               = $securityIdentifier.Value
-        AccessRights      = $Rule.FileSystemRights
-        AccessControlType = $Rule.AccessControlType
-        AppliesTo         = $appliesTo
-        InheritanceFlags  = $Rule.InheritanceFlags
-        PropagationFlags  = $Rule.PropagationFlags
-        IsInherited       = $Rule.IsInherited
-        InheritedFrom     = $inheritedFromPath
-        IsOrphaned        = $isOrphaned
-        NativeRule        = $Rule
+        Path                = $Path
+        Account             = $account
+        SID                 = $securityIdentifier.Value
+        AccessMask          = $accessMask
+        AccessRights        = $Rule.FileSystemRights
+        AccessRightsDisplay = $accessRightsDisplay
+        AccessControlType   = $Rule.AccessControlType
+        AppliesTo           = $appliesTo
+        InheritanceFlags    = $Rule.InheritanceFlags
+        PropagationFlags    = $Rule.PropagationFlags
+        IsInherited         = $Rule.IsInherited
+        InheritedFrom       = $inheritedFromPath
+        IsOrphaned          = $isOrphaned
+        NativeRule          = $Rule
     }
     $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.AccessRule')
     $result

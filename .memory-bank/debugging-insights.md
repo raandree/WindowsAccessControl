@@ -158,6 +158,44 @@ Windows PowerShell treats native Git line-ending warnings as error records when
 `ErrorActionPreference` is `Stop`. Normalize changed files according to
 `.gitattributes` before QA, and set Pester `Run.Exit` to false when a caller must
 inspect the returned result instead of allowing Pester to terminate the host.
+
+## A PowerShell 7 numeric literal suffix hides as a DSC discovery failure
+
+One `0xFFFFFFFFUL` in a public command made all twenty `Get-DscResource`
+contract tests fail with `is not recognized as the name of a Resource`, while
+the module imported cleanly, every other test passed, and the failing files were
+ones the change never touched. `Get-DscResource` under PowerShell 7 resolves
+class-based resources through the Windows PowerShell compatibility session, and
+that parser rejects the `U`, `UL`, and related suffixes added in PowerShell 6.2.
+A parse failure there yields no resources rather than an error naming the file.
+
+The failure looked environmental because it was total and uniform, which is the
+same shape a missing `PSModulePath` entry produces. Parse the built `.psm1` with
+`[System.Management.Automation.Language.Parser]::ParseFile()` under
+`powershell.exe` before blaming the environment; it names the line in one step.
+Do the same for every changed file whenever a change is authored in PowerShell 7
+and the module must load in both editions.
+
+## A .NET rights enum renders nothing once one bit is unnameable
+
+`Enum.ToString` on a flags enum abandons every name it already resolved and
+returns the whole value as a signed integer as soon as one bit has no name, so
+`FileSystemRights` shows `-536805376` rather than a partial list.
+
+The value is a real ACE. Windows splits an inheritable entry that carries
+`GENERIC_*` bits into an effective copy with the bits mapped through the object
+type's generic mapping and an inherit-only copy that keeps the generic bits, so
+every child of a volume root has two `Authenticated Users` entries for what the
+Windows security dialog shows once. A PowerShell enum cast rejects such a value
+outright; only `Enum.ToObject` boxes it, which is why `Get-Acl` can produce a
+value that `[FileSystemRights]$mask` cannot.
+
+Reproduce the enum's own greedy decomposition to find the residue, then let .NET
+render the mask minus that residue. Naming the residue independently would drift
+from .NET's choice among equal-valued members such as `AppendData` and
+`CreateDirectories`. A sweep of every mask below `0x40000` plus random 32-bit
+masks compared 2,302 nameable renderings with zero differences.
+
 Keep console output separate from explicit NUnit or JSON result artifacts when
 the Desktop host buffers streams.
 

@@ -25,18 +25,25 @@ function ConvertTo-NTFSAuditRuleObject {
     }
     $appliesTo = ConvertTo-NTFSAppliesTo @appliesToParameters
 
+    $accessMask = [uint64]([int64][int]$Rule.FileSystemRights -band 0xFFFFFFFFL)
+    $accessRightsDisplay = ConvertTo-WindowsAccessRightsDisplay `
+        -AccessMask $accessMask `
+        -RightsType ([System.Security.AccessControl.FileSystemRights])
+
     $result = [pscustomobject]@{
-        Path             = $Path
-        Account          = $account
-        SID              = $securityIdentifier.Value
-        AccessRights     = $Rule.FileSystemRights
-        AuditFlags       = $Rule.AuditFlags
-        AppliesTo        = $appliesTo
-        InheritanceFlags = $Rule.InheritanceFlags
-        PropagationFlags = $Rule.PropagationFlags
-        IsInherited      = $Rule.IsInherited
-        IsOrphaned       = $isOrphaned
-        NativeRule       = $Rule
+        Path                = $Path
+        Account             = $account
+        SID                 = $securityIdentifier.Value
+        AccessMask          = $accessMask
+        AccessRights        = $Rule.FileSystemRights
+        AccessRightsDisplay = $accessRightsDisplay
+        AuditFlags          = $Rule.AuditFlags
+        AppliesTo           = $appliesTo
+        InheritanceFlags    = $Rule.InheritanceFlags
+        PropagationFlags    = $Rule.PropagationFlags
+        IsInherited         = $Rule.IsInherited
+        IsOrphaned          = $isOrphaned
+        NativeRule          = $Rule
     }
     $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.AuditRule')
     $result

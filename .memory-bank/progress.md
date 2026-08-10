@@ -24,6 +24,23 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-10: Made an access control entry that carries `GENERIC_*` bits
+    readable. A .NET rights enum has no name for those bits and `Enum.ToString`
+    abandons every name it already resolved as soon as one bit is unnameable, so
+    a directory under a volume root listed one `Authenticated Users` entry as
+    `Modify, Synchronize` and the next as `-536805376`. Every rule object now
+    carries `AccessRightsDisplay`, both effective-access results carry
+    `EffectiveRightsDisplay`, and NTFS rules gained the `AccessMask` property the
+    other families already had. A sweep of 2,302 nameable renderings proved the
+    display is identical wherever the enum can name the mask, so nothing that
+    already read correctly changed.
+- 2026-08-10: Made an unresolvable identity visible in rule output. A deleted
+    account, an unreachable domain, or a foreign principal left the account
+    column empty, so the entry could not be recognized without inspecting the
+    object. The twelve rule table views now fall back to the security
+    identifier; the `Account` property and `IsOrphaned` are unchanged, so no
+    caller that filters on them is affected. The guarding test fails against a
+    reverted format file.
 - 2026-08-10: Gave `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege`, and
     `Test-WindowsPrivilege` tab completion on `Name`. The parameter took a
     constant nobody recalls exactly and reported a misspelling only after the

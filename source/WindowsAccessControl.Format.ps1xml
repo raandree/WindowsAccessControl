@@ -20,8 +20,8 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>InheritedFrom</PropertyName></TableColumnItem>
@@ -49,8 +49,8 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AuditFlags</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AppliesTo</PropertyName></TableColumnItem>
@@ -100,8 +100,8 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>InheritedFrom</PropertyName></TableColumnItem>
@@ -129,8 +129,8 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AuditFlags</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AppliesTo</PropertyName></TableColumnItem>
@@ -157,7 +157,7 @@
             <TableColumnItems>
               <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>EffectiveRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>EffectiveRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>RequestedRights</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsAllowed</PropertyName></TableColumnItem>
             </TableColumnItems>
@@ -185,7 +185,7 @@
             <TableColumnItems>
               <TableColumnItem><PropertyName>ShareName</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>EffectiveRights</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>EffectiveRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>RequestedRights</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsAllowed</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AuthorizationContext</PropertyName></TableColumnItem>
@@ -214,8 +214,8 @@
             <TableColumnItems>
               <TableColumnItem><PropertyName>ObjectType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
@@ -241,8 +241,8 @@
             <TableColumnItems>
               <TableColumnItem><PropertyName>ObjectType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>Path</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AuditFlags</PropertyName></TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
@@ -291,8 +291,8 @@
             <TableColumnItems>
               <TableColumnItem><PropertyName>ProcessId</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>ProcessName</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
@@ -317,8 +317,8 @@
             <TableColumnItems>
               <TableColumnItem><PropertyName>ProcessId</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>ProcessName</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AuditFlags</PropertyName></TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
@@ -341,8 +341,8 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem><PropertyName>ShareName</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
             </TableColumnItems>
           </TableRowEntry>
@@ -368,8 +368,8 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem><PropertyName>DistinguishedName</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>InheritanceType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>ObjectTypeName</PropertyName></TableColumnItem>
@@ -397,8 +397,8 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem><PropertyName>TaskPath</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AppliesTo</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
@@ -424,8 +424,8 @@
           <TableRowEntry>
             <TableColumnItems>
               <TableColumnItem><PropertyName>TaskName</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
-              <TableColumnItem><PropertyName>AccessRights</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
               <TableColumnItem><PropertyName>IsInherited</PropertyName></TableColumnItem>
             </TableColumnItems>

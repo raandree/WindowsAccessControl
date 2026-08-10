@@ -46,8 +46,9 @@ this increment has no SACL surface. The module never surfaces
 A task ACE that inherits a folder-only bit outside the `Write`, `Modify`, or
 `FullControl` composites reads back as a numeric `AccessRights` value, because
 `WindowsScheduledTaskRights` deliberately has no name for an operation a leaf
-task cannot perform. `AccessMask` stays exact in every case, and exact removal
-is unaffected because it matches the native ACE.
+task cannot perform. `AccessRightsDisplay` reports that bit as a hexadecimal
+remainder beside the names it can resolve. `AccessMask` stays exact in every
+case, and exact removal is unaffected because it matches the native ACE.
 
 Task folders are containers and carry inheritance. `AppliesTo` covers
 `ThisFolderOnly`, `ThisFolderAndTasks`, `ThisFolderAndSubfolders`,

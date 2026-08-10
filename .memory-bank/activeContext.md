@@ -9,6 +9,12 @@ source: current task evidence
 
 ## Current focus
 
+Rule output has to be readable without inspecting the object. An access control
+entry that carries `GENERIC_*` bits showed `-536805376` where the entry above it
+showed `Modify, Synchronize`, because a .NET rights enum has no name for those
+bits and abandons every name it already resolved as soon as one bit is
+unnameable.
+
 `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege`, and
 `Test-WindowsPrivilege` complete their `Name` argument from
 `WindowsPrivilegeNameCompleter`. The parameter still validates by pattern, so a
@@ -22,6 +28,14 @@ PowerShell pass using one principal from the fixture domain.
 
 ## What changed
 
+- `ConvertTo-WindowsAccessRightsDisplay` renders a mask that a rights enum
+    cannot fully name. It repeats the enum's own greedy decomposition, lets .NET
+    render the part it can name, and then names the four generic rights,
+    `ACCESS_SYSTEM_SECURITY`, and `MAXIMUM_ALLOWED`, leaving any remainder as
+    hexadecimal. Every rule object exposes the result as `AccessRightsDisplay`
+    and both effective-access results as `EffectiveRightsDisplay`; the table
+    views report those properties. NTFS rules also gained the `AccessMask`
+    property the other object families already had.
 - `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` takes
     `-PowerShellEdition` and `-CoverageEdition`. It runs one complete pass per
     edition against the same fixture set, writes one evidence file per pass, and

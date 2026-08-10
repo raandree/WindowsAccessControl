@@ -145,10 +145,19 @@ the property for a uniform output contract but never populates it, because the
 module does not resolve provenance for registry audit rules, service, SCM,
 process, or SMB share rules.
 
-Every registry, service, SCM, and process rule object exposes `AccessMask` as a
-`UInt64` containing the normalized unsigned 32-bit native mask. `AccessRights`
-uses the object family's public enum; exact removal uses the preserved native
-ACE rather than reconstructing it from display properties.
+Every access and audit rule object exposes `AccessMask` as a `UInt64`
+containing the normalized unsigned 32-bit native mask. `AccessRights` uses the
+object family's public enum; exact removal uses the preserved native ACE rather
+than reconstructing it from display properties.
+
+Every rule object also exposes `AccessRightsDisplay`, and both effective-access
+results expose `EffectiveRightsDisplay`. A .NET rights enum abandons every name
+and renders the whole mask as a signed integer as soon as one bit has no name,
+which is exactly what an inheritable entry that keeps its `GENERIC_*` bits
+produces. The display property reuses the enum rendering wherever the enum can
+name the mask, names the four generic rights, `ACCESS_SYSTEM_SECURITY`, and
+`MAXIMUM_ALLOWED` when the enum omits them, and reports anything still unnamed
+as a hexadecimal remainder. The default table views report this property.
 
 The module ships curated default table views for `AccessRule`, `AuditRule`,
 `Owner`, `EffectiveAccess`, and `Privilege`. Other result types remain fully

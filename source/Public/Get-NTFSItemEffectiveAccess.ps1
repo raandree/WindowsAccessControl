@@ -124,7 +124,13 @@ function Get-NTFSItemEffectiveAccess {
             $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
             $descriptorBytes = $security.GetSecurityDescriptorBinaryForm()
             $accessMask = [WindowsAccessControl.NativeMethods]::GetEffectiveAccess($descriptorBytes, $sidBytes)
-            $effectiveRights = [System.Security.AccessControl.FileSystemRights][int]$accessMask
+            # An enum cast rejects a granted mask that carries a bit FileSystemRights
+            # has no name for, so the value is boxed rather than converted.
+            $effectiveMask = [uint64]$accessMask
+            $effectiveRights = [System.Enum]::ToObject(
+                [System.Security.AccessControl.FileSystemRights],
+                [int64]$effectiveMask
+            )
             $isAllowed = $null
             if ($testRequestedRights) {
                 $requestedMask = [uint32][int]$AccessRights
@@ -132,13 +138,16 @@ function Get-NTFSItemEffectiveAccess {
             }
 
             $result = [pscustomobject]@{
-                Path            = $item.FullName
-                Account         = $accountName
-                SID             = $securityIdentifier.Value
-                AccessMask      = $accessMask
-                EffectiveRights = $effectiveRights
-                RequestedRights = if ($testRequestedRights) { $AccessRights } else { $null }
-                IsAllowed       = $isAllowed
+                Path                   = $item.FullName
+                Account                = $accountName
+                SID                    = $securityIdentifier.Value
+                AccessMask             = $accessMask
+                EffectiveRights        = $effectiveRights
+                EffectiveRightsDisplay = ConvertTo-WindowsAccessRightsDisplay `
+                    -AccessMask $effectiveMask `
+                    -RightsType ([System.Security.AccessControl.FileSystemRights])
+                RequestedRights        = if ($testRequestedRights) { $AccessRights } else { $null }
+                IsAllowed              = $isAllowed
             }
             $result.PSObject.TypeNames.Insert(0, 'WindowsAccessControl.EffectiveAccess')
             $result
