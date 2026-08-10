@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add tab completion for the `Name` parameter of `Enable-WindowsPrivilege`,
+    `Disable-WindowsPrivilege`, and `Test-WindowsPrivilege`. The parameter takes
+    a constant nobody recalls exactly, and a misspelling was reported only after
+    the command ran. Completion now offers every documented Windows privilege
+    constant together with the user right it grants, matches a fragment anywhere
+    in the name because all of them share the same prefix, and treats the typed
+    text as literal so an unbalanced bracket cannot fail a keystroke
 - Add a PowerShell edition matrix to the domain-lab acceptance runner. The six
     enterprise suites are cross-edition contracts, but the runner started only
     Windows PowerShell, so PowerShell 7 had no live enterprise evidence even

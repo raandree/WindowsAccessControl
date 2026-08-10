@@ -924,3 +924,17 @@ and Decision 42.
     following build would then recompute an already-published version and the
     Gallery would reject it with HTTP 409. Failing on the missing secret, and
     creating the tag before the package leaves, keeps the two in step.
+
+### Decision 76: Complete argument values from a class in the module
+
+- Choice: Argument completion is a PowerShell class in `source/Classes` that
+    implements `System.Management.Automation.IArgumentCompleter`, carries its own
+    data, and is named in an `[ArgumentCompleter([Type])]` attribute. A completer
+    never calls a command that compiles interop or touches a target.
+- Rationale: A probe in both editions showed the class form completing from a
+    script module in Windows PowerShell 5.1 and PowerShell 7, and the module
+    resolves the type itself, so nothing has to be exported or registered in the
+    caller's session. Completion answers a keystroke: `Add-Type` in
+    `Initialize-WindowsAccessControlNativeType` would put a compile behind the
+    Tab key, and typed text is escaped as a literal so an unbalanced bracket
+    cannot throw a wildcard error mid-keystroke.

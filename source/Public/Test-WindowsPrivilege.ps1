@@ -9,7 +9,8 @@ function Test-WindowsPrivilege {
 
     .PARAMETER Name
         The Windows privilege constant name, such as SeSecurityPrivilege or
-        SeTakeOwnershipPrivilege.
+        SeTakeOwnershipPrivilege. Tab completion offers the well-known Windows
+        privilege constants.
 
     .EXAMPLE
         Test-WindowsPrivilege -Name SeSecurityPrivilege
@@ -27,6 +28,7 @@ function Test-WindowsPrivilege {
     param(
         [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
         [ValidatePattern('^Se[A-Za-z0-9]+Privilege$')]
+        [ArgumentCompleter([WindowsPrivilegeNameCompleter])]
         [string[]]$Name
     )
 

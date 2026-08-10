@@ -9,6 +9,7 @@ function Disable-WindowsPrivilege {
 
     .PARAMETER Name
         The Windows privilege constant name to disable in the current process.
+        Tab completion offers the well-known Windows privilege constants.
 
     .PARAMETER PassThru
         Returns the enabled state after the token is changed.
@@ -30,6 +31,7 @@ function Disable-WindowsPrivilege {
     param(
         [Parameter(Mandatory, Position = 0, ValueFromPipeline)]
         [ValidatePattern('^Se[A-Za-z0-9]+Privilege$')]
+        [ArgumentCompleter([WindowsPrivilegeNameCompleter])]
         [string[]]$Name,
 
         [Parameter()]

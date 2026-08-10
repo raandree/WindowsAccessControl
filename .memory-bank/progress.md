@@ -24,6 +24,13 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-10: Gave `Enable-WindowsPrivilege`, `Disable-WindowsPrivilege`, and
+    `Test-WindowsPrivilege` tab completion on `Name`. The parameter took a
+    constant nobody recalls exactly and reported a misspelling only after the
+    command ran. `WindowsPrivilegeNameCompleter` offers the 36 documented
+    constants with the user right each grants, matches a fragment anywhere in the
+    name, and escapes the typed text. 17 unit tests pass and a probe confirms the
+    behavior in Windows PowerShell 5.1 and PowerShell 7.
 - 2026-08-08: Closed the two largest gaps between what the lab deploys and what
     it asserts. The acceptance runner started only Windows PowerShell, so the six
     enterprise suites had no PowerShell 7 live evidence even though the

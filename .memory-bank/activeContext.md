@@ -9,10 +9,16 @@ source: current task evidence
 
 ## Current focus
 
-The domain-lab acceptance now runs in both supported PowerShell editions and
-covers a seventh suite for foreign and orphaned principals. Before this, every
-enterprise claim rested on one Windows PowerShell pass using one principal from
-the fixture domain.
+`Enable-WindowsPrivilege`, `Disable-WindowsPrivilege`, and
+`Test-WindowsPrivilege` complete their `Name` argument from
+`WindowsPrivilegeNameCompleter`. The parameter still validates by pattern, so a
+constant outside the documented set stays usable; completion only removes the
+need to recall the exact spelling.
+
+The larger thread below is unchanged. The domain-lab acceptance now runs in both
+supported PowerShell editions and covers a seventh suite for foreign and
+orphaned principals. Before this, every enterprise claim rested on one Windows
+PowerShell pass using one principal from the fixture domain.
 
 ## What changed
 
