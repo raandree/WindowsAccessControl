@@ -11,7 +11,10 @@ function New-NTFSAuditRule {
         The account name or SID to which the new audit rule applies.
 
     .PARAMETER AccessRights
-        The filesystem rights represented by the new audit rule.
+        The filesystem rights represented by the new audit rule. A raw access
+        mask is also accepted as a decimal number or a hexadecimal string, so
+        bits the FileSystemRights enumeration cannot name, such as the generic
+        rights, can be used.
 
     .PARAMETER AuditFlags
         Specifies whether successful access, failed access, or both are audited.
@@ -44,6 +47,7 @@ function New-NTFSAuditRule {
         [string[]]$Account,
 
         [Parameter(Mandatory)]
+        [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
 
         [Parameter(Mandatory)]
@@ -72,13 +76,12 @@ function New-NTFSAuditRule {
         $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $AppliesTo
         foreach ($accountName in $Account) {
             $securityIdentifier = Resolve-WindowsIdentityReference -Identity $accountName
-            $rule = [System.Security.AccessControl.FileSystemAuditRule]::new(
-                $securityIdentifier,
-                $AccessRights,
-                $scope.InheritanceFlags,
-                $scope.PropagationFlags,
-                $AuditFlags
-            )
+            $rule = New-NTFSFileSystemRule `
+                -SecurityIdentifier $securityIdentifier `
+                -AccessRights $AccessRights `
+                -InheritanceFlags $scope.InheritanceFlags `
+                -PropagationFlags $scope.PropagationFlags `
+                -AuditFlags $AuditFlags
             ConvertTo-NTFSAuditRuleObject -Rule $rule -Path ''
         }
     }

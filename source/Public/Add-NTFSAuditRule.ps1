@@ -26,7 +26,10 @@ function Add-NTFSAuditRule {
         One or more account names or SIDs to which the audit rule applies.
 
     .PARAMETER AccessRights
-        The filesystem rights whose access attempts are audited.
+        The filesystem rights whose access attempts are audited. A raw access
+        mask is also accepted as a decimal number or a hexadecimal string, so
+        bits the FileSystemRights enumeration cannot name, such as the generic
+        rights, can be used.
 
     .PARAMETER AuditFlags
         Specifies whether successful access, failed access, or both are audited.
@@ -79,6 +82,7 @@ function Add-NTFSAuditRule {
         [string[]]$Account,
 
         [Parameter(Mandatory)]
+        [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
 
         [Parameter(Mandatory)]
@@ -130,13 +134,12 @@ function Add-NTFSAuditRule {
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
             foreach ($securityIdentifier in $securityIdentifiers) {
                 $security.AddAuditRule(
-                    [System.Security.AccessControl.FileSystemAuditRule]::new(
-                        $securityIdentifier,
-                        $AccessRights,
-                        $scope.InheritanceFlags,
-                        $scope.PropagationFlags,
-                        $AuditFlags
-                    )
+                    (New-NTFSFileSystemRule `
+                        -SecurityIdentifier $securityIdentifier `
+                        -AccessRights $AccessRights `
+                        -InheritanceFlags $scope.InheritanceFlags `
+                        -PropagationFlags $scope.PropagationFlags `
+                        -AuditFlags $AuditFlags)
                 )
             }
             Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
@@ -173,13 +176,12 @@ function Add-NTFSAuditRule {
             }
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
             $rules = foreach ($securityIdentifier in $securityIdentifiers) {
-                [System.Security.AccessControl.FileSystemAuditRule]::new(
-                    $securityIdentifier,
-                    $AccessRights,
-                    $scope.InheritanceFlags,
-                    $scope.PropagationFlags,
-                    $AuditFlags
-                )
+                New-NTFSFileSystemRule `
+                    -SecurityIdentifier $securityIdentifier `
+                    -AccessRights $AccessRights `
+                    -InheritanceFlags $scope.InheritanceFlags `
+                    -PropagationFlags $scope.PropagationFlags `
+                    -AuditFlags $AuditFlags
             }
 
             $identityLabel = $securityIdentifiers.Value -join ', '

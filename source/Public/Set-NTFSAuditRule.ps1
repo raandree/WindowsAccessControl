@@ -24,7 +24,10 @@ function Set-NTFSAuditRule {
         The account name or SID whose matching audit rules are replaced.
 
     .PARAMETER AccessRights
-        The filesystem rights for the replacement audit rule.
+        The filesystem rights for the replacement audit rule. A raw access mask
+        is also accepted as a decimal number or a hexadecimal string, so bits
+        the FileSystemRights enumeration cannot name, such as the generic
+        rights, can be used.
 
     .PARAMETER AuditFlags
         Selects the success or failure audit qualifier that is replaced.
@@ -75,6 +78,7 @@ function Set-NTFSAuditRule {
         [string]$Account,
 
         [Parameter(Mandatory)]
+        [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
 
         [Parameter(Mandatory)]
@@ -115,13 +119,12 @@ function Set-NTFSAuditRule {
                 -AppliesTo $AppliesTo
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
             $security.SetAuditRule(
-                [System.Security.AccessControl.FileSystemAuditRule]::new(
-                    $securityIdentifier,
-                    $AccessRights,
-                    $scope.InheritanceFlags,
-                    $scope.PropagationFlags,
-                    $AuditFlags
-                )
+                (New-NTFSFileSystemRule `
+                    -SecurityIdentifier $securityIdentifier `
+                    -AccessRights $AccessRights `
+                    -InheritanceFlags $scope.InheritanceFlags `
+                    -PropagationFlags $scope.PropagationFlags `
+                    -AuditFlags $AuditFlags)
             )
             Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
             $SecurityDescriptor
@@ -155,13 +158,12 @@ function Set-NTFSAuditRule {
                 }
             }
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
-            $rule = [System.Security.AccessControl.FileSystemAuditRule]::new(
-                $securityIdentifier,
-                $AccessRights,
-                $scope.InheritanceFlags,
-                $scope.PropagationFlags,
-                $AuditFlags
-            )
+            $rule = New-NTFSFileSystemRule `
+                -SecurityIdentifier $securityIdentifier `
+                -AccessRights $AccessRights `
+                -InheritanceFlags $scope.InheritanceFlags `
+                -PropagationFlags $scope.PropagationFlags `
+                -AuditFlags $AuditFlags
             if ($PSCmdlet.ShouldProcess($item.FullName, "Replace $AuditFlags audit rules for $Account")) {
                 $security = Get-NTFSSecurityDescriptorForItem -Item $item -Sections Audit
                 $security.SetAuditRule($rule)

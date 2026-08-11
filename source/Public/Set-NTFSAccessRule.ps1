@@ -26,7 +26,10 @@ function Set-NTFSAccessRule {
         The account name or SID whose matching access rules are replaced.
 
     .PARAMETER AccessRights
-        The filesystem rights for the replacement access rule.
+        The filesystem rights for the replacement access rule. A raw access mask
+        is also accepted as a decimal number or a hexadecimal string, so bits
+        the FileSystemRights enumeration cannot name, such as the generic
+        rights, can be used.
 
     .PARAMETER AccessControlType
         Selects the allow or deny qualifier that is replaced.
@@ -85,6 +88,7 @@ function Set-NTFSAccessRule {
         [string]$Account,
 
         [Parameter(Mandatory)]
+        [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
 
         [Parameter()]
@@ -133,13 +137,12 @@ function Set-NTFSAccessRule {
                 -AppliesTo $AppliesTo
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
             $security.SetAccessRule(
-                [System.Security.AccessControl.FileSystemAccessRule]::new(
-                    $securityIdentifier,
-                    $AccessRights,
-                    $scope.InheritanceFlags,
-                    $scope.PropagationFlags,
-                    $AccessControlType
-                )
+                (New-NTFSFileSystemRule `
+                    -SecurityIdentifier $securityIdentifier `
+                    -AccessRights $AccessRights `
+                    -InheritanceFlags $scope.InheritanceFlags `
+                    -PropagationFlags $scope.PropagationFlags `
+                    -AccessControlType $AccessControlType)
             )
             Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
             $SecurityDescriptor
@@ -175,13 +178,12 @@ function Set-NTFSAccessRule {
             }
 
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
-            $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-                $securityIdentifier,
-                $AccessRights,
-                $scope.InheritanceFlags,
-                $scope.PropagationFlags,
-                $AccessControlType
-            )
+            $rule = New-NTFSFileSystemRule `
+                -SecurityIdentifier $securityIdentifier `
+                -AccessRights $AccessRights `
+                -InheritanceFlags $scope.InheritanceFlags `
+                -PropagationFlags $scope.PropagationFlags `
+                -AccessControlType $AccessControlType
 
             if ($PSCmdlet.ShouldProcess($item.FullName, "Replace $AccessControlType access rules for $Account")) {
                 $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop

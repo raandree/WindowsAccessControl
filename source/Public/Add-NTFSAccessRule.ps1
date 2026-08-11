@@ -26,7 +26,10 @@ function Add-NTFSAccessRule {
         One or more account names or SIDs to which the access rule applies.
 
     .PARAMETER AccessRights
-        The filesystem rights to add to the access control list.
+        The filesystem rights to add to the access control list. A raw access
+        mask is also accepted as a decimal number or a hexadecimal string, so
+        bits the FileSystemRights enumeration cannot name, such as the generic
+        rights, can be used.
 
     .PARAMETER AccessControlType
         Specifies whether the rule allows or denies the selected rights.
@@ -87,6 +90,7 @@ function Add-NTFSAccessRule {
         [string[]]$Account,
 
         [Parameter(Mandatory)]
+        [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
 
         [Parameter()]
@@ -146,13 +150,12 @@ function Add-NTFSAccessRule {
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
             foreach ($securityIdentifier in $securityIdentifiers) {
                 $security.AddAccessRule(
-                    [System.Security.AccessControl.FileSystemAccessRule]::new(
-                        $securityIdentifier,
-                        $AccessRights,
-                        $scope.InheritanceFlags,
-                        $scope.PropagationFlags,
-                        $AccessControlType
-                    )
+                    (New-NTFSFileSystemRule `
+                        -SecurityIdentifier $securityIdentifier `
+                        -AccessRights $AccessRights `
+                        -InheritanceFlags $scope.InheritanceFlags `
+                        -PropagationFlags $scope.PropagationFlags `
+                        -AccessControlType $AccessControlType)
                 )
             }
             Update-NTFSSecurityDescriptorObject -Descriptor $SecurityDescriptor
@@ -190,13 +193,12 @@ function Add-NTFSAccessRule {
 
             $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
             $rules = foreach ($securityIdentifier in $securityIdentifiers) {
-                [System.Security.AccessControl.FileSystemAccessRule]::new(
-                    $securityIdentifier,
-                    $AccessRights,
-                    $scope.InheritanceFlags,
-                    $scope.PropagationFlags,
-                    $AccessControlType
-                )
+                New-NTFSFileSystemRule `
+                    -SecurityIdentifier $securityIdentifier `
+                    -AccessRights $AccessRights `
+                    -InheritanceFlags $scope.InheritanceFlags `
+                    -PropagationFlags $scope.PropagationFlags `
+                    -AccessControlType $AccessControlType
             }
 
             $identityLabel = $securityIdentifiers.Value -join ', '

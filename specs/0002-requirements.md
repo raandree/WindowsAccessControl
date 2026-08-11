@@ -80,6 +80,10 @@ Status: Accepted. These stable, testable identifiers define the implemented
 - **FR-27**: Bind an Active Directory target to its immutable `objectGUID`, so
   a rename or a move resolves the same canonical identity and a reused
   distinguished name is refused rather than silently accepted.
+- **FR-28**: Accept, report, and remove a file system access or audit entry
+  whose mask carries bits the `FileSystemRights` enumeration cannot name, such
+  as the generic rights, including when the entry belongs to an unresolvable
+  security identifier, through every supported removal route.
 
 ## Non-functional requirements
 

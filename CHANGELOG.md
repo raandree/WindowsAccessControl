@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Accept a raw access mask wherever an NTFS command takes `-AccessRights`, so an
+    access control entry carrying `GENERIC_ALL`, the `GENERIC_READ` /
+    `GENERIC_WRITE` / `GENERIC_EXECUTE` combination, or `ACCESS_SYSTEM_SECURITY`
+    can be created, replaced, and removed. The parameter stays typed as
+    `FileSystemRights` so a name still completes and an unknown name is still
+    rejected; a numeric mask is now converted before the enum conversion rejects
+    it. Supply such a mask as a decimal number or a quoted hexadecimal string,
+    because a bare hexadecimal literal in argument mode never reaches the
+    conversion
+- Add `NtfsGenericAndOrphanedAceRemoval.Tests.ps1`, which proves on a real
+    directory that an entry carrying generic bits or an unresolvable identifier
+    is reported with its exact mask and can be removed by account purge, by
+    exact mask, through a pipeline round trip, and by `Clear-NTFSAccessRule`,
+    with the same evidence for the audit family. Both existing test groups mock
+    `Get-Acl`, so nothing had ever reached disk. The suite also pins the
+    platform behavior that Windows maps the generic bits of an entry that is not
+    inherit-only through the file system generic mapping when the descriptor is
+    written
+- Add stable identifier `FR-28` for reporting and removing an entry whose mask
+    carries bits the `FileSystemRights` enumeration cannot name
+
+### Fixed
+
+- Fix removal of an access or audit entry whose mask carries bits the
+    `FileSystemRights` enumeration cannot name. The public rule constructors
+    reject any mask outside `FullControl`, and `RemoveAccessRuleSpecific`
+    rebuilds the rule through exactly that constructor when no stored entry
+    matches, so a documented orphan-cleanup one-liner reported the entries and
+    deleted nothing. Rules are now built through the rule factory, which takes
+    the mask verbatim, and an exact removal that finds no match is a no-op
+    instead of an argument-range error
+
 - Add tab completion for the `Name` parameter of `Enable-WindowsPrivilege`,
     `Disable-WindowsPrivilege`, and `Test-WindowsPrivilege`. The parameter takes
     a constant nobody recalls exactly, and a misspelling was reported only after

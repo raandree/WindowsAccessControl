@@ -29,7 +29,9 @@ function Remove-NTFSAccessRule {
         The account name or SID whose access rule is removed.
 
     .PARAMETER AccessRights
-        The rights used for Exact or Rights removal modes.
+        The rights used for Exact or Rights removal modes. A raw access mask is
+        also accepted as a decimal number or a hexadecimal string, which is how
+        an entry carrying generic rights is removed.
 
     .PARAMETER AccessControlType
         Selects whether an allow or deny rule is removed.
@@ -90,6 +92,7 @@ function Remove-NTFSAccessRule {
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]
         [Parameter(ParameterSetName = 'SecurityDescriptor')]
+        [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         [System.Security.AccessControl.FileSystemRights]$AccessRights,
 
         [Parameter(ParameterSetName = 'Path')]
@@ -153,15 +156,14 @@ function Remove-NTFSAccessRule {
                     -SecurityDescriptor $SecurityDescriptor `
                     -AppliesTo $AppliesTo
                 $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
-                $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-                    $securityIdentifier,
-                    $AccessRights,
-                    $scope.InheritanceFlags,
-                    $scope.PropagationFlags,
-                    $AccessControlType
-                )
+                $rule = New-NTFSFileSystemRule `
+                    -SecurityIdentifier $securityIdentifier `
+                    -AccessRights $AccessRights `
+                    -InheritanceFlags $scope.InheritanceFlags `
+                    -PropagationFlags $scope.PropagationFlags `
+                    -AccessControlType $AccessControlType
                 if ($RemovalMode -eq 'Exact') {
-                    $security.RemoveAccessRuleSpecific($rule)
+                    Remove-NTFSFileSystemRuleSpecific -Security $security -Rule $rule
                 } else {
                     $null = $security.RemoveAccessRule($rule)
                 }
@@ -215,20 +217,19 @@ function Remove-NTFSAccessRule {
                     }
                 }
                 $scope = ConvertFrom-NTFSAppliesTo -AppliesTo $effectiveAppliesTo
-                $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-                    $securityIdentifier,
-                    $AccessRights,
-                    $scope.InheritanceFlags,
-                    $scope.PropagationFlags,
-                    $AccessControlType
-                )
+                $rule = New-NTFSFileSystemRule `
+                    -SecurityIdentifier $securityIdentifier `
+                    -AccessRights $AccessRights `
+                    -InheritanceFlags $scope.InheritanceFlags `
+                    -PropagationFlags $scope.PropagationFlags `
+                    -AccessControlType $AccessControlType
             }
 
             if ($PSCmdlet.ShouldProcess($item.FullName, "$RemovalMode removal of access rules for $identityLabel")) {
                 $security = Get-Acl -LiteralPath $item.FullName -ErrorAction Stop
                 $removedRules = @()
                 switch ($RemovalMode) {
-                    'Exact' { $security.RemoveAccessRuleSpecific($rule) }
+                    'Exact' { Remove-NTFSFileSystemRuleSpecific -Security $security -Rule $rule }
                     'Rights' { $null = $security.RemoveAccessRule($rule) }
                     'All' {
                         $identityReference = if ($PSCmdlet.ParameterSetName -eq 'Rule') {
