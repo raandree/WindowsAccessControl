@@ -119,19 +119,27 @@ PowerShell pass using one principal from the fixture domain.
 
 ## Acceptance evidence
 
-- Two-edition lab acceptance green on 2026-08-08: 7 suites, 50 passed, 0 failed,
-    0 skipped in each edition, `Result = Passed`, every suite `Ready = True`.
-    Per suite: DomainLab 4, CertificatePrivateKey 7, TaskScheduler 8, SmbShare 7,
-    ADObjectPermissions 12, ForeignPrincipal 5, ADObjectReplication 7.
-- The instrumented Windows PowerShell pass took 22 minutes and the
-    uninstrumented PowerShell 7 pass 5 minutes, which is the measurement behind
-    the single-coverage-pass decision.
+- Two-edition lab acceptance on 2026-08-11 over 8 suites: 66 passed, 3 failed
+    in each edition. Per suite: DomainLab 4, CertificatePrivateKey 7,
+    TaskScheduler 8, SmbShare 7, ADObjectPermissions 12,
+    ADSchemaDefaultAndObjectType 19, ForeignPrincipal 5, ADObjectReplication 4
+    of 7. Every suite reported `Ready = True`.
+- The three failures are a lab precondition, not a defect. The machines were
+    cold booted two minutes before the run and `F1ADC2` had not replicated since
+    04:58, so `Sync-ADObject` reported a missing parent object and the partner
+    returned the previous run's `objectGUID`. After
+    `repadmin /syncall /AdeP` the suite passed 7 of 7 unchanged, which makes the
+    full set 69 of 69. `tests/Lab/README.md` now names the convergence step.
+- The instrumented Windows PowerShell pass took 26 minutes and the
+    uninstrumented PowerShell 7 pass 8 minutes, which keeps the
+    single-coverage-pass decision.
 - `./build.ps1 -Tasks test` succeeds: 10 tasks, 0 errors, 0 warnings. Local
-    Pester is 1,495 passed, 0 failed, 0 skipped.
-- Domain-lab coverage 43.07 percent (3,422 of 7,945 commands),
-    `Domain-lab evidence merged: yes`. Whole-module 90.51 percent (7,191 of
-    7,945) reported; asserted scope 90.54 percent (6,952 of 7,678) over the 80
-    percent threshold.
+    Pester is 1,687 passed, 0 failed, 0 skipped.
+- Domain-lab coverage 44.75 percent (3,766 of 8,416 commands),
+    `Domain-lab evidence merged: yes`; domain-lab-only 89.38 percent (244 of 273
+    commands over 15 source files). Whole-module 90.9 percent (7,650 of 8,416)
+    reported; asserted scope 90.95 percent (7,406 of 8,143) over the 80 percent
+    threshold.
 - `ExactSecurityDescriptorDscLcm.Tests.ps1` passes 5 of 5 in Windows PowerShell.
 
 ## Host fix that unblocked the DSC evidence

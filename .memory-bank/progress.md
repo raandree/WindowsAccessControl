@@ -24,6 +24,17 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-11: Closed the remaining live gaps and ran the full eight-suite
+    acceptance. The suite now also covers the third mutator, a two-target
+    bounded batch, an explicit credential through the forest-root read, and a
+    desired-state convergence that carries an object type; that last one
+    mattered because the resource passes a GUID into the parameter this work
+    changed to a string. Nineteen of nineteen green in both editions. The
+    acceptance itself reported three failures in `ADObjectReplication`, all from
+    a cold-booted partner that had not replicated for seven hours; the same
+    suite passed 7 of 7 after forcing convergence, and the README now names that
+    precondition. Repository gate afterwards: 1,687 tests 0 failures, domain-lab
+    evidence merged, asserted coverage 90.95 percent.
 - 2026-08-11: Ran the new directory features live and found what the unit tests
     could not. On a child domain controller the forest root partition is not
     held locally and referral chasing is off, so the root domain SID read
@@ -35,9 +46,14 @@ Every numbered specification is Accepted; 0008 was the last Draft.
     `GENERIC_ALL` is stored as `0x000F01FF` and a directory entry never keeps a
     generic bit, unlike the file system; and `classSchema` really does carry an
     empty `D:S:` template, so zero entries was the right answer.
-    `ADSchemaDefaultAndObjectType.Live.Tests.ps1` holds the evidence, 14 of 14
+    `ADSchemaDefaultAndObjectType.Live.Tests.ps1` holds the evidence, 16 of 16
     green in both editions against `a.forest1.net`, and is registered in the
-    acceptance suite list, which is now eight suites.
+    acceptance suite list, which is now eight suites. The suite also covers the
+    third mutator and a two-target bounded batch, which proves the name is
+    resolved once in the parent and the workers receive GUID text. Two live
+    paths are still untested: an explicit credential through the global catalog
+    fallback, and a desired-state convergence that carries an object type. The
+    eight-suite acceptance has not been rerun since the suite was registered.
 - 2026-08-11: Implemented the three findings of the ADMF review on the
     directory family. `Get-ADObjectSchemaDefaultAccessRule` reads
     `defaultSecurityDescriptor` per schema class and expands its domain-relative

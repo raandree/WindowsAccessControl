@@ -111,6 +111,21 @@ Build the module, then run the acceptance from the host:
 .\tests\Lab\Invoke-WindowsAccessControlLabAcceptance.ps1
 ```
 
+Start the machines and let replication converge before that call. A cold-booted
+lab fails `ADObjectReplication.Live.Tests.ps1` for a reason that has nothing to
+do with the module: `F1ADC2` has not replicated since it was last running, so
+`Sync-ADObject` reports that a required parent object is missing and the partner
+still returns the previous run's `objectGUID`. Measured on 2026-08-11: the suite
+failed three of seven tests two minutes after a cold boot and passed seven of
+seven after forcing convergence.
+
+```powershell
+Import-Lab -Name WindowsAccessControlLab -NoValidation
+Start-LabVM -ComputerName (Get-LabVM).Name -Wait
+Wait-LabADReady -ComputerName (Get-LabVM -Role RootDC, FirstChildDC, DC).Name
+Invoke-LabCommand -ComputerName F1ADC1 -ScriptBlock { repadmin.exe /syncall /AdeP $env:COMPUTERNAME }
+```
+
 That runs one complete pass per supported PowerShell edition against the same
 fixture set. Only the pass named by `-CoverageEdition` arms code coverage:
 instrumentation is what makes a pass slow, and the second pass reaches no line

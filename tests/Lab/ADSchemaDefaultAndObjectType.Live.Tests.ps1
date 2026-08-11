@@ -5,6 +5,7 @@ BeforeAll {
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
     Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    $script:module = Get-Module WindowsAccessControl
 
     $script:domain = Get-ADDomain -ErrorAction Stop
     $script:server = [string]@(
@@ -21,9 +22,11 @@ BeforeAll {
             -ErrorAction Stop).DomainSID.Value
 
     # A disposable organizational unit keeps every write inside a target this
-    # suite created and removes again.
+    # suite created and removes again. The second target exists so the bounded
+    # batch path runs with more than one worker.
     $script:baseOu = "OU=WacObjectTypeLive,$($script:domain.DistinguishedName)"
     $script:targetOu = "OU=Target,$($script:baseOu)"
+    $script:secondTargetOu = "OU=Target2,$($script:baseOu)"
     if (-not (Get-ADObject -Filter "DistinguishedName -eq '$($script:baseOu)'" -ErrorAction SilentlyContinue)) {
         $null = New-ADOrganizationalUnit `
             -Name 'WacObjectTypeLive' `
@@ -32,13 +35,16 @@ BeforeAll {
             -Server $script:server `
             -ErrorAction Stop
     }
-    if (-not (Get-ADObject -Filter "DistinguishedName -eq '$($script:targetOu)'" -ErrorAction SilentlyContinue)) {
-        $null = New-ADOrganizationalUnit `
-            -Name 'Target' `
-            -Path $script:baseOu `
-            -ProtectedFromAccidentalDeletion $false `
-            -Server $script:server `
-            -ErrorAction Stop
+    foreach ($targetName in 'Target', 'Target2') {
+        $targetDn = "OU=$targetName,$($script:baseOu)"
+        if (-not (Get-ADObject -Filter "DistinguishedName -eq '$targetDn'" -ErrorAction SilentlyContinue)) {
+            $null = New-ADOrganizationalUnit `
+                -Name $targetName `
+                -Path $script:baseOu `
+                -ProtectedFromAccidentalDeletion $false `
+                -Server $script:server `
+                -ErrorAction Stop
+        }
     }
 
     # A relative identifier no account uses keeps every assertion about entries
@@ -61,6 +67,34 @@ BeforeAll {
             -SearchBase $script:rootDse.schemaNamingContext `
             -LDAPFilter '(lDAPDisplayName=user)' `
             -Properties schemaIDGUID -ErrorAction Stop).schemaIDGUID
+
+    # A disposable unprivileged account proves the credential reaches the second
+    # connection the forest-root read opens.
+    $passwordText = 'Wac!' + [guid]::NewGuid().ToString('N') + 'aA1'
+    $script:readerPassword = [Security.SecureString]::new()
+    foreach ($character in $passwordText.ToCharArray()) {
+        $script:readerPassword.AppendChar($character)
+    }
+    $script:readerPassword.MakeReadOnly()
+    $passwordText = $null
+    $script:readerName = 'WacSchemaReader'
+    $existingReader = Get-ADUser -Filter "SamAccountName -eq '$($script:readerName)'" `
+        -Server $script:server -ErrorAction SilentlyContinue
+    if ($existingReader) {
+        Remove-ADUser -Identity $existingReader -Server $script:server -Confirm:$false
+    }
+    $null = New-ADUser `
+        -Name $script:readerName `
+        -SamAccountName $script:readerName `
+        -Path $script:baseOu `
+        -AccountPassword $script:readerPassword `
+        -Enabled $true `
+        -Server $script:server `
+        -ErrorAction Stop
+    $script:readerCredential = [pscredential]::new(
+        "$($script:domain.NetBIOSName)\$($script:readerName)",
+        $script:readerPassword
+    )
 }
 
 AfterAll {
@@ -127,6 +161,18 @@ Describe 'Schema default access rules' -Tag 'Lab', 'WindowsOnly' {
         { Get-ADObjectSchemaDefaultAccessRule `
                 -Server $script:server -ObjectClass 'noSuchClass' -ErrorAction Stop } |
             Should -Throw -ExpectedMessage '*did not resolve to exactly one schema class*'
+    }
+
+    It 'Should read the forest root domain SID with an explicit credential' {
+        # This class is the one that needs the forest root SID, and that read is
+        # a second connection, so it is the only case that proves the caller's
+        # credential reaches the global catalog rather than the pinned bind only.
+        $rules = @(Get-ADObjectSchemaDefaultAccessRule `
+                -Server $script:server `
+                -Credential $script:readerCredential `
+                -ObjectClass 'domainDNS')
+
+        $rules.SID | Should -Contain "$($script:rootDomainSid)-519"
     }
 }
 
@@ -272,6 +318,77 @@ Describe 'Object type names on directory rule mutators' -Tag 'Lab', 'WindowsOnly
         # grant the right on every object and property instead of one.
         $after.Sddl | Should -BeExactly $before.Sddl
     }
+
+    It 'Should replace only the entry that shares the named object type' {
+        foreach ($objectType in 'userAccountControl', 'displayName') {
+            Add-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -AllowedBaseDistinguishedName $script:baseOu `
+                -Account $script:testSid `
+                -AccessRights ReadProperty `
+                -ObjectType $objectType `
+                -ThrottleLimit 1 `
+                -Confirm:$false
+        }
+
+        Set-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights WriteProperty `
+            -ObjectType 'userAccountControl' `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        $stored = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -Account $script:testSid `
+                -ExcludeInherited `
+                -ThrottleLimit 1)
+
+        $stored | Should -HaveCount 2
+        $replaced = @($stored | Where-Object ObjectTypeName -EQ 'userAccountControl')
+        $untouched = @($stored | Where-Object ObjectTypeName -EQ 'displayName')
+        $replaced | Should -HaveCount 1
+        $replaced[0].AccessMask | Should -Be 0x20
+        $untouched | Should -HaveCount 1
+        $untouched[0].AccessMask | Should -Be 0x10
+    }
+
+    It 'Should resolve the name once for every target of a bounded batch' {
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName @($script:targetOu, $script:secondTargetOu) `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights ReadProperty `
+            -ObjectType 'userAccountControl' `
+            -ThrottleLimit 2 `
+            -Confirm:$false
+
+        foreach ($target in $script:targetOu, $script:secondTargetOu) {
+            $stored = @(Get-ADObjectAccessRule `
+                    -Server $script:server `
+                    -DistinguishedName $target `
+                    -Account $script:testSid `
+                    -ExcludeInherited `
+                    -ThrottleLimit 1)
+
+            $stored | Should -HaveCount 1
+            $stored[0].ObjectTypeGuid | Should -Be $script:userAccountControlGuid
+        }
+
+        Clear-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:secondTargetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+    }
 }
 
 Describe 'Directory rights masks' -Tag 'Lab', 'WindowsOnly' {
@@ -346,5 +463,78 @@ Describe 'Directory rights masks' -Tag 'Lab', 'WindowsOnly' {
                 -ThrottleLimit 1 `
                 -Confirm:$false
         } | Should -Throw
+    }
+}
+
+Describe 'Desired state carrying an object type' -Tag 'Lab', 'WindowsOnly' {
+    It 'Should converge a managed rule scoped to one object type' {
+        # The resource passes a GUID into a parameter that now takes a string,
+        # so this proves the value survives that round trip instead of
+        # collapsing to the empty GUID, which would manage every property.
+        $state = & $script:module {
+            param($Server, $Target, $Base, $Sid, $ObjectTypeGuid)
+
+            $resource = [WindowsAccessControlADObjectAccessRule]::new()
+            $resource.Server = $Server
+            $resource.DistinguishedName = $Target
+            $resource.AllowedBaseDistinguishedName = $Base
+            $resource.Account = $Sid
+            $resource.AccessRights = [WindowsActiveDirectoryRights]::ReadProperty
+            $resource.AccessControlType =
+                [Security.AccessControl.AccessControlType]::Allow
+            $resource.ObjectType = $ObjectTypeGuid
+            $resource.Ensure = [WindowsAccessControlDscEnsure]::Present
+
+            $initial = $resource.Test()
+            $resource.Set()
+            $afterSet = $resource.Test()
+            [pscustomobject]@{ Initial = $initial; AfterSet = $afterSet }
+        } $script:server $script:targetOu $script:baseOu $script:testSid `
+            $script:userAccountControlGuid.ToString()
+
+        $state.Initial | Should -BeFalse
+        $state.AfterSet | Should -BeTrue
+
+        $stored = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -Account $script:testSid `
+                -ExcludeInherited `
+                -ThrottleLimit 1)
+
+        $stored | Should -HaveCount 1
+        $stored[0].ObjectTypeGuid | Should -Be $script:userAccountControlGuid
+
+        $removed = & $script:module {
+            param($Server, $Target, $Base, $Sid, $ObjectTypeGuid)
+
+            $resource = [WindowsAccessControlADObjectAccessRule]::new()
+            $resource.Server = $Server
+            $resource.DistinguishedName = $Target
+            $resource.AllowedBaseDistinguishedName = $Base
+            $resource.Account = $Sid
+            $resource.AccessRights = [WindowsActiveDirectoryRights]::ReadProperty
+            $resource.AccessControlType =
+                [Security.AccessControl.AccessControlType]::Allow
+            $resource.ObjectType = $ObjectTypeGuid
+            $resource.Ensure = [WindowsAccessControlDscEnsure]::Absent
+            $resource.Set()
+            $resource.Test()
+        } $script:server $script:targetOu $script:baseOu $script:testSid `
+            $script:userAccountControlGuid.ToString()
+
+        $removed | Should -BeTrue
+    }
+
+    It 'Should refuse a name where the resource cannot resolve one' {
+        # The commands resolve a name over their connection. A resource property
+        # is parsed before any connection exists, so it stays GUID only rather
+        # than guessing.
+        {
+            & $script:module {
+                $resource = [WindowsAccessControlADObjectAccessRule]::new()
+                $resource.ParseGuid('userAccountControl', 'ObjectType')
+            }
+        } | Should -Throw -ExpectedMessage '*must be empty or a GUID*'
     }
 }
