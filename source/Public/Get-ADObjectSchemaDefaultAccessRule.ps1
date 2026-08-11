@@ -77,9 +77,22 @@ function Get-ADObjectSchemaDefaultAccessRule {
         }
         $rootDomainSid = if ($rootDse.RootDomainNamingContext -and
             $rootDse.RootDomainNamingContext -ne $rootDse.DefaultNamingContext) {
-            Get-WindowsADNamingContextSid `
+            $sid = Get-WindowsADNamingContextSid `
                 -Connection $connection `
                 -NamingContext $rootDse.RootDomainNamingContext
+            if (-not $sid) {
+                # A child domain controller does not hold the forest root
+                # partition, and referral chasing is off, so the only
+                # referral-free source on the same pinned server is its global
+                # catalog, which carries every domain's objectSid.
+                $sid = Get-WindowsADNamingContextSid `
+                    -NamingContext $rootDse.RootDomainNamingContext `
+                    -Server $pinnedServer `
+                    -Credential $Credential `
+                    -TimeoutSeconds $TimeoutSeconds `
+                    -UseGlobalCatalog
+            }
+            $sid
         }
         else { $domainSid }
     }

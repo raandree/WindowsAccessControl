@@ -63,6 +63,16 @@ specification 0015 reviews.
     whole conversion and the type declaration goes, or the attribute is
     decoration. Prove such an attribute with a test that binds the value the
     declared type would reject, not with a test that the attribute is present.
+- A refusal that is correct can still be a gap. Refusing to expand a forest-wide
+    alias without the root domain SID was right, and it also made the command
+    useless for whole classes on any child domain controller, which is an
+    ordinary topology. A fail-closed branch needs a reachable path to the value
+    it is closed on; here that path is the global catalog port of the same
+    pinned server. Reach for the second source before accepting the refusal.
+- A single lab is not a topology. Two separate forests cannot exercise a
+    root-versus-child difference at all, and the branch that mattered most only
+    ran once the suite pointed at a child domain. Check that the fixture can
+    reach the branch before reading a green run as evidence for it.
 
 ## Acceptance lab
 

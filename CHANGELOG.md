@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `ADSchemaDefaultAndObjectType.Live.Tests.ps1` to the domain-lab
+    acceptance. It runs against a real child domain, where the forest root SID,
+    the schema, and the `Extended-Rights` container are all separate reads. The
+    suite proved three things the unit tests cannot: `DA`, `CA`, and `RS` expand
+    to the served domain's groups while `EA` expands to the forest root's; a
+    schema, attribute, and extended-right name resolves to the entry the
+    directory then reports back by name; and an unresolvable name leaves the
+    descriptor byte-identical instead of widening it
 - Add `Get-ADObjectSchemaDefaultAccessRule`, which returns the entries a schema
     class carries in `defaultSecurityDescriptor`. Without that baseline every
     entry Active Directory applied at object creation looks like operator
@@ -114,6 +122,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix `Get-ADObjectSchemaDefaultAccessRule` on a child domain controller, which
+    could not expand a forest-wide alias at all. The controller does not hold the
+    forest root partition and referral chasing is off, so the root domain SID
+    read returned nothing and every class whose template names `EA`, `SA`, `RO`,
+    or `EK` was refused. Measured against a live child domain: `domainDNS` failed
+    while `user`, `group`, and `computer` succeeded. The read now falls back to
+    the global catalog port of the same pinned server, which carries every
+    domain's `objectSid` without a referral. A server that is not a global
+    catalog still produces the original refusal rather than a wrong SID
 - Fix `WindowsAccessRightsTransformAttribute`, which never ran on any parameter
     that also declared its rights enumeration. PowerShell adds its own
     `ArgumentTypeConverterAttribute` for a typed parameter, that converter runs

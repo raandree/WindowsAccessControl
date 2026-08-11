@@ -24,6 +24,20 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-11: Ran the new directory features live and found what the unit tests
+    could not. On a child domain controller the forest root partition is not
+    held locally and referral chasing is off, so the root domain SID read
+    returned nothing and every class whose template names `EA` was refused:
+    `domainDNS` failed while `user`, `group`, and `computer` succeeded. The read
+    now falls back to the global catalog port of the same pinned server, which
+    returned the correct root SID. Two other facts were measured rather than
+    assumed: Active Directory applies its generic mapping on write, so
+    `GENERIC_ALL` is stored as `0x000F01FF` and a directory entry never keeps a
+    generic bit, unlike the file system; and `classSchema` really does carry an
+    empty `D:S:` template, so zero entries was the right answer.
+    `ADSchemaDefaultAndObjectType.Live.Tests.ps1` holds the evidence, 14 of 14
+    green in both editions against `a.forest1.net`, and is registered in the
+    acceptance suite list, which is now eight suites.
 - 2026-08-11: Implemented the three findings of the ADMF review on the
     directory family. `Get-ADObjectSchemaDefaultAccessRule` reads
     `defaultSecurityDescriptor` per schema class and expands its domain-relative

@@ -15,14 +15,18 @@ function New-WindowsADConnection {
 
         [Parameter(Mandatory)]
         [ValidateRange(1, 300)]
-        [int]$TimeoutSeconds
+        [int]$TimeoutSeconds,
+
+        [Parameter()]
+        [ValidateSet(389, 3268)]
+        [int]$Port = 389
     )
 
     Add-Type -AssemblyName System.DirectoryServices.Protocols -ErrorAction Stop
     $serverName = Resolve-WindowsADServerName -Server $Server
     $identifier = [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
         $serverName,
-        389,
+        $Port,
         $true,
         $false
     )

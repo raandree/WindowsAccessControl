@@ -95,8 +95,12 @@ object of that class. The stored SDDL names domain-relative aliases, and the
 platform parser resolves those against the calling computer's domain and fails
 outright on a computer that has none, so the aliases are expanded against the
 SID of the domain the pinned controller serves and, for forest-wide aliases,
-against the forest root domain SID. A forest-wide alias whose root domain SID
-cannot be read is refused rather than expanded against the wrong domain.
+against the forest root domain SID. A child domain controller does not hold the
+forest root partition and referral chasing is disabled, so that SID is read from
+the global catalog port of the same pinned server, which carries every domain's
+`objectSid` without a referral. A forest-wide alias whose root domain SID cannot
+be read from either source is refused rather than expanded against the wrong
+domain.
 
 Query output additionally reports where an inherited ACE came from and what its
 GUIDs mean. `InheritedFrom` names the nearest ancestor object that holds the

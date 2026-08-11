@@ -1709,6 +1709,7 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
         'TaskSchedulerPermissions.Live.Tests.ps1'
         'SmbSharePermissions.Live.Tests.ps1'
         'ADObjectPermissions.Live.Tests.ps1'
+        'ADSchemaDefaultAndObjectType.Live.Tests.ps1'
         'ForeignPrincipalPermissions.Live.Tests.ps1'
         'ADObjectReplication.Live.Tests.ps1'
     )
