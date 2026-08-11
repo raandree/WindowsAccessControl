@@ -6,6 +6,8 @@ function Get-NTFSItemOwner {
     .DESCRIPTION
         Returns a structured owner object containing the filesystem path, the
         owner SID, and its translated account name when Windows can resolve it.
+        A junction, a symbolic link, or a volume mount point reports its own
+        owner, not the owner of its destination.
 
     .PARAMETER Path
         One or more filesystem paths. Wildcards are expanded by the FileSystem

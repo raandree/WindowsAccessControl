@@ -88,6 +88,10 @@ Status: Accepted. These stable, testable identifiers define the implemented
   Win32 device-namespace path, treats a literal path as literal, resolves a
   drive specification to the volume root directory, and reports the same
   descriptor for a universal naming convention path as for the local path.
+- **FR-30**: Address the object the caller named when reading and writing a
+  descriptor, so a junction, a symbolic link, or a volume mount point resolves
+  to its own descriptor, and operate only on the targets the caller supplies so
+  no operation can cross a reparse-point cycle.
 
 ## Non-functional requirements
 

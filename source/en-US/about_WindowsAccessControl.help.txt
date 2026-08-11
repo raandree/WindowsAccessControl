@@ -29,6 +29,13 @@ NOTE
     as C: are refused, because neither names one unambiguous target; supply
     the normalized path or C:\ instead.
 
+    A junction, a symbolic link, or a volume mount point carries its own
+    security descriptor and is addressed as itself; its destination is not
+    read and not changed, which is what Get-Acl, Set-Acl, and icacls also do.
+    No command walks a directory tree: a command operates on the targets it is
+    given plus one level of wildcard expansion, so no operation can follow a
+    reparse-point cycle.
+
 SEE ALSO
     Get-NTFSAccessRule
     Get-NTFSAuditRule

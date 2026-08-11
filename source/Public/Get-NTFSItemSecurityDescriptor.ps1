@@ -6,6 +6,8 @@ function Get-NTFSItemSecurityDescriptor {
     .DESCRIPTION
         Returns selected security descriptor sections as SDDL together with
         structured metadata and the native FileSecurity or DirectorySecurity object.
+        A junction, a symbolic link, or a volume mount point carries its own
+        descriptor and is reported as itself, not as its destination.
 
     .PARAMETER Path
         One or more filesystem paths. Wildcards are expanded by the FileSystem

@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `NtfsReparsePointsAndLinks.Tests.ps1` and record ADR 0030 and ADR 0031.
+    Nothing in the test tree mentioned a junction, a symbolic link, or a hard
+    link, so the module's behavior on a reparse point was whatever `Get-Acl`
+    happened to do. Measured in both editions, a junction, a directory symbolic
+    link, and a file symbolic link each carry their own security descriptor: a
+    write through the link changes the link and leaves the destination
+    untouched, which is what `Get-Acl`, `Set-Acl`, `icacls`, and `icacls /L` all
+    do. A hard link shares one descriptor between both names because there is
+    one file record. That behavior is now stated in the module help and in the
+    description of the commands that resolve a file system path, and asserted on
+    real fixtures. Termination is asserted too: no command walks a tree, so a
+    self-referential junction is one ordinary target and a wildcard expands
+    exactly one level
+- Add stable identifier `FR-30` for the reparse-point and target-set contract
 - Add `NtfsPathInputMatrix.Tests.ps1`, a table-driven matrix that pins a
     deterministic outcome for every hostile path and name shape: a trailing
     space or period, a name beginning with `$ - + # { ,`, a bracketed name under

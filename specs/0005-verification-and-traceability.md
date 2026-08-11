@@ -54,6 +54,7 @@ is not reported as a successful live write.
 | FR-27 | `ADObjectReplication.Live.Tests.ps1` canonical-target, rename, move, deleted-object, and distinguished-name-reuse cases plus the object-GUID restore rejection in `WindowsEnterpriseBackupRecord.Tests.ps1` |
 | FR-28 | `NtfsGenericAndOrphanedAceRemoval.Tests.ps1` real-item mask persistence, generic-bit reporting, orphan enumeration, and purge/exact/pipeline/clear removal routes plus the privileged audit-entry cases, and `NewNTFSFileSystemRule.Tests.ps1` mask-range construction contract |
 | FR-29 | `NtfsPathInputMatrix.Tests.ps1` hostile-name, drive-specification, relative-path, file-system-object, long-path, reserved-name, case, separator, universal-naming-convention, and device-namespace cases across both PowerShell editions |
+| FR-30 | `NtfsReparsePointsAndLinks.Tests.ps1` junction link-scoped read and write, junction descriptor identity, `icacls` and `icacls /L` agreement, hard-link shared descriptor, privilege-gated symbolic-link cases, self-referential junction termination, and single-level wildcard expansion |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |

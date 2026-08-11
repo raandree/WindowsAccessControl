@@ -9,7 +9,9 @@ function Get-NTFSAccessRule {
         inherited. InheritedFrom identifies the original ancestor reported by
         the Windows inheritance-source API. It is empty for explicit rules or
         when Windows cannot identify an inherited ancestor. The output can be
-        piped to other module commands.
+        piped to other module commands. A junction, a symbolic link, or a volume
+        mount point carries its own descriptor and is reported as itself, not as
+        its destination.
 
     .PARAMETER Path
         One or more filesystem paths. Wildcards are expanded by the FileSystem

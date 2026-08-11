@@ -6,7 +6,9 @@ function Set-NTFSItemOwner {
     .DESCRIPTION
         Sets a filesystem item's owner from an account name or SID. Setting an
         arbitrary owner can require SeRestorePrivilege; taking ownership can
-        require SeTakeOwnershipPrivilege or suitable object permissions.
+        require SeTakeOwnershipPrivilege or suitable object permissions. A
+        junction, a symbolic link, or a volume mount point is written as itself;
+        its destination is not changed.
 
     .PARAMETER Path
         One or more filesystem paths. Wildcards are expanded by the FileSystem

@@ -6,7 +6,9 @@ function Add-NTFSAccessRule {
     .DESCRIPTION
         Adds an allow or deny access rule without replacing unrelated rules.
         Directory rules use Explorer-style AppliesTo values, while file rules
-        apply only to the file unless AppliesTo is explicitly supplied.
+        apply only to the file unless AppliesTo is explicitly supplied. A
+        junction, a symbolic link, or a volume mount point is written as itself;
+        its destination is not changed.
 
     .PARAMETER Path
         One or more filesystem paths. Wildcards are expanded by the FileSystem

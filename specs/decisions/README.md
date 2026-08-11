@@ -38,6 +38,8 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0027 | [Assert the coverage threshold over the executable scope](0027-assert-coverage-over-executable-scope.md) | Accepted |
 | 0028 | [Read the DACL without the SACL and graft the audited SACL](0028-read-the-dacl-without-the-sacl.md) | Accepted |
 | 0029 | [Refuse a device-namespace path and a bare drive specification](0029-refuse-device-namespace-paths.md) | Accepted |
+| 0030 | [Address the link object, not the destination of a reparse point](0030-address-the-link-object.md) | Accepted |
+| 0031 | [Never expand a supplied target set](0031-never-expand-a-supplied-target-set.md) | Accepted |
 
 ## See also
 

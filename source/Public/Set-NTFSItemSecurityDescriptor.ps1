@@ -9,7 +9,9 @@ function Set-NTFSItemSecurityDescriptor {
         obtained from Get-NTFSItemSecurityDescriptor and can be edited in memory
         by piping it through mutating commands such as Add-NTFSAccessRule before
         it is persisted. Only the sections recorded on the descriptor are
-        written, and the write happens once under ShouldProcess.
+        written, and the write happens once under ShouldProcess. A junction, a
+        symbolic link, or a volume mount point is written as itself; its
+        destination is not changed.
 
     .PARAMETER InputObject
         A WindowsAccessControl.SecurityDescriptor object returned by
