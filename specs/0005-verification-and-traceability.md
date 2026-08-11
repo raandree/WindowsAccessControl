@@ -55,6 +55,7 @@ is not reported as a successful live write.
 | FR-28 | `NtfsGenericAndOrphanedAceRemoval.Tests.ps1` real-item mask persistence, generic-bit reporting, orphan enumeration, and purge/exact/pipeline/clear removal routes plus the privileged audit-entry cases, and `NewNTFSFileSystemRule.Tests.ps1` mask-range construction contract |
 | FR-29 | `NtfsPathInputMatrix.Tests.ps1` hostile-name, drive-specification, relative-path, file-system-object, long-path, reserved-name, case, separator, universal-naming-convention, and device-namespace cases across both PowerShell editions |
 | FR-30 | `NtfsReparsePointsAndLinks.Tests.ps1` junction link-scoped read and write, junction descriptor identity, `icacls` and `icacls /L` agreement, hard-link shared descriptor, privilege-gated symbolic-link cases, self-referential junction termination, and single-level wildcard expansion |
+| FR-31 | `NtfsIcaclsDifferentialOracle.Tests.ps1` thirteen-value inheritance token matrix, deny matrix and canonical insertion, generic-mask rendering, `Synchronize` normalization, noncanonical-write behavior, `icacls /verify` findings, automatic propagation in both directions, and an `icacls /save` byte-identical restore round trip |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |

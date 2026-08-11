@@ -92,6 +92,10 @@ Status: Accepted. These stable, testable identifiers define the implemented
   descriptor, so a junction, a symbolic link, or a volume mount point resolves
   to its own descriptor, and operate only on the targets the caller supplies so
   no operation can cross a reparse-point cycle.
+- **FR-31**: Materialize on disk exactly what a rule request describes, proven
+  against `icacls` for every `AppliesTo` value, for allow and deny order, for
+  `Synchronize` normalization, for automatic propagation to pre-existing
+  children, and for a save and restore round trip.
 
 ## Non-functional requirements
 

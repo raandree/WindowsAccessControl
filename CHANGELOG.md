@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `NtfsIcaclsDifferentialOracle.Tests.ps1`, which compares what the module
+    writes against what `icacls` reads back, parsing only bracketed tokens so the
+    suite passes on a localized host. It covers all thirteen `AppliesTo` values
+    on disk, the deny matrix including a deny that would land after an existing
+    allow, `Synchronize` normalization on allow and deny, `icacls /verify` over
+    every list the module writes, automatic propagation to pre-existing children
+    in both directions, and an `icacls /save` byte-identical backup and restore
+    round trip. Two platform behaviors are now asserted rather than assumed:
+    `icacls` applies the file system generic mapping when it renders a mask, so
+    it prints `F` or `M` for an entry whose stored mask still carries
+    `GENERIC_ALL`; and a noncanonical list written through `SetSecurityInfo` is
+    stored exactly as written, neither reordered nor marked protected, which
+    both `Test-NTFSItemAcl` and `icacls /verify` report
+- Add stable identifier `FR-31` for the materialized-descriptor contract
 - Add `NtfsReparsePointsAndLinks.Tests.ps1` and record ADR 0030 and ADR 0031.
     Nothing in the test tree mentioned a junction, a symbolic link, or a hard
     link, so the module's behavior on a reparse point was whatever `Get-Acl`
