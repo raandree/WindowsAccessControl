@@ -24,6 +24,34 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-11: Closed five input-coverage blind spots on real objects and fixed
+    one real defect. Removing an access control entry that carries `GENERIC_*`
+    bits or belongs to an unresolvable identity failed at two points: the public
+    rule constructors reject any mask outside `FullControl`, and
+    `RemoveAccessRuleSpecific` rebuilds the rule through that constructor when no
+    stored entry matches. Rule construction now runs through
+    `New-NTFSFileSystemRule`, exact removal through
+    `Remove-NTFSFileSystemRuleSpecific`, and `-AccessRights` accepts a raw mask
+    through `WindowsAccessRightsTransformAttribute`. `Resolve-NTFSPath` now
+    refuses a device-namespace path and a bare drive specification, both of which
+    silently addressed something other than what the caller wrote. Five suites
+    were added: generic and orphaned entry removal, the path and name input
+    matrix, reparse points and links, an `icacls` differential oracle, and the
+    registry view, alias and rights pair. FR-28 through FR-32 and ADR 0029
+    through ADR 0032 record the contracts. Three platform facts are now asserted
+    rather than assumed: Windows maps the generic bits of an effective entry when
+    the descriptor is written and `icacls` maps them again when it renders,
+    a noncanonical list is stored exactly as written rather than reordered or
+    protected, and a file system link carries its own descriptor while a registry
+    symbolic link is followed.
+- 2026-08-11: Gate evidence for the five suites above: `./build.ps1 -Tasks test`
+    succeeded with 10 tasks, 0 errors, 0 warnings; Pester reported 1,666 passed,
+    0 failed, 2 skipped in 951 seconds. Coverage asserted at 83.71 percent
+    (6,615 of 7,902 commands this profile can execute) against the 80 percent
+    threshold. That figure is local-only: rebuilding the module invalidated the
+    carried domain-lab document, which the build reports rather than merges, so
+    the 90.51 percent whole-module figure returns only after the domain-lab
+    acceptance is rerun against the rebuilt module.
 - 2026-08-11: Reviewed the Active Directory Management Framework against this
     module and recorded the comparison in `docs/research.md`. ADMF is a
     whole-domain configuration engine, so its registered desired state, object

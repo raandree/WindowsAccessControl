@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-08
+last-verified: 2026-08-11
 owner: active-agent
 source: current task evidence
 ---
@@ -8,6 +8,66 @@ source: current task evidence
 # Active context
 
 ## Current focus
+
+Line coverage was 90.54 percent, so the remaining gaps were never unexecuted
+lines: they were untested *inputs*. Five coverage prompts closed five of them on
+real objects, and three of the five turned up behavior that had only ever been
+assumed.
+
+The largest was real: an access control entry carrying `GENERIC_*` bits could be
+reported and never removed, because the public `FileSystemAccessRule` and
+`FileSystemAuditRule` constructors reject any mask outside `FullControl`, and
+`RemoveAccessRuleSpecific` rebuilds the rule through exactly that constructor
+when no stored entry matches. That is the shape of the most-reported defect of
+the module this one replaces.
+
+The older thread below is unchanged.
+
+## What changed
+
+- NTFS rule construction runs through `New-NTFSFileSystemRule`, which uses the
+    public constructor for a mask the enum can name and the rule factory for one
+    it cannot, so `GENERIC_*`, `ACCESS_SYSTEM_SECURITY`, and an orphaned identity
+    survive a round trip. `Remove-NTFSFileSystemRuleSpecific` matches the stored
+    entry on the raw list for such a mask, so an exact removal that finds no
+    match is a no-op instead of an argument-range error.
+    `WindowsAccessRightsTransformAttribute` lets a raw numeric mask bind to the
+    `FileSystemRights` parameters without giving up the enum type.
+- `Resolve-NTFSPath` refuses a Win32 device-namespace path and a bare drive
+    specification. Both resolved to something other than what the caller wrote:
+    `\\?\` bypasses normalization and yields a non-canonical target key, and
+    `C:` resolves to the current location of that drive.
+- A junction, a directory symbolic link, and a file symbolic link each carry
+    their own descriptor. A write through the link changes the link, not the
+    destination, which is what `Get-Acl`, `Set-Acl`, `icacls`, and `icacls /L`
+    all do. The registry is the opposite: a registry symbolic link is followed.
+    Both are recorded, in help and in ADR 0030 and ADR 0032.
+- Five new suites: `NtfsGenericAndOrphanedAceRemoval`, `NtfsPathInputMatrix`,
+    `NtfsReparsePointsAndLinks`, `NtfsIcaclsDifferentialOracle`, and the registry
+    pair `RegistryTargetAliasMatrix` and `RegistryViewsAndRights`. Every one runs
+    in both supported editions, and every genuine edition difference is asserted
+    rather than skipped.
+
+## Acceptance evidence
+
+- `./build.ps1 -Tasks test` on 2026-08-11: 10 tasks, 0 errors, 0 warnings.
+    Pester 1,666 passed, 0 failed, 2 skipped. Coverage 83.71 percent (6,615 of
+    7,902 commands this profile can execute) over the 80 percent threshold.
+- The five new suites also run standalone in both editions:
+    generic and orphaned removal 25/25, path matrix 36/36, reparse points 10/10
+    with one skip, `icacls` oracle 27/27, registry 61/61 with one skip.
+- The coverage figure is local-only. Rebuilding the module invalidated the
+    carried domain-lab document, and the build reports that rather than merging
+    it. Rerunning the domain-lab acceptance against the rebuilt module restores
+    the whole-module figure.
+
+## Next step
+
+Rerun the domain-lab acceptance against the rebuilt module so the merged
+coverage document is current again. The remaining lab-specific gaps are
+unchanged and listed at the end of this file.
+
+## Earlier thread
 
 Rule output has to be readable without inspecting the object. An access control
 entry that carries `GENERIC_*` bits showed `-536805376` where the entry above it

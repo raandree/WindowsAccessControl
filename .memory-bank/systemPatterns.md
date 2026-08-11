@@ -943,3 +943,45 @@ and Decision 42.
     `Initialize-WindowsAccessControlNativeType` would put a compile behind the
     Tab key, and typed text is escaped as a literal so an unbalanced bracket
     cannot throw a wildcard error mid-keystroke.
+
+### Decision 77: Build an NTFS rule through a mask-range helper
+
+- Choice: `New-NTFSFileSystemRule` builds every NTFS access and audit rule. It
+    uses the public `FileSystemAccessRule` or `FileSystemAuditRule` constructor
+    for a mask the enum can name and the `AccessRuleFactory` or
+    `AuditRuleFactory` overload for one it cannot. `-AccessRights` carries
+    `WindowsAccessRightsTransformAttribute`, a class-based argument
+    transformation over `Enum::ToObject`, so a raw mask binds while the enum
+    type and its name validation stay.
+- Rationale: The public constructors throw for any mask outside `FullControl`,
+    which is exactly the `GENERIC_*` case the predecessor module could report
+    and never remove. The factory takes the mask verbatim, and confining the
+    factory to out-of-range masks preserves the framework's `Synchronize`
+    normalization for every existing call. Reference a class attribute by its
+    full class name: the engine's implicit `Attribute` suffix search does not
+    reach a PowerShell class type.
+
+### Decision 78: Refuse a path that does not name one canonical target
+
+- Choice: `Resolve-NTFSPath` refuses a Win32 device-namespace path (`\\?\`,
+    `\\.\`) and a bare drive specification such as `C:`, each with its own
+    terminating error naming the replacement. A universal naming convention path
+    stays supported.
+- Rationale: Both resolved to something other than what the caller wrote. The
+    device namespace bypasses normalization, so the resolved name is not a
+    canonical target key for batch serialization, backup records, or desired
+    state, and a misbinding is reported to have destroyed a system. `C:` resolves
+    to the current location of that drive, so a command meant for a volume
+    silently addressed a directory inside it. See ADR 0029.
+
+### Decision 79: Address the object the caller named, per object family
+
+- Choice: A file system junction, symbolic link, and volume mount point are
+    addressed as themselves; a registry symbolic link is followed to its target.
+    No command walks a directory tree, so a target set is the supplied targets
+    plus one level of wildcard expansion.
+- Rationale: Measured in both editions, a file system link carries its own
+    descriptor and `Get-Acl`, `Set-Acl`, `icacls`, and `icacls /L` all agree; the
+    registry has no managed API that opens a link without following it. Not
+    expanding a target set is what makes a reparse-point cycle unreachable. See
+    ADR 0030, ADR 0031, and ADR 0032.
