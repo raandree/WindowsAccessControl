@@ -36,6 +36,12 @@ NOTE
     given plus one level of wildcard expansion, so no operation can follow a
     reparse-point cycle.
 
+    The registry is the opposite case: a registry symbolic link is followed,
+    so HKLM:\SYSTEM\CurrentControlSet reports and writes the control set it
+    currently names. The 32-bit and 64-bit registry views are independent
+    objects; select one with RegistryView rather than by naming the reserved
+    redirection node.
+
 SEE ALSO
     Get-NTFSAccessRule
     Get-NTFSAuditRule

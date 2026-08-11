@@ -5,7 +5,8 @@ function Get-RegistryKeySecurityDescriptor {
     .DESCRIPTION
         Resolves local registry provider or native key paths, reads only the
         selected owner, group, DACL, or SACL sections, and emits portable SDDL
-        with the original binary descriptor.
+        with the original binary descriptor. A registry symbolic link is
+        followed, so the descriptor is the one of the key the link names.
     .PARAMETER Path
         One or more local registry key paths or RegistryKey objects supplied
         directly or through the pipeline.

@@ -96,6 +96,10 @@ Status: Accepted. These stable, testable identifiers define the implemented
   against `icacls` for every `AppliesTo` value, for allow and deny order, for
   `Synchronize` normalization, for automatic propagation to pre-existing
   children, and for a save and restore round trip.
+- **FR-32**: Treat the 32-bit and 64-bit registry views as independent objects,
+  accept every documented hive alias and reject every documented non-local
+  form, address a registry symbolic link through to its target, and never emit a
+  rights value the registry cannot carry.
 
 ## Non-functional requirements
 

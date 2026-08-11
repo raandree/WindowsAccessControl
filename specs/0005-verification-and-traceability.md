@@ -56,6 +56,7 @@ is not reported as a successful live write.
 | FR-29 | `NtfsPathInputMatrix.Tests.ps1` hostile-name, drive-specification, relative-path, file-system-object, long-path, reserved-name, case, separator, universal-naming-convention, and device-namespace cases across both PowerShell editions |
 | FR-30 | `NtfsReparsePointsAndLinks.Tests.ps1` junction link-scoped read and write, junction descriptor identity, `icacls` and `icacls /L` agreement, hard-link shared descriptor, privilege-gated symbolic-link cases, self-referential junction termination, and single-level wildcard expansion |
 | FR-31 | `NtfsIcaclsDifferentialOracle.Tests.ps1` thirteen-value inheritance token matrix, deny matrix and canonical insertion, generic-mask rendering, `Synchronize` normalization, noncanonical-write behavior, `icacls /verify` findings, automatic propagation in both directions, and an `icacls /save` byte-identical restore round trip |
+| FR-32 | `RegistryTargetAliasMatrix.Tests.ps1` accepted and rejected hive forms, view-carrying canonical target, rights-value pinning, and reserved-redirection-node scan, plus `RegistryViewsAndRights.Tests.ps1` view independence in both directions, view-carrying rules, union enumeration, path round trip, bracketed-name literal semantics, `HKU` profile read, registry symbolic-link target read, and protected-hive and remote-target error paths |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |

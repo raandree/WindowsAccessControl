@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `RegistryTargetAliasMatrix.Tests.ps1` and `RegistryViewsAndRights.Tests.ps1`
+    and record ADR 0032. The two registry views were carried on the returned
+    object but never proven independent: writing an entry through the 32-bit view
+    of a genuinely redirected key now has to leave the 64-bit view unchanged, and
+    the reverse, with the view carried into every emitted rule and neither pass
+    leaking into the other. Every accepted hive alias, the
+    `Microsoft.PowerShell.Core\Registry::` prefix, the current-config expansion,
+    and every documented rejection now has a case, asserted on the canonical
+    target rather than on the absence of an error. Three rights facts are pinned:
+    `FullControl` is 983103, which is `KEY_ALL_ACCESS` and carries no
+    `SYNCHRONIZE`; `ReadKey` and `ExecuteKey` are the same value and survive a
+    round trip without a name flip; and no registry rights value carries
+    `SYNCHRONIZE`. The Windows PowerShell defect that only existed as a source
+    comment is now an asserted difference: `Get-Acl -LiteralPath` cannot resolve
+    a bracketed registry key in Windows PowerShell and can in PowerShell 7, while
+    the module resolves it in both because it resolves the target itself
+- Add stable identifier `FR-32` for the registry view, alias, and rights contract
 - Add `NtfsIcaclsDifferentialOracle.Tests.ps1`, which compares what the module
     writes against what `icacls` reads back, parsing only bracketed tokens so the
     suite passes on a localized host. It covers all thirteen `AppliesTo` values

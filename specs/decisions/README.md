@@ -40,6 +40,7 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0029 | [Refuse a device-namespace path and a bare drive specification](0029-refuse-device-namespace-paths.md) | Accepted |
 | 0030 | [Address the link object, not the destination of a reparse point](0030-address-the-link-object.md) | Accepted |
 | 0031 | [Never expand a supplied target set](0031-never-expand-a-supplied-target-set.md) | Accepted |
+| 0032 | [Follow a registry symbolic link to its target](0032-follow-a-registry-symbolic-link.md) | Accepted |
 
 ## See also
 
