@@ -7,7 +7,7 @@ function New-NTFSFileSystemRule {
 
         [Parameter(Mandatory)]
         [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
-        [System.Security.AccessControl.FileSystemRights]$AccessRights,
+        $AccessRights,
 
         [Parameter()]
         [System.Security.AccessControl.InheritanceFlags]$InheritanceFlags =

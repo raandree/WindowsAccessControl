@@ -129,4 +129,20 @@ Describe 'New-NTFSFileSystemRule' -Tag 'Unit', 'WindowsOnly' {
             } $script:testSid
         } | Should -Throw
     }
+
+    It 'Should build a rule from a hexadecimal literal mask' {
+        # Every other mask case here passes the value through a variable, and a
+        # variable always bound. A hexadecimal literal is the one form the
+        # engine converts before the rights transformation attribute runs.
+        $result = & $script:module {
+            param($Sid)
+            $rule = New-NTFSFileSystemRule `
+                -SecurityIdentifier ([System.Security.Principal.SecurityIdentifier]::new($Sid)) `
+                -AccessRights 0x10000000 `
+                -AccessControlType Allow
+            [int]$rule.FileSystemRights
+        } $script:testSid
+
+        $result | Should -Be 0x10000000
+    }
 }

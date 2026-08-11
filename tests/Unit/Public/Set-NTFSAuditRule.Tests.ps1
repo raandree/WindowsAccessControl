@@ -26,6 +26,30 @@ Describe 'Set-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
         Mock -ModuleName WindowsAccessControl -CommandName Invoke-NTFSSecurityDescriptorPersistence
     }
 
+    It 'Should bind a hexadecimal literal mask the enumeration cannot name' {
+        # A hexadecimal literal is the one form the engine converts before the
+        # rights transformation attribute runs. The same value written as a
+        # variable or a decimal literal always bound, which is why this defect
+        # survived the tests that already covered unnameable masks.
+        {
+            Set-NTFSAuditRule `
+                -LiteralPath $script:testFile `
+                -Account 'S-1-1-0' `
+                -AccessRights 0x10000000 `
+                -AuditFlags Failure
+        } | Should -Not -Throw
+    }
+
+    It 'Should still refuse an unknown rights name' {
+        {
+            Set-NTFSAuditRule `
+                -LiteralPath $script:testFile `
+                -Account 'S-1-1-0' `
+                -AccessRights 'NotARight' `
+                -AuditFlags Failure
+        } | Should -Throw -ExpectedMessage '*NotARight*FileSystemRights*'
+    }
+
     It 'Should replace audit rules for the same identity and audit flags' {
         Set-NTFSAuditRule -LiteralPath $script:testFile -Account 'S-1-1-0' -AccessRights Write -AuditFlags Failure
 

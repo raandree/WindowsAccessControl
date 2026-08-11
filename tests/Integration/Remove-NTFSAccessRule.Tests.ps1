@@ -12,6 +12,22 @@ AfterAll {
 }
 
 Describe 'Remove-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
+    It 'Should bind a hexadecimal literal mask the enumeration cannot name' {
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'hex-literal-mask.txt'
+        Set-Content -LiteralPath $testFile -Value 'test'
+
+        { Remove-NTFSAccessRule -LiteralPath $testFile -Account 'S-1-1-0' -AccessRights 0x10000000 -WhatIf } |
+            Should -Not -Throw
+    }
+
+    It 'Should still refuse an unknown rights name' {
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'unknown-rights-name.txt'
+        Set-Content -LiteralPath $testFile -Value 'test'
+
+        { Remove-NTFSAccessRule -LiteralPath $testFile -Account 'S-1-1-0' -AccessRights 'NotARight' -WhatIf } |
+            Should -Throw -ExpectedMessage '*NotARight*FileSystemRights*'
+    }
+
     It 'Should remove an exact rule received through the pipeline' {
         $testFile = Join-Path -Path $TestDrive -ChildPath 'remove.txt'
         Set-Content -LiteralPath $testFile -Value 'test'

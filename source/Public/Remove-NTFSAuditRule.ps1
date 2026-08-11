@@ -90,7 +90,7 @@ function Remove-NTFSAuditRule {
         [Parameter(ParameterSetName = 'LiteralPath')]
         [Parameter(ParameterSetName = 'SecurityDescriptor')]
         [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
-        [System.Security.AccessControl.FileSystemRights]$AccessRights,
+        $AccessRights,
 
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]

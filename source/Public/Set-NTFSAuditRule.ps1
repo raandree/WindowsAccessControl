@@ -79,7 +79,7 @@ function Set-NTFSAuditRule {
 
         [Parameter(Mandatory)]
         [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
-        [System.Security.AccessControl.FileSystemRights]$AccessRights,
+        $AccessRights,
 
         [Parameter(Mandatory)]
         [System.Security.AccessControl.AuditFlags]$AuditFlags,

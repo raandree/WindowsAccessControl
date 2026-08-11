@@ -93,7 +93,7 @@ function Add-NTFSAccessRule {
 
         [Parameter(Mandatory)]
         [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
-        [System.Security.AccessControl.FileSystemRights]$AccessRights,
+        $AccessRights,
 
         [Parameter()]
         [System.Security.AccessControl.AccessControlType]$AccessControlType = 'Allow',

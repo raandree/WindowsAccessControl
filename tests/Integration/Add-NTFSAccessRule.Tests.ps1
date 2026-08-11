@@ -13,6 +13,26 @@ AfterAll {
 }
 
 Describe 'Add-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
+    It 'Should bind a hexadecimal literal mask the enumeration cannot name' {
+        # A hexadecimal literal is the one form the engine converts before the
+        # rights transformation attribute runs. The same value written as a
+        # variable or a decimal literal always bound, which is why this defect
+        # survived the tests that already covered unnameable masks.
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'hex-literal-mask.txt'
+        Set-Content -LiteralPath $testFile -Value 'test'
+
+        { Add-NTFSAccessRule -LiteralPath $testFile -Account 'S-1-1-0' -AccessRights 0x10000000 -WhatIf } |
+            Should -Not -Throw
+    }
+
+    It 'Should still refuse an unknown rights name' {
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'unknown-rights-name.txt'
+        Set-Content -LiteralPath $testFile -Value 'test'
+
+        { Add-NTFSAccessRule -LiteralPath $testFile -Account 'S-1-1-0' -AccessRights 'NotARight' -WhatIf } |
+            Should -Throw -ExpectedMessage '*NotARight*FileSystemRights*'
+    }
+
     It 'Should add and return an explicit access rule from file pipeline input' {
         $testFile = Join-Path -Path $TestDrive -ChildPath 'pipeline-input.txt'
         Set-Content -LiteralPath $testFile -Value 'test'

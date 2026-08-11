@@ -12,6 +12,22 @@ AfterAll {
 }
 
 Describe 'Set-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
+    It 'Should bind a hexadecimal literal mask the enumeration cannot name' {
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'hex-literal-mask.txt'
+        Set-Content -LiteralPath $testFile -Value 'test'
+
+        { Set-NTFSAccessRule -LiteralPath $testFile -Account 'S-1-1-0' -AccessRights 0x10000000 -WhatIf } |
+            Should -Not -Throw
+    }
+
+    It 'Should still refuse an unknown rights name' {
+        $testFile = Join-Path -Path $TestDrive -ChildPath 'unknown-rights-name.txt'
+        Set-Content -LiteralPath $testFile -Value 'test'
+
+        { Set-NTFSAccessRule -LiteralPath $testFile -Account 'S-1-1-0' -AccessRights 'NotARight' -WhatIf } |
+            Should -Throw -ExpectedMessage '*NotARight*FileSystemRights*'
+    }
+
     It 'Should replace access rules for the same identity and qualifier' {
         $testFile = Join-Path -Path $TestDrive -ChildPath 'replace.txt'
         Set-Content -LiteralPath $testFile -Value 'test'

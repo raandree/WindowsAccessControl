@@ -19,4 +19,15 @@ Describe 'New-NTFSAuditRule' -Tag 'Unit', 'WindowsOnly' {
         $result.AuditFlags | Should -Be ([System.Security.AccessControl.AuditFlags]::Failure)
         $result.AppliesTo | Should -Be 'FilesOnly'
     }
+
+    It 'Should bind a hexadecimal literal mask the enumeration cannot name' {
+        $result = New-NTFSAuditRule -Account 'S-1-1-0' -AccessRights 0x10000000 -AuditFlags Failure
+
+        [int]$result.AccessRights | Should -Be 0x10000000
+    }
+
+    It 'Should still refuse an unknown rights name' {
+        { New-NTFSAuditRule -Account 'S-1-1-0' -AccessRights 'NotARight' -AuditFlags Failure } |
+            Should -Throw -ExpectedMessage '*NotARight*FileSystemRights*'
+    }
 }

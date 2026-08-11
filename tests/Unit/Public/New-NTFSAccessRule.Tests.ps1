@@ -20,4 +20,19 @@ Describe 'New-NTFSAccessRule' -Tag 'Unit', 'WindowsOnly' {
         $result.InheritanceFlags | Should -Be ([System.Security.AccessControl.InheritanceFlags]::ObjectInherit)
         $result.PropagationFlags | Should -Be ([System.Security.AccessControl.PropagationFlags]::InheritOnly)
     }
+
+    It 'Should bind a hexadecimal literal mask the enumeration cannot name' {
+        # A hexadecimal literal is the one form the engine converts before the
+        # rights transformation attribute runs. The same value written as a
+        # variable or a decimal literal always bound, which is why this defect
+        # survived the tests that already covered unnameable masks.
+        $result = New-NTFSAccessRule -Account 'S-1-1-0' -AccessRights 0x10000000
+
+        [int]$result.AccessRights | Should -Be 0x10000000
+    }
+
+    It 'Should still refuse an unknown rights name' {
+        { New-NTFSAccessRule -Account 'S-1-1-0' -AccessRights 'NotARight' } |
+            Should -Throw -ExpectedMessage '*NotARight*FileSystemRights*'
+    }
 }
