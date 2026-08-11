@@ -24,6 +24,19 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-11: Reviewed the Active Directory Management Framework against this
+    module and recorded the comparison in `docs/research.md`. ADMF is a
+    whole-domain configuration engine, so its registered desired state, object
+    categories, and tri-state `Present` value stay rejected. Two of its
+    directory mechanics are worth taking: a schema default permission baseline
+    read from `defaultSecurityDescriptor`, and schema or extended-right names
+    instead of raw GUIDs for `ObjectType` and `InheritedObjectType`. Neither is
+    implemented yet and neither has an open issue. A measurement settled a third
+    question: PowerShell refuses a numeric argument for a `[Flags]` enum
+    parameter as soon as one bit has no name, which is why ADMF binds
+    `ActiveDirectoryRights` as a string. The answer here is an argument
+    transformation attribute over `Enum::ToObject`, not a string parameter that
+    gives up name validation.
 - 2026-08-10: Made an access control entry that carries `GENERIC_*` bits
     readable. A .NET rights enum has no name for those bits and `Enum.ToString`
     abandons every name it already resolved as soon as one bit is unnameable, so

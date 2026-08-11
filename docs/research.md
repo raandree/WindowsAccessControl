@@ -92,6 +92,103 @@ binding and conversion helpers rather than a caller-facing wrapper class:
   object-to-command pipelines
 - only domain rights and configuration enums are direct caller types
 
+## Active Directory Management Framework comparison
+
+A 2026-08-11 review examined the
+[Active Directory Management Framework](https://github.com/ActiveDirectoryManagementFramework/ADMF)
+and the modules that carry its access-control logic.
+[ADSec](https://github.com/PSSecTools/ADSec) reads and writes directory
+descriptors through `Get-AdsAcl`, `Set-AdsAcl`, `Set-AdsOwner`, the two
+inheritance commands, and `Get-AdsOrphanAce`.
+[ADMF.Core](https://github.com/ActiveDirectoryManagementFramework/ADMF.Core)
+and
+[DomainManagement](https://github.com/ActiveDirectoryManagementFramework/DomainManagement)
+compare those descriptors against a registered desired state.
+
+ADMF solves a different problem. It is a domain-wide configuration engine:
+`Register-DMAccessRule` records a desired rule against a distinguished name or
+an object category, `Test-DMAccessRule` walks every managed object and reports
+drift, and `Invoke-DMAcl` converges it. That authoritative whole-domain model
+is a non-goal here, because this module addresses one named target per
+invocation and expresses desired state through per-object DSC resources. The
+comparison below therefore covers only the directory mechanics inside that
+engine.
+
+### Ideas worth adopting
+
+- Schema default permissions as a comparison baseline.
+  `Get-AdcObjectDefaultPermission` reads `defaultSecurityDescriptor` from every
+  `classSchema` object and caches it per object class, so drift reporting can
+  subtract the descriptor Active Directory itself applied at creation from the
+  explicit rules an operator added. Without that baseline an exact directory
+  desired state must either restate every default ACE or accept all of them
+  silently. ADMF derives a second result from it: a declared rule that merely
+  repeats a schema default is reported as redundant configuration rather than
+  as drift.
+- Names for `ObjectType` and `InheritedObjectType`. `Convert-AdcSchemaGuid`
+  maps schema class, attribute, and extended-right names to GUIDs and back, so
+  a caller writes `User-Account-Control` rather than its GUID. This module
+  already resolves the output direction under
+  [ADR 0020](../specs/decisions/0020-enrich-directory-rules-over-the-bound-connection.md),
+  and its public parameters still bind `[guid]` only.
+
+### Behavior to avoid when adopting them
+
+- `Convert-AdcSchemaGuid` emits nothing for a name it cannot resolve. A caller
+  that feeds that result into an access rule turns a misspelled `ObjectType`
+  into an empty GUID, so an ACE intended for one property silently becomes an
+  ACE for every property. Name input has to fail closed: an unresolvable name
+  throws instead of widening the grant.
+- `Get-AdcObjectDefaultPermission` gathers the schema through PowerShell
+  remoting to the schema master, because `SetSecurityDescriptorSddlForm`
+  resolves the domain-relative aliases in `defaultSecurityDescriptor` against
+  the calling machine's domain. Reading the schema over the already-bound LDAP
+  connection avoids both the extra remoting trust boundary and the wrong-domain
+  translation, provided those aliases are expanded against the target domain
+  SID.
+
+### Already covered here
+
+- Orphaned ACE reporting. `Get-AdsOrphanAce` flags an explicit ACE whose SID
+  does not translate. Every rule object in this module exposes `IsOrphaned`,
+  and `Resolve-WindowsIdentity` returns the unresolved SID.
+- `adminCount` awareness. ADMF substitutes the AdminSDHolder descriptor as the
+  desired state of a protected object because SDProp overwrites it anyway.
+  `Test-WindowsADProtectedTarget` rejects such a target outright, which is the
+  stricter answer for a command-level module.
+- Identity comparison by SID across domains, bounded parallel processing of
+  many targets, and a session-cached schema lookup.
+
+### Rejected
+
+- Registered desired state, object categories, name-replacement tokens, and
+  content modes belong to a configuration management product rather than to a
+  securable-object command set.
+- A tri-state `Present` value of true, false, or undefined only has meaning
+  inside an engine that would otherwise delete an undeclared rule. Each DSC
+  resource here owns one rule and never removes what it does not manage.
+
+### Rights masks that no enum can name
+
+`Register-DMAccessRule` binds `ActiveDirectoryRights` as `[string]`
+deliberately, "to allow some invalid values that happen in the field and are
+still applied by AD". A measurement on 2026-08-11 confirmed why that choice
+exists and what it costs here: PowerShell rejects a numeric argument for a
+`[Flags]` enum parameter when any bit has no name. Against the member list of
+`WindowsActiveDirectoryRights`, `0x000F01FF` binds, while raw `GENERIC_ALL`
+(`0x10000000`), `MAXIMUM_ALLOWED` (`0x02000000`), and reserved `0x00000200`
+are all refused at argument transformation.
+
+This module keeps the enum rather than a string. Refusing to author an
+unnameable mask by name is the fail-closed direction, output already renders
+those bits through `AccessRightsDisplay`, directory rights removal expands a
+stored `GENERIC_*` bit before subtracting, and `Set-ADObjectSecurityDescriptor`
+plus SDDL backup and restore carry an exotic mask unchanged. Where a family
+must accept such a mask as input, the answer is an argument transformation
+attribute that converts a numeric mask through `Enum::ToObject` and leaves
+every name to the engine's own conversion, not a `[string]` parameter that
+abandons name validation altogether.
+
 ## Verified access-rule semantics
 
 The .NET

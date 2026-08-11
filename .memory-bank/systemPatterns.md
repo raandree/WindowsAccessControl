@@ -51,6 +51,11 @@ specification 0015 reviews.
 - Prove a refusal with a test, not with an argument that it cannot happen. Each
     fail-closed write gate has a restore-level refusal test, because a gate that
     is only reachable in theory is a gate nobody notices going inert.
+- A lookup that narrows a grant must throw when it resolves nothing. ADMF's
+    `Convert-AdcSchemaGuid` silently drops a name it cannot map, so a misspelled
+    `ObjectType` collapses to the empty GUID and an entry meant for one property
+    becomes an entry for every property. Any name-to-GUID input added here fails
+    closed instead.
 
 ## Acceptance lab
 
