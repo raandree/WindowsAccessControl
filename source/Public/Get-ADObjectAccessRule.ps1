@@ -22,6 +22,14 @@ function Get-ADObjectAccessRule {
         Excludes inherited access rules.
     .PARAMETER ExcludeExplicit
         Excludes explicit access rules.
+    .PARAMETER ExcludeSchemaDefault
+        Excludes every explicit rule that the target's structural class already
+        grants through its defaultSecurityDescriptor, leaving the entries an
+        operator added. A rule is excluded only when a template entry equals it
+        on account, access mask, access control type, inheritance, and both
+        object type GUIDs; anything the comparison cannot decide is reported.
+        Inherited rules, and the entries a template placeholder such as CREATOR
+        OWNER became, are never excluded.
     .PARAMETER TimeoutSeconds
         Sets the LDAP request timeout from 1 through 300 seconds.
     .PARAMETER ThrottleLimit
@@ -35,6 +43,11 @@ function Get-ADObjectAccessRule {
 
         Gets inherited rules, with their source object and resolved GUID names,
         through an automatically located writable domain controller.
+    .EXAMPLE
+        Get-ADObjectAccessRule -DistinguishedName $dn -ExcludeInherited -ExcludeSchemaDefault
+
+        Gets the explicit rules the object's class default does not already
+        grant, which is the delegation an operator configured.
     .INPUTS
         System.String
     .OUTPUTS
@@ -57,6 +70,8 @@ function Get-ADObjectAccessRule {
         [switch]$ExcludeInherited,
         [Parameter()]
         [switch]$ExcludeExplicit,
+        [Parameter()]
+        [switch]$ExcludeSchemaDefault,
         [Parameter()]
         [ValidateRange(1, 300)]
         [int]$TimeoutSeconds = 10,
@@ -90,6 +105,9 @@ function Get-ADObjectAccessRule {
             -Server $Server `
             -Credential $Credential `
             -TimeoutSeconds $TimeoutSeconds
+        $schemaDefaultByClass = @{}
+        $rootDse = $null
+        $domainSidPair = $null
         try {
             foreach ($dnValue in $DistinguishedName) {
                 $target = Resolve-WindowsADObjectTarget `
@@ -129,7 +147,7 @@ function Get-ADObjectAccessRule {
                     -Ace @(foreach ($index in $selectedIndexes) { $acl[$index] }) `
                     -SkipInheritanceSource:$ExcludeInherited
 
-                foreach ($index in $selectedIndexes) {
+                $rules = foreach ($index in $selectedIndexes) {
                     $inheritedFrom = if ($index -lt $enrichment.InheritanceSource.Count) {
                         $enrichment.InheritanceSource[$index]
                     }
@@ -140,6 +158,35 @@ function Get-ADObjectAccessRule {
                         -InheritedFrom $inheritedFrom `
                         -SchemaGuidName $enrichment.SchemaGuidName
                 }
+                if ($ExcludeSchemaDefault) {
+                    # Active Directory returns objectClass from top down to the
+                    # structural class, which is the only template it applies.
+                    $structuralClass = @($target.ObjectClasses)[-1]
+                    if (-not $schemaDefaultByClass.ContainsKey($structuralClass)) {
+                        if (-not $rootDse) {
+                            $rootDse = Get-WindowsADRootDse -Connection $connection
+                            $domainSidPair = Get-WindowsADDomainSidPair `
+                                -Connection $connection `
+                                -RootDse $rootDse `
+                                -Server $Server `
+                                -Credential $Credential `
+                                -TimeoutSeconds $TimeoutSeconds
+                        }
+                        $schemaDefaultByClass[$structuralClass] = @(
+                            Get-WindowsADSchemaDefaultRule `
+                                -Connection $connection `
+                                -Server $Server `
+                                -ObjectClass $structuralClass `
+                                -RootDse $rootDse `
+                                -DomainSid $domainSidPair.DomainSid `
+                                -RootDomainSid $domainSidPair.RootDomainSid
+                        )
+                    }
+                    $rules = Select-WindowsADNonDefaultAccessRule `
+                        -Rule @($rules) `
+                        -SchemaDefault $schemaDefaultByClass[$structuralClass]
+                }
+                $rules
             }
         }
         finally {

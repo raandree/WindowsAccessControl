@@ -67,111 +67,29 @@ function Get-ADObjectSchemaDefaultAccessRule {
             -Server $pinnedServer `
             -Credential $Credential `
             -TimeoutSeconds $TimeoutSeconds
-        $rootDse = Get-WindowsADRootDse -Connection $connection
-        $domainSid = Get-WindowsADNamingContextSid `
-            -Connection $connection `
-            -NamingContext $rootDse.DefaultNamingContext
-        if (-not $domainSid) {
-            $connection.Dispose()
-            throw "Cannot read the domain SID of '$($rootDse.DefaultNamingContext)' from '$pinnedServer'. Schema default rules cannot be expanded without it."
-        }
-        $rootDomainSid = if ($rootDse.RootDomainNamingContext -and
-            $rootDse.RootDomainNamingContext -ne $rootDse.DefaultNamingContext) {
-            $sid = Get-WindowsADNamingContextSid `
+        try {
+            $rootDse = Get-WindowsADRootDse -Connection $connection
+            $domainSidPair = Get-WindowsADDomainSidPair `
                 -Connection $connection `
-                -NamingContext $rootDse.RootDomainNamingContext
-            if (-not $sid) {
-                # A child domain controller does not hold the forest root
-                # partition, and referral chasing is off, so the only
-                # referral-free source on the same pinned server is its global
-                # catalog, which carries every domain's objectSid.
-                $sid = Get-WindowsADNamingContextSid `
-                    -NamingContext $rootDse.RootDomainNamingContext `
-                    -Server $pinnedServer `
-                    -Credential $Credential `
-                    -TimeoutSeconds $TimeoutSeconds `
-                    -UseGlobalCatalog
-            }
-            $sid
+                -RootDse $rootDse `
+                -Server $pinnedServer `
+                -Credential $Credential `
+                -TimeoutSeconds $TimeoutSeconds
         }
-        else { $domainSid }
+        catch {
+            $connection.Dispose()
+            throw
+        }
     }
     process {
         foreach ($className in $ObjectClass) {
-            $escaped = ConvertTo-WindowsADLdapFilterValue -Value $className
-            $request = [System.DirectoryServices.Protocols.SearchRequest]::new(
-                $rootDse.SchemaNamingContext,
-                '(&(objectClass=classSchema)(|(lDAPDisplayName={0})(cn={0})))' -f $escaped,
-                [System.DirectoryServices.Protocols.SearchScope]::OneLevel,
-                [string[]]@('lDAPDisplayName', 'defaultSecurityDescriptor')
-            )
-            $response = [System.DirectoryServices.Protocols.SearchResponse](
-                $connection.SendRequest($request)
-            )
-            if ($response.Entries.Count -ne 1) {
-                Write-Error `
-                    -Message "Object class '$className' did not resolve to exactly one schema class on '$pinnedServer'." `
-                    -Category ObjectNotFound `
-                    -TargetObject $className
-                continue
-            }
-            $entry = $response.Entries[0]
-            $resolvedName = ConvertFrom-WindowsADAttributeValue `
-                -Value $entry.Attributes['lDAPDisplayName'][0]
-            if (-not $entry.Attributes.Contains('defaultSecurityDescriptor')) {
-                Write-Verbose "Object class '$resolvedName' carries no defaultSecurityDescriptor."
-                continue
-            }
-            $sddl = ConvertFrom-WindowsADAttributeValue `
-                -Value $entry.Attributes['defaultSecurityDescriptor'][0]
-            $descriptor = [System.Security.AccessControl.RawSecurityDescriptor]::new(
-                (ConvertTo-WindowsADAbsoluteSddl `
-                    -Sddl $sddl `
-                    -DomainSid $domainSid `
-                    -RootDomainSid $rootDomainSid)
-            )
-            $acl = $descriptor.DiscretionaryAcl
-            if (-not $acl) {
-                continue
-            }
-            $ruleGuids = @(
-                foreach ($value in $acl) {
-                    $objectAce = $value -as [System.Security.AccessControl.ObjectAce]
-                    if (-not $objectAce) { continue }
-                    if ($objectAce.ObjectAceFlags -band
-                        [System.Security.AccessControl.ObjectAceFlags]::ObjectAceTypePresent) {
-                        $objectAce.ObjectAceType
-                    }
-                    if ($objectAce.ObjectAceFlags -band
-                        [System.Security.AccessControl.ObjectAceFlags]::InheritedObjectAceTypePresent) {
-                        $objectAce.InheritedObjectAceType
-                    }
-                }
-            )
-            $schemaGuidName = $null
-            if ($ruleGuids.Count -gt 0) {
-                try {
-                    $schemaGuidName = Resolve-WindowsADSchemaGuidName `
-                        -Connection $connection `
-                        -SchemaNamingContext $rootDse.SchemaNamingContext `
-                        -ConfigurationNamingContext $rootDse.ConfigurationNamingContext `
-                        -Guid $ruleGuids
-                }
-                catch {
-                    $schemaGuidName = $null
-                    Write-Error `
-                        -Message "Cannot resolve directory schema names for '$resolvedName': $($_.Exception.Message) Rules are reported with object GUIDs only." `
-                        -Category ReadError `
-                        -TargetObject $resolvedName
-                }
-            }
-            foreach ($ace in $acl) {
-                ConvertTo-WindowsADSchemaDefaultRuleObject `
-                    -Ace $ace `
-                    -ObjectClass $resolvedName `
-                    -Server $pinnedServer `
-                    -SchemaGuidName $schemaGuidName
-            }
+            Get-WindowsADSchemaDefaultRule `
+                -Connection $connection `
+                -Server $pinnedServer `
+                -ObjectClass $className `
+                -RootDse $rootDse `
+                -DomainSid $domainSidPair.DomainSid `
+                -RootDomainSid $domainSidPair.RootDomainSid
         }
     }
     end {

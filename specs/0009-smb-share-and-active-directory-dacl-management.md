@@ -102,6 +102,17 @@ the global catalog port of the same pinned server, which carries every domain's
 be read from either source is refused rather than expanded against the wrong
 domain.
 
+`Get-ADObjectAccessRule -ExcludeSchemaDefault` subtracts that baseline from what
+it reports, leaving the entries an operator added. The template read runs over
+the connection already bound for the query and uses the object's structural
+class, which is the only template Active Directory applies. An explicit rule is
+excluded only when a template entry equals it on account, access mask, access
+control type, inheritance, and both object type GUIDs. A template entry naming a
+creator placeholder excludes nothing, an inherited rule is never a candidate, and
+the switch defaults to off, because hiding an entry an operator added makes a
+live grant invisible while showing a redundant one is only noise. ADR 0033
+records the matching rule and the cases it deliberately refuses.
+
 Query output additionally reports where an inherited ACE came from and what its
 GUIDs mean. `InheritedFrom` names the nearest ancestor object that holds the
 originating explicit inheritable ACE, resolved over the same bound connection

@@ -234,6 +234,195 @@ Describe 'Schema default access rules' -Tag 'Lab', 'WindowsOnly' {
     }
 }
 
+Describe 'Schema default subtraction' -Tag 'Lab', 'WindowsOnly' {
+    BeforeAll {
+        # The six fields ADR 0033 compares, as one comparable string.
+        function Get-WacRuleKey {
+            param($Rule)
+
+            @(
+                [string]$Rule.SID
+                ([uint64]$Rule.AccessMask).ToString()
+                [string]$Rule.AccessControlType
+                [string]$Rule.InheritanceType
+                ([guid]$Rule.ObjectTypeGuid).ToString('N')
+                ([guid]$Rule.InheritedObjectTypeGuid).ToString('N')
+            ) -join '|'
+        }
+
+        # Everything below the trustee, so a template entry a placeholder owns
+        # can be recognized on the object where its trustee has been replaced.
+        function Get-WacRuleShape {
+            param($Rule)
+
+            (Get-WacRuleKey -Rule $Rule).Substring(([string]$Rule.SID).Length)
+        }
+
+        $script:placeholderSid = @('S-1-3-0', 'S-1-3-1', 'S-1-3-2', 'S-1-3-3')
+        $script:ouTemplate = @(Get-ADObjectSchemaDefaultAccessRule `
+                -Server $script:server -ObjectClass 'organizationalUnit')
+        $script:ouTemplateKey = @(
+            $script:ouTemplate |
+                Where-Object { $_.SID -notin $script:placeholderSid } |
+                ForEach-Object { Get-WacRuleKey -Rule $_ }
+        )
+
+        # The computer class is the one that carries creator placeholders, so
+        # the refusal has a live target. The organizational unit class has none.
+        $script:computerName = 'WacDefaultComp'
+        $script:computerDn = "CN=$($script:computerName),$($script:targetOu)"
+        if (-not (Get-ADObject -Filter "DistinguishedName -eq '$($script:computerDn)'" -ErrorAction SilentlyContinue)) {
+            $null = New-ADComputer `
+                -Name $script:computerName `
+                -Path $script:targetOu `
+                -Server $script:server `
+                -ErrorAction Stop
+        }
+        $script:computerTemplate = @(Get-ADObjectSchemaDefaultAccessRule `
+                -Server $script:server -ObjectClass 'computer')
+    }
+
+    AfterEach {
+        Clear-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -ThrottleLimit 1 `
+            -Confirm:$false `
+            -ErrorAction SilentlyContinue
+    }
+
+    It 'Should drop exactly the explicit entries the class template grants' {
+        $all = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeInherited `
+                -ThrottleLimit 1)
+        $filtered = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeInherited `
+                -ExcludeSchemaDefault `
+                -ThrottleLimit 1)
+        $fromTemplate = @($all |
+                Where-Object { (Get-WacRuleKey -Rule $_) -in $script:ouTemplateKey })
+
+        $script:ouTemplateKey | Should -Not -BeNullOrEmpty
+        $fromTemplate | Should -Not -BeNullOrEmpty -Because 'a new organizational unit carries its class default as explicit entries'
+        $filtered | Should -HaveCount ($all.Count - $fromTemplate.Count)
+        @($filtered | Where-Object { (Get-WacRuleKey -Rule $_) -in $script:ouTemplateKey }) |
+            Should -BeNullOrEmpty
+    }
+
+    It 'Should show every entry when the switch is absent' {
+        # The default has to keep meaning what it meant, because this command is
+        # what an operator reads to see what is really on an object.
+        $default = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeInherited `
+                -ThrottleLimit 1)
+        $filtered = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeInherited `
+                -ExcludeSchemaDefault `
+                -ThrottleLimit 1)
+
+        $default.Count | Should -BeGreaterThan $filtered.Count
+    }
+
+    It 'Should keep an entry an operator added' {
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights ReadProperty `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        $filtered = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeInherited `
+                -ExcludeSchemaDefault `
+                -ThrottleLimit 1)
+
+        @($filtered.SID) | Should -Contain $script:testSid
+    }
+
+    It 'Should never hide an inherited entry' {
+        $inherited = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeExplicit `
+                -ThrottleLimit 1)
+        $filtered = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeExplicit `
+                -ExcludeSchemaDefault `
+                -ThrottleLimit 1)
+
+        $inherited | Should -Not -BeNullOrEmpty
+        $filtered | Should -HaveCount $inherited.Count
+    }
+
+    It 'Should drop the SELF entries the template keeps verbatim' {
+        # PRINCIPAL SELF is the one alias that reaches the created object
+        # unchanged, so it is the case the rule is allowed to match.
+        $selfTemplate = @($script:computerTemplate | Where-Object SID -EQ 'S-1-5-10')
+        $all = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:computerDn `
+                -ExcludeInherited `
+                -Account 'S-1-5-10' `
+                -ThrottleLimit 1)
+        $filtered = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:computerDn `
+                -ExcludeInherited `
+                -Account 'S-1-5-10' `
+                -ExcludeSchemaDefault `
+                -ThrottleLimit 1)
+        $selfTemplateKey = @($selfTemplate | ForEach-Object { Get-WacRuleKey -Rule $_ })
+
+        $selfTemplate | Should -Not -BeNullOrEmpty
+        @($all | Where-Object { (Get-WacRuleKey -Rule $_) -in $selfTemplateKey }) |
+            Should -Not -BeNullOrEmpty
+        @($filtered | Where-Object { (Get-WacRuleKey -Rule $_) -in $selfTemplateKey }) |
+            Should -BeNullOrEmpty
+    }
+
+    It 'Should keep the entry a creator placeholder became' {
+        # Measured on this lab: every CREATOR OWNER entry of the computer class
+        # template reaches the created object as the owner's own entry. Nothing
+        # on the object separates that from a grant to the same principal, so
+        # the placeholder is dropped from the baseline and hides nothing.
+        $placeholderShape = @(
+            $script:computerTemplate |
+                Where-Object { $_.SID -in $script:placeholderSid } |
+                ForEach-Object { Get-WacRuleShape -Rule $_ }
+        )
+        $filtered = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:computerDn `
+                -ExcludeInherited `
+                -ExcludeSchemaDefault `
+                -ThrottleLimit 1)
+        $materialized = @(
+            $filtered |
+                Where-Object { $_.SID -notin $script:placeholderSid } |
+                Where-Object { (Get-WacRuleShape -Rule $_) -in $placeholderShape }
+        )
+
+        $placeholderShape | Should -Not -BeNullOrEmpty
+        $materialized | Should -Not -BeNullOrEmpty
+    }
+}
+
 Describe 'Object type names on directory rule mutators' -Tag 'Lab', 'WindowsOnly' {
     AfterEach {
         Clear-ADObjectAccessRule `
