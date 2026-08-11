@@ -66,19 +66,28 @@ Describe 'NTFS batch execution' -Tag 'Integration', 'WindowsOnly' {
         $testSid = 'S-1-5-21-4242424242-4242424242-4242424242-4998'
         Set-Content -LiteralPath $first -Value 'first'
         Set-Content -LiteralPath $second -Value 'second'
+        # This assertion has lost a target three times in a whole instrumented
+        # run and never in isolation, and the count told nobody why. The error
+        # stream of each batch is captured so the next occurrence names it.
+        $addErrors = @()
+        $readErrors = @()
 
         Add-NTFSAccessRule `
             -LiteralPath @($first, $second) `
             -Account $testSid `
             -AccessRights Read `
             -ThrottleLimit 2 `
-            -Confirm:$false
+            -Confirm:$false `
+            -ErrorVariable +addErrors
         $storedRules = @(Get-NTFSAccessRule `
             -LiteralPath @($first, $second) `
             -Account $testSid `
             -ExcludeInherited `
-            -ThrottleLimit 2)
+            -ThrottleLimit 2 `
+            -ErrorVariable +readErrors)
 
+        @($addErrors) | Should -BeNullOrEmpty
+        @($readErrors) | Should -BeNullOrEmpty
         $storedRules | Should -HaveCount 2
         @($storedRules.Path | Sort-Object -Unique) | Should -HaveCount 2
     }

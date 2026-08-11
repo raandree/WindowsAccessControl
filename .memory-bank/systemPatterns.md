@@ -56,13 +56,19 @@ specification 0015 reviews.
     `ObjectType` collapses to the empty GUID and an entry meant for one property
     becomes an entry for every property. Any name-to-GUID input added here fails
     closed instead.
-- An argument transformation attribute does not run on a parameter that also
-    declares its type. PowerShell adds `ArgumentTypeConverterAttribute` for the
-    declared type and that converter runs first, so a transform written to widen
-    what the type accepts never sees the value. Either the attribute owns the
-    whole conversion and the type declaration goes, or the attribute is
-    decoration. Prove such an attribute with a test that binds the value the
-    declared type would reject, not with a test that the attribute is present.
+- An argument transformation attribute is bypassed for a hexadecimal literal on
+    a parameter that also declares its type. Measured on 2026-08-11 in both
+    editions: `-AccessRights 0x10000000` failed at argument transformation while
+    the same value as a decimal literal, a string, or a variable bound and
+    reached the transform. The engine converts a hexadecimal literal argument to
+    the declared type before the transform runs, and that conversion refuses a
+    mask the enumeration cannot name. Either the attribute owns the whole
+    conversion and the type declaration goes, or the attribute is decoration for
+    the one argument form people actually write a mask in. Prove such an
+    attribute with a test that binds a hexadecimal literal, not with a variable,
+    a decimal literal, or a test that the attribute is present. The register
+    carried the broader claim that the transform never ran at all; the probe
+    disproved it and narrowed the cause.
 - A refusal that is correct can still be a gap. Refusing to expand a forest-wide
     alias without the root domain SID was right, and it also made the command
     useless for whole classes on any child domain controller, which is an
@@ -80,12 +86,23 @@ specification 0015 reviews.
     is recreated during the run and nothing pushed it across. The fix was to
     make the suite push the fixture chain itself. When a rerun passes, name the
     difference between the two runs before believing the explanation.
+- A test that asserts only a count cannot report why the count was wrong. The
+    bounded-batch test lost a target in three whole runs and never in isolation,
+    and each run recorded nothing but the number. Capturing the error stream of
+    the batch named the cause on the next occurrence: the rights transformation
+    attribute faults with a null reference inside a pooled worker runspace while
+    Pester coverage breakpoints are on the module file. 66 uninstrumented
+    iterations produced none. Assert on the error stream next to the count when
+    a command reports per-target failures without terminating.
 - A test that asserts a module-defined type must not assert type identity.
-    Every suite imports the built module with `-Force`, each import defines the
-    PowerShell classes and enumerations again, and more than one runtime type of
-    the same name is live at once. `Expected [X], but got [X]` is the signature.
-    Fetching the type from `Get-Module` does not help, because that instance is
-    not the one the return value carries. Compare the type name.
+    `Expected [X], but got [X]` is the signature, and it appeared twice in whole
+    suite runs. The duplicate-import explanation is disproved: measured on
+    2026-08-11, three consecutive `-Force` imports of the built module leave one
+    runtime copy of the enumeration, and a batch worker runspace resolves to the
+    same type instance, because PowerShell caches the class assembly per module
+    path and version. The mechanism is still unknown, so compare the type name
+    and `IsEnum`, which is what such an assertion means anyway, and do not
+    restore identity comparison until something reproduces a second live type.
 - A refusal that no live path can reach still has to be proven. A stock schema
     holds no ambiguous name, so the ambiguity refusal was unreachable through a
     lookup. Extending a schema to manufacture one is irreversible, so the

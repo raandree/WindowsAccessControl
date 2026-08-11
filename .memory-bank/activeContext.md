@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-11
+last-verified: 2026-08-08
 owner: active-agent
 source: current task evidence
 ---
@@ -9,138 +9,58 @@ source: current task evidence
 
 ## Current focus
 
-Line coverage was 90.54 percent, so the remaining gaps were never unexecuted
-lines: they were untested *inputs*. Five coverage prompts closed five of them on
-real objects, and three of the five turned up behavior that had only ever been
-assumed.
+Reading a directory object's access control list should show what an operator
+configured, not what the schema class hands every object of that class.
+`Get-ADObjectSchemaDefaultAccessRule` returned that baseline and nothing
+consumed it, so the comparison was done by hand.
 
-The largest was real: an access control entry carrying `GENERIC_*` bits could be
-reported and never removed, because the public `FileSystemAccessRule` and
-`FileSystemAuditRule` constructors reject any mask outside `FullControl`, and
-`RemoveAccessRuleSpecific` rebuilds the rule through exactly that constructor
-when no stored entry matches. That is the shape of the most-reported defect of
-the module this one replaces.
-
-The older thread below is unchanged.
+Two register entries were also worked, and both turned out to be described
+wrongly. The NTFS rights transform was not unreachable; it was bypassed for one
+argument form. The duplicate module import does not create a second runtime
+enumeration type at all.
 
 ## What changed
 
-- NTFS rule construction runs through `New-NTFSFileSystemRule`, which uses the
-    public constructor for a mask the enum can name and the rule factory for one
-    it cannot, so `GENERIC_*`, `ACCESS_SYSTEM_SECURITY`, and an orphaned identity
-    survive a round trip. `Remove-NTFSFileSystemRuleSpecific` matches the stored
-    entry on the raw list for such a mask, so an exact removal that finds no
-    match is a no-op instead of an argument-range error.
-    `WindowsAccessRightsTransformAttribute` was written to let a raw numeric
-    mask bind while keeping the enum type. Measurement on 2026-08-11 disproved
-    the second half: a declared enum type adds the engine's
-    `ArgumentTypeConverterAttribute`, which runs first and refuses the mask
-    before the transform is consulted. The attribute is therefore still inert on
-    every `FileSystemRights` parameter. OI-30 tracks the fix; the three
-    directory mutators already use the shape that works.
-- `Resolve-NTFSPath` refuses a Win32 device-namespace path and a bare drive
-    specification. Both resolved to something other than what the caller wrote:
-    `\\?\` bypasses normalization and yields a non-canonical target key, and
-    `C:` resolves to the current location of that drive.
-- A junction, a directory symbolic link, and a file symbolic link each carry
-    their own descriptor. A write through the link changes the link, not the
-    destination, which is what `Get-Acl`, `Set-Acl`, `icacls`, and `icacls /L`
-    all do. The registry is the opposite: a registry symbolic link is followed.
-    Both are recorded, in help and in ADR 0030 and ADR 0032.
-- Five new suites: `NtfsGenericAndOrphanedAceRemoval`, `NtfsPathInputMatrix`,
-    `NtfsReparsePointsAndLinks`, `NtfsIcaclsDifferentialOracle`, and the registry
-    pair `RegistryTargetAliasMatrix` and `RegistryViewsAndRights`. Every one runs
-    in both supported editions, and every genuine edition difference is asserted
-    rather than skipped.
+- `Get-ADObjectAccessRule` gained `-ExcludeSchemaDefault`, off by default. The
+    matching rule lives in `Select-WindowsADNonDefaultAccessRule`, a pure
+    function over two rule collections that takes no connection and does no
+    directory work, so all four template cases are unit-testable without a
+    domain controller. An explicit rule is dropped only when a template entry
+    equals it on account, mask, access control type, inheritance, and both
+    object type GUIDs; a template entry naming a creator placeholder drops
+    nothing, and an inherited rule is never a candidate. ADR 0033 records the
+    rule, the cases, and the bias toward reporting rather than hiding.
+- The eight NTFS access and audit rights parameters and
+    `New-NTFSFileSystemRule` no longer declare `[FileSystemRights]` next to the
+    rights transform. Measured in both editions: an unnameable mask bound fine
+    as a variable, a decimal literal, or a string, and only a **hexadecimal
+    literal** failed, because the engine converts that one form to the declared
+    type before the transform runs. Every existing unnameable-mask test passed a
+    variable, which is exactly why the defect survived them.
+- `specs/open-issues.md` lost OI-23, OI-29, and OI-30, and OI-31 now carries the
+    measured disproof of its own explanation instead of the explanation.
+- The NTFS bounded-batch test now captures the error stream of both batches, so
+    the next time it loses a target the run says why instead of only that a
+    count was wrong.
 
 ## Acceptance evidence
 
-- `./build.ps1 -Tasks test` on 2026-08-11: 10 tasks, 0 errors, 0 warnings.
-    Pester 1,666 passed, 0 failed, 2 skipped. Coverage 83.71 percent (6,615 of
-    7,902 commands this profile can execute) over the 80 percent threshold.
-- The five new suites also run standalone in both editions:
-    generic and orphaned removal 25/25, path matrix 36/36, reparse points 10/10
-    with one skip, `icacls` oracle 27/27, registry 61/61 with one skip.
-- The coverage figure is local-only. Rebuilding the module invalidated the
-    carried domain-lab document, and the build reports that rather than merging
-    it. Rerunning the domain-lab acceptance against the rebuilt module restores
-    the whole-module figure.
-
-## Next step
-
-Rerun the domain-lab acceptance against the rebuilt module so the merged
-coverage document is current again. The remaining lab-specific gaps are
-unchanged and listed at the end of this file.
-
-## Earlier thread
-
-Rule output has to be readable without inspecting the object. An access control
-entry that carries `GENERIC_*` bits showed `-536805376` where the entry above it
-showed `Modify, Synchronize`, because a .NET rights enum has no name for those
-bits and abandons every name it already resolved as soon as one bit is
-unnameable.
-
-`Enable-WindowsPrivilege`, `Disable-WindowsPrivilege`, and
-`Test-WindowsPrivilege` complete their `Name` argument from
-`WindowsPrivilegeNameCompleter`. The parameter still validates by pattern, so a
-constant outside the documented set stays usable; completion only removes the
-need to recall the exact spelling.
-
-The larger thread below is unchanged. The domain-lab acceptance now runs in both
-supported PowerShell editions and covers a seventh suite for foreign and
-orphaned principals. Before this, every enterprise claim rested on one Windows
-PowerShell pass using one principal from the fixture domain.
-
-## What changed
-
-- `ConvertTo-WindowsAccessRightsDisplay` renders a mask that a rights enum
-    cannot fully name. It repeats the enum's own greedy decomposition, lets .NET
-    render the part it can name, and then names the four generic rights,
-    `ACCESS_SYSTEM_SECURITY`, and `MAXIMUM_ALLOWED`, leaving any remainder as
-    hexadecimal. Every rule object exposes the result as `AccessRightsDisplay`
-    and both effective-access results as `EffectiveRightsDisplay`; the table
-    views report those properties. NTFS rules also gained the `AccessMask`
-    property the other object families already had.
-- `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` takes
-    `-PowerShellEdition` and `-CoverageEdition`. It runs one complete pass per
-    edition against the same fixture set, writes one evidence file per pass, and
-    carries every artifact back before it fails the run. Only one pass arms
-    coverage: instrumentation is the cost, and the second pass reaches no line
-    the first cannot.
-- `tests/Lab/ForeignPrincipalPermissions.Live.Tests.ps1` is new. It writes and
-    reads an access control entry for a principal from another domain in the
-    forest, from a trusted forest, and for a security identifier no lookup can
-    resolve, across the share, task-folder, directory-object, and private-key
-    families.
-- `tests/Integration/ExactSecurityDescriptorDscLcm.Tests.ps1` gained a compile
-    test for all ten enterprise resources and a discovery test asserting that
-    `Get-DscResource` advertises every resource the manifest exports. The five
-    enterprise pairs had only ever been converged by direct class instantiation.
-
-## Acceptance evidence
-
-- Two-edition lab acceptance fully green on 2026-08-11 over 8 suites:
-    `ACCEPTANCE RESULT Passed suites=8`, exit 0 in both editions. Per suite:
-    DomainLab 4, CertificatePrivateKey 7, TaskScheduler 8, SmbShare 7,
-    ADObjectPermissions 12, ADSchemaDefaultAndObjectType 29, ForeignPrincipal 5,
-    ADObjectReplication 7. Total 79, 0 failed, every suite `Ready = True`.
-- Getting there took correcting a wrong diagnosis. Two earlier runs failed
-    `ADObjectReplication` 3 of 7 and passed on an isolated rerun, which made a
-    cold-boot lag story look right. It was not: `F1ADC2` reported `failures=0`
-    with its last inbound replication of the domain partition stamped at the
-    pre-run sync, and still served the previous run's `Targets` organizational
-    unit half an hour later. The fixture is recreated during each run, so
-    pre-run convergence cannot help. The suite now pushes the fixture chain to
-    the partner in `BeforeAll` and walks the ancestor chain for every disposable
-    object; verified against the exact stale state that had just failed twice.
-- The instrumented Windows PowerShell pass took 21 minutes and the
-    uninstrumented PowerShell 7 pass 7 minutes.
-- `./build.ps1 -Tasks test` succeeds: 10 tasks, 0 errors, 0 warnings. Local
-    Pester is 1,690 passed, 0 failed, 0 skipped.
-- Domain-lab coverage 44.89 percent (3,778 of 8,417 commands), merged into the
-    repository document; merged JaCoCo covers 7,656 instructions and misses 761.
-- `ExactSecurityDescriptorDscLcm.Tests.ps1` passes 5 of 5 in Windows PowerShell.
-- `ExactSecurityDescriptorDscLcm.Tests.ps1` passes 5 of 5 in Windows PowerShell.
+- Two-edition lab acceptance green on 2026-08-11: 8 suites, 85 passed, 0 failed,
+    0 skipped in each edition, `Result = Passed`, every suite `Ready = True`.
+    Per suite: DomainLab 4, CertificatePrivateKey 7, TaskScheduler 8, SmbShare 7,
+    ADObjectPermissions 12, ADSchemaDefaultAndObjectType 35, ForeignPrincipal 5,
+    ADObjectReplication 7. The schema-default suite grew from 29 to 35 with the
+    six live subtraction tests.
+- The schema-default subtraction has 11 unit tests, proven red first with
+    `CommandNotFoundException` before the matcher existed.
+- The nine NTFS hexadecimal-literal regression tests were proven red (9 of 9)
+    before the parameter change and green afterwards, each alongside a test that
+    an unknown rights name is still refused.
+- Measured on the lab: the `organizationalUnit` class template carries no
+    creator placeholder and the `computer` class template carries several, and
+    every `CO` entry reached a newly created computer object as an entry for
+    that object's owner. That is what makes the placeholder refusal provable
+    live without a skipped test.
 
 ## Host fix that unblocked the DSC evidence
 
@@ -161,12 +81,19 @@ proof.
     one principal from each. `forest1.net` holds bidirectional forest-transitive
     trusts to `forest2.net` and `forest3.net`, which is what makes the
     cross-forest case resolvable from `a.forest1.net`.
+- The acceptance runner calls `ShouldProcess`, so a detached non-interactive
+    launch must pass `-Confirm:$false` or it fails on the prompt.
 - A standalone Pester run must import Pester by explicit path or prepend
     `output/RequiredModules` to `PSModulePath`.
 - The changelog QA check compares the working tree against the default branch,
     so a gate started before `CHANGELOG.md` is edited fails on that one test.
 
 ## Next step
+
+OI-31 is the only register entry left and its mechanism is unknown. The two
+weakened type assertions stay weakened until something reproduces a second live
+runtime enumeration type; the batch test now captures the error stream that the
+lost-target failure never reported.
 
 The remaining lab-specific gaps, in order of the evidence they would add:
 concurrent writers on the two writable controllers to prove `RequireUnchanged`

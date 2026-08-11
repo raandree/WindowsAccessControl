@@ -9,164 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add `ADSchemaDefaultAndObjectType.Live.Tests.ps1` to the domain-lab
-    acceptance. It runs against a real child domain, where the forest root SID,
-    the schema, and the `Extended-Rights` container are all separate reads. The
-    suite proved three things the unit tests cannot: `DA`, `CA`, and `RS` expand
-    to the served domain's groups while `EA` expands to the forest root's; a
-    schema, attribute, and extended-right name resolves to the entry the
-    directory then reports back by name; and an unresolvable name leaves the
-    descriptor byte-identical instead of widening it
-- Add `Get-ADObjectSchemaDefaultAccessRule`, which returns the entries a schema
-    class carries in `defaultSecurityDescriptor`. Without that baseline every
-    entry Active Directory applied at object creation looks like operator
-    configuration. The stored SDDL names domain-relative aliases such as `DA`
-    and `EA`, and the platform parser resolves those against the calling
-    computer's own domain and throws outright on a computer that has none, so
-    the aliases are expanded against the SID of the domain the pinned controller
-    serves and, for forest-wide aliases, against the forest root domain SID. A
-    forest-wide alias whose root domain SID cannot be read is refused rather
-    than expanded against the wrong domain. The output describes a template
-    rather than the state of an object, so it carries `ObjectClass` instead of a
-    target identity and cannot be piped into a mutator
-- Add `RegistryTargetAliasMatrix.Tests.ps1` and `RegistryViewsAndRights.Tests.ps1`
-    and record ADR 0032. The two registry views were carried on the returned
-    object but never proven independent: writing an entry through the 32-bit view
-    of a genuinely redirected key now has to leave the 64-bit view unchanged, and
-    the reverse, with the view carried into every emitted rule and neither pass
-    leaking into the other. Every accepted hive alias, the
-    `Microsoft.PowerShell.Core\Registry::` prefix, the current-config expansion,
-    and every documented rejection now has a case, asserted on the canonical
-    target rather than on the absence of an error. Three rights facts are pinned:
-    `FullControl` is 983103, which is `KEY_ALL_ACCESS` and carries no
-    `SYNCHRONIZE`; `ReadKey` and `ExecuteKey` are the same value and survive a
-    round trip without a name flip; and no registry rights value carries
-    `SYNCHRONIZE`. The Windows PowerShell defect that only existed as a source
-    comment is now an asserted difference: `Get-Acl -LiteralPath` cannot resolve
-    a bracketed registry key in Windows PowerShell and can in PowerShell 7, while
-    the module resolves it in both because it resolves the target itself
-- Add stable identifier `FR-32` for the registry view, alias, and rights contract
-- Add `NtfsIcaclsDifferentialOracle.Tests.ps1`, which compares what the module
-    writes against what `icacls` reads back, parsing only bracketed tokens so the
-    suite passes on a localized host. It covers all thirteen `AppliesTo` values
-    on disk, the deny matrix including a deny that would land after an existing
-    allow, `Synchronize` normalization on allow and deny, `icacls /verify` over
-    every list the module writes, automatic propagation to pre-existing children
-    in both directions, and an `icacls /save` byte-identical backup and restore
-    round trip. Two platform behaviors are now asserted rather than assumed:
-    `icacls` applies the file system generic mapping when it renders a mask, so
-    it prints `F` or `M` for an entry whose stored mask still carries
-    `GENERIC_ALL`; and a noncanonical list written through `SetSecurityInfo` is
-    stored exactly as written, neither reordered nor marked protected, which
-    both `Test-NTFSItemAcl` and `icacls /verify` report
-- Add stable identifier `FR-31` for the materialized-descriptor contract
-- Add `NtfsReparsePointsAndLinks.Tests.ps1` and record ADR 0030 and ADR 0031.
-    Nothing in the test tree mentioned a junction, a symbolic link, or a hard
-    link, so the module's behavior on a reparse point was whatever `Get-Acl`
-    happened to do. Measured in both editions, a junction, a directory symbolic
-    link, and a file symbolic link each carry their own security descriptor: a
-    write through the link changes the link and leaves the destination
-    untouched, which is what `Get-Acl`, `Set-Acl`, `icacls`, and `icacls /L` all
-    do. A hard link shares one descriptor between both names because there is
-    one file record. That behavior is now stated in the module help and in the
-    description of the commands that resolve a file system path, and asserted on
-    real fixtures. Termination is asserted too: no command walks a tree, so a
-    self-referential junction is one ordinary target and a wildcard expands
-    exactly one level
-- Add stable identifier `FR-30` for the reparse-point and target-set contract
-- Add `NtfsPathInputMatrix.Tests.ps1`, a table-driven matrix that pins a
-    deterministic outcome for every hostile path and name shape: a trailing
-    space or period, a name beginning with `$ - + # { ,`, a bracketed name under
-    both parameter sets, a bare drive specification against a drive root, a
-    drive-relative child, `.` and `..`, a `FileInfo` and a `DirectoryInfo` bound
-    positionally, a path past `MAX_PATH`, a 255-character component, the
-    reserved device names, mixed case, forward slashes, the administrative
-    share, and the device namespace. Where the two supported PowerShell
-    editions genuinely differ the difference is asserted rather than skipped:
-    a target past `MAX_PATH` is reachable in PowerShell 7 and reported as
-    missing in Windows PowerShell, and a wildcard supplied through
-    `-LiteralPath` is a missing path in PowerShell 7 and an empty result in
-    Windows PowerShell
-- Add stable identifier `FR-29` for the NTFS path contract and record ADR 0029
-- Accept a raw access mask wherever an NTFS command takes `-AccessRights`, so an
-    access control entry carrying `GENERIC_ALL`, the `GENERIC_READ` /
-    `GENERIC_WRITE` / `GENERIC_EXECUTE` combination, or `ACCESS_SYSTEM_SECURITY`
-    can be created, replaced, and removed. The parameter stays typed as
-    `FileSystemRights` so a name still completes and an unknown name is still
-    rejected; a numeric mask is now converted before the enum conversion rejects
-    it. Supply such a mask as a decimal number or a quoted hexadecimal string,
-    because a bare hexadecimal literal in argument mode never reaches the
-    conversion
-- Add `NtfsGenericAndOrphanedAceRemoval.Tests.ps1`, which proves on a real
-    directory that an entry carrying generic bits or an unresolvable identifier
-    is reported with its exact mask and can be removed by account purge, by
-    exact mask, through a pipeline round trip, and by `Clear-NTFSAccessRule`,
-    with the same evidence for the audit family. Both existing test groups mock
-    `Get-Acl`, so nothing had ever reached disk. The suite also pins the
-    platform behavior that Windows maps the generic bits of an entry that is not
-    inherit-only through the file system generic mapping when the descriptor is
-    written
-- Add stable identifier `FR-28` for reporting and removing an entry whose mask
-    carries bits the `FileSystemRights` enumeration cannot name
-
-### Changed
-
-- Accept a name wherever `Add-ADObjectAccessRule`, `Set-ADObjectAccessRule`, and
-    `Remove-ADObjectAccessRule` previously required an `ObjectType` or
-    `InheritedObjectType` GUID. A schema class, attribute, property set,
-    validated write, or extended right name is resolved once per invocation over
-    the pinned connection. A name that matches nothing, that matches more than
-    one GUID, or that cannot be looked up is refused: falling back to the empty
-    GUID would silently widen an entry meant for one property into one that
-    applies to every property
-
-### Fixed
-
-- Fix two suites that failed for reasons unrelated to the code they test.
-    `Get-ServiceAccessRule should expose typed SCM rights` compared type
-    identity for an enumeration the module defines; every suite imports the
-    built module with `-Force`, so more than one runtime type of that name is
-    live and the assertion failed at random with `Expected [X], but got [X]`.
-    Taking the type from `Get-Module` does not help either, so both assertions
-    on module-defined types now compare the type name. `ADObjectReplication`
-    assumed the partner controller already held the fixture; the fixture is
-    recreated during each run and the partner reported healthy while still
-    serving the previous run's object, so the suite now pushes the fixture chain
-    to the partner itself. OI-31 keeps the duplicate import recorded
-- Fix `Get-ADObjectSchemaDefaultAccessRule` on a child domain controller, which
-    could not expand a forest-wide alias at all. The controller does not hold the
-    forest root partition and referral chasing is off, so the root domain SID
-    read returned nothing and every class whose template names `EA`, `SA`, `RO`,
-    or `EK` was refused. Measured against a live child domain: `domainDNS` failed
-    while `user`, `group`, and `computer` succeeded. The read now falls back to
-    the global catalog port of the same pinned server, which carries every
-    domain's `objectSid` without a referral. A server that is not a global
-    catalog still produces the original refusal rather than a wrong SID
-- Fix `WindowsAccessRightsTransformAttribute`, which never ran on any parameter
-    that also declared its rights enumeration. PowerShell adds its own
-    `ArgumentTypeConverterAttribute` for a typed parameter, that converter runs
-    before the transform, and it refuses a mask carrying a bit the enumeration
-    cannot name. The attribute now also converts names and name lists itself, so
-    a parameter can drop the enum type and still reject an unknown name. The
-    three directory rule mutators use that shape and accept a stored `GENERIC_*`
-    mask; the file system commands still declare the type and remain unable to
-    take such a mask
-- Refuse a Win32 device-namespace path (`\\?\`, `\\.\`) and a bare drive
-    specification such as `C:` in every NTFS command. Both resolved to something
-    other than what the caller wrote: the device namespace bypasses
-    normalization and produces a target key that is not canonical, and `C:`
-    resolves to the current location of that drive rather than the volume root,
-    so a command meant for a volume silently addressed a directory inside it.
-    Each is now a terminating error that names the replacement. See ADR 0029
-- Fix removal of an access or audit entry whose mask carries bits the
-    `FileSystemRights` enumeration cannot name. The public rule constructors
-    reject any mask outside `FullControl`, and `RemoveAccessRuleSpecific`
-    rebuilds the rule through exactly that constructor when no stored entry
-    matches, so a documented orphan-cleanup one-liner reported the entries and
-    deleted nothing. Rules are now built through the rule factory, which takes
-    the mask verbatim, and an exact removal that finds no match is a no-op
-    instead of an argument-range error
-
+- Add `-ExcludeSchemaDefault` to `Get-ADObjectAccessRule`, which subtracts the
+    entries the target's structural class already grants through its
+    `defaultSecurityDescriptor` and leaves the entries an operator added.
+    `Get-ADObjectSchemaDefaultAccessRule` returned that baseline but nothing
+    consumed it, so a caller still had to compare by hand. The switch defaults
+    to off: this command is what an operator reads to see what is really on an
+    object, so a filter that hid entries by default would change the meaning of
+    every existing call. An explicit rule is dropped only when a template entry
+    equals it on account, access mask, access control type, inheritance, and
+    both object type GUIDs; a template entry naming a creator placeholder such
+    as CREATOR OWNER drops nothing, because Active Directory replaces it with
+    the creating principal and nothing on the object separates that from an
+    operator grant to the same principal. An inherited entry is never a
+    candidate. ADR 0033 records the matching rule, the template cases it
+    refuses, and the bias toward reporting an entry rather than hiding it
 - Add tab completion for the `Name` parameter of `Enable-WindowsPrivilege`,
     `Disable-WindowsPrivilege`, and `Test-WindowsPrivilege`. The parameter takes
     a constant nobody recalls exactly, and a misspelling was reported only after
@@ -348,6 +205,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix `-AccessRights` refusing a hexadecimal literal on the eight NTFS access
+    and audit rule commands. `Add-NTFSAccessRule -AccessRights 0x10000000`
+    failed at argument transformation while the identical value written as a
+    decimal literal, a string, or a variable bound without complaint. Each of
+    those parameters declared `[FileSystemRights]` next to the rights transform,
+    and a hexadecimal literal is the one argument form the engine converts to
+    the declared type before the transform runs; that conversion refuses a mask
+    the enumeration cannot name. The parameters now let the transform own the
+    whole conversion, and each command keeps a test that binds a hexadecimal
+    literal and one that still refuses an unknown rights name. Measured on
+    2026-08-11 in PowerShell 7.6.3 and Windows PowerShell 5.1
 - Fix access rules reporting a signed integer instead of rights names. A .NET
     rights enum has no name for the four `GENERIC_*` bits, and `Enum.ToString`
     abandons every name it did resolve as soon as one bit is unnameable. Windows

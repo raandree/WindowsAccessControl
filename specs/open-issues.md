@@ -5,81 +5,60 @@ accepted specifications. When an item ships, remove it here and record the
 change in `CHANGELOG.md`. Rejected out-of-scope ideas remain in the research
 note rather than this list.
 
-## OI-23: Add CAPI private-key capability and mutation
-
-Specification: 0008. Tasks: KEY-1 to KEY-4 and KEY-7.
-
-`KEY-1` is complete for CAPI and the rejection boundary is closed and tested in
-both PowerShell editions. ADR 0024 records the cross-edition probe: current
-Windows routes a legacy CSP key through the CNG legacy bridge, so the separate
-managed CAPI object this issue assumed is never returned, the bridge still
-reports the CAPI provider name, and the bridged key cannot serve a descriptor at
-all. The implementation half is withdrawn.
-
-Only reopen this issue with a concrete requirement for the legacy
-`CryptAcquireContext` plus `PP_KEYSET_SEC_DESCR` surface, which needs its own
-handle lifetime, rights model, and fail-closed gates. Do not infer CAPI key-file
-paths or reuse CNG assumptions.
-
-## OI-29: Subtract the schema default from reported directory entries
-
-Specification: 0009. Depends on `Get-ADObjectSchemaDefaultAccessRule`.
-
-The baseline exists but nothing consumes it. A caller still has to compare by
-hand to see which explicit entries an operator actually added. The intended
-shape is a filter on `Get-ADObjectAccessRule` that drops every explicit entry
-the target's structural class already grants.
-
-The matching rule is the whole problem and is why this did not ship with the
-baseline. A schema default is a template: `CO` becomes the creating principal
-and `PS` stays `SELF` on the created object, so matching by SID alone
-under-matches for the first and over-matches for the second. Windows can also
-add auto-inherited flags after creation, and a later schema update changes the
-template without touching objects created before it. Decide and record what
-counts as the same entry before implementing, and prefer reporting an entry that
-might be a default over hiding one that is not.
-
-## OI-30: Reach the rights transform from the file system commands
-
-Specification: 0003.
-
-`WindowsAccessRightsTransformAttribute` is declared on the eight NTFS access and
-audit rule parameters, and on `New-NTFSFileSystemRule`, but never runs there:
-each of those parameters also declares `[System.Security.AccessControl.FileSystemRights]`,
-which adds the engine's `ArgumentTypeConverterAttribute`, and that converter
-runs first and refuses a mask carrying an unnameable bit. Measured on
-2026-08-11 in PowerShell 7.6.3: `Add-NTFSAccessRule -AccessRights 0x10000000`
-fails at argument transformation with the converter on the stack.
-
-The directory mutators already use the working shape, which is to drop the enum
-type and let the attribute own the conversion. Applying the same change to the
-file system family needs its own regression test per command, because the enum
-type is currently what rejects an unknown name there.
-
 ## OI-31: Stop the intermittent assertion failures in whole-suite runs
 
 Specification: 0005.
 
 `Service access rules.Get-ServiceAccessRule should expose typed SCM rights`
 failed twice on 2026-08-11 in a full `./build.ps1 -Tasks test` run and passed
-whenever its file ran alone. The cause is now known: every test file imports the
-built module with `-Force`, each import defines the module's PowerShell
-enumerations again, and more than one runtime type of the same name is live at
-once. The failure reads `Expected [WindowsServiceControlManagerRights], but got
-[WindowsServiceControlManagerRights]`.
+whenever its file ran alone. The failure reads
+`Expected [WindowsServiceControlManagerRights], but got
+[WindowsServiceControlManagerRights]`. Both affected assertions now compare the
+type name and `IsEnum` instead of type identity, which is what they actually
+mean.
 
-Taking the expected type from `Get-Module` does not fix it: that instance is
-also not the one the command's return value carries. Both affected assertions
-now compare the type name and `IsEnum` instead of type identity, which is what
-they actually mean. The duplicate import itself is untouched and is the real
-repair: give the suites one shared import, or stop forcing a re-import per file.
-Until then any new assertion on a module-defined type must avoid identity.
+The duplicate-import explanation this entry used to carry is disproved. Measured
+on 2026-08-11 against the built module in PowerShell 7.6.3: three consecutive
+`Import-Module -Force` calls leave exactly **one** runtime copy of
+`WindowsServiceControlManagerRights` in the application domain, as do a plain
+re-import and a remove followed by an import. A batch worker runspace created
+the way `Invoke-WindowsAccessControlBatch` creates one also resolves to the same
+runtime type: same assembly, and identity comparison against the session's type
+returns true. PowerShell caches the compiled class assembly per module path and
+version, so re-importing the same built module does not define the enumerations
+again.
 
-What remains open beyond that is a second, unexplained failure: `NTFS batch
-execution.Should mutate multiple independent targets with bounded execution`
-returned one rule instead of two once, then passed on rerun and in isolation. It
-has not been reproduced since and has a different shape, so do not close this
-issue on the strength of the enumeration change alone.
+So the cause is still unknown, and the repair is not "one shared import" until
+something reproduces a second live type. Do not revert the two assertions to
+identity comparison on the strength of the import change alone: that would
+reintroduce an intermittent failure whose mechanism nobody has demonstrated.
+Reproduce the second live type first, then revert them as the regression guard.
+Any new assertion on a module-defined type meanwhile avoids identity.
+
+The second failure is now diagnosed. `NTFS batch execution.Should mutate
+multiple independent targets with bounded execution` lost a target in three full
+`./build.ps1 -Tasks test` runs on 2026-08-11 and never in isolation. The test
+asserted only a rule count, so nothing said why. It now captures the error
+stream of both batches, and the next run named the cause:
+
+```text
+Invoke-WindowsAccessControlBatch: Cannot process argument transformation on
+parameter 'AccessRights'. Object reference not set to an instance of an object.
+```
+
+A bounded-parallel worker runspace re-invokes the public command with the
+already-bound parameters, `WindowsAccessRightsTransformAttribute` runs again on
+a value that is already the target enumeration, and it intermittently throws a
+null reference. The worker's target then produces no rule, which is the missing
+second rule.
+
+The trigger is Pester code coverage, not concurrency alone. Measured on
+2026-08-11: 66 uninstrumented iterations of the same add-then-read scenario at
+`ThrottleLimit 2` produced zero errors, while five iterations of the same Pester
+file with `CodeCoverage.Enabled` reproduced the transformation failure in two of
+them. The remaining work is to find why a PowerShell class attribute faults in a
+pooled runspace while the module file carries coverage breakpoints, and to
+remove the module's dependence on that path rather than to loosen the test.
 
 ## See also
 
