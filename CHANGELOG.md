@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `Get-ADObjectSchemaDefaultAccessRule`, which returns the entries a schema
+    class carries in `defaultSecurityDescriptor`. Without that baseline every
+    entry Active Directory applied at object creation looks like operator
+    configuration. The stored SDDL names domain-relative aliases such as `DA`
+    and `EA`, and the platform parser resolves those against the calling
+    computer's own domain and throws outright on a computer that has none, so
+    the aliases are expanded against the SID of the domain the pinned controller
+    serves and, for forest-wide aliases, against the forest root domain SID. A
+    forest-wide alias whose root domain SID cannot be read is refused rather
+    than expanded against the wrong domain. The output describes a template
+    rather than the state of an object, so it carries `ObjectClass` instead of a
+    target identity and cannot be piped into a mutator
 - Add `RegistryTargetAliasMatrix.Tests.ps1` and `RegistryViewsAndRights.Tests.ps1`
     and record ADR 0032. The two registry views were carried on the returned
     object but never proven independent: writing an entry through the 32-bit view
@@ -89,8 +101,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add stable identifier `FR-28` for reporting and removing an entry whose mask
     carries bits the `FileSystemRights` enumeration cannot name
 
+### Changed
+
+- Accept a name wherever `Add-ADObjectAccessRule`, `Set-ADObjectAccessRule`, and
+    `Remove-ADObjectAccessRule` previously required an `ObjectType` or
+    `InheritedObjectType` GUID. A schema class, attribute, property set,
+    validated write, or extended right name is resolved once per invocation over
+    the pinned connection. A name that matches nothing, that matches more than
+    one GUID, or that cannot be looked up is refused: falling back to the empty
+    GUID would silently widen an entry meant for one property into one that
+    applies to every property
+
 ### Fixed
 
+- Fix `WindowsAccessRightsTransformAttribute`, which never ran on any parameter
+    that also declared its rights enumeration. PowerShell adds its own
+    `ArgumentTypeConverterAttribute` for a typed parameter, that converter runs
+    before the transform, and it refuses a mask carrying a bit the enumeration
+    cannot name. The attribute now also converts names and name lists itself, so
+    a parameter can drop the enum type and still reject an unknown name. The
+    three directory rule mutators use that shape and accept a stored `GENERIC_*`
+    mask; the file system commands still declare the type and remain unable to
+    take such a mask
 - Refuse a Win32 device-namespace path (`\\?\`, `\\.\`) and a bare drive
     specification such as `C:` in every NTFS command. Both resolved to something
     other than what the caller wrote: the device namespace bypasses

@@ -24,9 +24,12 @@ function Add-ADObjectAccessRule {
     .PARAMETER InheritanceType
         Controls directory inheritance for the new ACE.
     .PARAMETER ObjectType
-        Optionally scopes the ACE to an object, property, or extended-right GUID.
+        Optionally scopes the ACE to an object, property, or extended-right
+        GUID, or to the schema class, attribute, property set, validated write,
+        or extended right name that identifies it.
     .PARAMETER InheritedObjectType
-        Optionally scopes inherited application to an object-class GUID.
+        Optionally scopes inherited application to an object-class GUID or to
+        the schema class name that identifies it.
     .PARAMETER TimeoutSeconds
         Sets the LDAP request timeout from 1 through 300 seconds.
     .PARAMETER ThrottleLimit
@@ -59,7 +62,8 @@ function Add-ADObjectAccessRule {
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
         [Parameter(Mandatory)]
-        [WindowsActiveDirectoryRights]$AccessRights,
+        [WindowsAccessRightsTransformAttribute([WindowsActiveDirectoryRights])]
+        $AccessRights,
         [Parameter()]
         [System.Security.AccessControl.AccessControlType]$AccessControlType =
             [System.Security.AccessControl.AccessControlType]::Allow,
@@ -67,9 +71,11 @@ function Add-ADObjectAccessRule {
         [WindowsActiveDirectoryInheritance]$InheritanceType =
             [WindowsActiveDirectoryInheritance]::None,
         [Parameter()]
-        [guid]$ObjectType = [guid]::Empty,
+        [AllowEmptyString()]
+        [string]$ObjectType,
         [Parameter()]
-        [guid]$InheritedObjectType = [guid]::Empty,
+        [AllowEmptyString()]
+        [string]$InheritedObjectType,
         [Parameter()]
         [ValidateRange(1, 300)]
         [int]$TimeoutSeconds = 10,
@@ -98,6 +104,20 @@ function Add-ADObjectAccessRule {
                 $pinnedServer = Resolve-WindowsADServer -Server $Server
             }
             $PSBoundParameters['Server'] = $pinnedServer
+            if (-not $objectTypes) {
+                $objectTypes = Resolve-WindowsADObjectTypeGuid `
+                    -ObjectType $ObjectType `
+                    -InheritedObjectType $InheritedObjectType `
+                    -Server $pinnedServer `
+                    -Credential $Credential `
+                    -TimeoutSeconds $TimeoutSeconds
+            }
+            foreach ($typeParameter in 'ObjectType', 'InheritedObjectType') {
+                if ($PSBoundParameters.ContainsKey($typeParameter)) {
+                    $PSBoundParameters[$typeParameter] =
+                        $objectTypes.$typeParameter.ToString('D')
+                }
+            }
             Invoke-WindowsADCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `
                 -BoundParameters $PSBoundParameters `
@@ -109,6 +129,11 @@ function Add-ADObjectAccessRule {
                 -SerializeByCanonicalTarget `
                 -ConfirmationImpact High
             return
+        }
+        if (-not $objectTypes) {
+            $objectTypes = Resolve-WindowsADObjectTypeGuid `
+                -ObjectType $ObjectType `
+                -InheritedObjectType $InheritedObjectType
         }
         foreach ($dnValue in $DistinguishedName) {
             $target = Resolve-WindowsADObjectTarget `
@@ -128,8 +153,8 @@ function Add-ADObjectAccessRule {
                         -AccessMask ([int]$AccessRights) `
                         -AccessControlType $AccessControlType `
                         -InheritanceType $InheritanceType `
-                        -ObjectType $ObjectType `
-                        -InheritedObjectType $InheritedObjectType
+                        -ObjectType $objectTypes.ObjectType `
+                        -InheritedObjectType $objectTypes.InheritedObjectType
                 }
                 Set-WindowsADObjectSecurityDescriptor `
                     -Target $target `
@@ -152,8 +177,8 @@ function Add-ADObjectAccessRule {
                             [int]$_.AccessRights -eq [int]$AccessRights -and
                             $_.AccessControlType -eq $AccessControlType -and
                             $_.InheritanceType -eq $InheritanceType -and
-                            $_.ObjectTypeGuid -eq $ObjectType -and
-                            $_.InheritedObjectTypeGuid -eq $InheritedObjectType
+                            $_.ObjectTypeGuid -eq $objectTypes.ObjectType -and
+                            $_.InheritedObjectTypeGuid -eq $objectTypes.InheritedObjectType
                         }
                 }
             }

@@ -51,9 +51,15 @@ class WindowsAccessRightsTransformAttribute : System.Management.Automation.Argum
         }
 
         if ($null -eq $mask) {
-            # A name, a comma-separated name list, or anything else stays with
-            # the engine's own conversion so an unknown name is still rejected.
-            return $inputData
+            # A name or a comma-separated name list still converts through the
+            # engine, which rejects an unknown name. The attribute has to do it
+            # itself: a parameter that also declares the rights type never
+            # reaches this attribute, because the type converter runs first and
+            # refuses the numeric mask before the transform is consulted.
+            return [System.Management.Automation.LanguagePrimitives]::ConvertTo(
+                $value,
+                $this.RightsType
+            )
         }
         if ($mask -lt [int]::MinValue -or $mask -gt [uint32]::MaxValue) {
             throw [System.ArgumentOutOfRangeException]::new(

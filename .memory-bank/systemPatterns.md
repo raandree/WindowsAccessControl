@@ -56,6 +56,13 @@ specification 0015 reviews.
     `ObjectType` collapses to the empty GUID and an entry meant for one property
     becomes an entry for every property. Any name-to-GUID input added here fails
     closed instead.
+- An argument transformation attribute does not run on a parameter that also
+    declares its type. PowerShell adds `ArgumentTypeConverterAttribute` for the
+    declared type and that converter runs first, so a transform written to widen
+    what the type accepts never sees the value. Either the attribute owns the
+    whole conversion and the type declaration goes, or the attribute is
+    decoration. Prove such an attribute with a test that binds the value the
+    declared type would reject, not with a test that the attribute is present.
 
 ## Acceptance lab
 

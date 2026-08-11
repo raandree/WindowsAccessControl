@@ -24,6 +24,19 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-11: Implemented the three findings of the ADMF review on the
+    directory family. `Get-ADObjectSchemaDefaultAccessRule` reads
+    `defaultSecurityDescriptor` per schema class and expands its domain-relative
+    SDDL aliases against the SID of the domain the pinned controller serves,
+    which is what makes the read work from a host in another domain or none at
+    all; a forest-wide alias whose root domain SID cannot be read is refused
+    rather than expanded against the wrong domain. `ObjectType` and
+    `InheritedObjectType` now take a name as well as a GUID on the three
+    mutators, resolved once per invocation and refused when it matches nothing
+    or resolves ambiguously. `AccessRights` on those three dropped its enum type,
+    without which the rights transform is unreachable. Build 10 tasks, 0 errors;
+    1,687 tests, 0 failures; asserted coverage 82.6 percent. OI-29 and OI-30
+    hold the two pieces that did not ship.
 - 2026-08-11: Closed five input-coverage blind spots on real objects and fixed
     one real defect. Removing an access control entry that carries `GENERIC_*`
     bits or belongs to an unresolvable identity failed at two points: the public

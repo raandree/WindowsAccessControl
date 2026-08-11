@@ -81,8 +81,22 @@ supplied base.
 `WindowsActiveDirectoryRights` mirrors the in-box AD rights mask.
 `WindowsActiveDirectoryInheritance` exposes `None`, `All`, `Descendents`,
 `SelfAndChildren`, and `Children`. Optional `ObjectType` and
-`InheritedObjectType` GUIDs create an object ACE without flattening native
-metadata. Query output preserves unknown GUIDs and the exact native ACE.
+`InheritedObjectType` create an object ACE without flattening native metadata,
+and accept either the GUID or the schema class, attribute, property set,
+validated write, or extended right name that identifies it. A name is resolved
+once per invocation over the pinned connection and is rejected when it matches
+nothing or resolves ambiguously, because falling back to the empty GUID would
+turn an entry scoped to one property into one that applies to every property.
+Query output preserves unknown GUIDs and the exact native ACE.
+
+`Get-ADObjectSchemaDefaultAccessRule` reads `defaultSecurityDescriptor` from a
+schema class and returns the entries Active Directory applies when it creates an
+object of that class. The stored SDDL names domain-relative aliases, and the
+platform parser resolves those against the calling computer's domain and fails
+outright on a computer that has none, so the aliases are expanded against the
+SID of the domain the pinned controller serves and, for forest-wide aliases,
+against the forest root domain SID. A forest-wide alias whose root domain SID
+cannot be read is refused rather than expanded against the wrong domain.
 
 Query output additionally reports where an inherited ACE came from and what its
 GUIDs mean. `InheritedFrom` names the nearest ancestor object that holds the

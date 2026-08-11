@@ -21,6 +21,41 @@ Only reopen this issue with a concrete requirement for the legacy
 handle lifetime, rights model, and fail-closed gates. Do not infer CAPI key-file
 paths or reuse CNG assumptions.
 
+## OI-29: Subtract the schema default from reported directory entries
+
+Specification: 0009. Depends on `Get-ADObjectSchemaDefaultAccessRule`.
+
+The baseline exists but nothing consumes it. A caller still has to compare by
+hand to see which explicit entries an operator actually added. The intended
+shape is a filter on `Get-ADObjectAccessRule` that drops every explicit entry
+the target's structural class already grants.
+
+The matching rule is the whole problem and is why this did not ship with the
+baseline. A schema default is a template: `CO` becomes the creating principal
+and `PS` stays `SELF` on the created object, so matching by SID alone
+under-matches for the first and over-matches for the second. Windows can also
+add auto-inherited flags after creation, and a later schema update changes the
+template without touching objects created before it. Decide and record what
+counts as the same entry before implementing, and prefer reporting an entry that
+might be a default over hiding one that is not.
+
+## OI-30: Reach the rights transform from the file system commands
+
+Specification: 0003.
+
+`WindowsAccessRightsTransformAttribute` is declared on the eight NTFS access and
+audit rule parameters, and on `New-NTFSFileSystemRule`, but never runs there:
+each of those parameters also declares `[System.Security.AccessControl.FileSystemRights]`,
+which adds the engine's `ArgumentTypeConverterAttribute`, and that converter
+runs first and refuses a mask carrying an unnameable bit. Measured on
+2026-08-11 in PowerShell 7.6.3: `Add-NTFSAccessRule -AccessRights 0x10000000`
+fails at argument transformation with the converter on the stack.
+
+The directory mutators already use the working shape, which is to drop the enum
+type and let the attribute own the conversion. Applying the same change to the
+file system family needs its own regression test per command, because the enum
+type is currently what rejects an unknown name there.
+
 ## See also
 
 - [Specification index](README.md)

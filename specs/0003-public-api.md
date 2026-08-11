@@ -555,6 +555,7 @@ Specification 0017 owns portability and desired state for this family.
 | `Get-ADObjectSecurityDescriptor` | distinguished names | `ADObjectSecurityDescriptor` |
 | `Set-ADObjectSecurityDescriptor` | distinguished names | none / `ADObjectSecurityDescriptor` |
 | `Get-ADObjectAccessRule` | distinguished names | `ADObjectAccessRule` |
+| `Get-ADObjectSchemaDefaultAccessRule` | schema class names | `ADSchemaDefaultAccessRule` |
 | `Add-ADObjectAccessRule` | distinguished names | none / `ADObjectAccessRule` |
 | `Set-ADObjectAccessRule` | distinguished names | none / `ADObjectAccessRule` |
 | `Remove-ADObjectAccessRule` | path-bound `ADObjectAccessRule`, distinguished names | none / removed rules |
@@ -573,6 +574,29 @@ mask, `WindowsActiveDirectoryRights`, allow/deny qualifier, inheritance,
 report the schema class, attribute, property set, validated write, or extended
 right that each GUID identifies, and are null when the GUID is absent or
 unresolved.
+
+`ObjectType` and `InheritedObjectType` accept a GUID or the name that
+identifies it, resolved once per invocation over the pinned connection against
+the schema partition and the `Extended-Rights` container. A name that matches
+nothing, that matches more than one GUID, or that cannot be looked up is
+rejected; it never falls back to the empty GUID, which would widen an entry
+scoped to one object or property into one that applies to every object and
+property.
+
+`AccessRights` on the directory mutators declares no enum type. It takes a
+`WindowsActiveDirectoryRights` value, a name, a comma-separated name list, or a
+numeric mask, and an argument transformation attribute converts the value. A
+declared enum type would add the engine's own type converter, which runs first
+and refuses a mask carrying a bit the enum cannot name, such as a stored
+`GENERIC_*` right. An unknown name is still rejected.
+
+`Get-ADObjectSchemaDefaultAccessRule` returns the entries a class carries in
+`defaultSecurityDescriptor`, which is the baseline an explicit entry has to be
+compared against. Its output describes a template, not the state of an object,
+so it carries `ObjectClass` instead of a target identity and cannot be piped
+into a mutator. The stored SDDL names domain-relative aliases; those are
+expanded against the SID of the domain the pinned controller serves and the
+forest root domain SID, never against the calling computer's own domain.
 
 `Add-ADObjectAccessRule` is idempotent for an exact SID, qualifier, mask,
 inheritance, and object-GUID tuple. `Set-ADObjectAccessRule` replaces every

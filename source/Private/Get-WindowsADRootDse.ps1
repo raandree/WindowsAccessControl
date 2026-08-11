@@ -10,7 +10,12 @@ function Get-WindowsADRootDse {
         '',
         '(objectClass=*)',
         [System.DirectoryServices.Protocols.SearchScope]::Base,
-        [string[]]@('defaultNamingContext', 'configurationNamingContext', 'schemaNamingContext')
+        [string[]]@(
+            'defaultNamingContext'
+            'configurationNamingContext'
+            'schemaNamingContext'
+            'rootDomainNamingContext'
+        )
     )
     $response = [System.DirectoryServices.Protocols.SearchResponse](
         $Connection.SendRequest($request)
@@ -26,5 +31,11 @@ function Get-WindowsADRootDse {
             -Value $entry.Attributes['configurationNamingContext'][0]
         SchemaNamingContext = ConvertFrom-WindowsADAttributeValue `
             -Value $entry.Attributes['schemaNamingContext'][0]
+        RootDomainNamingContext = if (
+            $entry.Attributes.Contains('rootDomainNamingContext')) {
+            ConvertFrom-WindowsADAttributeValue `
+                -Value $entry.Attributes['rootDomainNamingContext'][0]
+        }
+        else { $null }
     }
 }

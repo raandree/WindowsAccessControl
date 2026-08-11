@@ -380,6 +380,34 @@
       </TableControl>
     </View>
     <View>
+      <Name>WindowsAccessControl.ADSchemaDefaultAccessRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.ADSchemaDefaultAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>ObjectClass</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Inheritance</Label></TableColumnHeader>
+          <TableColumnHeader><Label>ObjectType</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>ObjectClass</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>InheritanceType</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>ObjectTypeName</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
       <Name>WindowsAccessControl.TaskFolderAccessRule</Name>
       <ViewSelectedBy>
         <TypeName>WindowsAccessControl.TaskFolderAccessRule</TypeName>

@@ -28,9 +28,12 @@ function Remove-ADObjectAccessRule {
     .PARAMETER InheritanceType
         Selects the directory inheritance matched by Exact mode.
     .PARAMETER ObjectType
-        Selects the object, property, or extended-right GUID scope to match.
+        Selects the object, property, or extended-right GUID scope to match, or
+        the schema class, attribute, property set, validated write, or extended
+        right name that identifies it.
     .PARAMETER InheritedObjectType
-        Selects the inherited object-class GUID scope to match.
+        Selects the inherited object-class GUID scope to match, or the schema
+        class name that identifies it.
     .PARAMETER RemovalMode
         Exact removes only an identical ACE, Rights subtracts matching rights
         from explicit ACEs with the same object scope, and All purges every
@@ -75,7 +78,8 @@ function Remove-ADObjectAccessRule {
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
         [Parameter(ParameterSetName = 'Target')]
-        [WindowsActiveDirectoryRights]$AccessRights,
+        [WindowsAccessRightsTransformAttribute([WindowsActiveDirectoryRights])]
+        $AccessRights,
         [Parameter(ParameterSetName = 'Target')]
         [System.Security.AccessControl.AccessControlType]$AccessControlType =
             [System.Security.AccessControl.AccessControlType]::Allow,
@@ -83,9 +87,11 @@ function Remove-ADObjectAccessRule {
         [WindowsActiveDirectoryInheritance]$InheritanceType =
             [WindowsActiveDirectoryInheritance]::None,
         [Parameter(ParameterSetName = 'Target')]
-        [guid]$ObjectType = [guid]::Empty,
+        [AllowEmptyString()]
+        [string]$ObjectType,
         [Parameter(ParameterSetName = 'Target')]
-        [guid]$InheritedObjectType = [guid]::Empty,
+        [AllowEmptyString()]
+        [string]$InheritedObjectType,
         [Parameter(ParameterSetName = 'Target')]
         [ValidateSet('Exact', 'Rights', 'All')]
         [string]$RemovalMode = 'Exact',
@@ -179,6 +185,20 @@ function Remove-ADObjectAccessRule {
                 $pinnedServer = Resolve-WindowsADServer -Server $Server
             }
             $PSBoundParameters['Server'] = $pinnedServer
+            if (-not $objectTypes) {
+                $objectTypes = Resolve-WindowsADObjectTypeGuid `
+                    -ObjectType $ObjectType `
+                    -InheritedObjectType $InheritedObjectType `
+                    -Server $pinnedServer `
+                    -Credential $Credential `
+                    -TimeoutSeconds $TimeoutSeconds
+            }
+            foreach ($typeParameter in 'ObjectType', 'InheritedObjectType') {
+                if ($PSBoundParameters.ContainsKey($typeParameter)) {
+                    $PSBoundParameters[$typeParameter] =
+                        $objectTypes.$typeParameter.ToString('D')
+                }
+            }
             Invoke-WindowsADCommandBatch `
                 -CommandName $MyInvocation.MyCommand.Name `
                 -BoundParameters $PSBoundParameters `
@@ -190,6 +210,11 @@ function Remove-ADObjectAccessRule {
                 -SerializeByCanonicalTarget `
                 -ConfirmationImpact High
             return
+        }
+        if (-not $objectTypes) {
+            $objectTypes = Resolve-WindowsADObjectTypeGuid `
+                -ObjectType $ObjectType `
+                -InheritedObjectType $InheritedObjectType
         }
         foreach ($dnValue in $DistinguishedName) {
             $target = Resolve-WindowsADObjectTarget `
@@ -214,8 +239,9 @@ function Remove-ADObjectAccessRule {
                     $mutationParameters.SecurityIdentifier = $sid
                     $mutationParameters.AccessMask = [int]$AccessRights
                     $mutationParameters.AccessControlType = $AccessControlType
-                    $mutationParameters.ObjectType = $ObjectType
-                    $mutationParameters.InheritedObjectType = $InheritedObjectType
+                    $mutationParameters.ObjectType = $objectTypes.ObjectType
+                    $mutationParameters.InheritedObjectType =
+                        $objectTypes.InheritedObjectType
                 }
                 else {
                     $mutationParameters.Operation = 'Remove'
@@ -224,8 +250,8 @@ function Remove-ADObjectAccessRule {
                         -AccessMask ([int]$AccessRights) `
                         -AccessControlType $AccessControlType `
                         -InheritanceType $InheritanceType `
-                        -ObjectType $ObjectType `
-                        -InheritedObjectType $InheritedObjectType
+                        -ObjectType $objectTypes.ObjectType `
+                        -InheritedObjectType $objectTypes.InheritedObjectType
                 }
                 $descriptor = Invoke-WindowsADAccessRuleMutation @mutationParameters
             }

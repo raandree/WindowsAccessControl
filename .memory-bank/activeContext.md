@@ -31,8 +31,13 @@ The older thread below is unchanged.
     survive a round trip. `Remove-NTFSFileSystemRuleSpecific` matches the stored
     entry on the raw list for such a mask, so an exact removal that finds no
     match is a no-op instead of an argument-range error.
-    `WindowsAccessRightsTransformAttribute` lets a raw numeric mask bind to the
-    `FileSystemRights` parameters without giving up the enum type.
+    `WindowsAccessRightsTransformAttribute` was written to let a raw numeric
+    mask bind while keeping the enum type. Measurement on 2026-08-11 disproved
+    the second half: a declared enum type adds the engine's
+    `ArgumentTypeConverterAttribute`, which runs first and refuses the mask
+    before the transform is consulted. The attribute is therefore still inert on
+    every `FileSystemRights` parameter. OI-30 tracks the fix; the three
+    directory mutators already use the shape that works.
 - `Resolve-NTFSPath` refuses a Win32 device-namespace path and a bare drive
     specification. Both resolved to something other than what the caller wrote:
     `\\?\` bypasses normalization and yields a non-canonical target key, and
