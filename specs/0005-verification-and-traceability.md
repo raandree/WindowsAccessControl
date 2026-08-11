@@ -53,6 +53,7 @@ is not reported as a successful live write.
 | FR-26 | `ExactSecurityDescriptorResourceContract.Tests.ps1` and `AccessRulePresenceResourceContract.Tests.ps1` export, composite-key, and property-set contracts, `WindowsAccessControlDscSecurityDescriptorAdapter.Tests.ps1` and `WindowsAccessControlDscAccessRuleAdapter.Tests.ps1` routing for the five enterprise families, and live domain-lab convergence with a repeated consistency pass |
 | FR-27 | `ADObjectReplication.Live.Tests.ps1` canonical-target, rename, move, deleted-object, and distinguished-name-reuse cases plus the object-GUID restore rejection in `WindowsEnterpriseBackupRecord.Tests.ps1` |
 | FR-28 | `NtfsGenericAndOrphanedAceRemoval.Tests.ps1` real-item mask persistence, generic-bit reporting, orphan enumeration, and purge/exact/pipeline/clear removal routes plus the privileged audit-entry cases, and `NewNTFSFileSystemRule.Tests.ps1` mask-range construction contract |
+| FR-29 | `NtfsPathInputMatrix.Tests.ps1` hostile-name, drive-specification, relative-path, file-system-object, long-path, reserved-name, case, separator, universal-naming-convention, and device-namespace cases across both PowerShell editions |
 | NFR-1 | Cross-edition behavior runs and module import QA |
 | NFR-2 | Manifest/runtime dependency inspection and static QA |
 | NFR-3 | DACL section-preservation and selected-section copy/restore tests |

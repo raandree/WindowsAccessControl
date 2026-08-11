@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `NtfsPathInputMatrix.Tests.ps1`, a table-driven matrix that pins a
+    deterministic outcome for every hostile path and name shape: a trailing
+    space or period, a name beginning with `$ - + # { ,`, a bracketed name under
+    both parameter sets, a bare drive specification against a drive root, a
+    drive-relative child, `.` and `..`, a `FileInfo` and a `DirectoryInfo` bound
+    positionally, a path past `MAX_PATH`, a 255-character component, the
+    reserved device names, mixed case, forward slashes, the administrative
+    share, and the device namespace. Where the two supported PowerShell
+    editions genuinely differ the difference is asserted rather than skipped:
+    a target past `MAX_PATH` is reachable in PowerShell 7 and reported as
+    missing in Windows PowerShell, and a wildcard supplied through
+    `-LiteralPath` is a missing path in PowerShell 7 and an empty result in
+    Windows PowerShell
+- Add stable identifier `FR-29` for the NTFS path contract and record ADR 0029
 - Accept a raw access mask wherever an NTFS command takes `-AccessRights`, so an
     access control entry carrying `GENERIC_ALL`, the `GENERIC_READ` /
     `GENERIC_WRITE` / `GENERIC_EXECUTE` combination, or `ACCESS_SYSTEM_SECURITY`
@@ -32,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Refuse a Win32 device-namespace path (`\\?\`, `\\.\`) and a bare drive
+    specification such as `C:` in every NTFS command. Both resolved to something
+    other than what the caller wrote: the device namespace bypasses
+    normalization and produces a target key that is not canonical, and `C:`
+    resolves to the current location of that drive rather than the volume root,
+    so a command meant for a volume silently addressed a directory inside it.
+    Each is now a terminating error that names the replacement. See ADR 0029
 - Fix removal of an access or audit entry whose mask carries bits the
     `FileSystemRights` enumeration cannot name. The public rule constructors
     reject any mask outside `FullControl`, and `RemoveAccessRuleSpecific`

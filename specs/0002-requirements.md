@@ -84,6 +84,10 @@ Status: Accepted. These stable, testable identifiers define the implemented
   whose mask carries bits the `FileSystemRights` enumeration cannot name, such
   as the generic rights, including when the entry belongs to an unresolvable
   security identifier, through every supported removal route.
+- **FR-29**: Resolve every NTFS target through one path contract that refuses a
+  Win32 device-namespace path, treats a literal path as literal, resolves a
+  drive specification to the volume root directory, and reports the same
+  descriptor for a universal naming convention path as for the local path.
 
 ## Non-functional requirements
 

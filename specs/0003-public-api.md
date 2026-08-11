@@ -37,6 +37,10 @@ through `Get-Help` (ADR 0001).
 - `LiteralPath` treats values exactly and binds filesystem objects through
   their `PSPath` property.
 - `FullName` is the by-property alias for wildcard path input.
+- Filesystem commands refuse a Win32 device-namespace path (`\\?\`, `\\.\`) and
+  a bare drive specification such as `C:`, each with a terminating error that
+  names the replacement (ADR 0029). A universal naming convention path stays
+  supported everywhere except `Get-NTFSItemEffectiveAccess` (ADR 0017).
 - Query commands emit one object per rule or target so output can re-enter
   another module command.
 - Registry commands accept local provider/native paths and `RegistryKey`

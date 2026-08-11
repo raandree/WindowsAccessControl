@@ -37,6 +37,7 @@ decisions are immutable; a later ADR supersedes one when the design changes.
 | 0026 | [Address private-key writes by key identity, not by certificate](0026-address-private-key-writes-by-key-identity.md) | Accepted |
 | 0027 | [Assert the coverage threshold over the executable scope](0027-assert-coverage-over-executable-scope.md) | Accepted |
 | 0028 | [Read the DACL without the SACL and graft the audited SACL](0028-read-the-dacl-without-the-sacl.md) | Accepted |
+| 0029 | [Refuse a device-namespace path and a bare drive specification](0029-refuse-device-namespace-paths.md) | Accepted |
 
 ## See also
 

@@ -24,6 +24,11 @@ NOTE
     SeSecurityPrivilege, and setting arbitrary owners can require
     SeRestorePrivilege.
 
+    Filesystem commands address a canonical file system path. A Win32
+    device-namespace path (\\?\ or \\.\) and a bare drive specification such
+    as C: are refused, because neither names one unambiguous target; supply
+    the normalized path or C:\ instead.
+
 SEE ALSO
     Get-NTFSAccessRule
     Get-NTFSAuditRule
