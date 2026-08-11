@@ -119,27 +119,27 @@ PowerShell pass using one principal from the fixture domain.
 
 ## Acceptance evidence
 
-- Two-edition lab acceptance on 2026-08-11 over 8 suites: 66 passed, 3 failed
-    in each edition. Per suite: DomainLab 4, CertificatePrivateKey 7,
-    TaskScheduler 8, SmbShare 7, ADObjectPermissions 12,
-    ADSchemaDefaultAndObjectType 19, ForeignPrincipal 5, ADObjectReplication 4
-    of 7. Every suite reported `Ready = True`.
-- The three failures are a lab precondition, not a defect. The machines were
-    cold booted two minutes before the run and `F1ADC2` had not replicated since
-    04:58, so `Sync-ADObject` reported a missing parent object and the partner
-    returned the previous run's `objectGUID`. After
-    `repadmin /syncall /AdeP` the suite passed 7 of 7 unchanged, which makes the
-    full set 69 of 69. `tests/Lab/README.md` now names the convergence step.
-- The instrumented Windows PowerShell pass took 26 minutes and the
-    uninstrumented PowerShell 7 pass 8 minutes, which keeps the
-    single-coverage-pass decision.
+- Two-edition lab acceptance fully green on 2026-08-11 over 8 suites:
+    `ACCEPTANCE RESULT Passed suites=8`, exit 0 in both editions. Per suite:
+    DomainLab 4, CertificatePrivateKey 7, TaskScheduler 8, SmbShare 7,
+    ADObjectPermissions 12, ADSchemaDefaultAndObjectType 29, ForeignPrincipal 5,
+    ADObjectReplication 7. Total 79, 0 failed, every suite `Ready = True`.
+- Getting there took correcting a wrong diagnosis. Two earlier runs failed
+    `ADObjectReplication` 3 of 7 and passed on an isolated rerun, which made a
+    cold-boot lag story look right. It was not: `F1ADC2` reported `failures=0`
+    with its last inbound replication of the domain partition stamped at the
+    pre-run sync, and still served the previous run's `Targets` organizational
+    unit half an hour later. The fixture is recreated during each run, so
+    pre-run convergence cannot help. The suite now pushes the fixture chain to
+    the partner in `BeforeAll` and walks the ancestor chain for every disposable
+    object; verified against the exact stale state that had just failed twice.
+- The instrumented Windows PowerShell pass took 21 minutes and the
+    uninstrumented PowerShell 7 pass 7 minutes.
 - `./build.ps1 -Tasks test` succeeds: 10 tasks, 0 errors, 0 warnings. Local
-    Pester is 1,687 passed, 0 failed, 0 skipped.
-- Domain-lab coverage 44.75 percent (3,766 of 8,416 commands),
-    `Domain-lab evidence merged: yes`; domain-lab-only 89.38 percent (244 of 273
-    commands over 15 source files). Whole-module 90.9 percent (7,650 of 8,416)
-    reported; asserted scope 90.95 percent (7,406 of 8,143) over the 80 percent
-    threshold.
+    Pester is 1,690 passed, 0 failed, 0 skipped.
+- Domain-lab coverage 44.89 percent (3,778 of 8,417 commands), merged into the
+    repository document; merged JaCoCo covers 7,656 instructions and misses 761.
+- `ExactSecurityDescriptorDscLcm.Tests.ps1` passes 5 of 5 in Windows PowerShell.
 - `ExactSecurityDescriptorDscLcm.Tests.ps1` passes 5 of 5 in Windows PowerShell.
 
 ## Host fix that unblocked the DSC evidence

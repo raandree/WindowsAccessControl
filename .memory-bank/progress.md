@@ -24,6 +24,21 @@ Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
+- 2026-08-11: Closed every remaining directory test scenario and got the
+    eight-suite acceptance fully green in both editions for the first time. The
+    live suite went from 19 to 29 tests: common-name forms, a class with no
+    template against one that is present and empty, several classes through the
+    pipeline, the forest-root controller where both naming contexts are equal,
+    both object types resolved as names over one connection, a name carrying
+    filter metacharacters, hexadecimal masks through replace and removal, and
+    the global catalog probe against a host that serves none. A schema survey
+    settled the ambiguity refusal: 82 extended rights, no duplicate names, no
+    collision with the schema partition, so that branch has no live path and its
+    decision moved into `Select-WindowsADObjectTypeGuid` to be unit-proven
+    instead of manufactured through an irreversible schema change. Two suites
+    that failed for reasons unrelated to the module were fixed: the enumeration
+    identity comparison behind OI-31, and the replication suite's assumption
+    that the partner already held the fixture.
 - 2026-08-11: Closed the remaining live gaps and ran the full eight-suite
     acceptance. The suite now also covers the third mutator, a two-target
     bounded batch, an explicit credential through the forest-root read, and a

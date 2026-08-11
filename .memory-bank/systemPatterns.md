@@ -73,6 +73,23 @@ specification 0015 reviews.
     root-versus-child difference at all, and the branch that mattered most only
     ran once the suite pointed at a child domain. Check that the fixture can
     reach the branch before reading a green run as evidence for it.
+- A passing rerun is not a diagnosis. The directory replication suite failed
+    inside two acceptance runs and passed both times when rerun alone, which
+    made a lag story look confirmed. It was wrong: the partner reported
+    `failures=0` and still served the previous run's object, because the fixture
+    is recreated during the run and nothing pushed it across. The fix was to
+    make the suite push the fixture chain itself. When a rerun passes, name the
+    difference between the two runs before believing the explanation.
+- A test that asserts a module-defined type must not assert type identity.
+    Every suite imports the built module with `-Force`, each import defines the
+    PowerShell classes and enumerations again, and more than one runtime type of
+    the same name is live at once. `Expected [X], but got [X]` is the signature.
+    Fetching the type from `Get-Module` does not help, because that instance is
+    not the one the return value carries. Compare the type name.
+- A refusal that no live path can reach still has to be proven. A stock schema
+    holds no ambiguous name, so the ambiguity refusal was unreachable through a
+    lookup. Extending a schema to manufacture one is irreversible, so the
+    decision moved into its own function and the refusals are unit-tested there.
 
 ## Acceptance lab
 

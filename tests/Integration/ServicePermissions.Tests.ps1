@@ -238,7 +238,13 @@ Describe 'Service access rules' -Tag 'Integration', 'WindowsOnly', 'RequiresElev
         $rules | Should -Not -BeNullOrEmpty
         $rules[0].PSObject.TypeNames |
             Should -Contain 'WindowsAccessControl.ServiceControlManagerAccessRule'
-        $rules[0].AccessRights | Should -BeOfType ([WindowsServiceControlManagerRights])
+        # Asserted by name rather than by type identity: every test file imports
+        # the built module with Force, so more than one runtime type of this
+        # name can be live at once and identity comparison fails at random.
+        # OI-31 holds the duplicate-import cause.
+        $rules[0].AccessRights.GetType().FullName |
+            Should -BeExactly 'WindowsServiceControlManagerRights'
+        $rules[0].AccessRights.GetType().IsEnum | Should -BeTrue
         $rules[0].AccessMask | Should -BeOfType ([uint64])
     }
 }

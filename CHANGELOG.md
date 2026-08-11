@@ -122,6 +122,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix two suites that failed for reasons unrelated to the code they test.
+    `Get-ServiceAccessRule should expose typed SCM rights` compared type
+    identity for an enumeration the module defines; every suite imports the
+    built module with `-Force`, so more than one runtime type of that name is
+    live and the assertion failed at random with `Expected [X], but got [X]`.
+    Taking the type from `Get-Module` does not help either, so both assertions
+    on module-defined types now compare the type name. `ADObjectReplication`
+    assumed the partner controller already held the fixture; the fixture is
+    recreated during each run and the partner reported healthy while still
+    serving the previous run's object, so the suite now pushes the fixture chain
+    to the partner itself. OI-31 keeps the duplicate import recorded
 - Fix `Get-ADObjectSchemaDefaultAccessRule` on a child domain controller, which
     could not expand a forest-wide alias at all. The controller does not hold the
     forest root partition and referral chasing is off, so the root domain SID

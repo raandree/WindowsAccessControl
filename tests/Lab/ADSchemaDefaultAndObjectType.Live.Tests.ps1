@@ -95,6 +95,23 @@ BeforeAll {
         "$($script:domain.NetBIOSName)\$($script:readerName)",
         $script:readerPassword
     )
+
+    # A host that serves no global catalog, for the fallback's null path.
+    $script:memberServer = if ($env:WAC_DOMAIN_LAB_MEMBER) {
+        $env:WAC_DOMAIN_LAB_MEMBER
+    }
+    else {
+        $controllerNames = @(
+            (Get-ADDomainController -Filter * -Server $script:server).Name
+        )
+        $member = Get-ADComputer -Filter * -Server $script:server |
+            Where-Object { $_.Name -notin $controllerNames } |
+            Select-Object -First 1
+        if (-not $member) {
+            throw 'The fixture domain holds no member server to probe for a missing global catalog.'
+        }
+        '{0}.{1}' -f $member.Name, $script:domain.DNSRoot
+    }
 }
 
 AfterAll {
@@ -173,6 +190,47 @@ Describe 'Schema default access rules' -Tag 'Lab', 'WindowsOnly' {
                 -ObjectClass 'domainDNS')
 
         $rules.SID | Should -Contain "$($script:rootDomainSid)-519"
+    }
+
+    It 'Should return nothing for a class that carries no template' {
+        # applicationSettings has no defaultSecurityDescriptor at all, which is
+        # not the same as one that is present and empty.
+        $rules = @(Get-ADObjectSchemaDefaultAccessRule `
+                -Server $script:server -ObjectClass 'applicationSettings')
+
+        $rules | Should -BeNullOrEmpty
+    }
+
+    It 'Should return nothing for a template that is present and empty' {
+        # classSchema carries the literal template 'D:S:', so the entry count is
+        # zero because the template grants nothing, not because a read failed.
+        $rules = @(Get-ADObjectSchemaDefaultAccessRule `
+                -Server $script:server -ObjectClass 'classSchema')
+
+        $rules | Should -BeNullOrEmpty
+    }
+
+    It 'Should read several classes from the pipeline over one connection' {
+        $rules = @('user', 'group', 'computer' |
+                Get-ADObjectSchemaDefaultAccessRule -Server $script:server)
+
+        @($rules.ObjectClass | Sort-Object -Unique) |
+            Should -Be @('computer', 'group', 'user')
+    }
+
+    It 'Should expand against the served domain on a forest root controller' {
+        # Every other case here runs on a child controller, where the root
+        # naming context differs and the global catalog is consulted. On a forest
+        # root the two contexts are the same and that second read never happens.
+        $rootServer = [string]@(
+            (Get-ADDomainController -Discover -DomainName $script:rootDomainDns -Writable).HostName
+        )[0]
+        $rules = @(Get-ADObjectSchemaDefaultAccessRule `
+                -Server $rootServer -ObjectClass 'domainDNS')
+
+        $rules.SID | Should -Contain "$($script:rootDomainSid)-519"
+        $rules.SID | Should -Contain "$($script:rootDomainSid)-512"
+        $rules.Server | Select-Object -Unique | Should -BeExactly $rootServer.ToLowerInvariant()
     }
 }
 
@@ -389,6 +447,81 @@ Describe 'Object type names on directory rule mutators' -Tag 'Lab', 'WindowsOnly
             -ThrottleLimit 1 `
             -Confirm:$false
     }
+
+    It 'Should resolve an attribute and an extended right by common name' {
+        # The filters match the display name or the common name. Every other
+        # case here uses the display form, so the common form is unproven.
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights ReadProperty `
+            -ObjectType 'User-Account-Control' `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights ExtendedRight `
+            -ObjectType 'User-Force-Change-Password' `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        $stored = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -Account $script:testSid `
+                -ExcludeInherited `
+                -ThrottleLimit 1)
+
+        @($stored.ObjectTypeGuid | Sort-Object) |
+            Should -Be @($script:userAccountControlGuid, $script:resetPasswordGuid |
+                Sort-Object)
+    }
+
+    It 'Should resolve both object type names over one connection' {
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights ReadProperty `
+            -InheritanceType Descendents `
+            -ObjectType 'userAccountControl' `
+            -InheritedObjectType 'user' `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        $stored = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -Account $script:testSid `
+                -ExcludeInherited `
+                -ThrottleLimit 1)
+
+        $stored | Should -HaveCount 1
+        $stored[0].ObjectTypeGuid | Should -Be $script:userAccountControlGuid
+        $stored[0].InheritedObjectTypeGuid | Should -Be $script:userClassGuid
+    }
+
+    It 'Should refuse a name carrying filter metacharacters' {
+        # The value is escaped before it reaches the filter, so this has to come
+        # back as an unresolved name and not as a directory syntax error.
+        {
+            Add-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -AllowedBaseDistinguishedName $script:baseOu `
+                -Account $script:testSid `
+                -AccessRights ReadProperty `
+                -ObjectType 'user*(name)' `
+                -ThrottleLimit 1 `
+                -Confirm:$false
+        } | Should -Throw -ExpectedMessage '*does not name an Active Directory schema class*'
+    }
 }
 
 Describe 'Directory rights masks' -Tag 'Lab', 'WindowsOnly' {
@@ -463,6 +596,83 @@ Describe 'Directory rights masks' -Tag 'Lab', 'WindowsOnly' {
                 -ThrottleLimit 1 `
                 -Confirm:$false
         } | Should -Throw
+    }
+
+    It 'Should accept a hexadecimal mask on replace and on removal' {
+        Add-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights '0x00000010' `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        # Set and Remove share the transform with Add and had never used it.
+        Set-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights '0x00000030' `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        $stored = @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -Account $script:testSid `
+                -ExcludeInherited `
+                -ThrottleLimit 1)
+        $stored | Should -HaveCount 1
+        $stored[0].AccessMask | Should -Be 0x30
+
+        Remove-ADObjectAccessRule `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -AllowedBaseDistinguishedName $script:baseOu `
+            -Account $script:testSid `
+            -AccessRights 0x30 `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        @(Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -Account $script:testSid `
+                -ExcludeInherited `
+                -ThrottleLimit 1) | Should -BeNullOrEmpty
+    }
+}
+
+Describe 'Forest root SID sources' -Tag 'Lab', 'WindowsOnly' {
+    It 'Should report no SID when the server holds no global catalog' {
+        # The fallback opens the global catalog port of the same server. A host
+        # that serves no catalog has to yield null so the caller refuses,
+        # instead of an exception or a SID from somewhere else.
+        $sid = & $script:module {
+            param($Server, $NamingContext)
+            Get-WindowsADNamingContextSid `
+                -UseGlobalCatalog `
+                -Server $Server `
+                -NamingContext $NamingContext `
+                -TimeoutSeconds 5
+        } $script:memberServer $script:rootDse.rootDomainNamingContext
+
+        $sid | Should -BeNullOrEmpty
+    }
+
+    It 'Should read the SID when the server holds a global catalog' {
+        $sid = & $script:module {
+            param($Server, $NamingContext)
+            Get-WindowsADNamingContextSid `
+                -UseGlobalCatalog `
+                -Server $Server `
+                -NamingContext $NamingContext `
+                -TimeoutSeconds 10
+        } $script:server $script:rootDse.rootDomainNamingContext
+
+        $sid.Value | Should -BeExactly $script:rootDomainSid
     }
 }
 

@@ -128,6 +128,43 @@ Describe 'Active Directory object type resolution' -Tag 'Unit', 'WindowsOnly' {
             }
         } | Should -Throw -ExpectedMessage '*requires a domain controller*'
     }
+
+    It 'Should return the single GUID a name resolved to' {
+        & $script:module {
+            Select-WindowsADObjectTypeGuid `
+                -Found ([guid[]]@('bf967aba-0de6-11d0-a285-00aa003049e2')) `
+                -Name 'user' `
+                -ParameterName 'ObjectType'
+        } | Should -Be ([guid]'bf967aba-0de6-11d0-a285-00aa003049e2')
+    }
+
+    It 'Should refuse a name that matched nothing' {
+        {
+            & $script:module {
+                Select-WindowsADObjectTypeGuid `
+                    -Found ([guid[]]@()) `
+                    -Name 'noSuchName' `
+                    -ParameterName 'ObjectType'
+            }
+        } | Should -Throw -ExpectedMessage '*does not name an Active Directory schema class*'
+    }
+
+    It 'Should refuse a name that matched more than one GUID' {
+        # A stock schema holds no ambiguous name, so this refusal has no live
+        # path. It still has to be proven, because an ambiguous name that
+        # silently picked one GUID would scope an entry to the wrong property.
+        {
+            & $script:module {
+                Select-WindowsADObjectTypeGuid `
+                    -Found ([guid[]]@(
+                            'bf967aba-0de6-11d0-a285-00aa003049e2'
+                            'bf967a9c-0de6-11d0-a285-00aa003049e2'
+                        )) `
+                    -Name 'ambiguous' `
+                    -ParameterName 'ObjectType'
+            }
+        } | Should -Throw -ExpectedMessage '*names more than one Active Directory GUID*'
+    }
 }
 
 Describe 'Active Directory rights mask binding' -Tag 'Unit', 'WindowsOnly' {
@@ -138,8 +175,10 @@ Describe 'Active Directory rights mask binding' -Tag 'Unit', 'WindowsOnly' {
             )
             $attribute.Transform($null, 0x10000000)
         }
+        $expectedRightsType = & $script:module { [WindowsActiveDirectoryRights] }
 
-        $rights | Should -BeOfType ([WindowsActiveDirectoryRights])
+        $rights.GetType().FullName | Should -BeExactly $expectedRightsType.FullName
+        $rights.GetType().IsEnum | Should -BeTrue
         [int]$rights | Should -Be 0x10000000
     }
 

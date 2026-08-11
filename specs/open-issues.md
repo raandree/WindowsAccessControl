@@ -60,26 +60,26 @@ type is currently what rejects an unknown name there.
 
 Specification: 0005.
 
-Two tests fail intermittently in a full `./build.ps1 -Tasks test` run and pass
-when their file runs alone:
+`Service access rules.Get-ServiceAccessRule should expose typed SCM rights`
+failed twice on 2026-08-11 in a full `./build.ps1 -Tasks test` run and passed
+whenever its file ran alone. The cause is now known: every test file imports the
+built module with `-Force`, each import defines the module's PowerShell
+enumerations again, and more than one runtime type of the same name is live at
+once. The failure reads `Expected [WindowsServiceControlManagerRights], but got
+[WindowsServiceControlManagerRights]`.
 
-- `Service access rules.Get-ServiceAccessRule should expose typed SCM rights`
-    reports `Expected the value to have type [WindowsServiceControlManagerRights]
-    ... but got ... with type [WindowsServiceControlManagerRights]`. A type that
-    fails `-is` against a literal of its own name is two runtime types with one
-    name, which is what happens when a script module defining PowerShell classes
-    is imported more than once in a process: each import creates the types
-    again, and a value made under the earlier import no longer matches a literal
-    resolved under the later one.
-- `NTFS batch execution.Should mutate multiple independent targets with bounded
-    execution` returned one rule instead of two once, then passed on rerun and in
-    isolation.
+Taking the expected type from `Get-Module` does not fix it: that instance is
+also not the one the command's return value carries. Both affected assertions
+now compare the type name and `IsEnum` instead of type identity, which is what
+they actually mean. The duplicate import itself is untouched and is the real
+repair: give the suites one shared import, or stop forcing a re-import per file.
+Until then any new assertion on a module-defined type must avoid identity.
 
-Neither reproduces reliably, and neither has been traced to a product defect.
-Both were observed on 2026-08-11 with unrelated changes in the tree. Find the
-import that recreates the types, or make the suites share one import, before
-treating either as a product bug. A gate that fails at random teaches everyone
-to rerun it, which is how a real failure gets waved through.
+What remains open beyond that is a second, unexplained failure: `NTFS batch
+execution.Should mutate multiple independent targets with bounded execution`
+returned one rule instead of two once, then passed on rerun and in isolation. It
+has not been reproduced since and has a different shape, so do not close this
+issue on the strength of the enumeration change alone.
 
 ## See also
 

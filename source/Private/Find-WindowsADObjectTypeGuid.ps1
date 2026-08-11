@@ -75,11 +75,8 @@ function Find-WindowsADObjectTypeGuid {
         }
     }
 
-    if ($found.Count -eq 0) {
-        throw "$ParameterName '$Name' does not name an Active Directory schema class, attribute, property set, validated write, or extended right."
-    }
-    if ($found.Count -gt 1) {
-        throw "$ParameterName '$Name' names more than one Active Directory GUID ($($found -join ', ')). Supply the GUID instead of the name."
-    }
-    $found[0]
+    Select-WindowsADObjectTypeGuid `
+        -Found $found `
+        -Name $Name `
+        -ParameterName $ParameterName
 }

@@ -34,6 +34,19 @@ BeforeAll {
     $script:testSid = (Get-ADUser -Identity 'WacLabUser' -ErrorAction Stop).SID.Value
     $script:createdOrganizationalUnits = [Collections.Generic.List[string]]::new()
 
+    # The fixture is recreated at the start of every acceptance run, and the
+    # partner does not necessarily replicate it before this suite runs. Every
+    # assertion here compares the two controllers, so the partner is made
+    # current for the fixture first; otherwise the suite reports the previous
+    # run's object and fails for a reason that is not the module's.
+    foreach ($fixtureObject in $script:rootOu, $script:targetOu) {
+        Sync-ADObject `
+            -Object $fixtureObject `
+            -Source $script:primaryServer `
+            -Destination $script:partnerServer `
+            -ErrorAction Stop
+    }
+
     function script:New-DisposableOrganizationalUnit {
         param([string]$Name, [string]$Path = $script:targetOu)
 
@@ -51,11 +64,26 @@ BeforeAll {
     function script:Sync-DisposableObject {
         param([string]$DistinguishedName, [string]$From, [string]$To)
 
-        Sync-ADObject `
-            -Object $DistinguishedName `
-            -Source $From `
-            -Destination $To `
-            -ErrorAction Stop
+        # The partner replicates on its own schedule and these objects are
+        # created minutes earlier in the same run, so syncing the object alone
+        # fails on a parent the partner has never seen. Push the chain from the
+        # fixture root down, then the object itself.
+        $chain = [Collections.Generic.List[string]]::new()
+        $current = $DistinguishedName
+        while ($current -and $current -ne $script:domain.DistinguishedName) {
+            $chain.Insert(0, $current)
+            if ($current -eq $script:rootOu) { break }
+            $separator = $current.IndexOf(',')
+            if ($separator -lt 0) { break }
+            $current = $current.Substring($separator + 1)
+        }
+        foreach ($link in $chain) {
+            Sync-ADObject `
+                -Object $link `
+                -Source $From `
+                -Destination $To `
+                -ErrorAction Stop
+        }
     }
 
     function script:Restore-PartnerDirectoryService {
