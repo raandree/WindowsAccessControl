@@ -52,13 +52,43 @@ a value that is already the target enumeration, and it intermittently throws a
 null reference. The worker's target then produces no rule, which is the missing
 second rule.
 
+The captured stack names the mechanism:
+
+```text
+System.NullReferenceException
+  at ScriptBlock.InvokeWithPipe(...)
+  at ScriptBlock.InvokeAsMemberFunctionT[T](Object instance, Object[] args)
+  at ScriptBlockMemberMethodWrapper.InvokeHelperT[T](Object instance,
+      Object sessionStateInternal, Object[] args)
+  at WindowsAccessRightsTransformAttribute.Transform(...)
+  at ArgumentTransformationAttribute.TransformInternal(...)
+  at ParameterBinderBase.BindParameter(...)
+```
+
+The fault is in the engine's invocation of the class method body, not in the
+method body itself. A PowerShell class instance carries the session state of the
+runspace that created it, and the attribute instance bound to the parameter is
+invoked from a pooled worker runspace whose session state for that class is not
+established, so `sessionStateInternal` is null.
+
 The trigger is Pester code coverage, not concurrency alone. Measured on
 2026-08-11: 66 uninstrumented iterations of the same add-then-read scenario at
 `ThrottleLimit 2` produced zero errors, while five iterations of the same Pester
 file with `CodeCoverage.Enabled` reproduced the transformation failure in two of
-them. The remaining work is to find why a PowerShell class attribute faults in a
-pooled runspace while the module file carries coverage breakpoints, and to
-remove the module's dependence on that path rather than to loosen the test.
+them. Coverage changes whether the pooled runspace reuses the parent's compiled
+class or establishes its own.
+
+Two candidate repairs, neither attempted:
+
+- Compile `WindowsAccessRightsTransformAttribute` as a real .NET type through
+  `Add-Type` instead of a PowerShell class, so `Transform` is IL with no session
+  state to lose. The type has to exist before the module's parameter attributes
+  are resolved, which is the same ordering constraint `Prefix.ps1` already
+  handles for `System.DirectoryServices.Protocols`.
+- Stop re-binding public parameters inside a worker runspace at all, which is a
+  redesign of the batch dispatchers rather than a fix.
+
+Do not loosen the test. It is the only thing that reported the fault.
 
 ## See also
 

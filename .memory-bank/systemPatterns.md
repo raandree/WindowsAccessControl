@@ -86,6 +86,15 @@ specification 0015 reviews.
     is recreated during the run and nothing pushed it across. The fix was to
     make the suite push the fixture chain itself. When a rerun passes, name the
     difference between the two runs before believing the explanation.
+- A PowerShell class instance carries the session state of the runspace that
+    created it, so a class-based `ArgumentTransformationAttribute` can fault
+    when a pooled worker runspace re-binds the parameter it decorates. The
+    captured stack ends at `ScriptBlockMemberMethodWrapper.InvokeHelper(Object
+    instance, Object sessionStateInternal, ...)` with a null reference, above
+    `WindowsAccessRightsTransformAttribute.Transform`. Pester coverage is what
+    makes it appear, because it changes whether the worker reuses the parent's
+    compiled class. An attribute that has to survive a runspace boundary belongs
+    in a compiled type, not a PowerShell class.
 - A test that asserts only a count cannot report why the count was wrong. The
     bounded-batch test lost a target in three whole runs and never in isolation,
     and each run recorded nothing but the number. Capturing the error stream of
