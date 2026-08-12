@@ -14,115 +14,33 @@ bounded Active Directory command families are complete for their accepted
 increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
 and fail-closed CNG private-key mutation are independently reviewed. OI-11,
-ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, and OI-28 are closed. The 80 percent
-coverage gate is met at 90.54 percent over the 7,678 commands the test profile
-can execute, with current domain-lab evidence merged; ADR 0027 records the
-asserted scope and ADR 0025 keeps the threshold. The domain-lab acceptance runs
-in both supported PowerShell editions over seven suites. OI-23 is the only
-remaining focused issue and is closed by decision.
+ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, OI-28, OI-29, and OI-30 are closed.
+The 80 percent coverage gate is met over the commands the test profile can
+execute, with current domain-lab evidence merged; ADR 0027 records the asserted
+scope and ADR 0025 keeps the threshold. The domain-lab acceptance runs in both
+supported PowerShell editions over eight suites. OI-31 is the only remaining
+issue, and only its enumeration-identity half is still open.
 Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
 
-- 2026-08-11: Closed every remaining directory test scenario and got the
-    eight-suite acceptance fully green in both editions for the first time. The
-    live suite went from 19 to 29 tests: common-name forms, a class with no
-    template against one that is present and empty, several classes through the
-    pipeline, the forest-root controller where both naming contexts are equal,
-    both object types resolved as names over one connection, a name carrying
-    filter metacharacters, hexadecimal masks through replace and removal, and
-    the global catalog probe against a host that serves none. A schema survey
-    settled the ambiguity refusal: 82 extended rights, no duplicate names, no
-    collision with the schema partition, so that branch has no live path and its
-    decision moved into `Select-WindowsADObjectTypeGuid` to be unit-proven
-    instead of manufactured through an irreversible schema change. Two suites
-    that failed for reasons unrelated to the module were fixed: the enumeration
-    identity comparison behind OI-31, and the replication suite's assumption
-    that the partner already held the fixture.
-- 2026-08-11: Closed the remaining live gaps and ran the full eight-suite
-    acceptance. The suite now also covers the third mutator, a two-target
-    bounded batch, an explicit credential through the forest-root read, and a
-    desired-state convergence that carries an object type; that last one
-    mattered because the resource passes a GUID into the parameter this work
-    changed to a string. Nineteen of nineteen green in both editions. The
-    acceptance itself reported three failures in `ADObjectReplication`, all from
-    a cold-booted partner that had not replicated for seven hours; the same
-    suite passed 7 of 7 after forcing convergence, and the README now names that
-    precondition. Repository gate afterwards: 1,687 tests 0 failures, domain-lab
-    evidence merged, asserted coverage 90.95 percent.
-- 2026-08-11: Ran the new directory features live and found what the unit tests
-    could not. On a child domain controller the forest root partition is not
-    held locally and referral chasing is off, so the root domain SID read
-    returned nothing and every class whose template names `EA` was refused:
-    `domainDNS` failed while `user`, `group`, and `computer` succeeded. The read
-    now falls back to the global catalog port of the same pinned server, which
-    returned the correct root SID. Two other facts were measured rather than
-    assumed: Active Directory applies its generic mapping on write, so
-    `GENERIC_ALL` is stored as `0x000F01FF` and a directory entry never keeps a
-    generic bit, unlike the file system; and `classSchema` really does carry an
-    empty `D:S:` template, so zero entries was the right answer.
-    `ADSchemaDefaultAndObjectType.Live.Tests.ps1` holds the evidence, 16 of 16
-    green in both editions against `a.forest1.net`, and is registered in the
-    acceptance suite list, which is now eight suites. The suite also covers the
-    third mutator and a two-target bounded batch, which proves the name is
-    resolved once in the parent and the workers receive GUID text. Two live
-    paths are still untested: an explicit credential through the global catalog
-    fallback, and a desired-state convergence that carries an object type. The
-    eight-suite acceptance has not been rerun since the suite was registered.
-- 2026-08-11: Implemented the three findings of the ADMF review on the
-    directory family. `Get-ADObjectSchemaDefaultAccessRule` reads
-    `defaultSecurityDescriptor` per schema class and expands its domain-relative
-    SDDL aliases against the SID of the domain the pinned controller serves,
-    which is what makes the read work from a host in another domain or none at
-    all; a forest-wide alias whose root domain SID cannot be read is refused
-    rather than expanded against the wrong domain. `ObjectType` and
-    `InheritedObjectType` now take a name as well as a GUID on the three
-    mutators, resolved once per invocation and refused when it matches nothing
-    or resolves ambiguously. `AccessRights` on those three dropped its enum type,
-    without which the rights transform is unreachable. Build 10 tasks, 0 errors;
-    1,687 tests, 0 failures; asserted coverage 82.6 percent. OI-29 and OI-30
-    hold the two pieces that did not ship.
-- 2026-08-11: Closed five input-coverage blind spots on real objects and fixed
-    one real defect. Removing an access control entry that carries `GENERIC_*`
-    bits or belongs to an unresolvable identity failed at two points: the public
-    rule constructors reject any mask outside `FullControl`, and
-    `RemoveAccessRuleSpecific` rebuilds the rule through that constructor when no
-    stored entry matches. Rule construction now runs through
-    `New-NTFSFileSystemRule`, exact removal through
-    `Remove-NTFSFileSystemRuleSpecific`, and `-AccessRights` accepts a raw mask
-    through `WindowsAccessRightsTransformAttribute`. `Resolve-NTFSPath` now
-    refuses a device-namespace path and a bare drive specification, both of which
-    silently addressed something other than what the caller wrote. Five suites
-    were added: generic and orphaned entry removal, the path and name input
-    matrix, reparse points and links, an `icacls` differential oracle, and the
-    registry view, alias and rights pair. FR-28 through FR-32 and ADR 0029
-    through ADR 0032 record the contracts. Three platform facts are now asserted
-    rather than assumed: Windows maps the generic bits of an effective entry when
-    the descriptor is written and `icacls` maps them again when it renders,
-    a noncanonical list is stored exactly as written rather than reordered or
-    protected, and a file system link carries its own descriptor while a registry
-    symbolic link is followed.
-- 2026-08-11: Gate evidence for the five suites above: `./build.ps1 -Tasks test`
-    succeeded with 10 tasks, 0 errors, 0 warnings; Pester reported 1,666 passed,
-    0 failed, 2 skipped in 951 seconds. Coverage asserted at 83.71 percent
-    (6,615 of 7,902 commands this profile can execute) against the 80 percent
-    threshold. That figure is local-only: rebuilding the module invalidated the
-    carried domain-lab document, which the build reports rather than merges, so
-    the 90.51 percent whole-module figure returns only after the domain-lab
-    acceptance is rerun against the rebuilt module.
-- 2026-08-11: Reviewed the Active Directory Management Framework against this
-    module and recorded the comparison in `docs/research.md`. ADMF is a
-    whole-domain configuration engine, so its registered desired state, object
-    categories, and tri-state `Present` value stay rejected. Two of its
-    directory mechanics are worth taking: a schema default permission baseline
-    read from `defaultSecurityDescriptor`, and schema or extended-right names
-    instead of raw GUIDs for `ObjectType` and `InheritedObjectType`. Neither is
-    implemented yet and neither has an open issue. A measurement settled a third
-    question: PowerShell refuses a numeric argument for a `[Flags]` enum
-    parameter as soon as one bit has no name, which is why ADMF binds
-    `ActiveDirectoryRights` as a string. The answer here is an argument
-    transformation attribute over `Enum::ToObject`, not a string parameter that
-    gives up name validation.
+- 2026-08-12: Subtracted the schema default from reported directory entries,
+    made a hexadecimal rights literal bind on every NTFS command, and removed a
+    silent target loss from bounded parallel execution. The schema-default
+    filter is opt in and its matching rule is a pure function proven case by
+    case against ADR 0033, including the two cases it refuses to match; six live
+    lab tests carry it, and the acceptance ran 8 suites and 85 tests green in
+    both editions. Two register entries turned out to be described wrongly and
+    were corrected against measurement rather than implemented as written: the
+    NTFS rights transform was reachable for every argument form except a
+    hexadecimal literal, which is why the tests that already covered unnameable
+    masks never caught it; and the duplicate module import creates no second
+    runtime enumeration type at all. The batch failure that had been called
+    unexplained was reproduced under Pester code coverage, traced to a
+    PowerShell class attribute invoked from a pooled worker runspace with a null
+    session state, and fixed by compiling that attribute with `Add-Type`. Five
+    of six instrumented iterations failed before, none of six after.
+
 - 2026-08-10: Made an access control entry that carries `GENERIC_*` bits
     readable. A .NET rights enum has no name for those bits and `Enum.ToString`
     abandons every name it already resolved as soon as one bit is unnameable, so

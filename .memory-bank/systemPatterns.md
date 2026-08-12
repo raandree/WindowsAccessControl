@@ -103,6 +103,16 @@ specification 0015 reviews.
     Pester coverage breakpoints are on the module file. 66 uninstrumented
     iterations produced none. Assert on the error stream next to the count when
     a command reports per-target failures without terminating.
+- A PowerShell class is the wrong shape for anything the engine invokes during
+    parameter binding in another runspace. A class instance carries the session
+    state of the runspace that created it, and a pooled worker runspace that
+    re-binds a decorated parameter can invoke the method with a null
+    `sessionStateInternal`, which surfaces as
+    `Cannot process argument transformation ... Object reference not set to an
+    instance of an object` and silently drops that worker's target. Compile such
+    a type with `Add-Type` so the method is IL. Pester code coverage is what
+    made it appear: 66 uninstrumented iterations showed nothing, six
+    instrumented iterations failed five times.
 - A test that asserts a module-defined type must not assert type identity.
     `Expected [X], but got [X]` is the signature, and it appeared twice in whole
     suite runs. The duplicate-import explanation is disproved: measured on

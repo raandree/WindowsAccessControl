@@ -18,25 +18,30 @@ type name and `IsEnum` instead of type identity, which is what they actually
 mean.
 
 The duplicate-import explanation this entry used to carry is disproved. Measured
-on 2026-08-11 against the built module in PowerShell 7.6.3: three consecutive
-`Import-Module -Force` calls leave exactly **one** runtime copy of
-`WindowsServiceControlManagerRights` in the application domain, as do a plain
-re-import and a remove followed by an import. A batch worker runspace created
-the way `Invoke-WindowsAccessControlBatch` creates one also resolves to the same
-runtime type: same assembly, and identity comparison against the session's type
-returns true. PowerShell caches the compiled class assembly per module path and
-version, so re-importing the same built module does not define the enumerations
-again.
+on 2026-08-11 and 2026-08-12 against the built module in PowerShell 7.6.3:
+
+- three consecutive `Import-Module -Force` calls leave exactly **one** runtime
+  copy of `WindowsServiceControlManagerRights`, as do a plain re-import and a
+  remove followed by an import;
+- a batch worker runspace created the way `Invoke-WindowsAccessControlBatch`
+  creates one resolves to the same runtime type, same assembly, identity equal;
+- with Pester code coverage armed, which is the condition that exposed the other
+  intermittent failure in this entry, a bounded batch returning a
+  module-defined enumeration still yields one live type and identity equality,
+  four times out of four.
+
+PowerShell caches the compiled class assembly per module path and version, so
+re-importing the same built module does not define the enumerations again.
 
 So the cause is still unknown, and the repair is not "one shared import" until
 something reproduces a second live type. Do not revert the two assertions to
-identity comparison on the strength of the import change alone: that would
-reintroduce an intermittent failure whose mechanism nobody has demonstrated.
-Reproduce the second live type first, then revert them as the regression guard.
-Any new assertion on a module-defined type meanwhile avoids identity.
+identity comparison on the strength of an import change: that would reintroduce
+an intermittent failure whose mechanism nobody has demonstrated. Reproduce the
+second live type first, then revert them as the regression guard. Any new
+assertion on a module-defined type meanwhile avoids identity.
 
-The second failure is now diagnosed. `NTFS batch execution.Should mutate
-multiple independent targets with bounded execution` lost a target in three full
+The second failure is fixed. `NTFS batch execution.Should mutate multiple
+independent targets with bounded execution` lost a target in three full
 `./build.ps1 -Tasks test` runs on 2026-08-11 and never in isolation. The test
 asserted only a rule count, so nothing said why. It now captures the error
 stream of both batches, and the next run named the cause:
@@ -47,46 +52,35 @@ parameter 'AccessRights'. Object reference not set to an instance of an object.
 ```
 
 A bounded-parallel worker runspace re-invokes the public command with the
-already-bound parameters, `WindowsAccessRightsTransformAttribute` runs again on
-a value that is already the target enumeration, and it intermittently throws a
-null reference. The worker's target then produces no rule, which is the missing
-second rule.
+already-bound parameters, `WindowsAccessRightsTransformAttribute` ran again on a
+value that was already the target enumeration, and it threw a null reference.
+The worker's target then produced no rule, which was the missing second rule.
 
-The captured stack names the mechanism:
+The captured stack named the mechanism:
 
 ```text
 System.NullReferenceException
   at ScriptBlock.InvokeWithPipe(...)
-  at ScriptBlock.InvokeAsMemberFunctionT[T](Object instance, Object[] args)
-  at ScriptBlockMemberMethodWrapper.InvokeHelperT[T](Object instance,
+  at ScriptBlock.InvokeAsMemberFunction(Object instance, Object[] args)
+  at ScriptBlockMemberMethodWrapper.InvokeHelper(Object instance,
       Object sessionStateInternal, Object[] args)
   at WindowsAccessRightsTransformAttribute.Transform(...)
   at ArgumentTransformationAttribute.TransformInternal(...)
   at ParameterBinderBase.BindParameter(...)
 ```
 
-The fault is in the engine's invocation of the class method body, not in the
+The fault was in the engine's invocation of the class method body, not in the
 method body itself. A PowerShell class instance carries the session state of the
 runspace that created it, and the attribute instance bound to the parameter is
 invoked from a pooled worker runspace whose session state for that class is not
-established, so `sessionStateInternal` is null.
+established, so `sessionStateInternal` was null.
 
-The trigger is Pester code coverage, not concurrency alone. Measured on
-2026-08-11: 66 uninstrumented iterations of the same add-then-read scenario at
-`ThrottleLimit 2` produced zero errors, while five iterations of the same Pester
-file with `CodeCoverage.Enabled` reproduced the transformation failure in two of
-them. Coverage changes whether the pooled runspace reuses the parent's compiled
-class or establishes its own.
-
-Two candidate repairs, neither attempted:
-
-- Compile `WindowsAccessRightsTransformAttribute` as a real .NET type through
-  `Add-Type` instead of a PowerShell class, so `Transform` is IL with no session
-  state to lose. The type has to exist before the module's parameter attributes
-  are resolved, which is the same ordering constraint `Prefix.ps1` already
-  handles for `System.DirectoryServices.Protocols`.
-- Stop re-binding public parameters inside a worker runspace at all, which is a
-  redesign of the batch dispatchers rather than a fix.
+The attribute is now compiled through `Add-Type` in `Prefix.ps1` instead of
+being a PowerShell class, so `Transform` is IL with no session state to lose.
+Measured on 2026-08-12 over six instrumented iterations of the same Pester file
+each: five of six failed with 22 transformation faults before the change and
+zero of six failed with none after it. Pester code coverage is what makes the
+fault appear, which is why 66 uninstrumented iterations had shown nothing.
 
 Do not loosen the test. It is the only thing that reported the fault.
 

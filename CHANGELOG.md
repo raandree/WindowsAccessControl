@@ -205,6 +205,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix a bounded-parallel batch silently dropping a target. A worker runspace
+    re-invokes the public command with the already-bound parameters, and
+    `WindowsAccessRightsTransformAttribute` was a PowerShell class: a class
+    instance carries the session state of the runspace that created it, and the
+    engine invoked the attribute from a pooled worker whose session state for
+    that class was not established, so parameter binding threw
+    `Object reference not set to an instance of an object` and that target
+    produced no rule. The attribute is now compiled through `Add-Type` in the
+    module prefix, so its `Transform` is IL with no session state to lose.
+    Measured over six instrumented iterations of the same test file each: five
+    of six runs failed with 22 transformation faults before, none of six after.
+    The batch test now also asserts an empty error stream, because the count it
+    asserted before could not say why a target went missing
 - Fix `-AccessRights` refusing a hexadecimal literal on the eight NTFS access
     and audit rule commands. `Add-NTFSAccessRule -AccessRights 0x10000000`
     failed at argument transformation while the identical value written as a
