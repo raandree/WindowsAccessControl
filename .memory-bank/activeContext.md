@@ -39,23 +39,35 @@ enumeration type at all.
     variable, which is exactly why the defect survived them.
 - `specs/open-issues.md` lost OI-23, OI-29, and OI-30, and OI-31 now carries the
     measured disproof of its own explanation instead of the explanation.
+- `WindowsAccessRightsTransformAttribute` is compiled through `Add-Type` in
+    `Prefix.ps1` rather than written as a PowerShell class. A class instance
+    carries the session state of the runspace that created it, and a pooled
+    batch worker re-binding a decorated parameter invoked it with a null session
+    state, which threw during parameter binding and silently dropped that
+    worker's target.
 - The NTFS bounded-batch test now captures the error stream of both batches, so
     the next time it loses a target the run says why instead of only that a
     count was wrong.
 
 ## Acceptance evidence
 
-- Two-edition lab acceptance green on 2026-08-11: 8 suites, 85 passed, 0 failed,
-    0 skipped in each edition, `Result = Passed`, every suite `Ready = True`.
-    Per suite: DomainLab 4, CertificatePrivateKey 7, TaskScheduler 8, SmbShare 7,
-    ADObjectPermissions 12, ADSchemaDefaultAndObjectType 35, ForeignPrincipal 5,
-    ADObjectReplication 7. The schema-default suite grew from 29 to 35 with the
-    six live subtraction tests.
+- Two-edition lab acceptance green on 2026-08-12 against the repaired build:
+    8 suites, 85 passed, 0 failed, 0 skipped in each edition, `Result = Passed`,
+    every suite `Ready = True`. Per suite: DomainLab 4, CertificatePrivateKey 7,
+    TaskScheduler 8, SmbShare 7, ADObjectPermissions 12,
+    ADSchemaDefaultAndObjectType 35, ForeignPrincipal 5, ADObjectReplication 7.
+    The schema-default suite grew from 29 to 35 with the six live subtraction
+    tests.
+- Two consecutive full local gates green: 1,716 passed, 0 failed, 17 tasks,
+    0 errors, 0 warnings, about 21 minutes each.
 - The schema-default subtraction has 11 unit tests, proven red first with
     `CommandNotFoundException` before the matcher existed.
 - The nine NTFS hexadecimal-literal regression tests were proven red (9 of 9)
     before the parameter change and green afterwards, each alongside a test that
     an unknown rights name is still refused.
+- The batch target loss was measured before and after the attribute was
+    compiled: over six instrumented Pester iterations each, five of six runs
+    failed with 22 transformation faults before and none of six after.
 - Measured on the lab: the `organizationalUnit` class template carries no
     creator placeholder and the `computer` class template carries several, and
     every `CO` entry reached a newly created computer object as an entry for
