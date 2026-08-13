@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `LICENSE`, so the module can be distributed and the PowerShell Gallery can
+    show the terms it is offered under. The manifest carried
+    `All rights reserved`, which contradicts publishing it, and the Gallery
+    entry would have shown no license and no project link. The copyright
+    statement now names the MIT License, and `LicenseUri` and `ProjectUri` are
+    set
+- Add `SECURITY.md`. This module writes security descriptors, so a defect in it
+    can grant access an operator did not intend, and there was no private route
+    to report one. It names the reporting route, the supported version, and what
+    is in scope, and separates a defect from the behavior the specifications
+    deliberately refuse
+- Add an install section to the README. It documented building from source only,
+    so a reader arriving from the Gallery had no supported way to install the
+    published package
 - Add live evidence for concurrent Active Directory writers. Two access control
     entries written from one baseline through the two writable domain
     controllers converge to exactly one surviving entry, because the security

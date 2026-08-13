@@ -18,6 +18,24 @@ For task-oriented installation, safety, NTFS, registry, service, process,
 backup, diagnostics, batching, impersonation, and DSC examples, see the
 [usage guide](docs/usage-guide.md).
 
+## Install
+
+```powershell
+Install-PSResource -Name WindowsAccessControl
+```
+
+Or with the older client:
+
+```powershell
+Install-Module -Name WindowsAccessControl -Scope CurrentUser
+```
+
+The module runs on Windows only, on Windows PowerShell 5.1 and PowerShell 7,
+and has no third-party runtime dependency. Reading or writing an audit section
+requires `SeSecurityPrivilege`, and taking ownership of an object the caller
+does not own requires `SeTakeOwnershipPrivilege`; see
+[Safety model](#safety-model).
+
 ## Quick start
 
 Build the module, then import the generated manifest:
@@ -814,3 +832,13 @@ traceability. Exhaustive command details remain in comment-based help.
 
 See [docs/research.md](docs/research.md) for the source review, platform API
 semantics, and NTFSSecurity comparison that informed those specifications.
+
+## Security
+
+Report a vulnerability privately rather than in a public issue.
+[SECURITY.md](SECURITY.md) states the reporting route, the supported version,
+and what is in and out of scope.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

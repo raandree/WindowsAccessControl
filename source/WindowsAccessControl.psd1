@@ -27,7 +27,7 @@ Author = 'WindowsAccessControl contributors'
 CompanyName = 'WindowsAccessControl contributors'
 
 # Copyright statement for this module
-Copyright = '(c) WindowsAccessControl contributors. All rights reserved.'
+Copyright = '(c) WindowsAccessControl contributors. Licensed under the MIT License.'
 
 # Description of the functionality provided by this module
 Description = 'Pipeline-first Windows security descriptor management for PowerShell.'
@@ -237,10 +237,10 @@ PrivateData = @{
         )
 
         # A URL to the license for this module.
-        # LicenseUri = ''
+        LicenseUri = 'https://github.com/raandree/WindowsAccessControl/blob/main/LICENSE'
 
         # A URL to the main website for this project.
-        # ProjectUri = ''
+        ProjectUri = 'https://github.com/raandree/WindowsAccessControl'
 
         # A URL to an icon representing this module.
         # IconUri = ''
