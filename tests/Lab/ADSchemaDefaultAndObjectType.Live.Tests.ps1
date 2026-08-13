@@ -1,10 +1,8 @@
 BeforeAll {
     Import-Module ActiveDirectory -ErrorAction Stop
 
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
-        Sort-Object -Property { [version]$_.Directory.Name } -Descending |
-        Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
+    Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
     $script:module = Get-Module WindowsAccessControl
 
     $script:domain = Get-ADDomain -ErrorAction Stop

@@ -1685,6 +1685,14 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
     }
     $builtModulePath = $null
     if ($PSBoundParameters.ContainsKey('CoverageOutputPath')) {
+        # Coverage instruments the built module, while WAC_LAB_MODULE_ROOT
+        # redirects every suite to an installed one. Measuring a module no suite
+        # loads would report a green run at near-zero coverage.
+        if (-not [string]::IsNullOrWhiteSpace($env:WAC_LAB_MODULE_ROOT)) {
+            throw [InvalidOperationException]::new(
+                'WAC_LAB_MODULE_ROOT redirects the suites to an installed module, so the built module cannot be measured. Run the installed-package pass without coverage.'
+            )
+        }
         $builtModule = @(
             Get-ChildItem -Path (
                 Join-Path $repositoryPath 'output\module\WindowsAccessControl\*'

@@ -41,6 +41,30 @@ controller for the write or forces replication with the in-box tooling. The live
 suite uses `Sync-ADObject` so convergence is asserted deterministically rather
 than by waiting for the replication interval.
 
+## Concurrent writers
+
+A security descriptor is one directory attribute. Two controllers written from
+the same base therefore do not merge: replication settles the conflict by
+attribute version, then originating time, then originating controller, and the
+losing write is discarded whole rather than entry by entry. Measured in the lab,
+two access control entries added through the two writable controllers from one
+baseline read leave exactly one of them once both controllers agree.
+
+No Active Directory command offers `RequireUnchanged`. That gate belongs to the
+file-system and registry families of specification 0003, where the read and the
+write address the same local object; across two controllers it would narrow
+nothing that pinning does not already narrow. A directory caller compares
+`ConcurrencyToken` itself. The token is a hash of the sections that were read,
+so a converged descriptor reports the same token through either controller, an
+unchanged descriptor reports a stable token, and a write made through the other
+controller changes it.
+
+Serializing the writes through one pinned controller is the only mechanism that
+keeps both edits, because a read-modify-write on that controller observes the
+previous one. Same-target write serialization is keyed on the canonical target,
+and the canonical target carries the pinned server, so two writes that differ
+only by server are deliberately not serialized against each other.
+
 ## Immutable identity
 
 A directory object is identified by `objectGUID`, which survives a rename and a
@@ -67,6 +91,9 @@ to a single controller.
 | --- | --- |
 | Controller pinning | The same object read through two controllers reports one `ObjectGuid`, one DACL, and two canonical targets that differ only by server |
 | Replication convergence | A rule added on the primary and replicated is visible on the partner, and its removal on the partner is visible on the primary after replication back |
+| Concurrency token | One converged descriptor reports one token through both controllers, an unchanged descriptor reports a stable token, and a write on the other controller changes it |
+| Concurrent writers | Two edits written from one baseline through the two controllers converge to exactly one surviving edit, and the stale write is accepted rather than refused |
+| Serialized writers | Two edits written through one pinned controller both survive |
 | Rename and move | `ObjectGuid` and canonical target are unchanged, and the previous distinguished name fails to resolve |
 | Distinguished-name reuse | A restore of a record whose distinguished name was recreated as a different object is rejected |
 | Deleted object | A read of a deleted object fails instead of returning an empty result |

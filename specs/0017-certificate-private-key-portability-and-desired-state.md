@@ -208,6 +208,14 @@ unrestorable record is never persisted.
   restore of a bound key is refused while the binding is live and succeeds once
   it is released, and converges both desired-state resources with a repeated
   consistency pass that reports no drift.
+- Domain-lab acceptance enrolls a machine certificate from an enterprise
+  template that requires the same key on renewal, renews it, and proves the
+  thumbprint claim on a real issued key: the renewal produces a different
+  thumbprint over the same key container, the canonical target is unchanged,
+  and a record captured before the renewal still relocates the key and restores
+  its DACL although the thumbprint it recorded now matches no certificate. Both
+  requests run as the machine account, because enrollment reads the enrollment
+  policy from the directory.
 
 ## See also
 

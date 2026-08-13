@@ -747,3 +747,55 @@ Two lessons. When a test fails only in a longer sequence, suspect the runner
 before the code, and prove it by varying the sequence rather than by reasoning
 about it. And a harness fix is not done until it has run with every gate the
 harness feeds; this one passed the tests and broke the coverage document.
+
+## A version 4 certificate template packs its CNG settings into one attribute
+
+`New-LabCATemplate -Version 4 -SourceTemplateName Machine` writes
+`msPKI-Template-Schema-Version` 4 onto a copy of a version 1 template and stops
+there. The certification authority then refuses every request for it with
+`CERTSRV_E_UNSUPPORTED_CERT_TYPE` (0x80094800), and the request looks like a
+permission problem until the Application log is read. The policy module states
+the real cause:
+
+```text
+The WacLabRenewableComputer(v100.1): V4(0.0s) [msPKI-Asymmetric-Algorithm]
+Certificate Template could not be loaded. Element not found. 0x80070490
+```
+
+There is no `msPKI-Asymmetric-Algorithm` attribute; setting one fails with
+"the specified directory service attribute or value does not exist". A version 4
+template carries those settings packed inside `msPKI-RA-Application-Policies` as
+backtick-delimited name, type, and value triples:
+
+```text
+msPKI-Asymmetric-Algorithm`PZPWSTR`RSA`msPKI-Hash-Algorithm`PZPWSTR`SHA256`
+msPKI-Key-Usage`DWORD`16777215`msPKI-Symmetric-Algorithm`PZPWSTR`3DES`
+msPKI-Symmetric-Key-Length`DWORD`168`
+```
+
+Two more things are needed before a member server in a child domain can enroll.
+`pKIDefaultCSPs` must name a key storage provider, or the client picks the
+provider and the issued key may not be CNG. And the template's default enroll
+grant names the forest root's `Domain Computers`, which does not contain a child
+domain's computers, so the child domain's group needs the enroll and autoenroll
+extended rights added. `Restart-Service CertSvc -Force` returns before the
+service answers, so wait for `Running` and for `certutil -ping` before the next
+request.
+
+## Certificate enrollment in a WinRM session has no directory credential
+
+`Get-Certificate -Template` inside `Invoke-Command -Session` fails with
+`CertEnroll::CX509Enrollment::InitializeFromTemplateName ... 0x800704dc`
+(`ERROR_NOT_AUTHENTICATED`). Initialization reads the enrollment policy from the
+directory, and a network logon holds no credential for that second hop. The
+error names authentication, not delegation, which points at the template
+permissions rather than at the token.
+
+The same call succeeds through `Invoke-LabCommand`, because AutomatedLab
+delegates the credential. Do not conclude from that comparison that the template
+is wrong.
+
+A machine certificate is requested by the machine account, so the fix is to run
+the request as `SYSTEM` exactly as autoenrollment does: register a scheduled
+task with a `ServiceAccount` principal, have it write its result as JSON, and
+read that file back. That needs no delegation and no stored credential.

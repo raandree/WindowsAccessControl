@@ -7,11 +7,10 @@ param()
 
 BeforeAll {
     Import-Module ActiveDirectory -ErrorAction Stop
+    Add-Type -AssemblyName System.DirectoryServices -ErrorAction Stop
 
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
-        Sort-Object -Property { [version]$_.Directory.Name } -Descending |
-        Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
+    Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
 
     $script:domain = Get-ADDomain -ErrorAction Stop
     $script:writableControllers = @(
@@ -32,6 +31,7 @@ BeforeAll {
     $script:rootOu = "OU=WindowsAccessControlLab,$($script:domain.DistinguishedName)"
     $script:targetOu = "OU=Targets,$($script:rootOu)"
     $script:testSid = (Get-ADUser -Identity 'WacLabUser' -ErrorAction Stop).SID.Value
+    $script:competingSid = (Get-ADUser -Identity 'WacLabOperator' -ErrorAction Stop).SID.Value
     $script:createdOrganizationalUnits = [Collections.Generic.List[string]]::new()
 
     # The fixture is recreated at the start of every acceptance run, and the
@@ -83,6 +83,68 @@ BeforeAll {
                 -Source $From `
                 -Destination $To `
                 -ErrorAction Stop
+        }
+    }
+
+    function script:New-StaleDaclSddl {
+        param([string]$BaselineSddl, [string]$Sid)
+
+        # A competing writer computes its descriptor from the read it already
+        # holds. Rebuilding the DACL from that baseline is what makes the write
+        # deterministically stale, regardless of what replication delivered in
+        # the meantime.
+        $security = [DirectoryServices.ActiveDirectorySecurity]::new()
+        $security.SetSecurityDescriptorSddlForm(
+            $BaselineSddl,
+            [Security.AccessControl.AccessControlSections]::Access)
+        $security.AddAccessRule(
+            [DirectoryServices.ActiveDirectoryAccessRule]::new(
+                [Security.Principal.SecurityIdentifier]::new($Sid),
+                [DirectoryServices.ActiveDirectoryRights]::ReadProperty,
+                [Security.AccessControl.AccessControlType]::Allow))
+        $security.GetSecurityDescriptorSddlForm(
+            [Security.AccessControl.AccessControlSections]::Access)
+    }
+
+    function script:Wait-DirectoryConvergence {
+        param([string]$DistinguishedName, [int]$Attempts = 10)
+
+        # Two writes made from the same base carry the same attribute version,
+        # so the winner is settled by the receiving controller rather than by
+        # the order of these calls. Push both ways until both controllers report
+        # the same DACL.
+        for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+            script:Sync-DisposableObject -DistinguishedName $DistinguishedName `
+                -From $script:primaryServer -To $script:partnerServer
+            script:Sync-DisposableObject -DistinguishedName $DistinguishedName `
+                -From $script:partnerServer -To $script:primaryServer
+
+            $onPrimary = Get-ADObjectSecurityDescriptor `
+                -Server $script:primaryServer `
+                -DistinguishedName $DistinguishedName `
+                -ThrottleLimit 1
+            $onPartner = Get-ADObjectSecurityDescriptor `
+                -Server $script:partnerServer `
+                -DistinguishedName $DistinguishedName `
+                -ThrottleLimit 1
+
+            if ($onPrimary.Sddl -ceq $onPartner.Sddl) {
+                return [pscustomobject]@{
+                    Converged = $true
+                    Attempts  = $attempt
+                    Primary   = $onPrimary
+                    Partner   = $onPartner
+                }
+            }
+
+            Start-Sleep -Seconds 2
+        }
+
+        [pscustomobject]@{
+            Converged = $false
+            Attempts  = $Attempts
+            Primary   = $onPrimary
+            Partner   = $onPartner
         }
     }
 
@@ -378,6 +440,167 @@ Describe 'Active Directory multi-controller identity' `
 
         $result | Should -BeNullOrEmpty
         $readError | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'Active Directory concurrent writers' `
+    -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    It 'Should report one content-derived concurrency token from both controllers' {
+        $organizationalUnit = script:New-DisposableOrganizationalUnit -Name 'WacReplToken'
+        script:Sync-DisposableObject -DistinguishedName $organizationalUnit `
+            -From $script:primaryServer -To $script:partnerServer
+
+        $primary = Get-ADObjectSecurityDescriptor `
+            -Server $script:primaryServer `
+            -DistinguishedName $organizationalUnit `
+            -ThrottleLimit 1
+        $partner = Get-ADObjectSecurityDescriptor `
+            -Server $script:partnerServer `
+            -DistinguishedName $organizationalUnit `
+            -ThrottleLimit 1
+        $primaryAgain = Get-ADObjectSecurityDescriptor `
+            -Server $script:primaryServer `
+            -DistinguishedName $organizationalUnit `
+            -ThrottleLimit 1
+
+        $primary.ConcurrencyToken | Should -Not -BeNullOrEmpty
+        $primary.ConcurrencyToken | Should -BeExactly $partner.ConcurrencyToken `
+            -Because 'the token is a hash of the read sections, not of the controller that served them'
+        $primaryAgain.ConcurrencyToken | Should -BeExactly $primary.ConcurrencyToken `
+            -Because 'an unchanged descriptor must produce a stable token'
+        $primary.CanonicalTarget | Should -Not -BeExactly $partner.CanonicalTarget
+    }
+
+    It 'Should change the token a caller compares after another controller wrote' {
+        $organizationalUnit = script:New-DisposableOrganizationalUnit -Name 'WacReplDrift'
+        script:Sync-DisposableObject -DistinguishedName $organizationalUnit `
+            -From $script:primaryServer -To $script:partnerServer
+
+        $before = Get-ADObjectSecurityDescriptor `
+            -Server $script:partnerServer `
+            -DistinguishedName $organizationalUnit `
+            -ThrottleLimit 1
+
+        Add-ADObjectAccessRule `
+            -Server $script:primaryServer `
+            -DistinguishedName $organizationalUnit `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Account $script:competingSid `
+            -AccessRights ReadProperty `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+        script:Sync-DisposableObject -DistinguishedName $organizationalUnit `
+            -From $script:primaryServer -To $script:partnerServer
+
+        $after = Get-ADObjectSecurityDescriptor `
+            -Server $script:partnerServer `
+            -DistinguishedName $organizationalUnit `
+            -ThrottleLimit 1
+
+        $after.ObjectGuid | Should -Be $before.ObjectGuid
+        $after.ConcurrencyToken | Should -Not -BeExactly $before.ConcurrencyToken `
+            -Because 'comparing the token is the only staleness check an Active Directory caller has'
+    }
+
+    It 'Should discard one of two concurrent controller writes because the descriptor is one replicated attribute' {
+        $organizationalUnit = script:New-DisposableOrganizationalUnit -Name 'WacReplConcurrent'
+        script:Sync-DisposableObject -DistinguishedName $organizationalUnit `
+            -From $script:primaryServer -To $script:partnerServer
+
+        $baselineOnPrimary = Get-ADObjectSecurityDescriptor `
+            -Server $script:primaryServer `
+            -DistinguishedName $organizationalUnit `
+            -ThrottleLimit 1
+        $baselineOnPartner = Get-ADObjectSecurityDescriptor `
+            -Server $script:partnerServer `
+            -DistinguishedName $organizationalUnit `
+            -ThrottleLimit 1
+
+        Add-ADObjectAccessRule `
+            -Server $script:primaryServer `
+            -DistinguishedName $organizationalUnit `
+            -AllowedBaseDistinguishedName $script:targetOu `
+            -Account $script:testSid `
+            -AccessRights ReadProperty `
+            -ThrottleLimit 1 `
+            -Confirm:$false
+
+        # The competing writer still holds the descriptor it read before that
+        # write and is never told the token no longer matches, because no
+        # Active Directory write command offers a staleness gate.
+        $staleWriteError = $null
+        try {
+            Set-ADObjectSecurityDescriptor `
+                -Server $script:partnerServer `
+                -DistinguishedName $organizationalUnit `
+                -AllowedBaseDistinguishedName $script:targetOu `
+                -Sddl (
+                    script:New-StaleDaclSddl `
+                        -BaselineSddl $baselineOnPartner.Sddl `
+                        -Sid $script:competingSid
+                ) `
+                -ThrottleLimit 1 `
+                -Confirm:$false
+        }
+        catch {
+            $staleWriteError = $_.Exception.Message
+        }
+
+        $convergence = script:Wait-DirectoryConvergence -DistinguishedName $organizationalUnit
+        $survivors = @(
+            $script:testSid, $script:competingSid | ForEach-Object {
+                @(
+                    Get-ADObjectAccessRule `
+                        -Server $script:primaryServer `
+                        -DistinguishedName $organizationalUnit `
+                        -Account $_ `
+                        -ThrottleLimit 1
+                ).Count
+            }
+        )
+
+        $baselineOnPartner.ConcurrencyToken | Should -BeExactly $baselineOnPrimary.ConcurrencyToken
+        $staleWriteError | Should -BeNullOrEmpty `
+            -Because 'the stale write is accepted, which is the behavior under test'
+        $convergence.Converged | Should -BeTrue `
+            -Because 'the outcome may only be read once both controllers agree'
+        $convergence.Partner.ConcurrencyToken | Should -BeExactly $convergence.Primary.ConcurrencyToken
+        ($survivors -join ',') | Should -BeIn @('1,0', '0,1') `
+            -Because 'the security descriptor replicates as one attribute, so the losing writer''s edit is discarded whole'
+    }
+
+    It 'Should keep both edits when the writers are serialized through one pinned controller' {
+        $organizationalUnit = script:New-DisposableOrganizationalUnit -Name 'WacReplSerialized'
+        script:Sync-DisposableObject -DistinguishedName $organizationalUnit `
+            -From $script:primaryServer -To $script:partnerServer
+
+        foreach ($account in $script:testSid, $script:competingSid) {
+            Add-ADObjectAccessRule `
+                -Server $script:primaryServer `
+                -DistinguishedName $organizationalUnit `
+                -AllowedBaseDistinguishedName $script:targetOu `
+                -Account $account `
+                -AccessRights ReadProperty `
+                -ThrottleLimit 1 `
+                -Confirm:$false
+        }
+
+        $convergence = script:Wait-DirectoryConvergence -DistinguishedName $organizationalUnit
+        $survivors = @(
+            $script:testSid, $script:competingSid | ForEach-Object {
+                @(
+                    Get-ADObjectAccessRule `
+                        -Server $script:partnerServer `
+                        -DistinguishedName $organizationalUnit `
+                        -Account $_ `
+                        -ThrottleLimit 1
+                ).Count
+            }
+        )
+
+        $convergence.Converged | Should -BeTrue
+        $survivors -join ',' | Should -BeExactly '1,1' `
+            -Because 'a read-modify-write on one pinned controller sees the previous edit'
     }
 }
 

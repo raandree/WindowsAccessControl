@@ -49,6 +49,11 @@
         The Pester 5 module version directory copied to every machine. It
         defaults to the restored Sampler dependency in this repository.
 
+    .PARAMETER CertificateTemplateName
+        The enterprise certificate template the deployment publishes on the
+        certification authority. It issues a CNG key and requires the same key
+        on renewal, which is what makes a key-reusing renewal provable.
+
     .PARAMETER RemoveExistingLab
         Removes an existing lab with the same name, including its virtual
         machines and disks, before defining the new one.
@@ -103,6 +108,10 @@ param(
     [Parameter()]
     [ValidateNotNullOrEmpty()]
     [string]$PesterModulePath = (Join-Path $PSScriptRoot '..\..\output\RequiredModules\Pester\5.7.1'),
+
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$CertificateTemplateName = 'WacLabRenewableComputer',
 
     [Parameter()]
     [switch]$RemoveExistingLab,
@@ -278,6 +287,82 @@ Invoke-LabCommand `
         if (-not (Get-Module -ListAvailable -Name ActiveDirectory)) {
             $null = Install-WindowsFeature -Name RSAT-AD-PowerShell
         }
+    } `
+    -NoDisplay
+
+# No built-in template both issues a CNG key and requires the same key on
+# renewal. Without one, a renewal that reuses the key cannot be produced, and
+# specification 0017's claim that a thumbprint is evidence rather than a
+# selector has no live evidence behind it.
+# CertificatePrivateKeyPermissions.Live.Tests.ps1 carries the same template
+# name, so both must change together.
+$certificateAuthorityName = 'F1CA1'
+if (-not (Test-LabCATemplate -TemplateName $CertificateTemplateName -ComputerName $certificateAuthorityName)) {
+    New-LabCATemplate `
+        -TemplateName $CertificateTemplateName `
+        -DisplayName 'WacLab Renewable Computer' `
+        -SourceTemplateName 'Machine' `
+        -ApplicationPolicy 'Server Authentication', 'Client Authentication' `
+        -EnrollmentFlags None `
+        -PrivateKeyFlags ReuseKeysRenewal `
+        -KeyUsage DIGITAL_SIGNATURE, KEY_ENCIPHERMENT `
+        -Version 4 `
+        -SamAccountName 'Domain Computers' `
+        -ComputerName $certificateAuthorityName `
+        -ErrorAction Stop
+}
+
+Invoke-LabCommand `
+    -ComputerName $certificateAuthorityName `
+    -ActivityName 'Complete the renewable certificate template' `
+    -ArgumentList $CertificateTemplateName, $firstChildDomain `
+    -ScriptBlock {
+        param($TemplateName, $FixtureDomain)
+
+        $ErrorActionPreference = 'Stop'
+        Import-Module ActiveDirectory -ErrorAction Stop
+
+        $configurationDn = (Get-ADRootDSE).configurationNamingContext
+        $templateDn = "CN=$TemplateName,CN=Certificate Templates,CN=Public Key Services,CN=Services,$configurationDn"
+
+        # A schema version 4 template duplicated from a version 1 template
+        # carries none of the version 4 settings. The certification authority
+        # then refuses every request for it with CERTSRV_E_UNSUPPORTED_CERT_TYPE
+        # and logs '[msPKI-Asymmetric-Algorithm] element not found'. Those
+        # settings live packed inside msPKI-RA-Application-Policies, and the
+        # provider list is what makes the issued key a CNG key.
+        $cngSettings = 'msPKI-Asymmetric-Algorithm`PZPWSTR`RSA`msPKI-Hash-Algorithm`PZPWSTR`SHA256`msPKI-Key-Usage`DWORD`16777215`msPKI-Symmetric-Algorithm`PZPWSTR`3DES`msPKI-Symmetric-Key-Length`DWORD`168`'
+        Set-ADObject -Identity $templateDn -Replace @{
+            'msPKI-RA-Application-Policies' = $cngSettings
+            'pKIDefaultCSPs'                = @('1,Microsoft Software Key Storage Provider')
+        } -ErrorAction Stop
+
+        # The template is created in the forest root, so its default enroll
+        # grant names that domain's computers. The fixture member server is in a
+        # child domain and is not a member of that group.
+        $group = Get-ADGroup -Identity 'Domain Computers' -Server $FixtureDomain -ErrorAction Stop
+        $identity = [Security.Principal.SecurityIdentifier]::new($group.SID.Value)
+        $acl = Get-Acl -Path "AD:$templateDn"
+        foreach ($extendedRight in '0e10c968-78fb-11d2-90d4-00c04f79dc55', 'a05b8cc2-17bc-4802-a710-e7c15ab866a2') {
+            $acl.AddAccessRule(
+                [DirectoryServices.ActiveDirectoryAccessRule]::new(
+                    $identity,
+                    [DirectoryServices.ActiveDirectoryRights]::ExtendedRight,
+                    [Security.AccessControl.AccessControlType]::Allow,
+                    [guid]$extendedRight))
+        }
+        $acl.AddAccessRule(
+            [DirectoryServices.ActiveDirectoryAccessRule]::new(
+                $identity,
+                [DirectoryServices.ActiveDirectoryRights]::GenericRead,
+                [Security.AccessControl.AccessControlType]::Allow))
+        Set-Acl -Path "AD:$templateDn" -AclObject $acl -ErrorAction Stop
+
+        # The certification authority caches its template list, and a request
+        # sent while it restarts fails with an unavailable RPC server.
+        Restart-Service -Name CertSvc -Force -ErrorAction Stop
+        (Get-Service -Name CertSvc).WaitForStatus('Running', [timespan]::FromSeconds(120))
+        $null = & certutil.exe -ping
     } `
     -NoDisplay
 

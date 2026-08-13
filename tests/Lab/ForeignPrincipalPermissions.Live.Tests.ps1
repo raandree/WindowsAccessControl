@@ -12,10 +12,8 @@ BeforeAll {
 
     Import-Module ActiveDirectory -ErrorAction Stop
 
-    $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
-        Sort-Object -Property { [version]$_.Directory.Name } -Descending |
-        Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
+    Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
     Import-Module `
         -Name (Join-Path $PSScriptRoot 'WindowsAccessControl.DomainLab.psm1') `
         -ErrorAction Stop
@@ -84,7 +82,7 @@ BeforeAll {
             $null = New-Item -Path $ModulePath -ItemType Directory -Force
         }
     Copy-Item `
-        -Path (Join-Path $moduleManifest.Directory.FullName '*') `
+        -Path (Join-Path $moduleRoot '*') `
         -Destination $script:remoteModulePath `
         -ToSession $script:session `
         -Recurse `

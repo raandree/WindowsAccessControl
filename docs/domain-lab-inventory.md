@@ -56,7 +56,7 @@ contracts.
 | Domain | 5 | One forest root with two child domains, plus two single-domain forests |
 | Writable domain controller | 5 | Every domain controller is a global catalog on Windows Server 2025 |
 | Replication partner | 1 pair | The fixture domain has two writable domain controllers, so replication, convergence, and domain-controller switch are testable |
-| Certification authority | 1 | Enterprise root certification authority in the forest root domain, so every domain controller enrolls a server-authentication certificate |
+| Certification authority | 1 | Enterprise root certification authority in the forest root domain, so every domain controller enrolls a server-authentication certificate. It also publishes one schema version 4 template that issues a CNG key and requires the same key on renewal, which is what makes a key-reusing renewal provable |
 | Member server | 5 | Domain joined; one hosts the shared fixtures. A second carries a reserved web-server role; the HTTP.sys binding evidence itself uses a disposable `netsh http` binding on the fixture member server |
 | Management host | 1 | The Hyper-V host, not domain joined; orchestrates through AutomatedLab |
 
@@ -219,6 +219,8 @@ by later gates:
   needs manual promotion.
 - Add a second forest-root replication partner in a second site before any claim
   about inter-site replication latency or scheduling.
+- Enable selective authentication on a forest trust before any claim about a
+  principal that resolves but may not authenticate.
 
 ## See also
 

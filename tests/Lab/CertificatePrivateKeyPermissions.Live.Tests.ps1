@@ -21,17 +21,19 @@ BeforeAll {
         Remove-Item -LiteralPath $ModulePath -Recurse -Force -ErrorAction SilentlyContinue
         $null = New-Item -Path $ModulePath -ItemType Directory -Force
     }
-    $moduleSource = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*" |
-        Sort-Object -Property { [version]$_.Name } -Descending |
-        Select-Object -First 1
+    $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
     Copy-Item `
-        -Path (Join-Path $moduleSource.FullName '*') `
+        -Path (Join-Path $moduleRoot '*') `
         -Destination $script:remoteModulePath `
         -ToSession $script:session `
         -Recurse `
         -Force `
         -ErrorAction Stop
     $script:remoteManifest = Join-Path $script:remoteModulePath 'WindowsAccessControl.psd1'
+
+    # Published by Deploy-WindowsAccessControlLab.ps1. Both places carry the
+    # name, so both must change together.
+    $script:renewalTemplateName = 'WacLabRenewableComputer'
     Import-Module `
         -Name (Join-Path $PSScriptRoot 'WindowsAccessControl.DomainLab.psm1') `
         -ErrorAction Stop
@@ -484,10 +486,8 @@ Describe 'Certificate private-key portability and desired state' `
                 }
             }
 
-        $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
-            Sort-Object -Property { [version]$_.Directory.Name } -Descending |
-            Select-Object -First 1
-        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+        $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
+        Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
         $localPath = Join-Path $env:TEMP (
             'wac-key-foreign-{0}.json' -f [guid]::NewGuid().ToString('N')
         )
@@ -722,10 +722,8 @@ Describe 'Certificate private-key directory-service binding' `
     BeforeAll {
         # This suite runs on the management domain controller, so the LDAPS
         # branch of the binding gate can be exercised where it applies.
-        $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
-            Sort-Object -Property { [version]$_.Directory.Name } -Descending |
-            Select-Object -First 1
-        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+        $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
+        Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
         $script:localModule = Get-Module WindowsAccessControl
         $script:productType = (
             Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
@@ -786,3 +784,262 @@ Describe 'Certificate private-key directory-service binding' `
     }
 }
 
+Describe 'Certificate private-key identity across an enterprise renewal' `
+    -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    It 'Should keep one key identity when a renewal reuses the key and changes the thumbprint' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:remoteManifest, $script:renewalTemplateName `
+            -ScriptBlock {
+                param($Manifest, $Template)
+
+                Import-Module $Manifest -Force -ErrorAction Stop
+
+                # Enrollment and renewal read the enrollment policy from the
+                # directory, and the network logon this session runs under
+                # carries no credential for that second hop. A machine
+                # certificate is requested by the machine account, so both steps
+                # run as SYSTEM exactly as autoenrollment does.
+                $enrollmentScript = @'
+param($Mode, $Template, $Thumbprint, $ResultPath)
+
+$ErrorActionPreference = 'Stop'
+$report = [ordered]@{}
+try {
+    $known = @(Get-ChildItem Cert:\LocalMachine\My | Select-Object -ExpandProperty Thumbprint)
+    if ($Mode -eq 'Enroll') {
+        $enrolled = (
+            Get-Certificate -Template $Template -CertStoreLocation Cert:\LocalMachine\My
+        ).Certificate
+        $report['Thumbprint'] = $enrolled.Thumbprint
+    }
+    else {
+        $output = & certreq.exe -enroll -machine -q -cert $Thumbprint renew 2>&1 |
+            ForEach-Object { [string]$_ }
+        $report['ExitCode'] = $LASTEXITCODE
+        $report['Output'] = ($output -join ' | ')
+        $renewed = @(
+            Get-ChildItem Cert:\LocalMachine\My |
+                Where-Object { $known -notcontains $_.Thumbprint }
+        ) | Sort-Object -Property NotBefore -Descending | Select-Object -First 1
+        if ($renewed) {
+            $report['Thumbprint'] = $renewed.Thumbprint
+        }
+    }
+}
+catch {
+    $report['Error'] = $_.Exception.Message
+}
+([pscustomobject]$report | ConvertTo-Json -Depth 4) |
+    Set-Content -LiteralPath $ResultPath -Encoding utf8
+'@
+
+                function Invoke-MachineCertificateRequest {
+                    param($Script, $Mode, $Template, $Thumbprint)
+
+                    $workPath = Join-Path $env:TEMP (
+                        'wac-renewal-{0}' -f [guid]::NewGuid().ToString('N')
+                    )
+                    $null = New-Item -Path $workPath -ItemType Directory -Force
+                    $scriptPath = Join-Path $workPath 'request.ps1'
+                    $resultPath = Join-Path $workPath 'result.json'
+                    $taskName = 'WacLabCertificateRequest_{0}' -f [guid]::NewGuid().ToString('N')
+                    Set-Content -LiteralPath $scriptPath -Value $Script -Encoding utf8
+
+                    try {
+                        $action = New-ScheduledTaskAction `
+                            -Execute 'powershell.exe' `
+                            -Argument (
+                                '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "{0}" -Mode "{1}" -Template "{2}" -Thumbprint "{3}" -ResultPath "{4}"' -f
+                                    $scriptPath, $Mode, $Template, $Thumbprint, $resultPath
+                            )
+                        $principal = New-ScheduledTaskPrincipal `
+                            -UserId 'NT AUTHORITY\SYSTEM' `
+                            -LogonType ServiceAccount `
+                            -RunLevel Highest
+                        $null = Register-ScheduledTask `
+                            -TaskName $taskName `
+                            -Action $action `
+                            -Principal $principal `
+                            -Force
+                        Start-ScheduledTask -TaskName $taskName
+
+                        $deadline = [datetime]::UtcNow.AddSeconds(180)
+                        while (
+                            [datetime]::UtcNow -lt $deadline -and
+                            -not (Test-Path -LiteralPath $resultPath -PathType Leaf)
+                        ) {
+                            Start-Sleep -Milliseconds 500
+                        }
+                        if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) {
+                            throw "The $Mode task produced no result within the timeout."
+                        }
+
+                        $report = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+                        if ($report.PSObject.Properties.Name -contains 'Error') {
+                            throw "The $Mode task failed: $($report.Error)"
+                        }
+                        $report
+                    }
+                    finally {
+                        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+                        Remove-Item -LiteralPath $workPath -Recurse -Force -ErrorAction SilentlyContinue
+                    }
+                }
+
+                function Get-KeyIdentity {
+                    param($Certificate)
+
+                    $rsa = [Security.Cryptography.X509Certificates.RSACertificateExtensions]::
+                        GetRSAPrivateKey($Certificate)
+                    try {
+                        [pscustomobject]@{
+                            IsCng      = $rsa -is [Security.Cryptography.RSACng]
+                            Provider   = $rsa.Key.Provider.Provider
+                            KeyName    = $rsa.Key.KeyName
+                            UniqueName = $rsa.Key.UniqueName
+                        }
+                    }
+                    finally {
+                        if ($rsa) {
+                            $rsa.Dispose()
+                        }
+                    }
+                }
+
+                $issuedThumbprints = [Collections.Generic.List[string]]::new()
+                $keyIdentity = $null
+                $backupPath = Join-Path $env:TEMP (
+                    'wac-key-renewal-{0}.json' -f [guid]::NewGuid().ToString('N')
+                )
+                try {
+                    $enrollment = Invoke-MachineCertificateRequest `
+                        -Script $enrollmentScript -Mode 'Enroll' -Template $Template -Thumbprint ''
+                    $issuedThumbprints.Add($enrollment.Thumbprint)
+                    $enrolledCertificate = Get-Item -LiteralPath (
+                        "Cert:\LocalMachine\My\$($enrollment.Thumbprint)"
+                    )
+                    $keyIdentity = Get-KeyIdentity -Certificate $enrolledCertificate
+
+                    $capture = @{
+                        Certificate  = $enrolledCertificate
+                        ProviderName = $keyIdentity.Provider
+                        KeyName      = $keyIdentity.KeyName
+                    }
+                    $relocate = @{
+                        ProviderName = $keyIdentity.Provider
+                        KeyName      = $keyIdentity.KeyName
+                        KeyScope     = 'Machine'
+                    }
+
+                    $beforeDescriptor = Get-CertificatePrivateKeySecurityDescriptor @capture
+                    $beforeDescriptor |
+                        Backup-WindowsSecurityDescriptor `
+                            -DestinationPath $backupPath `
+                            -Confirm:$false
+                    $record = (
+                        Get-Content -LiteralPath $backupPath -Raw | ConvertFrom-Json
+                    ).Records[0]
+
+                    $renewal = Invoke-MachineCertificateRequest `
+                        -Script $enrollmentScript `
+                        -Mode 'Renew' `
+                        -Template $Template `
+                        -Thumbprint $enrollment.Thumbprint
+                    if (-not $renewal.Thumbprint) {
+                        throw "The renewal produced no certificate: $($renewal.Output)"
+                    }
+                    $issuedThumbprints.Add($renewal.Thumbprint)
+                    $renewedCertificate = Get-Item -LiteralPath (
+                        "Cert:\LocalMachine\My\$($renewal.Thumbprint)"
+                    )
+                    $renewedKeyIdentity = Get-KeyIdentity -Certificate $renewedCertificate
+
+                    # The record selects the key by provider, key name, and
+                    # scope, so it must still reach the key the renewed
+                    # certificate now carries.
+                    Add-CertificatePrivateKeyAccessRule @relocate `
+                        -Account 'BUILTIN\Users' -AccessRights Read -Confirm:$false
+                    $driftedSddl = (Get-CertificatePrivateKeySecurityDescriptor @relocate).Sddl
+                    Restore-WindowsSecurityDescriptor `
+                        -BackupPath $backupPath `
+                        -Confirm:$false `
+                        -WarningAction SilentlyContinue
+                    $restoredSddl = (Get-CertificatePrivateKeySecurityDescriptor @relocate).Sddl
+
+                    $throughRenewed = Get-CertificatePrivateKeySecurityDescriptor `
+                        -Certificate $renewedCertificate `
+                        -ProviderName $renewedKeyIdentity.Provider `
+                        -KeyName $renewedKeyIdentity.KeyName
+
+                    [pscustomobject]@{
+                        EnrolledThumbprint     = $enrollment.Thumbprint.ToUpperInvariant()
+                        RenewedThumbprint      = $renewal.Thumbprint.ToUpperInvariant()
+                        RenewExitCode          = $renewal.ExitCode
+                        EnrolledIsCng          = $keyIdentity.IsCng
+                        EnrolledProvider       = $keyIdentity.Provider
+                        EnrolledKeyName        = $keyIdentity.KeyName
+                        EnrolledUniqueName     = $keyIdentity.UniqueName
+                        RenewedProvider        = $renewedKeyIdentity.Provider
+                        RenewedKeyName         = $renewedKeyIdentity.KeyName
+                        RenewedUniqueName      = $renewedKeyIdentity.UniqueName
+                        RecordThumbprint       = $record.CertificateThumbprint
+                        RecordKeyName          = $record.KeyName
+                        RecordCanonicalTarget  = $record.CanonicalTarget
+                        BeforeCanonicalTarget  = $beforeDescriptor.CanonicalTarget
+                        RenewedCanonicalTarget = $throughRenewed.CanonicalTarget
+                        BeforeSddl             = $beforeDescriptor.Sddl
+                        DriftedSddl            = $driftedSddl
+                        RestoredSddl           = $restoredSddl
+                        RenewedSddl            = $throughRenewed.Sddl
+                    }
+                }
+                finally {
+                    Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+
+                    # Both certificates carry one key, so the certificates are
+                    # removed first and the key is deleted once.
+                    foreach ($thumbprint in $issuedThumbprints) {
+                        Remove-Item `
+                            -LiteralPath "Cert:\LocalMachine\My\$thumbprint" `
+                            -Force `
+                            -ErrorAction SilentlyContinue
+                    }
+                    if ($keyIdentity -and $keyIdentity.KeyName) {
+                        try {
+                            $key = [Security.Cryptography.CngKey]::Open(
+                                $keyIdentity.KeyName,
+                                [Security.Cryptography.CngProvider]::new($keyIdentity.Provider),
+                                [Security.Cryptography.CngKeyOpenOptions]::MachineKey)
+                            $key.Delete()
+                        }
+                        catch [Security.Cryptography.CryptographicException] {
+                            Write-Verbose "The renewal key is already gone: $($_.Exception.Message)"
+                        }
+                    }
+                }
+            }
+
+        $result.EnrolledIsCng | Should -BeTrue `
+            -Because 'the private-key commands manage CNG keys only'
+        $result.RenewExitCode | Should -Be 0
+        $result.RenewedThumbprint | Should -Not -BeExactly $result.EnrolledThumbprint `
+            -Because 'a renewal always issues a new certificate'
+        $result.RenewedUniqueName | Should -BeExactly $result.EnrolledUniqueName `
+            -Because 'the template requires the same key on renewal'
+        $result.RenewedKeyName | Should -BeExactly $result.EnrolledKeyName
+        $result.RenewedProvider | Should -BeExactly $result.EnrolledProvider
+        $result.RenewedCanonicalTarget | Should -BeExactly $result.BeforeCanonicalTarget `
+            -Because 'the canonical target hashes the key container, not the certificate'
+        $result.RecordCanonicalTarget | Should -BeExactly $result.BeforeCanonicalTarget
+        $result.RecordThumbprint | Should -BeExactly $result.EnrolledThumbprint
+        $result.RecordThumbprint | Should -Not -BeExactly $result.RenewedThumbprint `
+            -Because 'a thumbprint lookup would miss exactly the key the record still describes'
+        $result.RecordKeyName | Should -BeExactly $result.EnrolledKeyName `
+            -Because 'the key name is what relocates the key after a renewal'
+        $result.DriftedSddl | Should -Not -BeExactly $result.BeforeSddl
+        $result.RestoredSddl | Should -BeExactly $result.BeforeSddl `
+            -Because 'a record captured before the renewal still restores onto the same key'
+        $result.RenewedSddl | Should -BeExactly $result.BeforeSddl
+    }
+}

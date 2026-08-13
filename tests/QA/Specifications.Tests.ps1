@@ -209,6 +209,16 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         $securityContract | Should -Match 'Remote and combined effective-access evaluation is unsupported'
     }
 
+    It 'Should state the directory concurrency contract rather than imply a staleness gate' {
+        $multiController = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0016-active-directory-multi-controller-behavior.md'
+        ) -Raw
+
+        $multiController | Should -Match 'No Active Directory command offers'
+        $multiController | Should -Match 'one directory attribute'
+        $multiController | Should -Match '\| Concurrent writers \|'
+    }
+
     It 'Should split delivered enterprise increments into focused follow-up issues' {
         $openIssues = Get-Content -LiteralPath (
             Join-Path $script:specRoot 'open-issues.md'

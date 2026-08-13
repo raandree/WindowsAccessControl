@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-04
+last-verified: 2026-08-13
 owner: active-agent
 source: repository evidence
 ---
@@ -18,11 +18,34 @@ ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, OI-28, OI-29, and OI-30 are closed.
 The 80 percent coverage gate is met over the commands the test profile can
 execute, with current domain-lab evidence merged; ADR 0027 records the asserted
 scope and ADR 0025 keeps the threshold. The domain-lab acceptance runs in both
-supported PowerShell editions over eight suites. OI-31 is the only remaining
+supported PowerShell editions over eight suites, and also against the installed
+package rather than only the build output. OI-31 is the only remaining
 issue, and only its enumeration-identity half is still open.
 Every numbered specification is Accepted; 0008 was the last Draft.
 
 ## Recent milestones
+
+- 2026-08-13: Closed three of the six lab-specific gaps and proved the other
+    three are scope decisions rather than lab work. Concurrent directory writers
+    are now measured: two entries written from one baseline through the two
+    writable controllers converge to exactly one survivor, because the security
+    descriptor is a single replicated attribute and the losing write is
+    discarded whole rather than merged. The gap had been recorded as "prove
+    `RequireUnchanged` across replication", which no directory command has; what
+    the suite proves instead is the accepted behavior and the two mechanisms a
+    caller does have, and specification 0016 now states it. The lab also
+    publishes an enterprise template that issues a CNG key and requires the same
+    key on renewal, so specification 0017's thumbprint claim is measured on a
+    real issued key: two thumbprints, one key container, one canonical target,
+    and a record captured before the renewal still relocates the key. Every
+    suite now resolves its module through one helper, so `-ModuleSource
+    Installed` runs the whole acceptance against the packaged module in the
+    machine module path instead of the build output. Both editions are green at
+    8 suites and 92 tests with no skip, the installed-package run matches, and
+    `-Tasks test` passes 1,722 tests with 0 errors at 91.09 percent asserted
+    coverage. The remaining additions, a second Active Directory site, selective
+    authentication, and a read-only domain controller, are excluded by
+    specification 0016 or asked for by no accepted requirement.
 
 - 2026-08-12: Subtracted the schema default from reported directory entries,
     made a hexadecimal rights literal bind on every NTFS command, and removed a

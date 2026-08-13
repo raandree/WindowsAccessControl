@@ -250,3 +250,42 @@ Describe 'WindowsAccessControl disposable domain lab' `
         $second.MemberServer.AlreadyAbsent | Should -BeTrue
     }
 }
+
+Describe 'WindowsAccessControl module under test' `
+    -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    It 'Should load the module from the root this acceptance selected' {
+        $root = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
+        Import-Module -Name (Join-Path $root 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
+        try {
+            $loaded = Get-Module WindowsAccessControl
+
+            $loaded | Should -Not -BeNullOrEmpty
+            $loaded.Path | Should -BeLike "$root*" `
+                -Because 'every suite must load the same module this run selected'
+        }
+        finally {
+            Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'Should reach an installed module root by name as well as by path' {
+        $root = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
+        $installedRoot = $env:WAC_LAB_MODULE_ROOT
+        $available = @(
+            Get-Module -ListAvailable -Name WindowsAccessControl |
+                Where-Object { $_.Path -like "$root*" }
+        )
+
+        if ([string]::IsNullOrWhiteSpace($installedRoot)) {
+            # A build-output run is deliberately not on PSModulePath, so the
+            # only claim it can make is that no installed copy was selected.
+            $root | Should -BeLike '*output*module*WindowsAccessControl*' `
+                -Because 'without WAC_LAB_MODULE_ROOT the suites must load the build output'
+        }
+        else {
+            $available.Count | Should -BeGreaterThan 0 `
+                -Because 'an installed-package run must resolve the module by name from PSModulePath'
+        }
+    }
+}
+

@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add live evidence for concurrent Active Directory writers. Two access control
+    entries written from one baseline through the two writable domain
+    controllers converge to exactly one surviving entry, because the security
+    descriptor is a single replicated attribute and the losing write is
+    discarded whole rather than merged entry by entry. The same suite proves the
+    two mechanisms a caller has: `ConcurrencyToken` is a hash of the sections
+    that were read, so one converged descriptor reports one token through both
+    controllers and a write on the other controller changes it; and two writes
+    serialized through one pinned controller both survive. Specification 0016
+    records the contract, including why no directory command offers
+    `RequireUnchanged`
+- Add live evidence for a key-reusing certificate renewal. The lab deployment
+    now publishes an enterprise template at schema version 4 that issues a CNG
+    key and requires the same key on renewal, and the acceptance enrolls a
+    machine certificate from it and renews it. The renewal produces a different
+    thumbprint over the same key container, the canonical target is unchanged,
+    and a portability record captured before the renewal still relocates the key
+    and restores its DACL although the thumbprint it recorded now matches no
+    certificate. That is specification 0017's claim that a thumbprint is
+    evidence rather than a selector, measured against a real issued key instead
+    of asserted
+- Add `-ModuleSource Installed` to the domain-lab acceptance runner. Every suite
+    loaded the module from `output\module`, which is the tree the build wrote
+    and not the tree a consumer installs. The runner now expands the packaged
+    module into the machine module path of the management domain controller and
+    points every suite at that copy through `WAC_LAB_MODULE_ROOT`, which
+    `Resolve-WindowsAccessControlLabModuleRoot.ps1` validates rather than
+    trusts. An installed-package run refuses to arm code coverage, because
+    coverage instruments the built module and would otherwise report a green run
+    over a module no suite loaded
 - Add `-ExcludeSchemaDefault` to `Get-ADObjectAccessRule`, which subtracts the
     entries the target's structural class already grants through its
     `defaultSecurityDescriptor` and leaves the entries an operator added.

@@ -121,7 +121,7 @@ absent implementation.
 | KEY-2 | Delivered | `WindowsCertificatePrivateKeyTarget.Tests.ps1` hashed canonical identity, provider and key mismatch, and key-scope agreement |
 | KEY-3 | Delivered | Key-wrapper disposal and no-key-material evidence under NFR-16 |
 | KEY-4 | Delivered for DACL access rules | The FR-24 evidence; audit rules and SACL remain outside the contract |
-| KEY-5 | Delivered | `WindowsCertificatePrivateKeyPortability.Tests.ps1` plus the live backup and restore round trip |
+| KEY-5 | Delivered | `WindowsCertificatePrivateKeyPortability.Tests.ps1` plus the live backup and restore round trip, and the live enterprise renewal that keeps one key across two thumbprints |
 | KEY-6 | Delivered | The two specification 0017 private-key DSC resources with contract, adapter, and live convergence evidence |
 | KEY-7 | Delivered | `Test-CertificatePrivateKeyCriticalBinding.Tests.ps1`, the live HTTP.sys binding cycle, and the directory-service store evidence; ADR 0024 documents the unsupported provider |
 | KEY-8 | Delivered | The recorded independent cryptographic reviews with no unresolved Blocker or Major finding |
@@ -147,7 +147,7 @@ absent implementation.
 | AD-3 | Delivered | The FR-27 evidence |
 | AD-4 | Delivered for DACL descriptors and access rules | Inheritance provenance and resolved GUID names; audit-rule queries stay outside the accepted SACL boundary |
 | AD-5 | Delivered | Add, set, exact removal, rights removal, account purge, and clear proved against native descriptors with unrelated-ACE preservation |
-| AD-6 | Delivered for portability, concurrency, and replication | The FR-25 and NFR-20 evidence plus the replication convergence cases; directory inheritance and owner or group mutation stay outside the accepted boundary |
+| AD-6 | Delivered for portability, concurrency, and replication | The FR-25 and NFR-20 evidence plus the replication convergence and concurrent-writer cases; directory inheritance and owner or group mutation stay outside the accepted boundary |
 | AD-7 | Deferred by ADR 0022 | The measured directory evidence in the decision record; no directory effective-access command exists |
 | AD-8 | Delivered | The two specification 0013 directory DSC resources with contract, adapter, and live convergence evidence |
 | AD-9 | Delivered | The recorded independent directory security review with no unresolved Blocker or Major finding |

@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-08
+last-verified: 2026-08-13
 owner: active-agent
 source: current task evidence
 ---
@@ -9,92 +9,80 @@ source: current task evidence
 
 ## Current focus
 
-Reading a directory object's access control list should show what an operator
-configured, not what the schema class hands every object of that class.
-`Get-ADObjectSchemaDefaultAccessRule` returned that baseline and nothing
-consumed it, so the comparison was done by hand.
+Three of the six lab-specific gaps recorded on 2026-08-12 are closed with live
+evidence. The other three cannot be closed by lab work at all: read-only domain
+controllers and inter-site replication scheduling are stated as outside
+specification 0016, and selective authentication answers no accepted
+requirement. They need a scope decision before a lab change, not the other way
+round.
 
-Two register entries were also worked, and both turned out to be described
-wrongly. The NTFS rights transform was not unreachable; it was bypassed for one
-argument form. The duplicate module import does not create a second runtime
-enumeration type at all.
+The first gap also turned out to be described wrongly. It read "prove
+`RequireUnchanged` across replication", but no Active Directory command has
+`RequireUnchanged`; that gate belongs to the file-system and registry families.
+What the lab could prove is what actually happens, and it is worse than a stale
+write being refused: the write is accepted and one of the two edits disappears.
 
 ## What changed
 
-- `Get-ADObjectAccessRule` gained `-ExcludeSchemaDefault`, off by default. The
-    matching rule lives in `Select-WindowsADNonDefaultAccessRule`, a pure
-    function over two rule collections that takes no connection and does no
-    directory work, so all four template cases are unit-testable without a
-    domain controller. An explicit rule is dropped only when a template entry
-    equals it on account, mask, access control type, inheritance, and both
-    object type GUIDs; a template entry naming a creator placeholder drops
-    nothing, and an inherited rule is never a candidate. ADR 0033 records the
-    rule, the cases, and the bias toward reporting rather than hiding.
-- The eight NTFS access and audit rights parameters and
-    `New-NTFSFileSystemRule` no longer declare `[FileSystemRights]` next to the
-    rights transform. Measured in both editions: an unnameable mask bound fine
-    as a variable, a decimal literal, or a string, and only a **hexadecimal
-    literal** failed, because the engine converts that one form to the declared
-    type before the transform runs. Every existing unnameable-mask test passed a
-    variable, which is exactly why the defect survived them.
-- `specs/open-issues.md` lost OI-23, OI-29, and OI-30, and OI-31 now carries the
-    measured disproof of its own explanation instead of the explanation.
-- `WindowsAccessRightsTransformAttribute` is compiled through `Add-Type` in
-    `Prefix.ps1` rather than written as a PowerShell class. A class instance
-    carries the session state of the runspace that created it, and a pooled
-    batch worker re-binding a decorated parameter invoked it with a null session
-    state, which threw during parameter binding and silently dropped that
-    worker's target.
-- The NTFS bounded-batch test now captures the error stream of both batches, so
-    the next time it loses a target the run says why instead of only that a
-    count was wrong.
+- Concurrent directory writers are measured rather than assumed. A security
+    descriptor is one replicated attribute, so two entries written from one
+    baseline through the two writable controllers converge to exactly one
+    survivor and the losing write is discarded whole. The same suite proves the
+    two mechanisms a caller does have: `ConcurrencyToken` is content derived, so
+    one converged descriptor reports one token through both controllers and a
+    write on the other controller changes it; and two writes serialized through
+    one pinned controller both survive. Specification 0016 records the contract,
+    a unit test refuses a `RequireUnchanged` parameter on all five directory
+    write commands, and a QA test pins the statement.
+- The lab publishes an enterprise certificate template that issues a CNG key and
+    requires the same key on renewal, and the acceptance enrolls from it and
+    renews. Two thumbprints, one key container, one canonical target, and a
+    portability record captured before the renewal still relocates the key and
+    restores its DACL although the thumbprint it recorded now matches no
+    certificate. That is specification 0017's thumbprint claim measured on a
+    real issued key.
+- The acceptance can run against the installed package. Every suite resolves its
+    module through `Resolve-WindowsAccessControlLabModuleRoot.ps1`, which
+    returns the build output unless `WAC_LAB_MODULE_ROOT` names an installed
+    module and fails rather than falling back when that variable is wrong.
+    `-ModuleSource Installed` expands the packaged module into the machine
+    module path of the management domain controller and points the run at it.
+    Coverage is refused in that mode, because it instruments the built module.
 
 ## Acceptance evidence
 
-- Two-edition lab acceptance green on 2026-08-12 against the repaired build:
-    8 suites, 85 passed, 0 failed, 0 skipped in each edition, `Result = Passed`,
-    every suite `Ready = True`. Per suite: DomainLab 4, CertificatePrivateKey 7,
-    TaskScheduler 8, SmbShare 7, ADObjectPermissions 12,
-    ADSchemaDefaultAndObjectType 35, ForeignPrincipal 5, ADObjectReplication 7.
-    The schema-default suite grew from 29 to 35 with the six live subtraction
-    tests.
-- Two consecutive full local gates green: 1,716 passed, 0 failed, 17 tasks,
-    0 errors, 0 warnings, about 21 minutes each.
-- The schema-default subtraction has 11 unit tests, proven red first with
-    `CommandNotFoundException` before the matcher existed.
-- The nine NTFS hexadecimal-literal regression tests were proven red (9 of 9)
-    before the parameter change and green afterwards, each alongside a test that
-    an unknown rights name is still refused.
-- The batch target loss was measured before and after the attribute was
-    compiled: over six instrumented Pester iterations each, five of six runs
-    failed with 22 transformation faults before and none of six after.
-- Measured on the lab: the `organizationalUnit` class template carries no
-    creator placeholder and the `computer` class template carries several, and
-    every `CO` entry reached a newly created computer object as an entry for
-    that object's owner. That is what makes the placeholder refusal provable
-    live without a skipped test.
-
-## Host fix that unblocked the DSC evidence
-
-`Invoke-DscResource` failed for every resource that reads an access control
-list. The machine-level `PSModulePath` had grown three PowerShell 7 entries, so
-the DSC provider host running as `SYSTEM` loaded PowerShell 7's
-`Microsoft.PowerShell.Security` and refused it as duplicate type data. The
-machine value is now the two Windows PowerShell paths only, backed up at
-`$env:TEMP\wac-machine-psmodulepath.backup.txt`, and the WMI service was
-restarted so provider hosts inherit it. `debugging-insights.md` records the
-proof.
+- Two-edition lab acceptance green on 2026-08-13: 8 suites, 92 passed, 0 failed,
+    0 skipped in each edition, `Result = Passed`, every suite `Ready = True`.
+    Per suite: DomainLab 6, CertificatePrivateKey 8, TaskScheduler 8, SmbShare 7,
+    ADObjectPermissions 12, ADSchemaDefaultAndObjectType 35, ForeignPrincipal 5,
+    ADObjectReplication 11.
+- Installed-package acceptance green on the same suites and counts, with the
+    module loaded from
+    `C:\Program Files\WindowsPowerShell\Modules\WindowsAccessControl\0.0.1`.
+- Local gate green: `-Tasks test` 10 tasks, 0 errors, 0 warnings, 1,722 passed,
+    0 failed. Domain-lab coverage 45.07 percent merged, whole-module 91.03
+    percent reported, asserted scope 91.09 percent over the 80 percent
+    threshold.
+- The three failures on the way were proved before they were fixed rather than
+    reasoned about: the concurrent-writer case reported one survivor on its
+    first run, the renewal failed with `ERROR_NOT_AUTHENTICATED` until the
+    request ran as SYSTEM, and the certificate template was refused by the
+    certification authority until its version 4 settings were packed into
+    `msPKI-RA-Application-Policies`.
+- The lab was left clean: the member store holds only the two certificates it
+    held before the run, and no enrollment task survives.
 
 ## Environment notes
 
 - `WindowsAccessControlLab` has 13 machines across three forests. After a host
     reboot they must be started before an acceptance run.
-- `F1BDC1` and `F2DC1` are no longer reserved; the foreign-principal suite takes
-    one principal from each. `forest1.net` holds bidirectional forest-transitive
-    trusts to `forest2.net` and `forest3.net`, which is what makes the
-    cross-forest case resolvable from `a.forest1.net`.
+- AutomatedLab does not load in Windows PowerShell on this host; start the lab
+    from PowerShell 7.
 - The acceptance runner calls `ShouldProcess`, so a detached non-interactive
     launch must pass `-Confirm:$false` or it fails on the prompt.
+- Passing several editions to a detached launcher through `Start-Process` binds
+    only the first one and sends the rest to the next free positional parameter.
+    Split the list inside the wrapper instead.
 - A standalone Pester run must import Pester by explicit path or prepend
     `output/RequiredModules` to `PSModulePath`.
 - The changelog QA check compares the working tree against the default branch,
@@ -102,15 +90,12 @@ proof.
 
 ## Next step
 
-OI-31 is the only register entry left and its mechanism is unknown. The two
-weakened type assertions stay weakened until something reproduces a second live
-runtime enumeration type; the batch test now captures the error stream that the
-lost-target failure never reported.
+OI-31 is still the only register entry and its enumeration-identity half is
+still unexplained. The two weakened type assertions stay weakened until
+something reproduces a second live runtime enumeration type.
 
-The remaining lab-specific gaps, in order of the evidence they would add:
-concurrent writers on the two writable controllers to prove `RequireUnchanged`
-across replication; an enterprise certificate template plus a key-reusing
-renewal to test specification 0017's thumbprint claim against a real issued
-key; a second Active Directory site for inter-site replication; selective
-authentication on the forest trust; a read-only domain controller; and running
-the suites against the installed package rather than `output/module`.
+The three remaining lab additions are scope decisions rather than lab work: a
+second Active Directory site, selective authentication on the forest trust, and
+a read-only domain controller. Specification 0016 excludes the first and the
+third by name, and nothing in the accepted contracts asks for the second, so
+each needs an accepted requirement before the lab grows to carry it.

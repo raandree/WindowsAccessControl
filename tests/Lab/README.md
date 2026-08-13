@@ -42,6 +42,7 @@ need, plus the reserved capacity listed below.
 | Installation credential as a parameter | `-InstallationCredential` | The sample hard-codes `Somepass1`. This repository stores no credential, key, or recovery value. |
 | Predecessor lab, orphaned switch, and stale host-entry removal | `-RemoveExistingLab` and `-RemoveLabName` | A teardown that fails partway leaves the virtual switch behind. The host adapter then keeps the retired subnet while the new lab picks the next free one, and every new machine is stranded with no route to the host. A stale host-file entry additionally makes `Install-Lab` refuse to redirect a machine name. |
 | Separate memory budgets per role | `-DomainControllerMemoryMB` and `-MemberMemoryMB` | The lab defines 13 machines rather than the sample's nine, so member servers take less memory than domain controllers. |
+| Renewable CNG certificate template | `New-LabCATemplate` on `F1CA1` | Specification 0017 states that a certificate thumbprint is evidence rather than a selector, because a renewal that reuses the key changes the thumbprint over the same key. No built-in template both issues a CNG key and requires the same key on renewal, so the deployment publishes `WacLabRenewableComputer` at schema version 4 with `ReuseKeysRenewal`. |
 
 The answer to "should it also deploy a public key infrastructure" is therefore
 yes, and it already does. The certification authority is the one added service
@@ -80,8 +81,9 @@ baseline rather than a single-domain one.
 | [Deploy-WindowsAccessControlLab.ps1](Deploy-WindowsAccessControlLab.ps1) | Defines and installs the lab, and removes a predecessor lab, its orphaned virtual switch, and stale host-file entries first. |
 | [Invoke-WindowsAccessControlLabAcceptance.ps1](Invoke-WindowsAccessControlLabAcceptance.ps1) | Copies the current build and the suites into the management domain controller, runs one unattended profile per PowerShell edition there, and carries the redacted evidence and the coverage document back to the host. |
 | [Start-WindowsAccessControlDomainLabAcceptance.ps1](Start-WindowsAccessControlDomainLabAcceptance.ps1) | Starts the profile in a child console process inside the lab, because a session runspace allows far fewer nested script frames than a console host. |
+| [Resolve-WindowsAccessControlLabModuleRoot.ps1](Resolve-WindowsAccessControlLabModuleRoot.ps1) | Returns the module directory every suite imports. It is the build output unless `WAC_LAB_MODULE_ROOT` names an installed module, and it fails rather than falling back when that variable is wrong. |
 | [WindowsAccessControl.DomainLab.psm1](WindowsAccessControl.DomainLab.psm1) | Test-only harness: fixture plan, setup, status, teardown, coverage arming, and the unattended acceptance profile. |
-| `*.Live.Tests.ps1` | The seven acceptance suites. |
+| `*.Live.Tests.ps1` | The eight acceptance suites. |
 | `coverage/` | The JaCoCo document the acceptance carries back. The build merges it into the reported coverage when it measures the current build; see decisions 0025 and 0027. |
 
 ## Run the lab
@@ -149,6 +151,24 @@ The suites read `WAC_DOMAIN_LAB_MEMBER` to reach the fixture member server and
 acceptance profile sets both for the duration of the call and restores them
 afterwards, so neither has to be set by hand.
 
+## Run against the installed package
+
+Every suite imports the module from `output\module` by default, which is the
+tree the build wrote rather than the tree a consumer installs.
+`-ModuleSource Installed` closes that gap: it expands the packaged module into
+the machine module path of the management domain controller, points every suite
+at that copy through `WAC_LAB_MODULE_ROOT`, and asserts that the module is
+reachable by name from `PSModulePath`.
+
+```powershell
+.\build.ps1 -Tasks pack
+.\tests\Lab\Invoke-WindowsAccessControlLabAcceptance.ps1 -ModuleSource Installed -CoverageEdition None
+```
+
+Coverage instruments the built module, so an installed-package run refuses to
+arm it. Measuring a module no suite loads would report a green run over an
+unmeasured module rather than report the gap.
+
 ## Known gaps
 
 - No read-only domain controller. AutomatedLab exposes no read-only domain
@@ -156,10 +176,8 @@ afterwards, so neither has to be set by hand.
   promotion first.
 - No second site, so no claim about inter-site replication latency or
   scheduling.
-- The certification authority is exercised only through automatic
-  domain-controller enrollment. The member-server fixture certificate is
-  self-signed so that the private-key provider and container identity stay
-  deterministic, so no enterprise certificate template is covered.
+- Selective authentication is not configured on the forest trust, so no claim
+  about a principal that is resolvable but not allowed to authenticate.
 
 ## Safety
 

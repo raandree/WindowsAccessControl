@@ -588,6 +588,24 @@ fails fast; it is not a transactional guarantee. Re-read the descriptor and
 reapply the edit when it rejects the write, and re-read again before a second
 `RequireUnchanged` write because Windows can recompute inherited ACEs on write.
 
+`RequireUnchanged` exists on the file-system and registry commands only. The
+Active Directory commands offer no staleness gate, because a security descriptor
+is one replicated attribute: two writes made from the same read through two
+domain controllers converge to one survivor and the losing edit is discarded
+whole. Compare `ConcurrencyToken` yourself, and write through one pinned
+controller when both edits must survive:
+
+```powershell
+$before = Get-ADObjectSecurityDescriptor -Server $server -DistinguishedName $dn
+
+# ... time passes ...
+
+$now = Get-ADObjectSecurityDescriptor -Server $server -DistinguishedName $dn
+if ($now.ConcurrencyToken -cne $before.ConcurrencyToken) {
+    throw 'Another writer changed the object. Re-read and reapply the edit.'
+}
+```
+
 ## Configure auditing
 
 SACL reads and writes require `SeSecurityPrivilege`. Inspect the current token

@@ -23,11 +23,9 @@ BeforeAll {
         Remove-Item -LiteralPath $ModulePath -Recurse -Force -ErrorAction SilentlyContinue
         $null = New-Item -Path $ModulePath -ItemType Directory -Force
     }
-    $moduleSource = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*" |
-        Sort-Object -Property { [version]$_.Name } -Descending |
-        Select-Object -First 1
+    $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
     Copy-Item `
-        -Path (Join-Path $moduleSource.FullName '*') `
+        -Path (Join-Path $moduleRoot '*') `
         -Destination $script:remoteModulePath `
         -ToSession $script:session `
         -Recurse `

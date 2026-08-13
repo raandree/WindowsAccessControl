@@ -58,16 +58,34 @@
         Reuses the tree already present on the management domain controller
         instead of copying it again.
 
+    .PARAMETER ModuleSource
+        Selects the module the suites load. `Build` loads the tree the Sampler
+        build wrote to `output\module`. `Installed` expands the packaged module
+        into the machine module path of the management domain controller and
+        points every suite at that installed copy, which is what proves the
+        package and not only the build output.
+
+    .PARAMETER PackagePath
+        The NuGet package an `Installed` run expands. It defaults to the newest
+        `WindowsAccessControl.*.nupkg` under `output`, which `build.ps1 -Tasks
+        pack` produces.
+
     .EXAMPLE
         .\Invoke-WindowsAccessControlLabAcceptance.ps1
 
-        Deploys the current build into the lab and runs all six suites in both
+        Deploys the current build into the lab and runs every suite in both
         supported PowerShell editions.
 
     .EXAMPLE
         .\Invoke-WindowsAccessControlLabAcceptance.ps1 -PowerShellEdition Core
 
         Runs only the PowerShell 7 pass and arms no coverage.
+
+    .EXAMPLE
+        .\Invoke-WindowsAccessControlLabAcceptance.ps1 -ModuleSource Installed -CoverageEdition None
+
+        Installs the packaged module into the machine module path of the
+        management domain controller and runs every suite against it.
 
     .NOTES
         Requires an elevated host session with the lab installed.
@@ -111,6 +129,14 @@ param(
     [string]$CoverageEvidencePath = (Join-Path $PSScriptRoot 'coverage\JaCoCo_coverage_DomainLab.xml'),
 
     [Parameter()]
+    [ValidateSet('Build', 'Installed')]
+    [string]$ModuleSource = 'Build',
+
+    [Parameter()]
+    [ValidateNotNullOrEmpty()]
+    [string]$PackagePath,
+
+    [Parameter()]
     [switch]$SkipPayload
 )
 
@@ -139,6 +165,28 @@ if ($coverageEditionName -ne 'None' -and $editions -notcontains $coverageEdition
         "CoverageEdition '$coverageEditionName' is not one of the requested editions: " +
         "$($editions -join ', ')."
     )
+}
+
+$resolvedPackagePath = $null
+if ($ModuleSource -eq 'Installed') {
+    # Coverage instruments the built module, so measuring it while the suites
+    # load an installed copy would report a green run over an unmeasured module.
+    if ($coverageEditionName -ne 'None') {
+        throw 'An installed-package run cannot arm code coverage. Pass -CoverageEdition None.'
+    }
+
+    $package = if ($PSBoundParameters.ContainsKey('PackagePath')) {
+        Get-Item -LiteralPath $PackagePath -ErrorAction Stop
+    }
+    else {
+        Get-ChildItem -Path (Join-Path $repositoryRoot 'output\WindowsAccessControl.*.nupkg') -ErrorAction SilentlyContinue |
+            Sort-Object -Property LastWriteTimeUtc -Descending |
+            Select-Object -First 1
+    }
+    if (-not $package) {
+        throw 'No WindowsAccessControl package was found under output. Run ".\build.ps1 -Tasks pack" first.'
+    }
+    $resolvedPackagePath = $package.FullName
 }
 
 $resolvedEvidencePath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($EvidencePath)
@@ -185,6 +233,80 @@ if (-not $SkipPayload) {
         -Recurse
 }
 
+$installedModuleRoot = ''
+if ($ModuleSource -eq 'Installed') {
+    $packageDestination = Join-Path $RemoteRepositoryPath 'package'
+    Invoke-LabCommand `
+        -ComputerName $ManagementDomainController `
+        -ActivityName 'Reset the package staging directory' `
+        -ScriptBlock {
+            param($Path)
+
+            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue
+            $null = New-Item -Path $Path -ItemType Directory -Force
+        } `
+        -ArgumentList $packageDestination `
+        -NoDisplay
+
+    Copy-LabFileItem `
+        -Path $resolvedPackagePath `
+        -ComputerName $ManagementDomainController `
+        -DestinationFolderPath $packageDestination
+
+    $installedModuleRoot = Invoke-LabCommand `
+        -ComputerName $ManagementDomainController `
+        -ActivityName 'Install the packaged module into the machine module path' `
+        -ScriptBlock {
+            param($PackageDirectory)
+
+            $ErrorActionPreference = 'Stop'
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+            $package = Get-ChildItem -Path (Join-Path $PackageDirectory '*.nupkg') |
+                Sort-Object -Property LastWriteTimeUtc -Descending |
+                Select-Object -First 1
+            if (-not $package) {
+                throw "No package reached '$PackageDirectory'."
+            }
+
+            $staging = Join-Path $PackageDirectory 'expanded'
+            Remove-Item -LiteralPath $staging -Recurse -Force -ErrorAction SilentlyContinue
+            [IO.Compression.ZipFile]::ExtractToDirectory($package.FullName, $staging)
+
+            # A NuGet package carries its own manifest tree. An installed module
+            # is the payload alone, so the packaging artifacts are dropped
+            # rather than shipped into the module path.
+            foreach ($artifact in '_rels', 'package', '[Content_Types].xml') {
+                Remove-Item -LiteralPath (Join-Path $staging $artifact) -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            Get-ChildItem -Path (Join-Path $staging '*.nuspec') -ErrorAction SilentlyContinue |
+                Remove-Item -Force
+
+            $manifestPath = Join-Path $staging 'WindowsAccessControl.psd1'
+            if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+                throw 'The package does not contain a WindowsAccessControl manifest.'
+            }
+            $version = (Import-PowerShellDataFile -LiteralPath $manifestPath).ModuleVersion
+
+            $installRoot = Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules\WindowsAccessControl'
+            $target = Join-Path $installRoot $version
+            Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue
+            $null = New-Item -Path $target -ItemType Directory -Force
+            Copy-Item -Path (Join-Path $staging '*') -Destination $target -Recurse -Force
+
+            $null = Test-ModuleManifest -Path (Join-Path $target 'WindowsAccessControl.psd1')
+            $target
+        } `
+        -ArgumentList $packageDestination `
+        -PassThru `
+        -NoDisplay
+
+    $installedModuleRoot = [string]$installedModuleRoot
+    Write-Information (
+        "The packaged module is installed at '$installedModuleRoot'."
+    ) -InformationAction Continue
+}
+
 $editionResults = [Collections.Generic.List[object]]::new()
 
 foreach ($edition in $editions) {
@@ -209,7 +331,11 @@ foreach ($edition in $editions) {
         -ComputerName $ManagementDomainController `
         -ActivityName "WindowsAccessControl domain-lab acceptance ($edition)" `
         -ScriptBlock {
-            param($RepositoryPath, $DomainDn, $Member, $OutputPath, $CoveragePath, $Edition)
+            param($RepositoryPath, $DomainDn, $Member, $OutputPath, $CoveragePath, $Edition, $ModuleRoot)
+
+            # The suites read this, so it has to be set before the child console
+            # process inherits the environment.
+            $env:WAC_LAB_MODULE_ROOT = $ModuleRoot
 
             $executable = if ($Edition -eq 'Core') {
                 $resolved = @(
@@ -253,7 +379,7 @@ foreach ($edition in $editions) {
                 Output   = $output
             }
         } `
-        -ArgumentList $RemoteRepositoryPath, $DomainDistinguishedName, $MemberServer, $remoteEvidencePath, $remoteCoveragePath, $edition `
+        -ArgumentList $RemoteRepositoryPath, $DomainDistinguishedName, $MemberServer, $remoteEvidencePath, $remoteCoveragePath, $edition, $installedModuleRoot `
         -PassThru `
         -NoDisplay
 
