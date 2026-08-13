@@ -833,6 +833,14 @@ traceability. Exhaustive command details remain in comment-based help.
 See [docs/research.md](docs/research.md) for the source review, platform API
 semantics, and NTFSSecurity comparison that informed those specifications.
 
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the build, the test layout, the
+coverage rule, the changelog, and how a commit message decides the next version.
+The specifications are the source of truth, so a behavior change starts there
+rather than in the code. Everyone participating follows the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Security
 
 Report a vulnerability privately rather than in a public issue.

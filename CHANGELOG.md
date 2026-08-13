@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`, modelled on the DSC Community
+    repositories this project already follows. The contributing guide records
+    what is specific here rather than repeating the common guidelines: that a
+    behavior change starts in a specification because several apparent gaps are
+    accepted refusals, what belongs in each test folder, why coverage is
+    asserted over the executable scope, that the domain lab is not required for
+    a pull request, and that the commit message decides the next version. The
+    code of conduct is the Contributor Covenant 2.1 with a reporting route that
+    also works when the report concerns the maintainer
 - Add `LICENSE`, so the module can be distributed and the PowerShell Gallery can
     show the terms it is offered under. The manifest carried
     `All rights reserved`, which contradicts publishing it, and the Gallery
