@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add an install section to the README. It documented building from source only,
     so a reader arriving from the Gallery had no supported way to install the
     published package
+- Add the project's brand assets under `assets/`, and render the wordmark at the
+    top of the README through a `<picture>` element so the header follows the
+    reader's GitHub theme. The package also had no icon, because `IconUri` was
+    commented out, so a Gallery entry that now carries a license and a project
+    link would still have shown the default placeholder. The wordmark and the
+    glyph are supplied for a light and a dark surface, the dark-surface pair is
+    recoloured from the near-black original rather than redrawn, and
+    `assets/README.md` records the palette, the rule for choosing a variant, and
+    how every derived file was produced
 - Add live evidence for concurrent Active Directory writers. Two access control
     entries written from one baseline through the two writable domain
     controllers converge to exactly one surviving entry, because the security

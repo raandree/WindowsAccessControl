@@ -27,6 +27,19 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-08-14: Gave the project a mark and put it where the project is read.
+    `assets/` now holds the wordmark, glyph, icon, banner, monochrome, and
+    social-preview variants; the README renders the wordmark through a
+    `<picture>` element, so the header follows the reader's GitHub theme; and
+    `IconUri` reaches the built manifest, which was the last piece of Gallery
+    metadata still commented out. A dark-surface wordmark and glyph did not
+    exist as artwork and were derived from the near-black originals by
+    recolouring every ink pixel to white with its alpha preserved, which leaves
+    the accent word and the anti-aliased edges correct. `assets/README.md`
+    records the palette, the rule for choosing a variant, and how each derived
+    file was produced, so the set can be rebuilt without guessing.
+    `social-preview.png` is the one asset nothing references: GitHub takes it
+    only through the repository settings, so it must be uploaded by hand.
 - 2026-08-14: Made the package shippable. The engineering had been ready for a
     while and the packaging had not: the manifest declared `All rights reserved`
     and carried no `LicenseUri` and no `ProjectUri`, so the module could not be

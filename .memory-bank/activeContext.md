@@ -137,3 +137,7 @@ second Active Directory site, selective authentication on the forest trust, and
 a read-only domain controller. Specification 0016 excludes the first and the
 third by name, and nothing in the accepted contracts asks for the second, so
 each needs an accepted requirement before the lab grows to carry it.
+
+The brand assets added on 2026-08-14 need no follow-up in code. The single
+manual step the repository cannot take for itself is uploading
+`assets/social-preview.png` under the repository's social preview setting.

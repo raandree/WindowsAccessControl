@@ -1,4 +1,12 @@
-# WindowsAccessControl
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-wordmark-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-wordmark-light.png">
+    <img alt="WindowsAccessControl" src="assets/logo-wordmark-light.png" width="440">
+  </picture>
+</h1>
+
+<p align="center"><em>Managing Windows permissions with precision.</em></p>
 
 `WindowsAccessControl` is a Windows PowerShell module for pipeline-first
 management of Windows security descriptors. Its filesystem, registry-key,

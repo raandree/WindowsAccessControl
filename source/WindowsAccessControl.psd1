@@ -243,7 +243,7 @@ PrivateData = @{
         ProjectUri = 'https://github.com/raandree/WindowsAccessControl'
 
         # A URL to an icon representing this module.
-        # IconUri = ''
+        IconUri = 'https://raw.githubusercontent.com/raandree/WindowsAccessControl/main/assets/icon-256.png'
 
         # ReleaseNotes of this module
         ReleaseNotes = ''
