@@ -1,12 +1,13 @@
-<h1 align="center">
+<h1>
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-wordmark-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="assets/logo-wordmark-light.png">
-    <img alt="WindowsAccessControl" src="assets/logo-wordmark-light.png" width="440">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-glyph-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-glyph-light.png">
+    <img alt="" src="assets/logo-glyph-light.png" height="34">
   </picture>
+  WindowsAccessControl
 </h1>
 
-<p align="center"><em>Managing Windows permissions with precision.</em></p>
+*Managing Windows permissions with precision.*
 
 `WindowsAccessControl` is a Windows PowerShell module for pipeline-first
 management of Windows security descriptors. Its filesystem, registry-key,

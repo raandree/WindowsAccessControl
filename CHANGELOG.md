@@ -32,9 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add an install section to the README. It documented building from source only,
     so a reader arriving from the Gallery had no supported way to install the
     published package
-- Add the project's brand assets under `assets/`, and render the wordmark at the
-    top of the README through a `<picture>` element so the header follows the
-    reader's GitHub theme. The package also had no icon, because `IconUri` was
+- Add the project's brand assets under `assets/`, and render the glyph beside the
+    README title through a `<picture>` element so the header follows the
+    reader's GitHub theme. The glyph rather than the wordmark, because the brand
+    guide drops the wordmark below roughly 128 pixels and a corner mark is
+    smaller than that; the title stays real text, so it still reaches the
+    document outline. The package also had no icon, because `IconUri` was
     commented out, so a Gallery entry that now carries a license and a project
     link would still have shown the default placeholder. The wordmark and the
     glyph are supplied for a light and a dark surface, the dark-surface pair is
