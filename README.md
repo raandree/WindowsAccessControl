@@ -1,13 +1,20 @@
-<h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-glyph-dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="assets/logo-glyph-light.png">
-    <img alt="" src="assets/logo-glyph-light.png" height="34">
-  </picture>
-  WindowsAccessControl
-</h1>
+<!-- markdownlint-disable MD033 MD041 -->
+<!-- The wordmark is floated left so the intro fills the space beside it instead
+     of sitting under a centred block. A real <table> would be the obvious
+     two-column layout, but github.com draws a 1px border on every table cell
+     and strips the style that would remove it, so a float is the only
+     borderless option that survives the sanitiser. Two transparent variants
+     switch by theme through <picture>; judge the result on github.com, because
+     editor previews mis-resolve prefers-color-scheme. -->
+<picture>
+  <source media="(prefers-color-scheme: dark)"
+          srcset="assets/logo-wordmark-dark.png">
+  <img align="left" width="300" alt="WindowsAccessControl logo"
+       src="assets/logo-wordmark-light.png">
+</picture>
+<!-- markdownlint-enable MD033 -->
 
-*Managing Windows permissions with precision.*
+**Managing Windows permissions with precision.**
 
 `WindowsAccessControl` is a Windows PowerShell module for pipeline-first
 management of Windows security descriptors. Its filesystem, registry-key,
@@ -15,6 +22,12 @@ service/SCM, live-process, SMB-share, Active Directory, and Task Scheduler
 commands turn common DACL, SACL, owner, inheritance, backup, and
 effective-access operations into composable commands without requiring callers
 to manipulate .NET access-control objects directly.
+
+<!-- markdownlint-disable MD033 -->
+<br clear="left">
+<!-- markdownlint-enable MD033 -->
+
+---
 
 The module has no third-party runtime dependency. It supports Windows
 PowerShell 5.1 and PowerShell 7 on Windows.
