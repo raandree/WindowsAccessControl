@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-13
+last-verified: 2026-08-14
 owner: active-agent
 source: repository evidence
 ---
@@ -22,8 +22,30 @@ supported PowerShell editions over eight suites, and also against the installed
 package rather than only the build output. OI-31 is the only remaining
 issue, and only its enumeration-identity half is still open.
 Every numbered specification is Accepted; 0008 was the last Draft.
+The package is licensed, documented, and ready to release; the `v0.1.0` tag is
+not cut and nothing is published.
 
 ## Recent milestones
+
+- 2026-08-14: Made the package shippable. The engineering had been ready for a
+    while and the packaging had not: the manifest declared `All rights reserved`
+    and carried no `LicenseUri` and no `ProjectUri`, so the module could not be
+    distributed and its Gallery entry would have named neither the terms it is
+    offered under nor where it came from, and the README documented building
+    from source only. The module is now MIT licensed, both URIs reach the built
+    manifest, and the README has an install section. `SECURITY.md` adds the
+    private reporting route a descriptor-writing module should never have
+    shipped without, and separates a defect from a recorded refusal so a
+    documented "no" is not filed as a vulnerability. `CONTRIBUTING.md` and
+    `CODE_OF_CONDUCT.md` follow the DSC Community layout but carry only what is
+    specific here, including the fact that the commit message decides the next
+    version, which no contributor could infer. The code of conduct is the
+    Contributor Covenant 2.1 rather than an adoption of the DSC Community
+    document, because that one routes enforcement to an organization that does
+    not govern this repository. Evidence: `-Tasks test` green at 10 tasks,
+    0 errors, 1,722 tests, 91.09 percent asserted coverage; a focused QA run
+    green at 645 tests. Pushed to `origin/main` as `eda30f4`. No release tag
+    exists yet, so nothing is published.
 
 - 2026-08-13: Closed three of the six lab-specific gaps and proved the other
     three are scope decisions rather than lab work. Concurrent directory writers

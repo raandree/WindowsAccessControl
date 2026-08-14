@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-13
+last-verified: 2026-08-14
 owner: active-agent
 source: current task evidence
 ---
@@ -9,10 +9,20 @@ source: current task evidence
 
 ## Current focus
 
-Three of the six lab-specific gaps recorded on 2026-08-12 are closed with live
-evidence. The other three cannot be closed by lab work at all: read-only domain
-controllers and inter-site replication scheduling are stated as outside
-specification 0016, and selective authentication answers no accepted
+The module is being prepared for its first release. The engineering was ready;
+the packaging was not. The manifest declared `All rights reserved` and carried
+no `LicenseUri` and no `ProjectUri`, so the package could not be distributed and
+its Gallery entry would have named neither the terms nor the origin. The README
+documented building from source only, so a reader arriving from the Gallery had
+no supported way to install what they had just found.
+
+Three commits are on `origin/main`. The remaining step is the release tag, and
+nothing has been published yet.
+
+Before that, three of the six lab-specific gaps recorded on 2026-08-12 were
+closed with live evidence. The other three cannot be closed by lab work at all:
+read-only domain controllers and inter-site replication scheduling are stated as
+outside specification 0016, and selective authentication answers no accepted
 requirement. They need a scope decision before a lab change, not the other way
 round.
 
@@ -24,6 +34,22 @@ write being refused: the write is accepted and one of the two edits disappears.
 
 ## What changed
 
+- The module is MIT licensed. `LICENSE` holds the terms, the copyright statement
+    names them instead of reserving all rights, and `LicenseUri` and
+    `ProjectUri` reach the built manifest.
+- `SECURITY.md` gives a private reporting route, which a module that writes
+    security descriptors had no business shipping without. It separates a defect
+    from the behavior the specifications deliberately refuse, so a recorded
+    refusal is not filed as a vulnerability.
+- `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md` follow the DSC Community layout but
+    carry only what is specific here: a behavior change starts in a
+    specification, what belongs in each test folder, why coverage is asserted
+    over the executable scope, that the domain lab is not required for a pull
+    request, and that the commit message decides the next version. The code of
+    conduct is the Contributor Covenant 2.1 rather than an adoption of the DSC
+    Community document, because that document routes enforcement to an
+    organization that does not govern this repository.
+- The README gained install, contributing, security, and license sections.
 - Concurrent directory writers are measured rather than assumed. A security
     descriptor is one replicated attribute, so two entries written from one
     baseline through the two writable controllers converge to exactly one
@@ -89,6 +115,18 @@ write being refused: the write is accepted and one of the two edits disappears.
     so a gate started before `CHANGELOG.md` is edited fails on that one test.
 
 ## Next step
+
+The first release is not cut. `GitVersion.yml` tags `main` as `preview` with
+`next-version: 0.1.0`, so a build of `main` publishes a prerelease and the
+stable release needs its own `v0.1.0` tag. No tag exists on the remote yet, and
+`Publish_Release_To_GitHub` creates one on a successful main build, so the
+absence of a tag is the signal that the publish job has not completed. Check the
+workflow run before tagging, and confirm the `GitHubToken` and `GalleryApiToken`
+secrets exist, because the job fails closed on a missing secret rather than
+publishing a version without the tag the next build anchors on.
+
+`IconUri` is still unset; the owner is producing an icon. The Gallery needs a
+direct image URL rather than a repository page.
 
 OI-31 is still the only register entry and its enumeration-identity half is
 still unexplained. The two weakened type assertions stay weakened until
