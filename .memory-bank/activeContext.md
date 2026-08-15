@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-14
+last-verified: 2026-08-15
 owner: active-agent
 source: current task evidence
 ---
@@ -49,7 +49,16 @@ write being refused: the write is accepted and one of the two edits disappears.
     conduct is the Contributor Covenant 2.1 rather than an adoption of the DSC
     Community document, because that document routes enforcement to an
     organization that does not govern this repository.
-- The README gained install, contributing, security, and license sections.
+- The README gained install, contributing, security, and license sections, and
+    then the five status badges a Gallery-facing repository is judged by, plus a
+    `Releases` section that says why two of them report a version.
+- `.github/` carries the contribution surface a public repository is read
+    through: three issue templates, a pull request template whose task list
+    names this repository's own gates, `CODEOWNERS`, and a Dependabot
+    configuration for the pinned action versions. Blank issues are disabled and
+    the chooser links the private security route and the specifications, so a
+    vulnerability is not filed in public and a recorded refusal is not filed as
+    a defect.
 - Concurrent directory writers are measured rather than assumed. A security
     descriptor is one replicated attribute, so two entries written from one
     baseline through the two writable controllers converge to exactly one
@@ -138,6 +147,8 @@ a read-only domain controller. Specification 0016 excludes the first and the
 third by name, and nothing in the accepted contracts asks for the second, so
 each needs an accepted requirement before the lab grows to carry it.
 
-The brand assets added on 2026-08-14 need no follow-up in code. The single
-manual step the repository cannot take for itself is uploading
-`assets/social-preview.png` under the repository's social preview setting.
+The brand assets added on 2026-08-14 need no follow-up in code. The steps the
+repository cannot take for itself are all repository settings: uploading
+`assets/social-preview.png` under the social preview setting, and enabling
+private vulnerability reporting, without which the advisory link in
+`SECURITY.md` and in the issue chooser resolves to nothing for a reporter.

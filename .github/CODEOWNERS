@@ -1,0 +1,4 @@
+# Every change is reviewed by the maintainer. This module writes security
+# descriptors, so a change that looks cosmetic can still alter who has access.
+
+* @raandree

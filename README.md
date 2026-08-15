@@ -27,6 +27,12 @@ to manipulate .NET access-control objects directly.
 <br clear="left">
 <!-- markdownlint-enable MD033 -->
 
+[![Build](https://github.com/raandree/WindowsAccessControl/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/raandree/WindowsAccessControl/actions/workflows/build.yml)
+[![PowerShell Gallery (with prereleases)](https://img.shields.io/powershellgallery/vpre/WindowsAccessControl?label=WindowsAccessControl%20Preview)](https://www.powershellgallery.com/packages/WindowsAccessControl/)
+[![PowerShell Gallery](https://img.shields.io/powershellgallery/v/WindowsAccessControl?label=WindowsAccessControl)](https://www.powershellgallery.com/packages/WindowsAccessControl/)
+[![PowerShell Gallery downloads](https://img.shields.io/powershellgallery/dt/WindowsAccessControl?label=Downloads)](https://www.powershellgallery.com/packages/WindowsAccessControl/)
+[![License](https://img.shields.io/github/license/raandree/WindowsAccessControl?label=License)](LICENSE)
+
 ---
 
 The module has no third-party runtime dependency. It supports Windows
@@ -854,6 +860,16 @@ traceability. Exhaustive command details remain in comment-based help.
 
 See [docs/research.md](docs/research.md) for the source review, platform API
 semantics, and NTFSSecurity comparison that informed those specifications.
+
+## Releases
+
+Every merge to `main` publishes a preview release to the
+[PowerShell Gallery](https://www.powershellgallery.com/packages/WindowsAccessControl/).
+A stable release is published from its own `v*` tag, which a maintainer pushes
+periodically. The two Gallery badges above report the current preview and the
+current stable version.
+
+A full list of changes in each version is in the [change log](CHANGELOG.md).
 
 ## Contributing
 

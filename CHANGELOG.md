@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add the GitHub community files a public repository is read through: issue
+    templates for a problem, a proposal, and a general question, a pull request
+    template whose task list names this repository's own gates, `CODEOWNERS`,
+    and a Dependabot configuration that keeps the pinned action versions in the
+    build workflow current. `CONTRIBUTING.md` already told a contributor to open
+    an issue first, but the issue form asked for nothing, so a report could
+    arrive without the module version, the PowerShell edition, or the object
+    family, which are three of the facts a descriptor defect cannot be
+    reproduced without. Blank issues are disabled and the chooser links the
+    private security route, so a vulnerability is not filed in public by
+    accident, and the specifications, so a recorded refusal is not filed as a
+    defect. The layout follows the DSC Community repositories this project
+    already follows
+- Add the status badges to the README: the build, the Gallery preview version,
+    the Gallery stable version, the download count, and the license. A reader
+    arriving from the PowerShell Gallery could not see whether the module
+    builds, and a reader arriving from the repository could not see which
+    version is published. A `Releases` section states why there are two Gallery
+    badges: every merge to `main` publishes a preview and a stable release comes
+    from its own tag
 - Add `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md`, modelled on the DSC Community
     repositories this project already follows. The contributing guide records
     what is specific here rather than repeating the common guidelines: that a

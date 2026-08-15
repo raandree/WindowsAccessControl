@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/raandree/WindowsAccessControl/security/advisories/new
+    about: "This module writes security descriptors, so report a vulnerability privately through a security advisory rather than a public issue."
+  - name: Read the specifications first
+    url: https://github.com/raandree/WindowsAccessControl/blob/main/specs/README.md
+    about: "Several behaviors that look like defects are refusals the project accepted deliberately, and the numbered specifications record them."

@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-14
+last-verified: 2026-08-15
 owner: active-agent
 source: repository evidence
 ---
@@ -27,6 +27,23 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-08-15: Built the contribution surface a public repository is read
+    through. `CONTRIBUTING.md` told a contributor to open an issue first while
+    the issue form asked for nothing, so a report could arrive without the
+    module version, the PowerShell edition, or the object family. `.github/` now
+    carries three issue templates, a pull request template whose task list names
+    this repository's own gates rather than the generic DSC Community ones,
+    `CODEOWNERS`, and a Dependabot configuration for the action versions the
+    workflow pins by SHA. Blank issues are disabled and the chooser links the
+    private security route and the specifications, so a vulnerability is not
+    filed in public and a recorded refusal is not filed as a defect. The README
+    gained the five badges a Gallery-facing repository is judged by and a
+    `Releases` section explaining why two of them report a version. The layout
+    follows the DSC Community repositories, adapted from Azure Pipelines to this
+    project's GitHub Actions workflow, and no coverage badge was added because
+    nothing publishes coverage. Evidence: all three YAML documents and all three
+    template frontmatter blocks parse, `Get-ChangelogData` parses the changelog,
+    and the QA `Changelog` gate passes 3 of 3.
 - 2026-08-14: Gave the project a mark and put it where the project is read.
     `assets/` now holds the wordmark, glyph, icon, banner, monochrome, and
     social-preview variants; the README renders the wordmark through a

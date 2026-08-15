@@ -1,0 +1,14 @@
+# Please see the documentation for all configuration options:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+#
+# Only GitHub Actions is covered. The PowerShell build dependencies are resolved
+# by PSDepend from RequiredModules.psd1, which Dependabot does not support.
+
+version: 2
+updates:
+
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
