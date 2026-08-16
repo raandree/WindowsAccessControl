@@ -782,7 +782,10 @@ the NTFS result.
 | Local impersonation | `Invoke-WindowsAccessControl` |
 | Metrics | `Get-WindowsAccessControlMetric` |
 
-Use `Get-Help <command> -Full` for parameter semantics and examples.
+Use `Get-Help <command> -Full` for parameter semantics and examples. The same
+help is published as browsable pages in the
+[WindowsAccessControl wiki](https://github.com/raandree/WindowsAccessControl/wiki),
+which the release pipeline regenerates from the built module.
 
 ## Safety model
 

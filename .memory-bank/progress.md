@@ -27,6 +27,20 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-08-16: Added a `docs` build workflow that generates the repository wiki
+    from the built module and a `Publish_GitHub_Wiki_Content` step that pushes
+    it, following the DSC Community pattern. One page per public command comes
+    from its comment-based help through `platyPS`, `source/WikiSource/Home.md`
+    is the authored landing page, and `WikiContent.zip` is attached to the
+    GitHub release. Three of the canonical tasks are deliberately absent, each
+    for a measured reason rather than a preference: `Generate_Conceptual_Help`
+    and `Generate_Markdown_For_DSC_Resources` resolve a resource's source as
+    `Classes/*<ClassName>.ps1` and this module declares twenty resources in two
+    files grouped by behavior, so the path matches nothing and the task throws;
+    `Generate_External_Help_File_For_Public_Commands` fails because `platyPS`
+    cannot express the multi-line `ThrottleLimit` default as YAML. The wiki
+    cannot document the DSC resources until `source/Classes` is split one class
+    per file.
 - 2026-08-16: Rewrote the per-specification scope notes in `specs/README.md` as
     a list. Seventeen specifications had each appended one sentence to the same
     paragraph without re-wrapping it, leaving ragged source line breaks and an

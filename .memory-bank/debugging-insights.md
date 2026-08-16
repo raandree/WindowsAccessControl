@@ -7,6 +7,52 @@ source: implementation and test evidence
 
 # Debugging insights
 
+## DscResource.DocGenerator wants one DSC resource class per source file
+
+Adding the DSC Community wiki tasks failed on the first one.
+`Generate_Conceptual_Help` threw `Cannot bind argument to parameter 'Path'
+because it is null` from inside `Get-CommentBasedHelp`. The task finds the
+resource classes by parsing the built `.psm1`, then looks their source up as
+`Join-Path $SourcePath ('Classes/*{0}.ps1' -f $className)` and runs
+`Resolve-Path` on it. This module declares twenty resources in
+`010.WindowsAccessControlExactDescriptorResources.ps1` and
+`020.WindowsAccessControlAccessRuleResources.ps1`, grouped by behavior, so that
+wildcard matches nothing, `Resolve-Path` yields `$null`, and the binding fails.
+`Generate_Markdown_For_DSC_Resources` resolves the same way and fails the same
+way.
+
+Nothing in the message points at the file layout, so read the task source
+rather than the error. The fix is either splitting `source/Classes` one class
+per file, which is a source decision and not a pipeline one, or leaving both
+tasks out of the workflow.
+
+## platyPS cannot express a multi-line parameter default as YAML
+
+With the conceptual-help tasks removed,
+`Generate_External_Help_File_For_Public_Commands` failed with `Invalid yaml:
+expected simple key-value pairs` on `Add-NTFSAccessRule.md`. `New-MarkdownHelp`
+writes each parameter's metadata as a YAML block and puts the default value on
+the `Default value:` line verbatim. `ThrottleLimit` defaults to `[Math]::Max(1,
+[Math]::Min(8, [Environment]::ProcessorCount))` written across four lines, so
+the continuation lines are not key-value pairs and `New-ExternalHelp` rejects
+the block when it reads the markdown back.
+
+The generated markdown itself is fine; only the MAML conversion fails. Fifty-six
+commands declare that default. Writing it on one line would fix the conversion
+and also stop `Get-Help -Full` printing a mangled default, but it is a change to
+the module's public commands rather than to its pipeline.
+
+## Running the docs workflow twice without a Clean collides on filenames
+
+`build.ps1 -Tasks docs` on an `output/WikiContent` left over from an earlier run
+fails with `Cannot create a file when that file already exists` in
+`Prepare_Markdown_FileNames_For_GitHub_Publish`. That task renames
+`Add-ADObjectAccessRule.md` to a non-breaking-hyphen spelling, which GitHub's
+wiki needs, and the second run regenerates the ordinary spelling next to the
+renamed one. No task empties the folder. It is not a defect: `docs` only ever
+runs inside `pack`, after `build` has run `Clean`. Verify the workflow through
+`pack`, not through `docs` alone.
+
 ## A hosted build agent reports TEMP in its 8.3 short form
 
 Every `Build` run had failed since the workflow was added, always on the same

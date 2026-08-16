@@ -9,12 +9,26 @@ source: current task evidence
 
 ## Current focus
 
-The GitHub Actions build is fixed. It had never been green: every `Build` run on
-`main` failed, and both test jobs failed on the same four tests. The cause was
-not in the module. A hosted Windows runner reports `TEMP` in its 8.3 short form,
-`C:\Users\RUNNER~1\AppData\Local\Temp`, and the module reports the expanded
-name, so two suites that root their fixtures at that variable compared two
-spellings of the same directory. Each fixture root is now canonicalized once.
+The build now produces the repository wiki. A reader arriving from the
+PowerShell Gallery had no browsable reference: the only per-command
+documentation was the comment-based help, which has to be installed and run to
+be read. A `docs` workflow generates one page per public command from that same
+help, and the publish stage pushes the result to the wiki.
+
+What the wiki cannot yet carry is the DSC resources. The two
+`DscResource.DocGenerator` tasks that document them both resolve a resource's
+source file as `Classes/*<ClassName>.ps1`, and this module declares its twenty
+resources in two files grouped by behavior rather than one file per class, so
+the path matches nothing and the task throws. That is a source-layout decision,
+not a pipeline defect, and changing it is a separate piece of work.
+
+Before that, the GitHub Actions build was fixed. It had never been green: every
+`Build` run on `main` failed, and both test jobs failed on the same four tests.
+The cause was not in the module. A hosted Windows runner reports `TEMP` in its
+8.3 short form, `C:\Users\RUNNER~1\AppData\Local\Temp`, and the module reports
+the expanded name, so two suites that root their fixtures at that variable
+compared two spellings of the same directory. Each fixture root is now
+canonicalized once.
 
 The release step is what this unblocks. The publish job is `needs: [build,
 test]`, so it had been skipped on every run, which is why no tag exists on the
@@ -42,6 +56,14 @@ write being refused: the write is accepted and one of the two edits disappears.
 
 ## What changed
 
+- The `pack` workflow now runs a `docs` workflow between `build` and
+    `package_module_nupkg`, and `publish` ends with
+    `Publish_GitHub_Wiki_Content`. `DscResource.DocGenerator` and `platyPS` are
+    pinned in `RequiredModules.psd1` like every other build dependency.
+    `source/WikiSource/Home.md` is the authored landing page and is not copied
+    into the built module. `WikiContent.zip` is attached to the GitHub release
+    through `GitHubConfig.ReleaseAssets`, so the documentation of a given
+    version stays retrievable after the wiki has moved on.
 - The two integration suites that keep fixtures outside `TestDrive` canonicalize
     their root before deriving anything from it, so an assertion compares the
     path the module returns against the path the fixture created rather than
@@ -167,6 +189,8 @@ each needs an accepted requirement before the lab grows to carry it.
 
 The brand assets added on 2026-08-14 need no follow-up in code. The steps the
 repository cannot take for itself are all repository settings: uploading
-`assets/social-preview.png` under the social preview setting, and enabling
-private vulnerability reporting, without which the advisory link in
-`SECURITY.md` and in the issue chooser resolves to nothing for a reporter.
+`assets/social-preview.png` under the social preview setting, enabling private
+vulnerability reporting, without which the advisory link in `SECURITY.md` and in
+the issue chooser resolves to nothing for a reporter, and enabling the wiki and
+creating its first page, without which `Publish_GitHub_Wiki_Content` cannot
+clone it and the publish job fails.

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Generate and publish the repository wiki from the build. A reader arriving
+    from the PowerShell Gallery had no browsable reference: the only per-command
+    documentation was the comment-based help, which has to be installed and run
+    to be read. The `docs` workflow now writes one wiki page per public command
+    from that same help through `platyPS`, packages it as `WikiContent.zip`, and
+    attaches it to the GitHub release, and the publish stage pushes it to the
+    wiki. Two of the DSC Community tasks are deliberately absent:
+    `Generate_Conceptual_Help` and `Generate_Markdown_For_DSC_Resources` both
+    resolve a resource's source file as `Classes/*<ClassName>.ps1`, and this
+    module declares its twenty DSC resources in two files grouped by behavior
+    rather than one file per class, so neither can find them. Documenting the
+    resources in the wiki means splitting `source/Classes` first
 - Add the GitHub community files a public repository is read through: issue
     templates for a problem, a proposal, and a general question, a pull request
     template whose task list names this repository's own gates, `CODEOWNERS`,

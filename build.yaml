@@ -52,10 +52,40 @@ BuildWorkflow:
     - Build_NestedModules_ModuleBuilder
     - Create_changelog_release_output
 
+  # Wiki content for https://github.com/raandree/WindowsAccessControl/wiki. It is
+  # generated from the built module rather than hand-written, so it describes the
+  # version that is published: one page per public command from its comment-based
+  # help through platyPS, plus the hand-authored pages in 'source/WikiSource'.
+  #
+  # This expands the DscResource.DocGenerator metatask Generate_Wiki_Content and
+  # drops Generate_Markdown_For_DSC_Resources, and it omits Generate_Conceptual_Help
+  # for the same reason. Both resolve a resource's source file as
+  # 'Classes/*<ClassName>.ps1' and fail on a path that matches nothing. This module
+  # declares its twenty DSC resources in two files grouped by behavior, not one file
+  # per class, so no such path exists. Documenting the resources here means splitting
+  # 'source/Classes' one class per file first.
+  #
+  # Generate_External_Help_File_For_Public_Commands is dropped too. It converts the
+  # generated markdown into a MAML help file, and platyPS rejects the parameter block
+  # of every command that takes ThrottleLimit because its default value is a
+  # multi-line expression that does not survive as YAML. The wiki needs only the
+  # markdown, and the built module already carries the same help as comment-based
+  # help, so nothing is lost. Restoring the task means writing that default on one
+  # line in all 56 commands that declare it.
+  docs:
+    - Create_Wiki_Output_Folder
+    - Generate_Markdown_For_Public_Commands
+    - Prepare_Markdown_FileNames_For_GitHub_Publish
+    - Clean_Markdown_Of_Public_Commands
+    - Copy_Source_Wiki_Folder
+    - Clean_WikiContent_For_GitHub_Publish
+    - Generate_Wiki_Sidebar
+    - Clean_Markdown_Metadata
+    - Package_Wiki_Content
 
   pack:
     - build
-
+    - docs
     - package_module_nupkg
 
 
@@ -78,6 +108,7 @@ BuildWorkflow:
   publish:
     - Publish_Release_To_GitHub
     - Publish_Module_To_Gallery
+    - Publish_GitHub_Wiki_Content
 
 ####################################################
 #       PESTER  Configuration                      #
@@ -154,6 +185,8 @@ ModuleBuildTasks:
     - '*.build.Sampler.ib.tasks'
   Sampler.GitHubTasks:
     - '*.ib.tasks'
+  DscResource.DocGenerator:
+    - 'Task.*'
 
 
 
@@ -176,9 +209,24 @@ TaskHeader: |
 # Read by Publish_Release_To_GitHub and Create_ChangeLog_GitHub_PR.
 # UpdateChangelogOnPrerelease is false so only a stable release moves the
 # Unreleased section of CHANGELOG.md into a released section.
+# ReleaseAssets attaches the packaged wiki to the GitHub release, so the
+# documentation of a given version stays retrievable after the wiki has moved on.
 GitHubConfig:
   GitHubFilesToAdd:
     - CHANGELOG.md
+  ReleaseAssets:
+    - output/WikiContent.zip
   GitHubConfigUserName: raandree
   GitHubConfigUserEmail: raandree@users.noreply.github.com
   UpdateChangelogOnPrerelease: false
+
+####################################################
+#         DscResource.DocGenerator Configuration   #
+####################################################
+
+DscResource.DocGenerator:
+  Generate_Wiki_Sidebar:
+    Debug: false
+    AlwaysOverwrite: true
+  Publish_GitHub_Wiki_Content:
+    Debug: false

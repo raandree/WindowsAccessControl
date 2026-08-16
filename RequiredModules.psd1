@@ -20,6 +20,8 @@
     Sampler                     = '0.120.0'
     'Sampler.GitHubTasks'       = '0.4.1'
 
-
+    # Prerequisite modules for the wiki documentation tasks.
+    'DscResource.DocGenerator'  = '0.13.0'
+    platyPS                     = '0.14.2'
 
 }
