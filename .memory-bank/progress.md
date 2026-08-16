@@ -27,6 +27,18 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-08-16: Made the GitHub Actions build green. Every `Build` run on `main`
+    had failed since the workflow existed, and both test jobs failed on the same
+    four tests. A hosted Windows runner reports `TEMP` in its 8.3 short form
+    (`C:\Users\RUNNER~1\...`) while the module reports the expanded name, so the
+    NTFS path input matrix and the reparse point suites, which root their
+    fixtures at that variable, compared two spellings of the same directory. The
+    module was correct and the fixtures were not; each root is now canonicalized
+    once. Evidence: the failure was reproduced locally by pointing `TEMP` at a
+    real 8.3 alias (41 passed, 4 failed, the same four names as CI), the same
+    command passed after the change (45 passed, 0 failed), and the full gate is
+    green at 10 tasks, 0 errors, 0 warnings, 1,722 passed, 0 failed, with
+    asserted-scope coverage 91.09 percent over the 80 percent threshold.
 - 2026-08-15: Built the contribution surface a public repository is read
     through. `CONTRIBUTING.md` told a contributor to open an issue first while
     the issue form asked for nothing, so a report could arrive without the

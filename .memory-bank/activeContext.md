@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-15
+last-verified: 2026-08-16
 owner: active-agent
 source: current task evidence
 ---
@@ -9,15 +9,23 @@ source: current task evidence
 
 ## Current focus
 
-The module is being prepared for its first release. The engineering was ready;
-the packaging was not. The manifest declared `All rights reserved` and carried
-no `LicenseUri` and no `ProjectUri`, so the package could not be distributed and
-its Gallery entry would have named neither the terms nor the origin. The README
-documented building from source only, so a reader arriving from the Gallery had
-no supported way to install what they had just found.
+The GitHub Actions build is fixed. It had never been green: every `Build` run on
+`main` failed, and both test jobs failed on the same four tests. The cause was
+not in the module. A hosted Windows runner reports `TEMP` in its 8.3 short form,
+`C:\Users\RUNNER~1\AppData\Local\Temp`, and the module reports the expanded
+name, so two suites that root their fixtures at that variable compared two
+spellings of the same directory. Each fixture root is now canonicalized once.
 
-Three commits are on `origin/main`. The remaining step is the release tag, and
-nothing has been published yet.
+The release step is what this unblocks. The publish job is `needs: [build,
+test]`, so it had been skipped on every run, which is why no tag exists on the
+remote.
+
+Before that, the module was prepared for its first release. The engineering was
+ready; the packaging was not. The manifest declared `All rights reserved` and
+carried no `LicenseUri` and no `ProjectUri`, so the package could not be
+distributed and its Gallery entry would have named neither the terms nor the
+origin. The README documented building from source only, so a reader arriving
+from the Gallery had no supported way to install what they had just found.
 
 Before that, three of the six lab-specific gaps recorded on 2026-08-12 were
 closed with live evidence. The other three cannot be closed by lab work at all:
@@ -34,6 +42,12 @@ write being refused: the write is accepted and one of the two edits disappears.
 
 ## What changed
 
+- The two integration suites that keep fixtures outside `TestDrive` canonicalize
+    their root before deriving anything from it, so an assertion compares the
+    path the module returns against the path the fixture created rather than
+    against the environment variable it was read from. The four failing tests
+    were fixture defects, not module defects: expanding a short name is what a
+    canonical target should do.
 - The module is MIT licensed. `LICENSE` holds the terms, the copyright statement
     names them instead of reserving all rights, and `LicenseUri` and
     `ProjectUri` reach the built manifest.
@@ -125,14 +139,18 @@ write being refused: the write is accepted and one of the two edits disappears.
 
 ## Next step
 
-The first release is not cut. `GitVersion.yml` tags `main` as `preview` with
+Merge `ai/ci-canonical-temp-fixture-root` so `main` builds green, then cut the
+first release. `GitVersion.yml` tags `main` as `preview` with
 `next-version: 0.1.0`, so a build of `main` publishes a prerelease and the
 stable release needs its own `v0.1.0` tag. No tag exists on the remote yet, and
 `Publish_Release_To_GitHub` creates one on a successful main build, so the
-absence of a tag is the signal that the publish job has not completed. Check the
-workflow run before tagging, and confirm the `GitHubToken` and `GalleryApiToken`
-secrets exist, because the job fails closed on a missing secret rather than
-publishing a version without the tag the next build anchors on.
+absence of a tag followed from the test job failing rather than from a publish
+problem. Confirm the `GitHubToken` and `GalleryApiToken` secrets exist before
+the first green main build, because the job fails closed on a missing secret
+rather than publishing a version without the tag the next build anchors on.
+
+Three Dependabot pull requests for the pinned action versions failed on the same
+four tests and should pass once this branch is on `main`.
 
 `IconUri` is still unset; the owner is producing an icon. The Gallery needs a
 direct image URL rather than a repository page.

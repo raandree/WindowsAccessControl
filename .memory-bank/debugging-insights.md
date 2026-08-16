@@ -1,11 +1,31 @@
 ---
 status: current
-last-verified: 2026-07-28
+last-verified: 2026-08-16
 owner: software-engineer
 source: implementation and test evidence
 ---
 
 # Debugging insights
+
+## A hosted build agent reports TEMP in its 8.3 short form
+
+Every `Build` run had failed since the workflow was added, always on the same
+four tests and in both editions. A GitHub-hosted Windows runner sets `TEMP` to
+`C:\Users\RUNNER~1\AppData\Local\Temp`, and `Get-Item(...).FullName` expands a
+short component, so a fixture rooted at the raw variable and an assertion
+against a module-returned path compare two spellings of one directory. Both
+editions expand: .NET Framework and .NET normalize the same way, measured on
+`C:\PROGRA~1` under `powershell.exe` and `pwsh`.
+
+The failure reads as a module defect because the module is what returns the
+unexpected string. It is a fixture defect: canonicalize a path-shaped fixture
+root once, at creation, and derive everything from that.
+
+Reproduce it without a hosted agent. `fsutil 8dot3name query C:` says whether
+the volume creates short names; create a directory whose name exceeds 8.3, read
+its alias from `Scripting.FileSystemObject`'s `ShortPath`, and point `TEMP` at
+the alias for the run. That reproduced the same four failures locally and
+proved the fix on the same command.
 
 ## A PowerShell 7 path in the machine PSModulePath breaks every DSC resource
 
