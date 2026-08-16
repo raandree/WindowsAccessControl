@@ -27,6 +27,13 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-08-16: Rewrote the per-specification scope notes in `specs/README.md` as
+    a list. Seventeen specifications had each appended one sentence to the same
+    paragraph without re-wrapping it, leaving ragged source line breaks and an
+    unscannable rendered block that repeated the identity the status table above
+    it already carries. Each specification now owns one bullet, so the next one
+    adds an entry instead of lengthening a paragraph, and the `Draft`/`Accepted`
+    lifecycle sentence sits under the table it governs. No scope claim changed.
 - 2026-08-16: Made the GitHub Actions build green. Every `Build` run on `main`
     had failed since the workflow existed, and both test jobs failed on the same
     four tests. A hosted Windows runner reports `TEMP` in its 8.3 short form

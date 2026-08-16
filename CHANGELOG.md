@@ -204,6 +204,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Restructure the per-specification scope notes in `specs/README.md` into a
+    `Scope notes` list with one entry per specification. Each new specification
+    had appended a sentence to one shared paragraph without re-wrapping it, so
+    the source carried ragged line breaks and the rendered section had grown
+    into a seventeen-sentence block that repeated the identity the status table
+    above it already states. The status lifecycle sentence now sits under the
+    table it governs. No scope claim changed
 - Publish the module from the continuous integration pipeline. A build of the
     default branch, or of a stable `v*` tag, now packages the module, creates the
     GitHub release with the NuGet package attached, publishes to the PowerShell

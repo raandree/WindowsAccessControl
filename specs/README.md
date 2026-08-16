@@ -52,39 +52,45 @@ them.
 | 0016 | Active Directory multi-controller behavior | Accepted |
 | 0017 | Certificate private-key portability and desired state | Accepted |
 
-Specifications 0001 through 0005 describe the implemented 0.1.0 contract.
-Specification 0006 is the accepted contract for the implemented and verified
-registry-key, service/SCM, pinned-process, portability, bounded-execution, and
-DSC expansion. Specification 0007 accepts the implemented filesystem and
-registry-key descriptor-editing model, including opt-in optimistic concurrency.
-Specification 0008 is the accepted roadmap contract for the domain-lab-gated
-Task Scheduler, certificate private-key, SMB-share, and Active Directory
-expansion; it approves the entry gates, work packages, and boundaries rather
-than claiming that every package is implemented. Specification 0009 accepts
-the first SMB-share and Active Directory DACL-management increment without
-claiming replication work.
-Specification 0010 accepts local
-Task Scheduler folder and registered-task DACL descriptor management without
-claiming typed rules, portability, DSC, SACL, or direct remote APIs.
-Specification 0011 accepts a bounded local SID-derived SMB share-only result
-without a backing-NTFS, remote, or network-token claim. Specification 0012
-accepts read-only DACL
-inspection for an exact persisted RSA key in Microsoft Software Key Storage
-Provider without admitting mutation or broader provider support.
-Specification 0013 accepts schema-version-2 portability, server-qualified SMB
-canonical identity, and object-specific desired-state resources for the SMB
-share and Active Directory families, and records the accepted directory
-effective-access boundary. Specification 0014 extends the same portability and
-desired-state model to the Task Scheduler folder and registered-task families
-with computer-qualified canonical identity. Specification 0015 supersedes the
-read-only boundary of specification 0012 with fail-closed typed private-key DACL
-mutation for the software key storage provider. Specification 0016 records the
-multi-controller identity, replication, and pinned-controller outage behavior
-that specification 0009 deferred. Specification 0017 extends the portability and
-desired-state model to the certificate private-key family, addressing the key by
-provider, persisted key name, and key scope rather than by a certificate. A
-future change starts as `Draft` and
-becomes `Accepted` when approved.
+A future change starts as `Draft` and becomes `Accepted` when approved.
+
+## Scope notes
+
+- **0001-0005**: Describe the implemented 0.1.0 contract.
+- **0006**: The accepted contract for the implemented and verified registry-key,
+  service/SCM, pinned-process, portability, bounded-execution, and DSC
+  expansion.
+- **0007**: Accepts the implemented filesystem and registry-key
+  descriptor-editing model, including opt-in optimistic concurrency.
+- **0008**: The accepted roadmap contract for the domain-lab-gated Task
+  Scheduler, certificate private-key, SMB-share, and Active Directory expansion.
+  It approves the entry gates, work packages, and boundaries rather than
+  claiming that every package is implemented.
+- **0009**: Accepts the first SMB-share and Active Directory DACL-management
+  increment without claiming replication work.
+- **0010**: Accepts local Task Scheduler folder and registered-task DACL
+  descriptor management without claiming typed rules, portability, DSC, SACL, or
+  direct remote APIs.
+- **0011**: Accepts a bounded local SID-derived SMB share-only result without a
+  backing-NTFS, remote, or network-token claim.
+- **0012**: Accepts read-only DACL inspection for an exact persisted RSA key in
+  Microsoft Software Key Storage Provider without admitting mutation or broader
+  provider support.
+- **0013**: Accepts schema-version-2 portability, server-qualified SMB canonical
+  identity, and object-specific desired-state resources for the SMB share and
+  Active Directory families, and records the accepted directory effective-access
+  boundary.
+- **0014**: Extends the same portability and desired-state model to the Task
+  Scheduler folder and registered-task families with computer-qualified
+  canonical identity.
+- **0015**: Supersedes the read-only boundary of specification 0012 with
+  fail-closed typed private-key DACL mutation for the software key storage
+  provider.
+- **0016**: Records the multi-controller identity, replication, and
+  pinned-controller outage behavior that specification 0009 deferred.
+- **0017**: Extends the portability and desired-state model to the certificate
+  private-key family, addressing the key by provider, persisted key name, and
+  key scope rather than by a certificate.
 
 ## Architecture decisions
 
