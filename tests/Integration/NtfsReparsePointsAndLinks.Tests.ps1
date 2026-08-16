@@ -27,7 +27,10 @@ BeforeAll {
     # directory tree that contains one would delete through it, and a
     # self-referential junction would not terminate, so the fixtures live
     # outside TestDrive and are torn down link first.
-    $script:linkRoot = Join-Path -Path $env:TEMP -ChildPath (
+    # A hosted build agent reports TEMP in its 8.3 short form, and the module
+    # reports the expanded name, so the root is canonicalized before it is used.
+    $tempRoot = (Get-Item -LiteralPath $env:TEMP).FullName
+    $script:linkRoot = Join-Path -Path $tempRoot -ChildPath (
         'wac-links-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
     )
     $null = New-Item -Path $script:linkRoot -ItemType Directory -Force

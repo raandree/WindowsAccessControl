@@ -292,6 +292,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix the NTFS path input matrix and the reparse point suites failing on a
+    hosted build agent. Both root their fixtures at `TEMP`, and a GitHub-hosted
+    Windows runner reports that variable in its 8.3 short form
+    (`C:\Users\RUNNER~1\...`), while the module reports the expanded name the
+    file system provider hands back. Four tests therefore compared two
+    spellings of the same directory and failed on every build, in both
+    editions. Each fixture root is now canonicalized once, so an assertion
+    compares the path the module returns against the path the fixture created
+    rather than against the environment variable it was derived from
 - Fix a bounded-parallel batch silently dropping a target. A worker runspace
     re-invokes the public command with the already-bound parameters, and
     `WindowsAccessRightsTransformAttribute` was a PowerShell class: a class

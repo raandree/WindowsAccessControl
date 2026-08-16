@@ -22,7 +22,10 @@ BeforeAll {
     # A name that only exists untrimmed, and a path past MAX_PATH, cannot be
     # removed through a normalized path, so these fixtures stay out of TestDrive
     # and are deleted through the device namespace.
-    $script:hostileRoot = Join-Path -Path $env:TEMP -ChildPath (
+    # A hosted build agent reports TEMP in its 8.3 short form, and the module
+    # reports the expanded name, so the root is canonicalized before it is used.
+    $tempRoot = (Get-Item -LiteralPath $env:TEMP).FullName
+    $script:hostileRoot = Join-Path -Path $tempRoot -ChildPath (
         'wac-pathmatrix-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
     )
     $null = New-Item -Path $script:hostileRoot -ItemType Directory -Force
