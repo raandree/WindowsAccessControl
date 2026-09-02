@@ -22,9 +22,18 @@ wildcard matches nothing, `Resolve-Path` yields `$null`, and the binding fails.
 way.
 
 Nothing in the message points at the file layout, so read the task source
-rather than the error. The fix is either splitting `source/Classes` one class
-per file, which is a source decision and not a pipeline one, or leaving both
-tasks out of the workflow.
+rather than the error. Resolved on 2026-09-02 by splitting `source/Classes`
+one class per file as `NNN.<ClassName>.ps1`, which satisfies both lookup forms
+the generator tries, `Classes/???.<ClassName>.ps1` and `Classes/<ClassName>.ps1`.
+The class bodies and their merge order did not change.
+
+A second requirement only shows up once the lookup succeeds:
+`New-DscResourcePowerShellHelp` reads
+`$commentBasedHelp.Parameters[$propertyName.ToUpper()]`, so a class with no
+comment-based help block at all makes `Parameters` null and the task dies with
+`Cannot index into a null array`. A missing `.PARAMETER` for one property is
+harmless; a missing help block is not. The block must also be the first `<#` in
+the file, above the `[DscResource()]` attribute.
 
 ## platyPS cannot express a multi-line parameter default as YAML
 
@@ -38,9 +47,10 @@ the continuation lines are not key-value pairs and `New-ExternalHelp` rejects
 the block when it reads the markdown back.
 
 The generated markdown itself is fine; only the MAML conversion fails. Fifty-six
-commands declare that default. Writing it on one line would fix the conversion
-and also stop `Get-Help -Full` printing a mangled default, but it is a change to
-the module's public commands rather than to its pipeline.
+commands declared that default across four lines while the twenty enterprise
+commands already wrote the same expression on one. Resolved on 2026-09-02 by
+writing it on one line everywhere, which fixes the conversion and also stops
+`Get-Help -Full` printing a mangled default. The computed value is unchanged.
 
 ## Running the docs workflow twice without a Clean collides on filenames
 

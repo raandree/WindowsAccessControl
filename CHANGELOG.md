@@ -9,18 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Split the usage guide into a navigable set of task pages under `docs/usage/`
+    and give `docs/` its own `README.md` index. The guide had grown to roughly a
+    thousand lines covering ten object families in one file, so a reader who
+    managed one of them had to scroll past the other nine, and the `docs/`
+    folder itself listed four unexplained files. The guide is now the entry
+    point: it keeps the workflow table, a map of every page, the shape every
+    family shares, and the module's boundaries, and links to seventeen pages
+    that each stand on their own. New material the single file never carried
+    includes a page per object family, the verb semantics that separate `Add`
+    from `Set`, a support matrix of what each family exposes, a command
+    reference grouped by family, the rights enumerations, and an extended
+    troubleshooting page
+- Document the certificate private-key mutation, portability, and desired-state
+    surface in the usage guide. The guide still described the family as
+    read-only, which specification 0015 superseded, so the commands that grant a
+    service account access to a key, the gates that refuse a write, the
+    key-addressed parameter set, and the two DSC resources were undocumented
+    outside comment-based help
+- Document `Get-ADObjectSchemaDefaultAccessRule` and the `ExcludeSchemaDefault`
+    filter in the usage guide, which is how an operator separates the
+    delegation they configured from the entries a schema class applies to every
+    new object
+- Document the twenty DSC resources in the wiki, and ship their conceptual help
+    inside the module. The resources were the one part of the public surface a
+    reader could not look up anywhere: the wiki carried a page per command and
+    nothing for the resources, and `Get-Help about_WindowsAccessControlNtfsAccessRule`
+    returned nothing. Each class now carries comment-based help for its synopsis,
+    its description, and all 125 DSC properties, which is what both generators
+    read. `Generate_Markdown_For_DSC_Resources` writes one wiki page per resource
+    with a parameter table that states each property's attribute, data type,
+    description, and allowed values, and `Generate_Conceptual_Help` writes the
+    matching `about_<ResourceName>.help.txt` into the built module. The pages are
+    filed under their own `DSC resources` sidebar category rather than the
+    generator's `General` default
+- Ship a MAML external help file with the module. `Get-Help` for a public command
+    had only the comment-based help compiled into the merged module, so `-Full`
+    and `-Online` behaved differently from every other shipped module.
+    `Generate_External_Help_File_For_Public_Commands` now converts the generated
+    markdown into `en-US/WindowsAccessControl-help.xml`
+
 - Generate and publish the repository wiki from the build. A reader arriving
     from the PowerShell Gallery had no browsable reference: the only per-command
     documentation was the comment-based help, which has to be installed and run
     to be read. The `docs` workflow now writes one wiki page per public command
     from that same help through `platyPS`, packages it as `WikiContent.zip`, and
     attaches it to the GitHub release, and the publish stage pushes it to the
-    wiki. Two of the DSC Community tasks are deliberately absent:
-    `Generate_Conceptual_Help` and `Generate_Markdown_For_DSC_Resources` both
-    resolve a resource's source file as `Classes/*<ClassName>.ps1`, and this
-    module declares its twenty DSC resources in two files grouped by behavior
-    rather than one file per class, so neither can find them. Documenting the
-    resources in the wiki means splitting `source/Classes` first
+    wiki
 - Add the GitHub community files a public repository is read through: issue
     templates for a problem, a proposal, and a general question, a pull request
     template whose task list names this repository's own gates, `CODEOWNERS`,
@@ -216,6 +251,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Expand the comment-based help examples for `Add-ADObjectAccessRule` and its
+    sibling mutators `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, and
+    `Clear-ADObjectAccessRule`. Each command had carried only one or two basic
+    examples; they now also show granting rights to several accounts in one
+    write, scoping an ACE to a single attribute or extended right such as
+    Reset Password, an explicit deny rule, `RemovalMode Rights` subtraction,
+    and a piped batch across multiple distinguished names
+- Split `source/Classes` one class per file. The twenty DSC resources were
+    declared in two files grouped by behavior, and both DscResource.DocGenerator
+    documentation tasks resolve a resource's source as `Classes/???.<ClassName>.ps1`
+    or `Classes/<ClassName>.ps1`, so neither could find them and both had to be
+    dropped from the build. Each resource now has its own file named for it. The
+    class bodies are unchanged, and the order they are merged in is unchanged
+- Write the `ThrottleLimit` default on one line in the 56 commands that spread it
+    over four. platyPS serializes a parameter default into the `Default value`
+    field of the markdown YAML block, and a multi-line expression produced three
+    lines that are not `key: value`, which broke every page it appeared on and
+    made the external help file impossible to generate. The 20 enterprise commands
+    already wrote the same expression on one line, so this makes the whole module
+    consistent. The computed default is unchanged
 - Restructure the per-specification scope notes in `specs/README.md` into a
     `Scope notes` list with one entry per specification. Each new specification
     had appended a sentence to one shared paragraph without re-wrapping it, so

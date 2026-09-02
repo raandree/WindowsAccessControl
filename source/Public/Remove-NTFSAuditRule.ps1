@@ -115,10 +115,7 @@ function Remove-NTFSAuditRule {
 
         [Parameter()]
         [ValidateRange(1, 64)]
-        [int]$ThrottleLimit = [Math]::Max(
-            1,
-            [Math]::Min(8, [Environment]::ProcessorCount)
-        ),
+        [int]$ThrottleLimit = [Math]::Max(1, [Math]::Min(8, [Environment]::ProcessorCount)),
 
         [Parameter()]
         [switch]$PassThru
