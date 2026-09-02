@@ -52,6 +52,16 @@ function Remove-ADObjectAccessRule {
         Remove-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -RemovalMode All
 
         Purges every explicit directory ACE for one account inside the allowed OU.
+    .EXAMPLE
+        Remove-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights WriteProperty -RemovalMode Rights -Confirm:$false
+
+        Subtracts write-property from matching explicit ACEs for the account,
+        leaving any other rights on the same ACE in place.
+    .EXAMPLE
+        Remove-ADObjectAccessRule -DistinguishedName $ou -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights ReadProperty -ObjectType 'employeeID' -InheritedObjectType 'user' -InheritanceType Descendents -Confirm:$false
+
+        Removes only the employeeID-scoped read-property ACE, leaving a common
+        ReadProperty ACE for the same account untouched.
     .INPUTS
         WindowsAccessControl.ADObjectAccessRule
         System.String
