@@ -36,7 +36,7 @@ concurrency:
 jobs:
   build:
     name: Build module
-    runs-on: self-hosted
+    runs-on: windows-latest
     timeout-minutes: 30
     outputs:
       module-version: ${{ steps.calculate-version.outputs.module-version }}
@@ -79,7 +79,7 @@ jobs:
   test:
     name: Test with ${{ matrix.name }}
     needs: build
-    runs-on: self-hosted
+    runs-on: windows-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -164,7 +164,7 @@ jobs:
   publish:
     name: Publish module ${{ needs.build.outputs.module-version }}
     needs: [build, test]
-    runs-on: self-hosted
+    runs-on: windows-latest
     timeout-minutes: 30
     # Publish only from the upstream repository, and only for the default branch
     # or a version tag. A fork or a pull request never reaches the Gallery.
