@@ -104,6 +104,7 @@ FunctionsToExport = @(
     'Enable-RegistryKeyInheritance'
     'Enable-WindowsPrivilege'
     'Get-ADObjectAccessRule'
+    'Get-ADObjectCallerEffectiveAccess'
     'Get-ADObjectSchemaDefaultAccessRule'
     'Get-ADObjectSecurityDescriptor'
     'Get-CertificatePrivateKeyAccessRule'

@@ -7,6 +7,23 @@ source: implementation and test evidence
 
 # Debugging insights
 
+## The `test` workflow does not build, so it tests the last build
+
+A new public command's whole test file failed with `The term
+'Get-ADObjectCallerEffectiveAccess' is not recognized`, while the source file,
+the manifest export, and the parse were all correct. `build.yaml` defines
+`build` and `test` as separate workflows and `test` starts at
+`Pester_Tests_Stop_On_Fail`, so `./build.ps1 -Tasks test` runs Pester against
+whatever `output/module` already held. The repository's own VS Code `test` task
+has the same shape. Run `-Tasks build,test` after any source change.
+
+Two traps sit next to it. `-Tasks` is a `[string[]]`, so
+`Start-Process -ArgumentList '-File','.\build.ps1','-Tasks','build,test'`
+reaches Invoke-Build as one task named `build,test` and aborts with `Missing
+task`; pass the list through `-Command` instead. And the `Clean` task deletes
+`output/*`, so a detached run whose transcript is redirected into `output`
+fails on its own open log file. Redirect build logs outside `output`.
+
 ## DscResource.DocGenerator wants one DSC resource class per source file
 
 Adding the DSC Community wiki tasks failed on the first one.

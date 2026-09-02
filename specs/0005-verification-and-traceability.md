@@ -148,7 +148,7 @@ absent implementation.
 | AD-4 | Delivered for DACL descriptors and access rules | Inheritance provenance and resolved GUID names; audit-rule queries stay outside the accepted SACL boundary |
 | AD-5 | Delivered | Add, set, exact removal, rights removal, account purge, and clear proved against native descriptors with unrelated-ACE preservation |
 | AD-6 | Delivered for portability, concurrency, and replication | The FR-25 and NFR-20 evidence plus the replication convergence and concurrent-writer cases; directory inheritance and owner or group mutation stay outside the accepted boundary |
-| AD-7 | Deferred by ADR 0022 | The measured directory evidence in the decision record; no directory effective-access command exists |
+| AD-7 | Deferred by ADR 0022 | The measured directory evidence in the decision record; no command computes a directory access decision, and the caller-scoped constructed-attribute reader admitted by specification 0018 forwards the controller's own evaluation of the bound identity instead |
 | AD-8 | Delivered | The two specification 0013 directory DSC resources with contract, adapter, and live convergence evidence |
 | AD-9 | Delivered | The recorded independent directory security review with no unresolved Blocker or Major finding |
 
@@ -237,6 +237,7 @@ absent implementation.
 | `Get-ADObjectSecurityDescriptor` | 1 | Signed/sealed LDAP disposable-OU read | Explicit or discovered DC and immutable GUID binding |
 | `Set-ADObjectSecurityDescriptor` | 1 | Delegated disposable-OU DACL round trip | `WhatIf`, allowed-OU and protected-target rejection |
 | `Get-ADObjectAccessRule` | 1 | Common/object ACE enumeration in disposable OU | GUID and inheritance preservation, ancestor provenance, resolved schema names |
+| `Get-ADObjectCallerEffectiveAccess` | 1 | Constructed-attribute read in disposable OU | Caller-scoped context label and a delegated-versus-administrator difference in the same object |
 | `Add-ADObjectAccessRule` | 1 | Delegated object-specific ACE add | Non-Domain-Admin, idempotence, prevalidation, rollback |
 | `Remove-ADObjectAccessRule` | 1 | Exact object-ACE removal | GUID revalidation and stale-target rejection |
 | `Get-TaskFolderSecurityDescriptor` | 1 | Disposable local task-folder DACL | Local path and system-tree rejection |

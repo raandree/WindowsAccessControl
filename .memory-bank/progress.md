@@ -27,6 +27,28 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-09-02: Added `Get-ADObjectCallerEffectiveAccess`, the caller-scoped
+    constructed-attribute reader ADR 0022's consequences already allowed.
+    It issues one base-scope request for `allowedAttributesEffective`,
+    `allowedChildClassesEffective`, and `sDRightsEffective` and formats what the
+    controller returned; it computes nothing and exposes no `Account`
+    parameter, because no in-box interface asks a domain controller about
+    another principal. Specification 0018 records the contract and the four
+    write-side limits, and the documentation that promised no such command was
+    corrected in three places. Local gate green: build and test, 17 tasks, 0
+    errors, 0 warnings, 1,739 passed, 0 failed, 2 skipped; asserted coverage
+    82.45 percent over the 80 percent threshold, with the new LDAP read
+    declared domain-lab-only and measured at 0 percent locally as that
+    declaration requires.
+- 2026-09-02: Made payload deployment optional in the host-side domain-lab
+    acceptance runner. `-SkipPayloadDeployment` reuses the repository tree on
+    the management domain controller, while `-SkipPayload` remains compatible
+    and `-SkipDeployment` is accepted as a concise alias. The confirmation now
+    describes only the acceptance run when deployment is skipped, and the
+    documented unattended form adds `-Confirm:$false`. A focused contract suite
+    went red on the absent parameter, guard, and dynamic action, then passed 3
+    of 3 after the change; both changed PowerShell files pass PSScriptAnalyzer
+    with no errors or warnings.
 - 2026-08-16: Added a `docs` build workflow that generates the repository wiki
     from the built module and a `Publish_GitHub_Wiki_Content` step that pushes
     it, following the DSC Community pattern. One page per public command comes

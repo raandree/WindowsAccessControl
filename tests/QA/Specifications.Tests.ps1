@@ -137,6 +137,7 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             'WindowsAccessControl.ScheduledTaskAccessRule'
             'WindowsAccessControl.SmbShareEffectiveAccess'
             'WindowsAccessControl.ADObjectAccessRule'
+            'WindowsAccessControl.ADObjectCallerEffectiveAccess'
         )
 
         foreach ($typeName in $requiredTypes) {
@@ -153,6 +154,17 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         )
         $smbEffectiveColumns | Should -Contain 'AuthorizationContext'
         $smbEffectiveColumns | Should -Contain 'IncludesBackingNtfs'
+
+        $directoryEffectiveView = @(
+            $formatData.Configuration.ViewDefinitions.View |
+                Where-Object Name -EQ 'WindowsAccessControl.ADObjectCallerEffectiveAccess'
+        )
+        $directoryEffectiveColumns = @(
+            $directoryEffectiveView.TableControl.TableRowEntries.TableRowEntry.
+                TableColumnItems.TableColumnItem.PropertyName
+        )
+        $directoryEffectiveColumns | Should -Contain 'Account'
+        $directoryEffectiveColumns | Should -Contain 'AuthorizationContext'
 
         $accessRuleView = @(
             $formatData.Configuration.ViewDefinitions.View |

@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Allow domain-lab acceptance runs to reuse the payload already on the
+    management domain controller with `-SkipPayloadDeployment`. The existing
+    `-SkipPayload` spelling remains an alias, and `-SkipDeployment` provides a
+    concise equivalent. The confirmation action now describes only the
+    acceptance run when payload deployment is skipped
+- Add `Get-ADObjectCallerEffectiveAccess`, which reports the effective write
+    access a domain controller computes for the calling identity on a directory
+    object. It reads `allowedAttributesEffective`,
+    `allowedChildClassesEffective`, and `sDRightsEffective` in one base-scope
+    request and formats them, with the section mask reported both raw and as
+    `WindowsSecurityDescriptorSection`. The module computes nothing: these are
+    constructed attributes the controller evaluates in the security context of
+    the LDAP bind, which is also why the command exposes no `Account` parameter
+    and why `Credential` is the only way to evaluate another principal. ADR 0022
+    still defers a general directory effective-access claim, and its
+    consequences already allowed this reader; specification 0018 records the
+    contract and the four limits the three attributes carry, chief among them
+    that none of them reports read access
+
 - Split the usage guide into a navigable set of task pages under `docs/usage/`
     and give `docs/` its own `README.md` index. The guide had grown to roughly a
     thousand lines covering ten object families in one file, so a reader who

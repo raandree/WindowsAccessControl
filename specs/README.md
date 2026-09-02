@@ -29,6 +29,7 @@ them.
 15. [CNG private-key DACL mutation](0015-cng-private-key-dacl-mutation.md)
 16. [Active Directory multi-controller behavior](0016-active-directory-multi-controller-behavior.md)
 17. [Certificate private-key portability and desired state](0017-certificate-private-key-portability-and-desired-state.md)
+18. [Active Directory caller-scoped effective access](0018-active-directory-caller-effective-access.md)
 
 ## Status
 
@@ -51,6 +52,7 @@ them.
 | 0015 | CNG private-key DACL mutation | Accepted |
 | 0016 | Active Directory multi-controller behavior | Accepted |
 | 0017 | Certificate private-key portability and desired state | Accepted |
+| 0018 | Active Directory caller-scoped effective access | Accepted |
 
 A future change starts as `Draft` and becomes `Accepted` when approved.
 
@@ -91,6 +93,10 @@ A future change starts as `Draft` and becomes `Accepted` when approved.
 - **0017**: Extends the portability and desired-state model to the certificate
   private-key family, addressing the key by provider, persisted key name, and
   key scope rather than by a certificate.
+- **0018**: Accepts a caller-scoped reader for the three constructed attributes a
+  domain controller evaluates itself. It answers what the bound identity may
+  write, and does not reopen the directory effective-access claim ADR 0022
+  defers.
 
 ## Architecture decisions
 

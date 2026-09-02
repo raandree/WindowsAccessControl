@@ -4,8 +4,9 @@ Active Directory is the one family that crosses a machine boundary by design.
 Its commands bind LDAP directly to a domain controller, with Kerberos, signing,
 and sealing all mandatory.
 
-This family manages the DACL only. It exposes no SACL, no owner or group
-mutation, and no effective-access command.
+This family manages the DACL only. It exposes no SACL and no owner or group
+mutation. It computes no effective access either; it can only forward the
+answer the domain controller computes for the calling identity.
 
 ## Choose a domain controller
 
@@ -154,22 +155,60 @@ accounts when `Account` is supplied, and never touches an inherited ACE.
   it. Apply such a descriptor deliberately with
   `Set-ADObjectSecurityDescriptor`.
 
-## Why there is no directory effective-access command
+## Ask the domain controller what you may write
+
+```powershell
+Get-ADObjectCallerEffectiveAccess -DistinguishedName $targetDn
+```
+
+```text
+DistinguishedName             Account          WritableSections     Attributes ChildClasses Context
+-----------------             -------          ----------------     ---------- ------------ -------
+OU=Database,OU=Applications,… CONTOSO\alice    Owner, Group, Access         87           70 DomainControllerCallerScoped
+```
+
+The module computes none of that. It requests three constructed attributes and
+formats what the controller returned:
+
+| Attribute | Reported as |
+| --- | --- |
+| `allowedAttributesEffective` | `WritableAttribute`, `WritableAttributeCount` |
+| `allowedChildClassesEffective` | `CreatableChildClass`, `CreatableChildClassCount` |
+| `sDRightsEffective` | `SDRightsEffective`, `WritableDescriptorSection` |
+
+`WritableDescriptorSection` uses the module's own section vocabulary, where
+`Access` is the DACL and `Audit` is the SACL. The lists are sorted, so two
+results can be compared:
+
+```powershell
+(Get-ADObjectCallerEffectiveAccess -DistinguishedName $targetDn).WritableAttribute
+```
+
+### Read the four limits before you trust it
+
+- **It is scoped to the bind, and there is no `Account` parameter.** No in-box
+  interface asks a domain controller what somebody else may do. `Credential`
+  changes the bind and therefore changes the answer, which is the only
+  supported way to evaluate a different principal.
+- **It is a write-side answer.** Nothing here reports read access. A
+  confidential attribute you can read does not appear if you cannot write it.
+- **Extended rights are invisible.** Reset Password and the other
+  control-access rights have no representation in these three attributes, and a
+  validated write shows only as the attribute it governs.
+- **It is one controller at one moment.** A descriptor that has not replicated
+  yet produces a different answer elsewhere.
+
+## Why there is still no general effective-access command
 
 A domain controller decides directory access with the token it builds for a
 specific inbound authentication, plus directory-only rules such as confidential
 attributes, property sets, validated writes, and list-object mode. A locally
 constructed access check reproduces none of that, so a number the module
-computed would be confidently wrong.
+computed for an account you merely named would be confidently wrong.
 
-Use `Get-ADObjectAccessRule` to see who is granted what. When an authoritative
-answer for the calling identity is needed, read the domain controller's own
-caller-scoped constructed attributes:
-
-```powershell
-Get-ADObject -Identity $targetDn -Properties `
-    allowedAttributesEffective, allowedChildClassesEffective, sDRightsEffective
-```
+That is why the command above forwards the controller's own answer instead of
+producing one, and why `Get-ADObjectAccessRule` remains the way to see who is
+granted what.
 
 ## Concurrency and replication
 
@@ -224,6 +263,7 @@ domain rather than on the server name.
 | Descriptors | `Get-ADObjectSecurityDescriptor`, `Set-ADObjectSecurityDescriptor` |
 | Access rules | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule`, `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, `Clear-ADObjectAccessRule` |
 | Schema baseline | `Get-ADObjectSchemaDefaultAccessRule` |
+| Caller-scoped access | `Get-ADObjectCallerEffectiveAccess` |
 
 ## See also
 
@@ -231,3 +271,4 @@ domain rather than on the server name.
 - [Backup, restore, and copy](backup-and-restore.md)
 - [SMB share and Active Directory DACL management](../../specs/0009-smb-share-and-active-directory-dacl-management.md)
 - [Active Directory multi-controller behavior](../../specs/0016-active-directory-multi-controller-behavior.md)
+- [Active Directory caller-scoped effective access](../../specs/0018-active-directory-caller-effective-access.md)

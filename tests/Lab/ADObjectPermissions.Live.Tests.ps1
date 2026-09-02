@@ -181,6 +181,41 @@ Describe 'Active Directory object DACL commands' `
         @($explicit | Where-Object InheritedFrom) | Should -BeNullOrEmpty
     }
 
+    It 'Should forward the caller-scoped effective attributes the controller computed' {
+        $asAdministrator = Get-ADObjectCallerEffectiveAccess `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -ThrottleLimit 1
+
+        $asAdministrator.PSObject.TypeNames |
+            Should -Contain 'WindowsAccessControl.ADObjectCallerEffectiveAccess'
+        $asAdministrator.DistinguishedName | Should -BeExactly $script:targetOu
+        $asAdministrator.AuthorizationContext |
+            Should -BeExactly 'DomainControllerCallerScoped'
+        $asAdministrator.WritableAttributeCount | Should -BeGreaterThan 0
+        $asAdministrator.CreatableChildClassCount | Should -BeGreaterThan 0
+        $asAdministrator.SDRightsEffective | Should -BeGreaterThan 0
+        [int]$asAdministrator.WritableDescriptorSection |
+            Should -Be $asAdministrator.SDRightsEffective
+        @($asAdministrator.WritableAttribute | Sort-Object) |
+            Should -Be $asAdministrator.WritableAttribute
+
+        # The delegated operator holds WriteDacl and nothing else on this object,
+        # so a result that is truly the controller's own evaluation of the bind
+        # must differ from the administrator's.
+        $asOperator = Get-ADObjectCallerEffectiveAccess `
+            -Server $script:server `
+            -DistinguishedName $script:targetOu `
+            -Credential $script:credential `
+            -ThrottleLimit 1
+
+        $asOperator.Account | Should -BeExactly $script:credential.UserName
+        $asOperator.SDRightsEffective |
+            Should -BeLessThan $asAdministrator.SDRightsEffective
+        # DACL_SECURITY_INFORMATION, which is the WriteDacl the operator holds.
+        ($asOperator.SDRightsEffective -band 4) | Should -Be 4
+    }
+
     It 'Should reject configuration and schema partition reads' {
         foreach ($distinguishedName in @(
                 $script:configurationDn

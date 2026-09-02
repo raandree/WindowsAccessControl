@@ -94,3 +94,5 @@ Three facts follow from those numbers.
 - [Enterprise expansion](../0008-enterprise-access-control-expansion.md)
 - [SMB and AD DACL management](../0009-smb-share-and-active-directory-dacl-management.md)
 - [Remote and combined effective-access deferral](0017-defer-remote-and-combined-effective-access.md)
+- [Caller-scoped constructed-attribute reader](../0018-active-directory-caller-effective-access.md),
+  the later increment this record's consequences allow

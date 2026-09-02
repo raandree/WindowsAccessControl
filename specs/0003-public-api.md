@@ -118,6 +118,7 @@ Stable PowerShell type names identify module output:
 - `WindowsAccessControl.SmbShareAccessRule`
 - `WindowsAccessControl.SmbShareSecurityDescriptor`
 - `WindowsAccessControl.ADObjectAccessRule`
+- `WindowsAccessControl.ADObjectCallerEffectiveAccess`
 - `WindowsAccessControl.ADObjectSecurityDescriptor`
 - `WindowsAccessControl.Metric`
 
@@ -154,8 +155,9 @@ containing the normalized unsigned 32-bit native mask. `AccessRights` uses the
 object family's public enum; exact removal uses the preserved native ACE rather
 than reconstructing it from display properties.
 
-Every rule object also exposes `AccessRightsDisplay`, and both effective-access
-results expose `EffectiveRightsDisplay`. A .NET rights enum abandons every name
+Every rule object also exposes `AccessRightsDisplay`, and both Authz
+effective-access results expose `EffectiveRightsDisplay`. A .NET rights enum
+abandons every name
 and renders the whole mask as a signed integer as soon as one bit has no name,
 which is exactly what an inheritable entry that keeps its `GENERIC_*` bits
 produces. The display property reuses the enum rendering wherever the enum can
@@ -555,6 +557,7 @@ Specification 0017 owns portability and desired state for this family.
 | `Get-ADObjectSecurityDescriptor` | distinguished names | `ADObjectSecurityDescriptor` |
 | `Set-ADObjectSecurityDescriptor` | distinguished names | none / `ADObjectSecurityDescriptor` |
 | `Get-ADObjectAccessRule` | distinguished names | `ADObjectAccessRule` |
+| `Get-ADObjectCallerEffectiveAccess` | distinguished names | `ADObjectCallerEffectiveAccess` |
 | `Get-ADObjectSchemaDefaultAccessRule` | schema class names | `ADSchemaDefaultAccessRule` |
 | `Add-ADObjectAccessRule` | distinguished names | none / `ADObjectAccessRule` |
 | `Set-ADObjectAccessRule` | distinguished names | none / `ADObjectAccessRule` |
@@ -643,6 +646,15 @@ desired-state support arrived with specification 0013; ADR 0022 defers
 directory effective access, so the module never presents a locally constructed
 Authz result as a directory access decision.
 Exact removal is idempotent when the path-bound ACE is already absent.
+
+`Get-ADObjectCallerEffectiveAccess` does not reopen that deferral. It computes
+nothing: it names `allowedAttributesEffective`, `allowedChildClassesEffective`,
+and `sDRightsEffective` in a base-scope request and reports what the controller
+evaluated in the security context of the bind. It exposes no `Account`
+parameter, sets `AuthorizationContext` to `DomainControllerCallerScoped`, and
+reports the section mask both raw as `SDRightsEffective` and typed as
+`WritableDescriptorSection`. Specification 0018 owns the contract, including the
+write-side limits of the three attributes.
 
 ## Local impersonation
 

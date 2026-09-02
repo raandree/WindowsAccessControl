@@ -95,6 +95,7 @@ See [Active Directory objects](active-directory.md).
 | Descriptors | `Get-ADObjectSecurityDescriptor`, `Set-ADObjectSecurityDescriptor` |
 | Access rules | `Get-ADObjectAccessRule`, `Add-ADObjectAccessRule`, `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, `Clear-ADObjectAccessRule` |
 | Schema baseline | `Get-ADObjectSchemaDefaultAccessRule` |
+| Caller-scoped access | `Get-ADObjectCallerEffectiveAccess` |
 
 ## Task Scheduler
 

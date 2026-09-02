@@ -159,6 +159,7 @@ CodeCoverage:
   CodeCoverageMergedOutputFile: JaCoCo_merged.xml
   DomainLabCodeCoverageFile: tests/Lab/coverage/JaCoCo_coverage_DomainLab.xml
   DomainLabOnlySourcePath:
+    - Private/Get-WindowsADEffectiveAccessRecord.ps1
     - Private/Get-WindowsADObjectRecord.ps1
     - Private/Get-WindowsADRootDse.ps1
     - Private/Get-WindowsADRuleEnrichment.ps1

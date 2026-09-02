@@ -137,6 +137,8 @@ Knowing the boundaries early saves a wasted afternoon:
   independent security descriptor.
 - It does not compute Active Directory effective access, because only a domain
   controller can answer that question authoritatively.
+  `Get-ADObjectCallerEffectiveAccess` forwards the controller's own answer for
+  the calling identity instead of computing one.
 - It does not export private key material.
 - It does not author Group Policy, Central Access Policy, or Windows audit
   policy. A SACL decides what is eligible for auditing; audit policy decides

@@ -380,6 +380,34 @@
       </TableControl>
     </View>
     <View>
+      <Name>WindowsAccessControl.ADObjectCallerEffectiveAccess</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.ADObjectCallerEffectiveAccess</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>DistinguishedName</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>WritableSections</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Attributes</Label><Alignment>Right</Alignment></TableColumnHeader>
+          <TableColumnHeader><Label>ChildClasses</Label><Alignment>Right</Alignment></TableColumnHeader>
+          <TableColumnHeader><Label>Context</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>DistinguishedName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>Account</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>WritableDescriptorSection</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>WritableAttributeCount</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>CreatableChildClassCount</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AuthorizationContext</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
       <Name>WindowsAccessControl.ADSchemaDefaultAccessRule</Name>
       <ViewSelectedBy>
         <TypeName>WindowsAccessControl.ADSchemaDefaultAccessRule</TypeName>
