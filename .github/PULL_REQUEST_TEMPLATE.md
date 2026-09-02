@@ -55,7 +55,7 @@
       indexed in `specs/decisions/README.md`.
 - [ ] Comment-based help added or updated for every new or changed command,
       including a synopsis, a description, an example, and every parameter.
-- [ ] Documentation added or updated in `README.md` or `docs/usage-guide.md`.
+- [ ] Documentation added or updated in `README.md` or under `docs/`.
 - [ ] Unit tests added or updated, and a bug fix keeps a regression test that
       fails without the fix.
 - [ ] Integration or live tests added or updated where the behavior can only be

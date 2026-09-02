@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-16
+last-verified: 2026-09-02
 owner: active-agent
 source: current task evidence
 ---
@@ -9,18 +9,65 @@ source: current task evidence
 
 ## Current focus
 
-The build now produces the repository wiki. A reader arriving from the
-PowerShell Gallery had no browsable reference: the only per-command
-documentation was the comment-based help, which has to be installed and run to
-be read. A `docs` workflow generates one page per public command from that same
-help, and the publish stage pushes the result to the wiki.
+The usage guide had become the thing it was written to prevent. One file had
+grown to roughly a thousand lines across ten object families, so a reader who
+managed one of them scrolled past the other nine, and `docs/` itself listed
+four files with nothing to say which was which. The guide is now the entry
+point and seventeen pages under `docs/usage/` carry the detail, with
+`docs/README.md` as the folder index.
 
-What the wiki cannot yet carry is the DSC resources. The two
-`DscResource.DocGenerator` tasks that document them both resolve a resource's
-source file as `Classes/*<ClassName>.ps1`, and this module declares its twenty
-resources in two files grouped by behavior rather than one file per class, so
-the path matches nothing and the task throws. That is a source-layout decision,
-not a pipeline defect, and changing it is a separate piece of work.
+Splitting it exposed what the single file had stopped tracking. It still
+described the certificate private-key family as read-only, which specification
+0015 superseded: the mutation commands, the gates that refuse a write, the
+key-addressed parameter set, and the two desired-state resources were
+undocumented outside comment-based help. `Get-ADObjectSchemaDefaultAccessRule`
+and `ExcludeSchemaDefault` were undocumented as well, which is the difference
+between seeing the delegation an operator configured and seeing every entry a
+schema class applies to a new object.
+
+Every command, parameter, and enumeration value written into the new pages was
+read out of `source/` rather than carried over from the old text.
+
+Before that, `Add-ADObjectAccessRule`'s comment-based help carried one basic
+example, the same gap its sibling mutators had. Each of `Add-`, `Set-`,
+`Remove-`, and `Clear-ADObjectAccessRule` now also demonstrates a multi-account
+write, an attribute- or extended-right-scoped ACE (including the Reset Password
+delegation the Delegation of Control wizard grants), an explicit deny rule,
+and, where the command supports it, `RemovalMode Rights` subtraction or a
+piped multi-target batch. `Get-ADObjectAccessRule` already carried three
+varied examples and was left as-is. The QA suite's per-command SYNOPSIS,
+DESCRIPTION, and EXAMPLE checks (629 tests) pass unchanged against the rebuilt
+module.
+
+Before that, the generated documentation was completed. Three tasks had been
+left out of the `docs` workflow, each for a measured reason, and all three now
+run. The wiki carries a page per DSC resource beside the page per command, the
+module ships the matching `about_<ResourceName>.help.txt` conceptual help, and
+it ships a MAML external help file, so `Get-Help` behaves the way it does for
+any other published module.
+
+Two source changes unblocked them. `source/Classes` is split one class per file,
+because both DscResource.DocGenerator documentation tasks resolve a resource's
+source as `Classes/???.<ClassName>.ps1` or `Classes/<ClassName>.ps1`, and this
+module had declared its twenty resources in two files grouped by behavior. And
+the `ThrottleLimit` default is written on one line in the 56 commands that had
+spread it over four, because platyPS puts a parameter default on the
+`Default value:` line verbatim and a multi-line expression is not valid YAML.
+
+The classes also gained the comment-based help both generators read. That was
+not optional cosmetics: `New-DscResourcePowerShellHelp` indexes
+`$commentBasedHelp.Parameters`, so a class with no help block at all fails the
+task outright. All 125 DSC properties are described.
+
+Before that, the release readiness of the repository was assessed. The module
+and its packaging are ready; the release itself has never been cut. No tag
+exists locally or on the remote, and `Publish_Release_To_GitHub` creates one on
+a green main build, so nothing has been published.
+
+Before that, the build produced the repository wiki for the first time. A reader
+arriving from the PowerShell Gallery had no browsable reference: the only
+per-command documentation was the comment-based help, which has to be installed
+and run to be read.
 
 Before that, the GitHub Actions build was fixed. It had never been green: every
 `Build` run on `main` failed, and both test jobs failed on the same four tests.
@@ -56,14 +103,24 @@ write being refused: the write is accepted and one of the two edits disappears.
 
 ## What changed
 
-- The `pack` workflow now runs a `docs` workflow between `build` and
-    `package_module_nupkg`, and `publish` ends with
-    `Publish_GitHub_Wiki_Content`. `DscResource.DocGenerator` and `platyPS` are
-    pinned in `RequiredModules.psd1` like every other build dependency.
-    `source/WikiSource/Home.md` is the authored landing page and is not copied
-    into the built module. `WikiContent.zip` is attached to the GitHub release
-    through `GitHubConfig.ReleaseAssets`, so the documentation of a given
-    version stays retrievable after the wiki has moved on.
+- `source/Classes` holds one class per file, named `NNN.<ClassName>.ps1`. The
+    split was verified line for line against the two files it replaced before
+    they were deleted: 1,068 non-empty lines, identical and in the same order,
+    so the merged module carries the same code in the same sequence.
+- Every DSC resource class carries comment-based help with a synopsis, a
+    description, and a `.PARAMETER` entry for each of its DSC properties. The
+    block has to be the first `<#` in the file, above the `[DscResource()]`
+    attribute, or `Get-CommentBasedHelp` will not find it.
+- The `docs` workflow is the canonical `Generate_Wiki_Content` order again, with
+    `Generate_Conceptual_Help` ahead of it. That task writes into the built
+    module rather than into `source`, so it has to run after `build` and before
+    `package_module_nupkg`; `docs` sits exactly there inside `pack`.
+- `build.yaml` gives the resource pages a `DSC resources` sidebar category.
+    Without the metadata the sidebar generator files all twenty under its
+    `General` default, next to Home.
+- The `ThrottleLimit` default is one line in all 76 commands that declare it.
+    Fifty-six were changed; the twenty enterprise commands already wrote it that
+    way.
 - The two integration suites that keep fixtures outside `TestDrive` canonicalize
     their root before deriving anything from it, so an assertion compares the
     path the module returns against the path the fixture created rather than
@@ -161,8 +218,7 @@ write being refused: the write is accepted and one of the two edits disappears.
 
 ## Next step
 
-Merge `ai/ci-canonical-temp-fixture-root` so `main` builds green, then cut the
-first release. `GitVersion.yml` tags `main` as `preview` with
+Cut the first release. `GitVersion.yml` tags `main` as `preview` with
 `next-version: 0.1.0`, so a build of `main` publishes a prerelease and the
 stable release needs its own `v0.1.0` tag. No tag exists on the remote yet, and
 `Publish_Release_To_GitHub` creates one on a successful main build, so the
@@ -171,8 +227,13 @@ problem. Confirm the `GitHubToken` and `GalleryApiToken` secrets exist before
 the first green main build, because the job fails closed on a missing secret
 rather than publishing a version without the tag the next build anchors on.
 
+The wiki has to exist before the first publish. `Publish-WikiContent` clones
+`https://github.com/raandree/WindowsAccessControl.wiki.git`, and GitHub creates
+that repository only when the first wiki page is saved, so enabling the feature
+alone is not enough. The clone is anonymous; only the push carries the token.
+
 Three Dependabot pull requests for the pinned action versions failed on the same
-four tests and should pass once this branch is on `main`.
+four tests and should pass once the temp-path fix is on `main`.
 
 `IconUri` is still unset; the owner is producing an icon. The Gallery needs a
 direct image URL rather than a repository page.

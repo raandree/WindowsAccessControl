@@ -42,9 +42,11 @@ The unpublished package was renamed from `NTFSPermission`. See the
 [migration map](docs/migration-from-ntfspermission.md) for package, command, and
 output type changes.
 
-For task-oriented installation, safety, NTFS, registry, service, process,
-backup, diagnostics, batching, impersonation, and DSC examples, see the
-[usage guide](docs/usage-guide.md).
+For task-oriented installation, safety, NTFS, registry, service, process, SMB
+share, Active Directory, Task Scheduler, private-key, backup, diagnostics,
+batching, impersonation, and DSC examples, start at the
+[usage guide](docs/usage-guide.md). The
+[documentation index](docs/README.md) lists every page in `docs/`.
 
 ## Install
 
