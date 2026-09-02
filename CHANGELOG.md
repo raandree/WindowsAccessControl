@@ -27,7 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     consequences already allowed this reader; specification 0018 records the
     contract and the four limits the three attributes carry, chief among them
     that none of them reports read access
-
 - Split the usage guide into a navigable set of task pages under `docs/usage/`
     and give `docs/` its own `README.md` index. The guide had grown to roughly a
     thousand lines covering ten object families in one file, so a reader who

@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-15
+last-verified: 2026-09-02
 owner: active-agent
 source: repository evidence
 ---
@@ -16,17 +16,30 @@ DSC resources for the original five families, unattended domain-lab evidence,
 and fail-closed CNG private-key mutation are independently reviewed. OI-11,
 ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, OI-28, OI-29, and OI-30 are closed.
 The 80 percent coverage gate is met over the commands the test profile can
-execute, with current domain-lab evidence merged; ADR 0027 records the asserted
-scope and ADR 0025 keeps the threshold. The domain-lab acceptance runs in both
+execute; ADR 0027 records the asserted scope and ADR 0025 keeps the threshold.
+The domain-lab document currently measures the previous build, so the identity
+guard refuses it and the merged number is not available until the lab
+acceptance is rerun. The domain-lab acceptance runs in both
 supported PowerShell editions over eight suites, and also against the installed
 package rather than only the build output. OI-31 is the only remaining
 issue, and only its enumeration-identity half is still open.
 Every numbered specification is Accepted; 0008 was the last Draft.
+The wiki documents every public command and every DSC resource, and the module
+ships conceptual and external help.
 The package is licensed, documented, and ready to release; the `v0.1.0` tag is
 not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-09-02: Merged `ai/document-dsc-resources-and-external-help` into `main`,
+    retaining the later Active Directory caller-effective-access and lab-runner
+    records while integrating the DSC class split and generated-help workflow.
+    The combined `build`, `docs`, and `test` gate passed 30 tasks with 0 errors
+    and 0 warnings: 1,737 tests passed, 0 failed, 2 skipped, and asserted local
+    coverage was 82.45 percent. The build produced 20 DSC resource pages, 20
+    resource conceptual-help files plus the module conceptual-help file, and
+    the MAML external-help file. The four pre-existing lab-runner worktree paths
+    were restored after the merge and remain uncommitted.
 - 2026-09-02: Added `Get-ADObjectCallerEffectiveAccess`, the caller-scoped
     constructed-attribute reader ADR 0022's consequences already allowed.
     It issues one base-scope request for `allowedAttributesEffective`,
@@ -49,6 +62,40 @@ not cut and nothing is published.
     went red on the absent parameter, guard, and dynamic action, then passed 3
     of 3 after the change; both changed PowerShell files pass PSScriptAnalyzer
     with no errors or warnings.
+- 2026-09-02: Completed the generated documentation. Three DscResource.DocGenerator
+    tasks had been left out of the `docs` workflow and all three now run, so the
+    wiki carries a page per DSC resource beside the page per command, the module
+    ships the matching `about_<ResourceName>.help.txt`, and it ships a MAML
+    external help file. Two source changes unblocked them, both mechanical and
+    neither changing behavior: `source/Classes` is split one class per file as
+    `NNN.<ClassName>.ps1`, which is what both resource tasks resolve, and the
+    `ThrottleLimit` default is written on one line in the 56 commands that had
+    spread it over four, which is what platyPS can serialize. The classes also
+    gained the comment-based help both generators read, covering all 125 DSC
+    properties; without a help block at all the conceptual-help task dies on a
+    null index rather than producing an empty page. Evidence: the split was
+    verified line for line against the two files it replaced, 1,068 non-empty
+    lines identical and in order; the merged module's type and function surface
+    is identical to the pre-change build and in the same order, 385 entries;
+    `-Tasks build, docs` green at 20 tasks, 0 errors, 0 warnings, producing 20
+    resource pages, 20 conceptual help files, and a 1.8 MB
+    `WindowsAccessControl-help.xml`; and `-Tasks test` green at 10 tasks, 0
+    errors, 1,722 passed, 0 failed, 2 skipped. The asserted coverage is 82.42
+    percent over the 80 percent threshold from local evidence alone, because the
+    identity guard refused the domain-lab document: it measures the previous
+    build, so the lab acceptance has to be rerun to restore the merged number.
+
+- 2026-09-02: Split the usage guide into `docs/usage-guide.md` as a navigation
+    hub plus seventeen task pages under `docs/usage/`, and added
+    `docs/README.md` as the folder index. The single file had reached roughly a
+    thousand lines covering ten object families. The split also corrected the
+    two places the guide had fallen behind the code: the certificate
+    private-key family was still described as read-only although specification
+    0015 superseded that boundary, and `Get-ADObjectSchemaDefaultAccessRule`
+    with `ExcludeSchemaDefault` was undocumented. Every command name,
+    parameter, `ValidateSet` value, and rights enumeration member in the new
+    pages was verified against `source/` before it was written, and a link
+    check confirms every relative link in `docs/` resolves.
 - 2026-08-16: Added a `docs` build workflow that generates the repository wiki
     from the built module and a `Publish_GitHub_Wiki_Content` step that pushes
     it, following the DSC Community pattern. One page per public command comes

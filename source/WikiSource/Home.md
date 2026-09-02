@@ -9,9 +9,10 @@ certificate private-key commands turn common DACL, SACL, owner, inheritance,
 backup, and effective-access operations into composable commands without
 requiring callers to manipulate .NET access-control objects directly.
 
-The command pages in this wiki are generated from the module itself on every
-release. They come from each command's comment-based help, so they describe the
-version that is published rather than a separately maintained copy.
+The command and DSC resource pages in this wiki are generated from the module
+itself on every release. They come from the comment-based help in the source, so
+they describe the version that is published rather than a separately maintained
+copy.
 
 Please leave comments, feature requests, and bug reports in the
 [issues section](https://github.com/raandree/WindowsAccessControl/issues) for
@@ -41,14 +42,14 @@ Get-DscResource -Module WindowsAccessControl
 
 - The command pages in the sidebar document every public command, its
   parameters, and its examples.
+- The DSC resource pages in the sidebar document every resource and its
+  properties. The `Desired State Configuration` section of the
+  [README](https://github.com/raandree/WindowsAccessControl/blob/main/README.md)
+  explains how the resources are meant to be used together.
 - [`docs/usage-guide.md`](https://github.com/raandree/WindowsAccessControl/blob/main/docs/usage-guide.md)
-  walks through the common tasks end to end.
-- The migration guide in
-  [`docs/`](https://github.com/raandree/WindowsAccessControl/tree/main/docs)
-  maps the `NTFSSecurity` commands onto this module.
-- The DSC resources are documented in the `Desired State Configuration` section
-  of the
-  [README](https://github.com/raandree/WindowsAccessControl/blob/main/README.md).
+  walks through the common tasks and links to a page for each object family.
+- The [`docs/`](https://github.com/raandree/WindowsAccessControl/tree/main/docs)
+  index lists every guide, including the migration map from `NTFSSecurity`.
 - The [`specs/`](https://github.com/raandree/WindowsAccessControl/tree/main/specs)
   folder records the accepted behavior, including the cases the module
   deliberately refuses.

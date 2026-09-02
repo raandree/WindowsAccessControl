@@ -54,29 +54,22 @@ BuildWorkflow:
 
   # Wiki content for https://github.com/raandree/WindowsAccessControl/wiki. It is
   # generated from the built module rather than hand-written, so it describes the
-  # version that is published: one page per public command from its comment-based
-  # help through platyPS, plus the hand-authored pages in 'source/WikiSource'.
+  # version that is published: one page per public command and one per DSC
+  # resource, plus the hand-authored pages in 'source/WikiSource'.
   #
-  # This expands the DscResource.DocGenerator metatask Generate_Wiki_Content and
-  # drops Generate_Markdown_For_DSC_Resources, and it omits Generate_Conceptual_Help
-  # for the same reason. Both resolve a resource's source file as
-  # 'Classes/*<ClassName>.ps1' and fail on a path that matches nothing. This module
-  # declares its twenty DSC resources in two files grouped by behavior, not one file
-  # per class, so no such path exists. Documenting the resources here means splitting
-  # 'source/Classes' one class per file first.
-  #
-  # Generate_External_Help_File_For_Public_Commands is dropped too. It converts the
-  # generated markdown into a MAML help file, and platyPS rejects the parameter block
-  # of every command that takes ThrottleLimit because its default value is a
-  # multi-line expression that does not survive as YAML. The wiki needs only the
-  # markdown, and the built module already carries the same help as comment-based
-  # help, so nothing is lost. Restoring the task means writing that default on one
-  # line in all 56 commands that declare it.
+  # This is the DscResource.DocGenerator metatask Generate_Wiki_Content in its
+  # canonical order, with Generate_Conceptual_Help ahead of it and the three
+  # Sampler wiki tasks after it. Generate_Conceptual_Help writes the
+  # about_<ResourceName>.help.txt files into the built module, so it has to run
+  # after 'build' and before 'package_module_nupkg' for them to reach the package.
   docs:
+    - Generate_Conceptual_Help
     - Create_Wiki_Output_Folder
     - Generate_Markdown_For_Public_Commands
+    - Generate_External_Help_File_For_Public_Commands
     - Prepare_Markdown_FileNames_For_GitHub_Publish
     - Clean_Markdown_Of_Public_Commands
+    - Generate_Markdown_For_DSC_Resources
     - Copy_Source_Wiki_Folder
     - Clean_WikiContent_For_GitHub_Publish
     - Generate_Wiki_Sidebar
@@ -226,6 +219,12 @@ GitHubConfig:
 ####################################################
 
 DscResource.DocGenerator:
+  Generate_Markdown_For_DSC_Resources:
+    # Without this the twenty resource pages carry no category and the sidebar
+    # generator files them all under its 'General' default, next to Home.
+    ClassResourceMetadata:
+      Type: ClassResource
+      Category: DSC resources
   Generate_Wiki_Sidebar:
     Debug: false
     AlwaysOverwrite: true
