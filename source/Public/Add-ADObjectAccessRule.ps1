@@ -40,6 +40,40 @@ function Add-ADObjectAccessRule {
         Add-ADObjectAccessRule -Server dc01.example.test -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights ReadProperty -WhatIf
 
         Previews adding an explicit read-property ACE inside the allowed OU.
+    .EXAMPLE
+        Add-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights 'ReadProperty, WriteProperty' -Confirm:$false -PassThru
+
+        Grants read and write property rights through an automatically located
+        writable domain controller and returns the stored ACE.
+    .EXAMPLE
+        Add-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account 'CONTOSO\Analysts', 'CONTOSO\Auditors' -AccessRights ReadProperty -Confirm:$false
+
+        Adds the same read-property ACE for two groups with one LDAP write.
+    .EXAMPLE
+        Add-ADObjectAccessRule -DistinguishedName $ou -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights 'ReadProperty, WriteProperty' -ObjectType 'employeeID' -InheritanceType Descendents -InheritedObjectType 'user' -Confirm:$false
+
+        Delegates read and write access to only the employeeID attribute on
+        every descendant user object, without granting any other property.
+    .EXAMPLE
+        Add-ADObjectAccessRule -DistinguishedName $ou -AllowedBaseDistinguishedName $ou -Account 'CONTOSO\HelpDesk' -AccessRights ExtendedRight -ObjectType 'Reset Password' -InheritanceType Descendents -InheritedObjectType 'user' -Confirm:$false
+
+        Delegates the Reset Password extended right to the help desk group on
+        every descendant user object, the same scope the Delegation of Control
+        wizard grants.
+    .EXAMPLE
+        Add-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account 'CONTOSO\Contractors' -AccessRights GenericAll -AccessControlType Deny -Confirm:$false
+
+        Adds an explicit deny rule that blocks the contractors group from
+        every right on the object. An inherited allow rule for the same group
+        is not removed by this command, so review Get-ADObjectAccessRule
+        before relying on the deny to be the deciding ACE.
+    .EXAMPLE
+        Get-ADObject -SearchBase $ou -Filter "objectClass -eq 'organizationalUnit'" |
+            Select-Object -ExpandProperty DistinguishedName |
+            Add-ADObjectAccessRule -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights ReadProperty -ThrottleLimit 4 -Confirm:$false
+
+        Grants the same read-property ACE to every organizational unit under
+        the allowed OU, processing up to four targets concurrently.
     .INPUTS
         System.String
     .OUTPUTS

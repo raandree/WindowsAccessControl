@@ -32,6 +32,17 @@ function Clear-ADObjectAccessRule {
         Clear-ADObjectAccessRule -Server dc01.example.test -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -WhatIf
 
         Previews removing every explicit ACE for one account inside the allowed OU.
+    .EXAMPLE
+        Clear-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -WhatIf
+
+        Previews removing every explicit ACE from the object, including ACEs
+        for accounts not named in this command. Inherited ACEs and the guard
+        against leaving no principal able to manage the object still apply.
+    .EXAMPLE
+        Clear-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account 'CONTOSO\FormerContractors', 'CONTOSO\Legacy' -Confirm:$false -PassThru
+
+        Removes every explicit ACE for two accounts and returns what was
+        removed, including any deny rule.
     .INPUTS
         System.String
     .OUTPUTS

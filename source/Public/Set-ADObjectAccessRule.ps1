@@ -42,6 +42,21 @@ function Set-ADObjectAccessRule {
         Set-ADObjectAccessRule -Server dc01.example.test -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights ReadProperty -WhatIf
 
         Previews replacing every explicit common ACE for the account inside the allowed OU.
+    .EXAMPLE
+        Set-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account 'CONTOSO\Analysts', 'CONTOSO\Auditors' -AccessRights 'ReadProperty, WriteProperty' -Confirm:$false
+
+        Replaces the common ACE for two groups with the same replacement rights.
+    .EXAMPLE
+        Set-ADObjectAccessRule -DistinguishedName $ou -AllowedBaseDistinguishedName $ou -Account $sid -AccessRights ReadProperty -ObjectType 'employeeID' -InheritanceType Descendents -InheritedObjectType 'user' -Confirm:$false
+
+        Replaces every explicit employeeID-scoped ACE for the account with a
+        single read-only ACE, leaving ACEs scoped to other attributes and any
+        common ACE for the same account untouched.
+    .EXAMPLE
+        Set-ADObjectAccessRule -DistinguishedName $dn -AllowedBaseDistinguishedName $ou -Account 'CONTOSO\Contractors' -AccessRights WriteProperty -AccessControlType Deny -Confirm:$false -PassThru
+
+        Replaces the contractors group's explicit deny ACE so it denies only
+        write-property, and returns the stored rule.
     .INPUTS
         System.String
     .OUTPUTS
