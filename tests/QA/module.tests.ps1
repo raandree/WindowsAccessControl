@@ -24,15 +24,21 @@ BeforeDiscovery {
         reference to the first one (OI-31). That leaves this suite dependent on
         how the module was already loaded, so say so here rather than letting
         every discovery-driven quality gate fail one by one.
+
+        The comparison is against what the manifest declares rather than against
+        the format files, so it still holds if FormatsToProcess ever changes.
     #>
-    if (-not (Get-Module -Name $script:moduleName).ExportedFormatFiles)
+    $available = Get-Module -Name $script:moduleName -ListAvailable | Select-Object -First 1
+    $loaded = Get-Module -Name $script:moduleName
+    if ($loaded.ExportedFunctions.Count -ne $available.ExportedFunctions.Count)
     {
         throw (
-            "'$script:moduleName' is loaded from its root module rather than its manifest, " +
-            'so it exports every private function and carries no format data. A ' +
-            'documentation task loads it that way, which means the docs and test ' +
-            'workflows are sharing one process. Run them separately, as build.yaml and ' +
-            'the CI workflow do.'
+            "'$script:moduleName' exports $($loaded.ExportedFunctions.Count) functions " +
+            "where its manifest declares $($available.ExportedFunctions.Count), so it was " +
+            'loaded from its root module rather than through the manifest and carries no ' +
+            'format data either. A documentation task loads it that way, so check whether ' +
+            'the docs and test workflows are sharing one process; build.yaml puts docs in ' +
+            'pack and the CI workflow runs them as separate jobs.'
         )
     }
 }

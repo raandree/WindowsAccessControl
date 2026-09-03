@@ -18,6 +18,7 @@ Describe 'NTFS batch execution' -Tag 'Integration', 'WindowsOnly' {
         $beforeOperations = if ($before) { $before.OperationCount } else { 0 }
         $beforeTargets = if ($before) { $before.TargetCount } else { 0 }
         $beforeSuccesses = if ($before) { $before.SuccessCount } else { 0 }
+        $beforeFailures = if ($before) { $before.FailureCount } else { 0 }
 
         $result = @(Get-NTFSItemOwner `
             -Path @($first, $wildcard) `
@@ -31,7 +32,7 @@ Describe 'NTFS batch execution' -Tag 'Integration', 'WindowsOnly' {
         $after.OperationCount - $beforeOperations | Should -Be 1
         $after.TargetCount - $beforeTargets | Should -Be 2
         $after.SuccessCount - $beforeSuccesses | Should -Be 2
-        $after.FailureCount | Should -Be 0
+        $after.FailureCount - $beforeFailures | Should -Be 0
     }
 
     It 'Should reject an invalid batch before dispatching any target' {

@@ -43,6 +43,7 @@ Describe 'Registry key security descriptors' -Tag 'Integration', 'WindowsOnly' {
         $beforeOperations = if ($before) { $before.OperationCount } else { 0 }
         $beforeTargets = if ($before) { $before.TargetCount } else { 0 }
         $beforeSuccesses = if ($before) { $before.SuccessCount } else { 0 }
+        $beforeFailures = if ($before) { $before.FailureCount } else { 0 }
 
         $result = @(Get-RegistryKeySecurityDescriptor `
             -Path @($script:keyPath, $script:keyPath, $script:childPath) `
@@ -57,7 +58,7 @@ Describe 'Registry key security descriptors' -Tag 'Integration', 'WindowsOnly' {
         $after.OperationCount - $beforeOperations | Should -Be 1
         $after.TargetCount - $beforeTargets | Should -Be 2
         $after.SuccessCount - $beforeSuccesses | Should -Be 2
-        $after.FailureCount | Should -Be 0
+        $after.FailureCount - $beforeFailures | Should -Be 0
     }
 
     It 'Set-RegistryKeySecurityDescriptor should round-trip a selected DACL' {

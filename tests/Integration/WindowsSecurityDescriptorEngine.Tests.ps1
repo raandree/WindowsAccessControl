@@ -71,12 +71,13 @@ Describe 'Windows security descriptor engine' -Tag 'Integration', 'WindowsOnly' 
             $accelerators::Add('WindowsRegistryView', [string])
 
             Import-Module -Name $ManifestPath -ErrorAction Stop
-            $replaced = $accelerators::Get['WindowsRegistryView'] -ne [string]
+            $replacement = $accelerators::Get['WindowsRegistryView']
 
             Remove-Module -Name 'WindowsAccessControl' -Force
 
             [pscustomobject]@{
-                ReplacedForeignAccelerator = $replaced
+                ReplacedForeignAccelerator = $replacement -ne [string]
+                ReplacementTypeName = $replacement.FullName
                 RemovedOwnAcceleratorOnUnload =
                     -not $accelerators::Get.ContainsKey('WindowsRegistryView')
             }
@@ -84,9 +85,11 @@ Describe 'Windows security descriptor engine' -Tag 'Integration', 'WindowsOnly' 
 
         try {
             Wait-Job -Job $job -Timeout 120 | Should -Not -BeNullOrEmpty
-            $result = Receive-Job -Job $job
+            $result = Receive-Job -Job $job -ErrorAction Stop
 
-            $result.ReplacedForeignAccelerator | Should -BeTrue
+            $result.ReplacedForeignAccelerator | Should -BeTrue -Because (
+                "the accelerator still resolves to '$($result.ReplacementTypeName)'"
+            )
             $result.RemovedOwnAcceleratorOnUnload | Should -BeTrue
         } finally {
             Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
