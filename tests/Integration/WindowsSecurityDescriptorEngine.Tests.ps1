@@ -75,9 +75,18 @@ Describe 'Windows security descriptor engine' -Tag 'Integration', 'WindowsOnly' 
 
             Remove-Module -Name 'WindowsAccessControl' -Force
 
+            # Reported so a failure names what the accelerator resolves to. It
+            # is null when nothing is registered under that name at all, which
+            # is a different failure from resolving to the wrong type.
+            $replacementTypeName = '<not registered>'
+            if ($replacement)
+            {
+                $replacementTypeName = $replacement.FullName
+            }
+
             [pscustomobject]@{
-                ReplacedForeignAccelerator = $replacement -ne [string]
-                ReplacementTypeName = $replacement.FullName
+                ReplacedForeignAccelerator    = $replacement -ne [string]
+                ReplacementTypeName           = $replacementTypeName
                 RemovedOwnAcceleratorOnUnload =
                     -not $accelerators::Get.ContainsKey('WindowsRegistryView')
             }

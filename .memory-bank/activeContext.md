@@ -45,9 +45,10 @@ reading a second copy. What is named is the precondition, a second read of the
 module file, and removing every test-authored one closes every trigger the
 test suite can reach. It does not close them all: the module's own
 `Invoke-WindowsAccessControlBatch` imports the manifest into a runspace pool in
-the same process on any bounded batch above a throttle limit of one. That read
-was measured benign, because a full gate ends with one live copy, but it is why
-the gate now asserts the copy count rather than trusting the rules.
+the same process whenever a bounded batch has both a throttle limit above one
+and more than one target. Measured against a pool built the same way, that read
+yields one live copy throughout, so it is benign rather than merely invisible,
+and it is why the build asserts the copy count rather than trusting the rules.
 
 The gate suites now do that. `tests/QA`, `tests/Unit`, and `tests/Integration`
 import the module without `-Force`, which is a no-op once it is loaded, and no
@@ -140,13 +141,13 @@ The review was scoped to test integrity rather than classic security, and it
 found two things the green gate could not.
 
 The first is that the invariant was overstated. `Invoke-WindowsAccessControlBatch`
-imports the manifest into a runspace pool in the same process on any bounded
-batch above a throttle limit of one, so the module reads its own file even after
-every test-authored read is gone. Measured benign, one live copy at the end of a
-full gate, but the changelog, the guard header and two entries here all claimed
-a second compilation was structurally impossible. A guard that watches only the
-call sites you thought of needs an end-to-end assertion behind it, which is now
-`Assert_Single_Module_Compilation` in the `test` workflow.
+imports the manifest into a runspace pool in the same process whenever a bounded
+batch has both a throttle limit above one and more than one target, so the
+module reads its own file even after every test-authored read is gone. The
+changelog, the guard header and two entries here all claimed a second
+compilation was structurally impossible. A guard that watches only the call
+sites you thought of needs an end-to-end assertion behind it, which is now an
+`Exit-Build` block in `.build/ModuleCompilation.build.ps1`.
 
 The second is that the guard was blind to the file the defect lived in.
 `tests/QA/module.tests.ps1` contains no occurrence of the module name, so the
@@ -168,10 +169,40 @@ consistency rather than as a demonstrated defect.
     tests in 163 containers before, 1,744 in 164 after. Exactly two removed, the
     two QA tests deliberately replaced, and four added. No test silently stopped
     being discovered.
-- The gate passes at 18 tasks with the new assertion task reporting one runtime
-    copy of both probe types: 1,742 passed, 0 failed, 2 skipped, 81.92 percent
+- The gate passes at 17 tasks with the exit block reporting one runtime copy of
+    all 35 module-defined types: 1,742 passed, 0 failed, 2 skipped, 81.92 percent
     asserted coverage.
 - A Windows PowerShell 5.1 run of the DSC suites, the path that copies the
     module to the machine module path, also ends at one copy. That run had 30 of
     40 tests failing outside the Sampler environment, so it exercises the path
     less than a real gate would.
+
+## What the second independent review changed
+
+It approved with comments and found one thing the green gate could not: the
+assertion it had just asked for did not measure what it claimed.
+
+The task never called `Set-SamplerTaskVariable`, so `$ProjectName` was populated
+only because another module's task file happens to default it and is dot-sourced
+first. Had that default gone away the name would have been empty, and the task
+would have taken its "not loaded, skipping" branch and reported nothing. An
+inert gate that looks green is worse than no gate. It now resolves the name
+itself and throws rather than skipping.
+
+Worse, it was a workflow task placed after `Pester_Tests_Stop_On_Fail`, and a
+duplicate compilation surfaces as a failing type assertion. The one run that
+needed the measurement was the one run that never reached it. It is an
+`Exit-Build` block now, which was confirmed by running a build to failure and
+watching the block still report. It returns early when nothing ran Pester, so
+`-Tasks build` alone stays silent, and its probe set is derived from the
+module's own `ImplementingAssembly` so a rename cannot silently empty it.
+
+The review also asked whether the runspace pool leaves a second copy behind.
+Measured directly against a pool built the same way: one copy after import,
+while the pool is open, after a worker ran, after disposal, and after a
+collection. "Measured benign" now rests on that rather than on the absence of a
+symptom.
+
+The guard's whole-file exemptions were the last blind spot: one of them covered
+the very line this work rewrote. Exemptions are per call site now, and only the
+call arguments decide which module a call names.

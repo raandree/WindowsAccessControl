@@ -142,13 +142,22 @@ specification 0015 reviews.
     module file, and removing every test-authored one closes every trigger the
     test suite can reach. It does not close them all, which the first version of
     this entry claimed: `Invoke-WindowsAccessControlBatch` imports the manifest
-    into a runspace pool in the same process on any bounded batch above a
-    throttle limit of one, so the module still reads its own file. That read is
-    benign today, because a full gate ends with one live copy, and it is why the
-    gate asserts that count instead of trusting the rules. A guard that only
-    watches the call sites you thought of needs an end-to-end assertion behind
-    it. Record which candidates were eliminated so the next occurrence starts
-    where this one stopped.
+    into a runspace pool in the same process whenever a bounded batch has both a
+    throttle limit above one and more than one target, so the module still reads
+    its own file. Measured directly against a pool built the same way, that read
+    yields one live copy while the pool is open, after a worker has run, after
+    disposal and after a collection, so it is benign rather than merely
+    invisible. It is still why the build asserts the copy count instead of
+    trusting the rules. A guard that only watches the call sites you thought of
+    needs an end-to-end assertion behind it. Record which candidates were
+    eliminated so the next occurrence starts where this one stopped.
+- A gate placed after the step it protects never runs on the failure it exists
+    for. A duplicate module compilation surfaces as a failing type assertion, so
+    an assertion task ordered after the Pester task is skipped on exactly the run
+    that needed it. It belongs in an `Exit-Build` block, which runs whether the
+    build succeeded or failed. Check the same way for a gate that cannot fail:
+    an assertion whose subject is empty, or whose only parameter arrives from
+    another module's default, reports success without measuring anything.
 - A workflow that repairs shared state hides the coupling that made the repair
     necessary. A documentation task imports the built module from its root
     module, so the process holds all 267 functions instead of the 105 the

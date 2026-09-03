@@ -24,21 +24,25 @@ BeforeDiscovery {
         reference to the first one (OI-31). That leaves this suite dependent on
         how the module was already loaded, so say so here rather than letting
         every discovery-driven quality gate fail one by one.
-
-        The comparison is against what the manifest declares rather than against
-        the format files, so it still holds if FormatsToProcess ever changes.
     #>
-    $available = Get-Module -Name $script:moduleName -ListAvailable | Select-Object -First 1
-    $loaded = Get-Module -Name $script:moduleName
-    if ($loaded.ExportedFunctions.Count -ne $available.ExportedFunctions.Count)
+    $loaded = @(Get-Module -Name $script:moduleName)
+
+    if ($loaded.Count -ne 1)
     {
         throw (
-            "'$script:moduleName' exports $($loaded.ExportedFunctions.Count) functions " +
-            "where its manifest declares $($available.ExportedFunctions.Count), so it was " +
-            'loaded from its root module rather than through the manifest and carries no ' +
-            'format data either. A documentation task loads it that way, so check whether ' +
-            'the docs and test workflows are sharing one process; build.yaml puts docs in ' +
-            'pack and the CI workflow runs them as separate jobs.'
+            "'$script:moduleName' is loaded $($loaded.Count) time(s) in this process, and " +
+            'this suite needs exactly one instance to describe.'
+        )
+    }
+
+    if (-not $loaded[0].ExportedFormatFiles)
+    {
+        throw (
+            "'$script:moduleName' is loaded with no format data, which is what a manifest " +
+            "supplies, and it exports $($loaded[0].ExportedFunctions.Count) functions. A " +
+            'documentation task imports the root module directly, so check whether the docs ' +
+            'and test workflows are sharing one process; build.yaml puts docs in pack and ' +
+            'the CI workflow runs them as separate jobs.'
         )
     }
 }

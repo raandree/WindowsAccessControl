@@ -7,8 +7,8 @@ param
 
 <#
     .SYNOPSIS
-        Fails the build when the test process holds more than one runtime copy
-        of a module-defined type.
+        Fails the build when the test process held more than one runtime copy of
+        a module-defined type.
 
     .DESCRIPTION
         PowerShell compiles a module file into a dynamic assembly carrying every
@@ -19,48 +19,73 @@ param
         a strict type assertion failing with `Expected [X], but got [X]`, which
         is unreadable without this measurement (OI-31).
 
-        The QA suite stops the test files from causing that. This task is what
-        covers everything else, including the module's own bounded-batch engine,
-        which imports the manifest into a runspace pool in this same process.
+        The QA suite stops the test files from causing that, but it can only see
+        the call sites it knows about. This measures the outcome instead.
+
+        It is an exit block rather than a workflow task because a duplicate
+        compilation surfaces as a failing type assertion, and a task placed
+        after the Pester task is skipped on exactly that run.
 #>
-
-# Synopsis: Fails the build if more than one runtime copy of a module-defined type is live.
-task Assert_Single_Module_Compilation {
-    # One enumeration and one class, so a change to either shape is noticed.
-    $probeTypeName = @(
-        'WindowsServiceControlManagerRights'
-        'WindowsAccessControlNtfsAccessRule'
-    )
-
-    if (-not (Get-Module -Name $ProjectName))
+Exit-Build {
+    # Nothing ran Pester, so there is no test process state to assert over.
+    if (-not @(${*}.Tasks | Where-Object { $_.Name -match 'Pester' }))
     {
-        Write-Build -Color 'DarkGray' -Text (
-            "'$ProjectName' is not loaded in this process, skipping task."
-        )
-
         return
     }
 
+    if (-not $ProjectName)
+    {
+        $ProjectName = Get-SamplerProjectName -BuildRoot $BuildRoot
+    }
+
+    $module = @(Get-Module -Name $ProjectName)
+
+    if ($module.Count -ne 1)
+    {
+        throw (
+            "The test phase ran but '$ProjectName' is loaded $($module.Count) time(s) in " +
+            'this process. Exactly one instance is required, because a second read of the ' +
+            'module file compiles a second copy of every type it declares.'
+        )
+    }
+
+    # Derived from the module's own assembly so a rename cannot silently empty
+    # the probe set. The compiler-generated helper types are skipped.
+    $probeTypeName = @(
+        $module[0].ImplementingAssembly.GetTypes() |
+            Where-Object { $_.IsPublic -and $_.Name -notmatch '<' } |
+            ForEach-Object { $_.FullName }
+    )
+
+    if ($probeTypeName.Count -eq 0)
+    {
+        throw (
+            "'$ProjectName' declares no types this task can probe, so it cannot measure " +
+            'what it asserts.'
+        )
+    }
+
+    $loadedAssembly = [System.AppDomain]::CurrentDomain.GetAssemblies()
     $split = @()
 
     foreach ($typeName in $probeTypeName)
     {
         $definingAssembly = @(
-            [System.AppDomain]::CurrentDomain.GetAssemblies() |
-                Where-Object { $_.GetType($typeName, $false, $false) } |
-                ForEach-Object { $_.FullName }
-        )
-
-        if ($definingAssembly.Count -eq 0)
-        {
-            throw (
-                "No loaded assembly defines '$typeName', so this task cannot measure what " +
-                'it asserts. Update the probe type names if the module surface changed.'
-            )
-        }
-
-        Write-Build -Color 'White' -Text (
-            "`t{0,-40} {1} runtime copy/copies" -f $typeName, $definingAssembly.Count
+            foreach ($assembly in $loadedAssembly)
+            {
+                try
+                {
+                    if ($assembly.GetType($typeName, $false, $false))
+                    {
+                        $assembly.FullName
+                    }
+                }
+                catch
+                {
+                    # An assembly that cannot be reflected over says nothing
+                    # about this module and must not fail the build.
+                }
+            }
         )
 
         if ($definingAssembly.Count -gt 1)
@@ -73,13 +98,13 @@ task Assert_Single_Module_Compilation {
     if ($split)
     {
         throw (
-            "The module file was read more than once in this process, so every " +
-            "module-defined type now exists more than once and no type literal can name " +
+            'The module file was read more than once in this process, so every ' +
+            'module-defined type now exists more than once and no type literal can name ' +
             "the copy the module's own commands emit. " + ($split -join ' ')
         )
     }
 
     Write-Build -Color 'Green' -Text (
-        "`tThe module was compiled once in this process."
+        "`t$ProjectName was compiled once in this process, $($probeTypeName.Count) types probed."
     )
 }

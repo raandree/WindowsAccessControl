@@ -16,10 +16,10 @@
 # They do not make a second compilation structurally impossible, and the
 # comment that used to say so was wrong. `Invoke-WindowsAccessControlBatch`
 # imports the manifest into a runspace pool in this same process whenever a
-# bounded batch runs with a throttle limit above one, so the module file is
-# still read by the module itself. That read was measured as benign, because a
-# full gate ends with one live copy, but it is a read these rules cannot see.
-# The end-of-gate assertion is what covers it.
+# bounded batch has both a throttle limit above one and more than one target,
+# so the module file is still read by the module itself. That read was measured
+# to yield one live copy throughout, but it is a read these rules cannot see.
+# The build's exit block is what covers it.
 #
 # The consequence is what makes it worth guarding. Nothing written in script can
 # name the newer copy. A type literal, a literal evaluated in the module's own
@@ -44,16 +44,20 @@ BeforeAll {
         Join-Path $script:repositoryRoot 'tests\Performance'
     )
 
-    # Each of these is an entry point that runs in a process of its own, so a
-    # load and unload cycle inside one cannot strand a type for anything else.
-    $exemptFile = @{
-        'tests\Lab\Deploy-WindowsAccessControlLab.ps1'                = 'lab installer, its own process'
-        'tests\Lab\Invoke-WindowsAccessControlLabAcceptance.ps1'      = 'host-side acceptance runner, its own process'
-        'tests\Lab\Start-WindowsAccessControlDomainLabAcceptance.ps1' = 'acceptance entry point, its own process'
-        'tests\Performance\Measure-NtfsBatchPerformance.ps1'          = 'benchmark script, its own process'
-        'tests\Unit\Lab\WindowsAccessControl.DomainLab.Tests.ps1'     = 'loads the domain-lab harness through a variable, not the module under test'
-        'tests\Lab\WindowsAccessControl.DomainLab.Live.Tests.ps1'     = 'loads the domain-lab harness through a variable, not the module under test'
+    # Calls that load something other than the module under test through a
+    # variable, so the call itself cannot say what it loads. Named by location
+    # rather than by file, so the rest of each file stays covered.
+    $exemptCall = @{
+        'tests\Unit\Lab\WindowsAccessControl.DomainLab.Tests.ps1:5'  = 'loads the domain-lab harness'
+        'tests\Lab\WindowsAccessControl.DomainLab.Live.Tests.ps1:14' = 'loads the domain-lab harness'
     }
+
+    # This one owns its process, so a load and unload cycle in it cannot strand
+    # a type for anything else. The other entry-point scripts need no entry:
+    # every module they name is matched below.
+    $exemptFile = @(
+        'tests\Performance\Measure-NtfsBatchPerformance.ps1'
+    )
 
     # Modules the suites legitimately load beside the one under test. A call
     # that names one of these is not about the module under test.
@@ -76,7 +80,7 @@ BeforeAll {
                 Where-Object Extension -EQ '.ps1'
         )) {
         $relativePath = $file.FullName.Substring($script:repositoryRoot.Length + 1)
-        if ($exemptFile.ContainsKey($relativePath)) {
+        if ($relativePath -in $exemptFile) {
             continue
         }
 
@@ -106,16 +110,29 @@ BeforeAll {
                 continue
             }
 
-            $callText = $call.Extent.Text -replace '\s+', ' '
-
-            # A call that names another module is not about the module under
-            # test. Anything that cannot be proven foreign stays in scope.
-            if ($otherModuleName | Where-Object { $callText -match [regex]::Escape($_) }) {
+            $location = '{0}:{1}' -f $relativePath, $call.Extent.StartLineNumber
+            if ($exemptCall.ContainsKey($location)) {
                 continue
             }
 
-            # Start-Job runs in a child process and Invoke-Command against a
-            # session or a computer runs on another machine. Start-ThreadJob is
+            # Only the arguments decide which module a call is about. Reading
+            # the whole extent would let a comment or an unrelated path exempt
+            # it.
+            $argumentText = (
+                $call.CommandElements |
+                    Select-Object -Skip 1 |
+                    Where-Object {
+                        $_ -isnot [System.Management.Automation.Language.CommandParameterAst]
+                    } |
+                    ForEach-Object { $_.Extent.Text }
+            ) -join ' '
+
+            if ($otherModuleName | Where-Object { $argumentText -match [regex]::Escape($_) }) {
+                continue
+            }
+
+            # Start-Job runs in a child process, and Invoke-Command runs on
+            # another machine only when it is given a target. Start-ThreadJob is
             # deliberately absent: a thread job shares this process.
             $outOfProcess = $false
             for ($node = $call.Parent; $node; $node = $node.Parent) {
@@ -129,10 +146,17 @@ BeforeAll {
                     break
                 }
 
-                if ($ancestorName -eq 'Invoke-Command' -and
-                    $node.Extent.Text -match '-(Session|ComputerName|VMName|ContainerId)\b') {
-                    $outOfProcess = $true
-                    break
+                if ($ancestorName -eq 'Invoke-Command') {
+                    $remoting = $node.CommandElements |
+                        Where-Object {
+                            $_ -is [System.Management.Automation.Language.CommandParameterAst] -and
+                            $_.ParameterName -match '^(Session|ComputerName|VMName|ContainerId)'
+                        }
+
+                    if ($remoting) {
+                        $outOfProcess = $true
+                        break
+                    }
                 }
             }
 
@@ -143,6 +167,7 @@ BeforeAll {
             $splatted = $false
             foreach ($element in $call.CommandElements) {
                 if ($element -is [System.Management.Automation.Language.CommandParameterAst] -and
+                    $element.ParameterName -and
                     'Force'.StartsWith($element.ParameterName, [StringComparison]::OrdinalIgnoreCase)) {
                     $forced = $true
                 }
@@ -154,10 +179,10 @@ BeforeAll {
             }
 
             [pscustomobject]@{
-                Location     = '{0}:{1}' -f $relativePath, $call.Extent.StartLineNumber
+                Location     = $location
                 IsLoad       = $isLoad
                 IsUnload     = $isUnload
-                Text         = $callText
+                Text         = $call.Extent.Text -replace '\s+', ' '
                 OutOfProcess = $outOfProcess
                 Forced       = $forced
                 Splatted     = $splatted

@@ -55,6 +55,24 @@ not cut and nothing is published.
     share a process, which is how `build.yaml` and the CI workflow already run
     them.
 
+- 2026-09-03: Two independent reviews hardened the OI-31 work. The first found
+    that the invariant was overstated and that the guard was blind to the very
+    file the defect lived in; the second found that the end-to-end assertion the
+    first had asked for could not fail. It never resolved its own project name,
+    so it borrowed another module's task default and would have silently skipped
+    if that went away, and it was a workflow task ordered after the Pester task,
+    which a duplicate compilation fails. It is an `Exit-Build` block now, proven
+    by running a build to failure and watching it still report, and its probe set
+    is derived from the module's own implementing assembly rather than from two
+    hand-written names. The guard exempts individual call sites instead of whole
+    files, and the QA refusal measures what it claims: it now throws when nothing
+    is loaded, which previously passed in silence. The runspace-pool read the
+    first review flagged was measured directly and holds one copy at every stage.
+    Gate green at 17 tasks, 0 errors, 0 warnings, 1,742 passed, 0 failed, 2
+    skipped, 81.92 percent asserted coverage, with all 35 module-defined types
+    reported at one runtime copy. The domain-lab suites remain unvalidated until
+    the next acceptance run.
+
 - 2026-09-02: Merged `ai/document-dsc-resources-and-external-help` into `main`,
     retaining the later Active Directory caller-effective-access and lab-runner
     records while integrating the DSC class split and generated-help workflow.

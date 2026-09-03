@@ -88,9 +88,6 @@ BuildWorkflow:
     # Uncomment to modify the PSModulePath in the test pipeline (also requires the build configuration section SetPSModulePath).
     #- Set_PSModulePath
     - Pester_Tests_Stop_On_Fail
-    # The QA suite stops the test files from reading the module a second time.
-    # This proves it end to end, including the reads the suite cannot see.
-    - Assert_Single_Module_Compilation
     # Use this task if pipeline uses code coverage and the module is using the
     # pattern of Public, Private, Enum, Classes.
     #- Convert_Pester_Coverage
