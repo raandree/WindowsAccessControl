@@ -54,6 +54,12 @@ can hang on them.
 The full gate takes about 25 minutes. It runs the unit, integration, QA, and
 performance suites, applies PSScriptAnalyzer, and asserts code coverage.
 
+Run `docs` and `test` as separate invocations rather than as one task list. A
+documentation task imports the built module from its root module rather than
+through its manifest, and the test phase no longer resets that, so the QA suite
+refuses a process where both have run. `build.yaml` puts `docs` in `pack`, and
+the CI workflow runs `pack` and `test` as separate jobs for the same reason.
+
 ## Tests
 
 The project is test-first. A behavior change arrives with a test that fails for
