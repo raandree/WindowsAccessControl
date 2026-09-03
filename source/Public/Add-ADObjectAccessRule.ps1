@@ -96,6 +96,7 @@ function Add-ADObjectAccessRule {
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
         [Parameter(Mandatory)]
+        [ArgumentCompleter([WindowsActiveDirectoryRightsCompleter])]
         [WindowsAccessRightsTransformAttribute([WindowsActiveDirectoryRights])]
         $AccessRights,
         [Parameter()]

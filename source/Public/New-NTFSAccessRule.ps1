@@ -48,6 +48,7 @@ function New-NTFSAccessRule {
         [string[]]$Account,
 
         [Parameter(Mandatory)]
+        [ArgumentCompleter([WindowsFileSystemRightsCompleter])]
         [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         $AccessRights,
 

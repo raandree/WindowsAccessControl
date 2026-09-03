@@ -384,6 +384,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Offer enumeration-name completion for `AccessRights` on every NTFS and
+    Active Directory rule command that also accepts raw 32-bit access masks.
+    Hexadecimal masks such as `0x10000000` remain supported
 - Fix the intermittent `Expected [X], but got [X]` failures in whole-suite test
     runs, and restore the strict enumeration type assertions that had been
     weakened to a name comparison to work around them. PowerShell compiles a

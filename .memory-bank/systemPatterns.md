@@ -69,6 +69,12 @@ specification 0015 reviews.
     a decimal literal, or a test that the attribute is present. The register
     carried the broader claim that the transform never ran at all; the probe
     disproved it and narrowed the cause.
+- Completion metadata and transformation metadata solve different binding
+    problems. When an enum type declaration would preempt a transformer for
+    valid unnamed masks, leave the parameter untyped and attach an
+    `IArgumentCompleter` that enumerates the same rights type. Keep an inventory
+    test over transformed public parameters so a new command cannot accept the
+    finite domain without offering it at the prompt.
 - A refusal that is correct can still be a gap. Refusing to expand a forest-wide
     alias without the root domain SID was right, and it also made the command
     useless for whole classes on any child domain controller, which is an

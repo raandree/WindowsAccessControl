@@ -92,6 +92,7 @@ function Remove-NTFSAccessRule {
         [Parameter(ParameterSetName = 'Path')]
         [Parameter(ParameterSetName = 'LiteralPath')]
         [Parameter(ParameterSetName = 'SecurityDescriptor')]
+        [ArgumentCompleter([WindowsFileSystemRightsCompleter])]
         [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         $AccessRights,
 

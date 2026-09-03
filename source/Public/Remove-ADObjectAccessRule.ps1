@@ -88,6 +88,7 @@ function Remove-ADObjectAccessRule {
         [Alias('IdentityReference', 'ID')]
         [object[]]$Account,
         [Parameter(ParameterSetName = 'Target')]
+        [ArgumentCompleter([WindowsActiveDirectoryRightsCompleter])]
         [WindowsAccessRightsTransformAttribute([WindowsActiveDirectoryRights])]
         $AccessRights,
         [Parameter(ParameterSetName = 'Target')]

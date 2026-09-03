@@ -47,6 +47,7 @@ function New-NTFSAuditRule {
         [string[]]$Account,
 
         [Parameter(Mandatory)]
+        [ArgumentCompleter([WindowsFileSystemRightsCompleter])]
         [WindowsAccessRightsTransformAttribute([System.Security.AccessControl.FileSystemRights])]
         $AccessRights,
 

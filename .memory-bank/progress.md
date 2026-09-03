@@ -31,6 +31,16 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-09-03: Added enumeration-name completion to every flexible-mask
+    `AccessRights` parameter: eight NTFS rule commands and three Active
+    Directory rule commands. Dedicated completers read the accepted enum names
+    while the parameters remain untyped so the transformation attribute still
+    preserves raw hexadecimal and unnamed access-mask bits. The regression
+    suite failed 12 of 12 before the implementation and passes 58 of 58 with
+    the existing raw-mask and unknown-name guards included. The full gate passes
+    17 tasks with 0 errors and 0 warnings: 1,754 tests passed, 0 failed, 2
+    skipped, and executable-scope coverage is 81.93 percent over the 80 percent
+    threshold.
 - 2026-09-03: Closed OI-31 by reproducing it. The intermittent `Expected [X],
     but got [X]` failures happen when the test process compiles the module file
     a second time: PowerShell caches a file's compiled script block by path and
