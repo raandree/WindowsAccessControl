@@ -254,18 +254,17 @@ Describe 'WindowsAccessControl disposable domain lab' `
 Describe 'WindowsAccessControl module under test' `
     -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     It 'Should load the module from the root this acceptance selected' {
+        # Asserted against the instance this acceptance already holds. Forcing a
+        # re-import here would compile the module a second time and strand the
+        # type literals the later suites resolve.
         $root = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
-        Import-Module -Name (Join-Path $root 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
-        try {
-            $loaded = Get-Module WindowsAccessControl
+        Import-Module -Name (Join-Path $root 'WindowsAccessControl.psd1') -ErrorAction Stop
 
-            $loaded | Should -Not -BeNullOrEmpty
-            $loaded.Path | Should -BeLike "$root*" `
-                -Because 'every suite must load the same module this run selected'
-        }
-        finally {
-            Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
-        }
+        $loaded = Get-Module WindowsAccessControl
+
+        $loaded | Should -Not -BeNullOrEmpty
+        $loaded.Path | Should -BeLike "$root*" `
+            -Because 'every suite must load the same module this run selected'
     }
 
     It 'Should reach an installed module root by name as well as by path' {

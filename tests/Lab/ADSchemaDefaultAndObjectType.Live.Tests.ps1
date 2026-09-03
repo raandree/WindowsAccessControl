@@ -2,7 +2,7 @@ BeforeAll {
     Import-Module ActiveDirectory -ErrorAction Stop
 
     $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
-    Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
+    Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -ErrorAction Stop
     $script:module = Get-Module WindowsAccessControl
 
     $script:domain = Get-ADDomain -ErrorAction Stop
@@ -117,7 +117,6 @@ AfterAll {
         Get-ADObject -Filter "DistinguishedName -eq '$($script:baseOu)'" -ErrorAction SilentlyContinue |
             Remove-ADObject -Recursive -Confirm:$false -Server $script:server -ErrorAction SilentlyContinue
     }
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Schema default access rules' -Tag 'Lab', 'WindowsOnly' {

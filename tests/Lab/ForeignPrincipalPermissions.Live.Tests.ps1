@@ -13,7 +13,7 @@ BeforeAll {
     Import-Module ActiveDirectory -ErrorAction Stop
 
     $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
-    Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
+    Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -ErrorAction Stop
     Import-Module `
         -Name (Join-Path $PSScriptRoot 'WindowsAccessControl.DomainLab.psm1') `
         -ErrorAction Stop
@@ -172,7 +172,6 @@ AfterAll {
                 -Name 'ForeignPrincipalPermissions.Live.Tests.ps1'
             Remove-PSSession $script:session
         }
-        Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
     }
 }
 

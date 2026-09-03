@@ -36,15 +36,50 @@ BeforeAll {
             Select-Object -First 1
     ).FullName
 
-    $gatePaths = @(
+    $gateRoots = @(
         Join-Path $script:repositoryRoot 'tests\QA'
         Join-Path $script:repositoryRoot 'tests\Unit'
         Join-Path $script:repositoryRoot 'tests\Integration'
+        Join-Path $script:repositoryRoot 'tests\Lab'
+        Join-Path $script:repositoryRoot 'tests\Performance'
     )
 
+    # Each of these is an entry point that runs in a process of its own, so a
+    # load and unload cycle inside one cannot strand a type for anything else.
+    $exemptFile = @{
+        'tests\Lab\Deploy-WindowsAccessControlLab.ps1'                = 'lab installer, its own process'
+        'tests\Lab\Invoke-WindowsAccessControlLabAcceptance.ps1'      = 'host-side acceptance runner, its own process'
+        'tests\Lab\Start-WindowsAccessControlDomainLabAcceptance.ps1' = 'acceptance entry point, its own process'
+        'tests\Performance\Measure-NtfsBatchPerformance.ps1'          = 'benchmark script, its own process'
+        'tests\Unit\Lab\WindowsAccessControl.DomainLab.Tests.ps1'     = 'loads the domain-lab harness through a variable, not the module under test'
+        'tests\Lab\WindowsAccessControl.DomainLab.Live.Tests.ps1'     = 'loads the domain-lab harness through a variable, not the module under test'
+    }
+
+    # Modules the suites legitimately load beside the one under test. A call
+    # that names one of these is not about the module under test.
+    $otherModuleName = @(
+        'ActiveDirectory'
+        'AutomatedLab'
+        'Pester'
+        'Sampler'
+        'powershell-yaml'
+        'WindowsAccessControl.DomainLab'
+    )
+
+    # Every spelling of the two commands, including the shipped aliases and the
+    # module-qualified forms.
+    $loadCommandName = @('import-module', 'ipmo', 'microsoft.powershell.core\import-module')
+    $unloadCommandName = @('remove-module', 'rmo', 'microsoft.powershell.core\remove-module')
+
     $script:moduleLoadCalls = foreach ($file in (
-            Get-ChildItem -Path $gatePaths -Recurse -File -Filter '*.ps1'
+            Get-ChildItem -Path $gateRoots -Recurse -File |
+                Where-Object Extension -EQ '.ps1'
         )) {
+        $relativePath = $file.FullName.Substring($script:repositoryRoot.Length + 1)
+        if ($exemptFile.ContainsKey($relativePath)) {
+            continue
+        }
+
         $tokens = $null
         $parseErrors = $null
         $fileAst = [System.Management.Automation.Language.Parser]::ParseFile(
@@ -54,39 +89,78 @@ BeforeAll {
             throw "Cannot parse '$($file.FullName)': $($parseErrors[0].Message)"
         }
 
-        $resolvesModuleUnderTest =
-            $fileAst.Extent.Text -match 'output\\module\\WindowsAccessControl'
-
         $calls = $fileAst.FindAll(
             {
                 param($node)
                 $node -is [System.Management.Automation.Language.CommandAst] -and
-                    $node.GetCommandName() -in @('Import-Module', 'Remove-Module')
+                    $node.GetCommandName()
             },
             $true
         )
 
         foreach ($call in $calls) {
-            # A call inside a Start-Job script block runs in a child process and
-            # cannot add a type to this one.
+            $commandName = $call.GetCommandName().ToLowerInvariant()
+            $isLoad = $commandName -in $loadCommandName
+            $isUnload = $commandName -in $unloadCommandName
+            if (-not ($isLoad -or $isUnload)) {
+                continue
+            }
+
+            $callText = $call.Extent.Text -replace '\s+', ' '
+
+            # A call that names another module is not about the module under
+            # test. Anything that cannot be proven foreign stays in scope.
+            if ($otherModuleName | Where-Object { $callText -match [regex]::Escape($_) }) {
+                continue
+            }
+
+            # Start-Job runs in a child process and Invoke-Command against a
+            # session or a computer runs on another machine. Start-ThreadJob is
+            # deliberately absent: a thread job shares this process.
             $outOfProcess = $false
             for ($node = $call.Parent; $node; $node = $node.Parent) {
-                if ($node -is [System.Management.Automation.Language.CommandAst] -and
-                    $node.GetCommandName() -eq 'Start-Job') {
+                if ($node -isnot [System.Management.Automation.Language.CommandAst]) {
+                    continue
+                }
+
+                $ancestorName = $node.GetCommandName()
+                if ($ancestorName -eq 'Start-Job' -or $ancestorName -eq 'Invoke-LabCommand') {
+                    $outOfProcess = $true
+                    break
+                }
+
+                if ($ancestorName -eq 'Invoke-Command' -and
+                    $node.Extent.Text -match '-(Session|ComputerName|VMName|ContainerId)\b') {
                     $outOfProcess = $true
                     break
                 }
             }
 
+            # -Force is read from the parameter list rather than the call text,
+            # so an abbreviation cannot slip past. Splatted parameters cannot be
+            # read at all, so they count as unproven and stay in scope.
+            $forced = $false
+            $splatted = $false
+            foreach ($element in $call.CommandElements) {
+                if ($element -is [System.Management.Automation.Language.CommandParameterAst] -and
+                    'Force'.StartsWith($element.ParameterName, [StringComparison]::OrdinalIgnoreCase)) {
+                    $forced = $true
+                }
+
+                if ($element -is [System.Management.Automation.Language.VariableExpressionAst] -and
+                    $element.Splatted) {
+                    $splatted = $true
+                }
+            }
+
             [pscustomobject]@{
-                Location                = '{0}:{1}' -f @(
-                    $file.FullName.Substring($script:repositoryRoot.Length + 1)
-                    $call.Extent.StartLineNumber
-                )
-                CommandName             = $call.GetCommandName()
-                Text                    = $call.Extent.Text -replace '\s+', ' '
-                OutOfProcess            = $outOfProcess
-                ResolvesModuleUnderTest = $resolvesModuleUnderTest
+                Location     = '{0}:{1}' -f $relativePath, $call.Extent.StartLineNumber
+                IsLoad       = $isLoad
+                IsUnload     = $isUnload
+                Text         = $callText
+                OutOfProcess = $outOfProcess
+                Forced       = $forced
+                Splatted     = $splatted
             }
         }
     }
@@ -96,10 +170,7 @@ Describe 'Test suite module identity' -Tag 'QA' {
     It 'Should never force a re-import of the module under test' {
         $forced = @(
             $script:moduleLoadCalls | Where-Object {
-                $_.CommandName -eq 'Import-Module' -and
-                -not $_.OutOfProcess -and
-                $_.ResolvesModuleUnderTest -and
-                $_.Text -match '-Force'
+                $_.IsLoad -and -not $_.OutOfProcess -and ($_.Forced -or $_.Splatted)
             }
         )
 
@@ -107,17 +178,14 @@ Describe 'Test suite module identity' -Tag 'QA' {
             'a forced import reads the module file again, and a read that misses ' +
             'the engine script-block cache compiles a second copy of every ' +
             'module-defined type. Import without -Force, which is a no-op ' +
-            'when the module is already loaded, or do the cycle inside Start-Job.'
+            'when the module is already loaded, or do the cycle inside Start-Job. ' +
+            'A splatted parameter set is reported too, because it cannot be read.'
         )
     }
 
-    It 'Should never unload the module under test inside the gate process' {
+    It 'Should never unload the module under test inside a shared test process' {
         $unloads = @(
-            $script:moduleLoadCalls | Where-Object {
-                $_.CommandName -eq 'Remove-Module' -and
-                -not $_.OutOfProcess -and
-                ($_.ResolvesModuleUnderTest -or $_.Text -match 'WindowsAccessControl(?!\.)')
-            }
+            $script:moduleLoadCalls | Where-Object { $_.IsUnload -and -not $_.OutOfProcess }
         )
 
         $unloads.Location | Should -BeNullOrEmpty -Because (

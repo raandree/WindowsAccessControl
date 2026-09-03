@@ -487,7 +487,7 @@ Describe 'Certificate private-key portability and desired state' `
             }
 
         $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
-        Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
+        Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -ErrorAction Stop
         $localPath = Join-Path $env:TEMP (
             'wac-key-foreign-{0}.json' -f [guid]::NewGuid().ToString('N')
         )
@@ -723,7 +723,7 @@ Describe 'Certificate private-key directory-service binding' `
         # This suite runs on the management domain controller, so the LDAPS
         # branch of the binding gate can be exercised where it applies.
         $moduleRoot = & (Join-Path $PSScriptRoot 'Resolve-WindowsAccessControlLabModuleRoot.ps1')
-        Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -Force -ErrorAction Stop
+        Import-Module -Name (Join-Path $moduleRoot 'WindowsAccessControl.psd1') -ErrorAction Stop
         $script:localModule = Get-Module WindowsAccessControl
         $script:productType = (
             Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
