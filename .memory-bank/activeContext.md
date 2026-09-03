@@ -130,5 +130,48 @@ that explanation instead of cascading.
 
 ## Next step
 
-Rerun the domain-lab acceptance when the lab is next available; it is unrelated
-to this change but still measures the previous build.
+Rerun the domain-lab acceptance when the lab is next available. It is the only
+thing that can validate the domain-lab suites now importing once, and it still
+measures the previous build for coverage.
+
+## What the independent review changed
+
+The review was scoped to test integrity rather than classic security, and it
+found two things the green gate could not.
+
+The first is that the invariant was overstated. `Invoke-WindowsAccessControlBatch`
+imports the manifest into a runspace pool in the same process on any bounded
+batch above a throttle limit of one, so the module reads its own file even after
+every test-authored read is gone. Measured benign, one live copy at the end of a
+full gate, but the changelog, the guard header and two entries here all claimed
+a second compilation was structurally impossible. A guard that watches only the
+call sites you thought of needs an end-to-end assertion behind it, which is now
+`Assert_Single_Module_Compilation` in the `test` workflow.
+
+The second is that the guard was blind to the file the defect lived in.
+`tests/QA/module.tests.ps1` contains no occurrence of the module name, so the
+file-level scope match never fired, and its removal named the module through a
+variable. Both lines the fix deleted could have been restored with the guard
+green. Scope is decided per call now, and the hole was proven closed by
+re-adding `-Force` and watching the guard name the exact location.
+
+One review finding did not survive its own experiment. The three batch metric
+tests were said to pass only by alphabetical luck once the module stopped being
+re-imported. Running the integration suites in reverse file order passes 277 of
+277 both before and after the change, so the order dependence is theoretical.
+The assertions were still made deltas, matching their three siblings, but as
+consistency rather than as a demonstrated defect.
+
+## Evidence added after the review
+
+- Pester discovery-only diff between the pre-fix and post-fix commits: 1,742
+    tests in 163 containers before, 1,744 in 164 after. Exactly two removed, the
+    two QA tests deliberately replaced, and four added. No test silently stopped
+    being discovered.
+- The gate passes at 18 tasks with the new assertion task reporting one runtime
+    copy of both probe types: 1,742 passed, 0 failed, 2 skipped, 81.92 percent
+    asserted coverage.
+- A Windows PowerShell 5.1 run of the DSC suites, the path that copies the
+    module to the machine module path, also ends at one copy. That run had 30 of
+    40 tests failing outside the Sampler environment, so it exercises the path
+    less than a real gate would.
