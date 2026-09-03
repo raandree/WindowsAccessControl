@@ -86,8 +86,9 @@ and copies evidence back to the host.
 - Added `Get-ADObjectCallerEffectiveAccess` and specification 0018 for the
     controller-computed, caller-scoped constructed attributes.
 - Made lab payload deployment optional through `-SkipPayloadDeployment`, with
-    compatibility aliases and a focused contract test. Those four local paths
-    remain uncommitted after being restored following the documentation merge.
+    compatibility aliases and a focused contract test. The focused suite passes
+    3 of 3 after the documentation merge, and the change is ready to commit as
+    its own lab-runner feature.
 
 ## Acceptance evidence
 
@@ -102,5 +103,5 @@ and copies evidence back to the host.
 ## Next step
 
 The next domain-lab acceptance must deploy the payload because this merge
-changes source and built help artifacts. The restored lab-runner changes remain
-the current uncommitted work.
+changes source and built help artifacts. Use `-SkipPayloadDeployment` only on a
+later run whose repository payload is already current.

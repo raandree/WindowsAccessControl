@@ -54,9 +54,10 @@
         deletes that tree, and the repository build imports it from here before
         merging.
 
-    .PARAMETER SkipPayload
+    .PARAMETER SkipPayloadDeployment
         Reuses the tree already present on the management domain controller
-        instead of copying it again.
+        instead of deploying it again. `SkipPayload` and `SkipDeployment` are
+        aliases for compatibility and concise interactive use.
 
     .PARAMETER ModuleSource
         Selects the module the suites load. `Build` loads the tree the Sampler
@@ -80,6 +81,12 @@
         .\Invoke-WindowsAccessControlLabAcceptance.ps1 -PowerShellEdition Core
 
         Runs only the PowerShell 7 pass and arms no coverage.
+
+    .EXAMPLE
+        .\Invoke-WindowsAccessControlLabAcceptance.ps1 -SkipPayloadDeployment -Confirm:$false
+
+        Runs the acceptance against the repository tree already deployed to
+        the management domain controller without interactive confirmation.
 
     .EXAMPLE
         .\Invoke-WindowsAccessControlLabAcceptance.ps1 -ModuleSource Installed -CoverageEdition None
@@ -137,7 +144,8 @@ param(
     [string]$PackagePath,
 
     [Parameter()]
-    [switch]$SkipPayload
+    [Alias('SkipPayload', 'SkipDeployment')]
+    [switch]$SkipPayloadDeployment
 )
 
 $ErrorActionPreference = 'Stop'
@@ -197,16 +205,22 @@ if (-not (Test-Path -LiteralPath $evidenceDirectory -PathType Container)) {
     $null = New-Item -Path $evidenceDirectory -ItemType Directory -Force
 }
 
+$shouldProcessAction = if ($SkipPayloadDeployment) {
+    "Run the domain-lab acceptance in $($editions -join ' and ')"
+}
+else {
+    "Deploy the current build and run the domain-lab acceptance in $($editions -join ' and ')"
+}
 if (-not $PSCmdlet.ShouldProcess(
         "Lab '$LabName' machines '$ManagementDomainController' and '$MemberServer'",
-        "Deploy the current build and run the domain-lab acceptance in $($editions -join ' and ')"
+        $shouldProcessAction
     )) {
     return
 }
 
 Import-Lab -Name $LabName -NoValidation
 
-if (-not $SkipPayload) {
+if (-not $SkipPayloadDeployment) {
     Invoke-LabCommand `
         -ComputerName $ManagementDomainController `
         -ActivityName 'Reset the acceptance payload directory' `

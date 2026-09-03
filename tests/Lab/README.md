@@ -113,6 +113,17 @@ Build the module, then run the acceptance from the host:
 .\tests\Lab\Invoke-WindowsAccessControlLabAcceptance.ps1
 ```
 
+Reuse the repository tree already copied to the management domain controller:
+
+```powershell
+.\tests\Lab\Invoke-WindowsAccessControlLabAcceptance.ps1 -SkipPayloadDeployment -Confirm:$false
+```
+
+`-SkipPayload` remains available as a compatibility alias, and
+`-SkipDeployment` is the concise equivalent. Omit `-Confirm:$false` to retain
+the safety confirmation for the acceptance run, which still changes disposable
+lab fixtures even when it does not deploy the payload.
+
 Start the machines before that call and give the domain controllers time to
 answer:
 

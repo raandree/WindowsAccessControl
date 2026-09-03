@@ -136,6 +136,13 @@ as reserved rather than described as required.
 [tests/Lab/README.md](../tests/Lab/README.md) holds that delta and is the
 operator entry point.
 
+Lab installation and acceptance payload deployment are separate operations.
+The host-side acceptance runner imports an installed lab and normally refreshes
+its repository tree; `-SkipPayloadDeployment` reuses that tree for a faster
+rerun. Keep `-SkipPayload` as its compatibility alias. Its `ShouldProcess`
+action must describe whether deployment will occur; skipping payload deployment
+does not bypass confirmation for the fixture-changing acceptance run.
+
 ## Coverage measurement
 
 Coverage is measured where the code runs, not where the test harness runs. A
