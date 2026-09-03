@@ -114,6 +114,9 @@ that explanation instead of cascading.
 - The deterministic reproducer was repeated ten times in each mode: ten of ten
     poisoned runs produced two live copies and the recorded failure, and ten of
     ten clean runs produced one live copy and 39 of 39 passing.
+- The guard was run against a throwaway worktree of pre-fix `main` with only the
+    new suite copied in: 0 passed, 2 failed. It fails without the fix and passes
+    with it.
 - The full local gate passes: `./build.ps1 -Tasks build, test`, 17 tasks, 0
     errors, 0 warnings, 1,742 tests passed, 0 failed, 2 skipped, and 81.92
     percent asserted coverage over the 80 percent threshold.
