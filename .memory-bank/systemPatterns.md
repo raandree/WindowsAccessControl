@@ -139,9 +139,16 @@ specification 0015 reviews.
     routes spell the module path identically, and `Get-DscResource` reuses the
     loaded instance in both editions. The trigger that fired on 2026-08-11 is
     still unnamed. What is named is the precondition, a second read of the
-    module file, and removing that closes every trigger at once instead of the
-    one that happened to be found. Record which candidates were eliminated so
-    the next occurrence starts where this one stopped.
+    module file, and removing every test-authored one closes every trigger the
+    test suite can reach. It does not close them all, which the first version of
+    this entry claimed: `Invoke-WindowsAccessControlBatch` imports the manifest
+    into a runspace pool in the same process on any bounded batch above a
+    throttle limit of one, so the module still reads its own file. That read is
+    benign today, because a full gate ends with one live copy, and it is why the
+    gate asserts that count instead of trusting the rules. A guard that only
+    watches the call sites you thought of needs an end-to-end assertion behind
+    it. Record which candidates were eliminated so the next occurrence starts
+    where this one stopped.
 - A workflow that repairs shared state hides the coupling that made the repair
     necessary. A documentation task imports the built module from its root
     module, so the process holds all 267 functions instead of the 105 the

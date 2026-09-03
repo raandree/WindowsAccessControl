@@ -396,11 +396,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `Invoke-Expression` — keeps resolving the first copy. No test could name the
     current type, which is why the failure was unreproducible in isolation and
     why rewriting the assertion was never the repair. The gate suites now import
-    the module without `-Force` and never unload it, so the process reads the
-    module file exactly once and no cache behaviour can compile it twice; the
-    two places that genuinely test the load and unload cycle do it inside
-    `Start-Job`. A QA suite enforces both rules over `tests/QA`, `tests/Unit`,
-    and `tests/Integration`, and pins the host behaviour they exist for. One
+    the module without `-Force` and never unload it, removing every read of the
+    module file the tests themselves authored; the two places that genuinely
+    test the load and unload cycle do it inside `Start-Job`. A QA suite enforces
+    both rules over `tests/QA`, `tests/Unit`, and `tests/Integration`, and pins
+    the host behaviour they exist for. One
     consequence is worth knowing locally: the `docs` and `test` workflows can no
     longer share a process, because a documentation task imports the built
     module from its root module rather than its manifest and the QA suite used

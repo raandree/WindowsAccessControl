@@ -30,7 +30,7 @@ first copy: a type literal, a literal evaluated inside the module's own scope,
 a script block bound to the module, `-as [type]`, a `[type]` cast, and
 `Invoke-Expression` were each measured and all six were stale. There is no
 expression a test can write that names the module's current type, so the only
-repair is to read the module file once.
+repair is to stop reading the module file a second time.
 
 The trigger that fired on 2026-08-11 is still unnamed, and the fix does not
 depend on naming it. Three candidates were measured. The engine's own cache
@@ -42,7 +42,12 @@ and the `Get-ChildItem` route every other file uses produce byte-identical path
 strings, so the cache key does not split. `Get-DscResource -Module
 WindowsAccessControl` reuses the loaded instance in both editions rather than
 reading a second copy. What is named is the precondition, a second read of the
-module file, and removing that closes every trigger at once.
+module file, and removing every test-authored one closes every trigger the
+test suite can reach. It does not close them all: the module's own
+`Invoke-WindowsAccessControlBatch` imports the manifest into a runspace pool in
+the same process on any bounded batch above a throttle limit of one. That read
+was measured benign, because a full gate ends with one live copy, but it is why
+the gate now asserts the copy count rather than trusting the rules.
 
 The gate suites now do that. `tests/QA`, `tests/Unit`, and `tests/Integration`
 import the module without `-Force`, which is a no-op once it is loaded, and no

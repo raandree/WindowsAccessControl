@@ -10,9 +10,16 @@
 # once it holds more than 1024 entries, which is the documented way to get
 # there; a real build and test process peaked at 528 entries when it was
 # measured, so the trigger that produced the recorded failures was never
-# reproduced by running the suite. These rules therefore remove the precondition
-# rather than one trigger: a module file that is read once cannot be compiled
-# twice, whatever the cache does.
+# reproduced by running the suite. These rules therefore remove the
+# precondition rather than one trigger.
+#
+# They do not make a second compilation structurally impossible, and the
+# comment that used to say so was wrong. `Invoke-WindowsAccessControlBatch`
+# imports the manifest into a runspace pool in this same process whenever a
+# bounded batch runs with a throttle limit above one, so the module file is
+# still read by the module itself. That read was measured as benign, because a
+# full gate ends with one live copy, but it is a read these rules cannot see.
+# The end-of-gate assertion is what covers it.
 #
 # The consequence is what makes it worth guarding. Nothing written in script can
 # name the newer copy. A type literal, a literal evaluated in the module's own
