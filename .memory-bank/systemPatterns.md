@@ -113,15 +113,45 @@ specification 0015 reviews.
     a type with `Add-Type` so the method is IL. Pester code coverage is what
     made it appear: 66 uninstrumented iterations showed nothing, six
     instrumented iterations failed five times.
-- A test that asserts a module-defined type must not assert type identity.
-    `Expected [X], but got [X]` is the signature, and it appeared twice in whole
-    suite runs. The duplicate-import explanation is disproved: measured on
-    2026-08-11, three consecutive `-Force` imports of the built module leave one
-    runtime copy of the enumeration, and a batch worker runspace resolves to the
-    same type instance, because PowerShell caches the class assembly per module
-    path and version. The mechanism is still unknown, so compare the type name
-    and `IsEnum`, which is what such an assertion means anyway, and do not
-    restore identity comparison until something reproduces a second live type.
+- A module-defined type has one identity per compilation of the module file,
+    and a test process that compiles the module twice strands every script-side
+    reference to it. `Expected [X], but got [X]` is the signature. PowerShell
+    caches the compiled script block of a file keyed by path and content, and a
+    read that misses that cache compiles a second dynamic assembly carrying a
+    second copy of every class and enumeration. From then on the module's
+    commands emit the new copy and its type accelerators point at it, while a
+    type literal, a literal evaluated in the module's own scope, a bound script
+    block, `-as [type]`, a `[type]` cast and `Invoke-Expression` all keep
+    resolving the first copy. Nothing written in script can name the current
+    type, so rewriting the assertion is not a repair: the only repair is to read
+    the module file once. The earlier entry here blamed duplicate imports and
+    was half right. Repeated `-Force` imports are harmless while the cache
+    holds, which is why three of them in a small script never reproduced it; the
+    trigger is the cache miss, and the import is only the thing that acts on it.
+    A load or unload cycle a test genuinely needs belongs in `Start-Job`, where
+    it happens in another process.
+- Fix the precondition when the trigger will not reproduce. The engine drops
+    its whole script-block cache above 1024 entries, and that is the documented
+    way to reach the identity split above, but a real `./build.ps1 -Tasks build,
+    test` process peaked at 528 cached entries with no drop event, and a bare
+    Pester run over the same suites peaked at 411. Neither of the two other
+    candidates reproduced it either: the `-ListAvailable` and `Get-ChildItem`
+    routes spell the module path identically, and `Get-DscResource` reuses the
+    loaded instance in both editions. The trigger that fired on 2026-08-11 is
+    still unnamed. What is named is the precondition, a second read of the
+    module file, and removing that closes every trigger at once instead of the
+    one that happened to be found. Record which candidates were eliminated so
+    the next occurrence starts where this one stopped.
+- A workflow that repairs shared state hides the coupling that made the repair
+    necessary. A documentation task imports the built module from its root
+    module, so the process holds all 267 functions instead of the 105 the
+    manifest exports and no format data at all, and the QA suite silently put
+    that right with a remove and a forced re-import. Removing the repair did not
+    create the coupling; it revealed it, as 750 failing quality gates and one
+    table-view assertion. The repair could not simply be kept, because it is the
+    same second read of the module file that strands type identity. Name the
+    condition and refuse it instead: `build.yaml` and the CI workflow already run
+    `docs` and `test` in separate processes.
 - A refusal that no live path can reach still has to be proven. A stock schema
     holds no ambiguous name, so the ambiguity refusal was unreachable through a
     lookup. Extending a schema to manufacture one is irreversible, so the

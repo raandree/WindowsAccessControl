@@ -2,7 +2,7 @@ BeforeAll {
     $script:moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $script:moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $script:moduleManifest.FullName -ErrorAction Stop
     $null = Get-WindowsPrivilege
 
     $script:testId = [guid]::NewGuid().ToString('N')
@@ -36,7 +36,6 @@ AfterAll {
             Remove-Item -LiteralPath $testRoot -Force -ErrorAction SilentlyContinue
         }
     }
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Windows security descriptor engine' -Tag 'Integration', 'WindowsOnly' {
@@ -59,19 +58,39 @@ Describe 'Windows security descriptor engine' -Tag 'Integration', 'WindowsOnly' 
     }
 
     It 'Should replace a foreign accelerator and remove only its owned types on unload' {
-        $accelerators = [psobject].Assembly.GetType(
-            'System.Management.Automation.TypeAccelerators'
-        )
-        Remove-Module -Name 'WindowsAccessControl' -Force
-        $accelerators::Add('WindowsRegistryView', [string])
+        # The load and unload cycle runs in a child process. Re-importing the
+        # module in this one compiles it a second time whenever the read misses
+        # the engine script-block cache, and every module-defined type would
+        # then exist twice for the rest of the run.
+        $job = Start-Job -ScriptBlock {
+            param($ManifestPath)
 
-        Import-Module -Name $script:moduleManifest.FullName -Force -ErrorAction Stop
+            $accelerators = [psobject].Assembly.GetType(
+                'System.Management.Automation.TypeAccelerators'
+            )
+            $accelerators::Add('WindowsRegistryView', [string])
 
-        $accelerators::Get['WindowsRegistryView'] | Should -Not -Be ([string])
-        Remove-Module -Name 'WindowsAccessControl' -Force
-        $accelerators::Get.ContainsKey('WindowsRegistryView') | Should -BeFalse
-        Import-Module -Name $script:moduleManifest.FullName -Force -ErrorAction Stop
-        $null = Get-WindowsPrivilege
+            Import-Module -Name $ManifestPath -ErrorAction Stop
+            $replaced = $accelerators::Get['WindowsRegistryView'] -ne [string]
+
+            Remove-Module -Name 'WindowsAccessControl' -Force
+
+            [pscustomobject]@{
+                ReplacedForeignAccelerator = $replaced
+                RemovedOwnAcceleratorOnUnload =
+                    -not $accelerators::Get.ContainsKey('WindowsRegistryView')
+            }
+        } -ArgumentList $script:moduleManifest.FullName
+
+        try {
+            Wait-Job -Job $job -Timeout 120 | Should -Not -BeNullOrEmpty
+            $result = Receive-Job -Job $job
+
+            $result.ReplacedForeignAccelerator | Should -BeTrue
+            $result.RemovedOwnAcceleratorOnUnload | Should -BeTrue
+        } finally {
+            Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+        }
     }
 
     It 'Should read and round-trip a named registry key DACL' {

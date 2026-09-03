@@ -3,7 +3,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     $script:isCoreEdition = $PSVersionTable.PSEdition -eq 'Core'
     $script:currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
@@ -61,7 +61,6 @@ AfterAll {
     if ($script:userBaseKey) {
         $script:userBaseKey.Close()
     }
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Registry view independence' -Tag 'Integration', 'WindowsOnly', 'RequiresElevation' {

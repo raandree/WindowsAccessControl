@@ -384,6 +384,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix the intermittent `Expected [X], but got [X]` failures in whole-suite test
+    runs, and restore the strict enumeration type assertions that had been
+    weakened to a name comparison to work around them. PowerShell compiles a
+    module file into a dynamic assembly carrying every class and enumeration it
+    declares, and caches the compiled script block keyed by file path and file
+    content. A read that misses that cache compiles the file again, and from
+    then on the module's commands emit the new copy of each type while every
+    script-side reference to it — a type literal, a literal evaluated in the
+    module's own scope, a bound script block, `-as [type]`, a `[type]` cast,
+    `Invoke-Expression` — keeps resolving the first copy. No test could name the
+    current type, which is why the failure was unreproducible in isolation and
+    why rewriting the assertion was never the repair. The gate suites now import
+    the module without `-Force` and never unload it, so the process reads the
+    module file exactly once and no cache behaviour can compile it twice; the
+    two places that genuinely test the load and unload cycle do it inside
+    `Start-Job`. A QA suite enforces both rules over `tests/QA`, `tests/Unit`,
+    and `tests/Integration`, and pins the host behaviour they exist for. One
+    consequence is worth knowing locally: the `docs` and `test` workflows can no
+    longer share a process, because a documentation task imports the built
+    module from its root module rather than its manifest and the QA suite used
+    to repair that with the very re-import this change removes. `build.yaml`
+    already places `docs` in `pack`, and the CI workflow already runs `pack` and
+    `test` as separate jobs; a local `-Tasks build, docs, test` now says so
+    instead of failing test by test
 - Fix the NTFS path input matrix and the reparse point suites failing on a
     hosted build agent. Both root their fixtures at `TEMP`, and a GitHub-hosted
     Windows runner reports that variable in its 8.3 short form

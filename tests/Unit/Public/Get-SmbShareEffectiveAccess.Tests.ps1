@@ -10,17 +10,13 @@ Describe 'Get-SmbShareEffectiveAccess behavior' -Tag 'Unit', 'WindowsOnly' {
         $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
             Sort-Object -Property { [version]$_.Directory.Name } -Descending |
             Select-Object -First 1
-        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+        Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
         $script:currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
         $descriptor = [Security.AccessControl.RawSecurityDescriptor]::new(
             "O:SYG:SYD:(A;;0x001F01FF;;;$($script:currentSid.Value))"
         )
         $script:descriptorBytes = [byte[]]::new($descriptor.BinaryLength)
         $descriptor.GetBinaryForm($script:descriptorBytes, 0)
-    }
-
-    AfterAll {
-        Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
     }
 
     It 'Should return an explicitly local share-only SID-derived result' {

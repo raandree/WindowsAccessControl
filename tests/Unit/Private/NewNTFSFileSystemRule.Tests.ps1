@@ -3,14 +3,10 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:module = Get-Module -Name WindowsAccessControl
     $script:testSid = 'S-1-5-11'
     $script:genericAllMask = 0x10000000
-}
-
-AfterAll {
-    Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'New-NTFSFileSystemRule' -Tag 'Unit', 'WindowsOnly' {

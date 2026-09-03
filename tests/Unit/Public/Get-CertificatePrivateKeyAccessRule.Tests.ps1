@@ -11,11 +11,7 @@ Describe 'Get-CertificatePrivateKeyAccessRule behavior' -Tag 'Unit', 'WindowsOnl
         $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
             Sort-Object -Property { [version]$_.Directory.Name } -Descending |
             Select-Object -First 1
-        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
-    }
-
-    AfterAll {
-        Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
+        Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     }
 
     It 'Should read the key without requesting the mutation boundary' {

@@ -2,7 +2,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     $script:scopePrivilege = 'SeSecurityPrivilege'
     $script:restorePrivilege = 'SeRestorePrivilege'
@@ -25,7 +25,6 @@ AfterAll {
     Enable-WindowsPrivilege -Name $script:enabledPrivilege -Confirm:$false -ErrorAction SilentlyContinue
     Disable-WindowsPrivilege -Name $script:scopePrivilege -Confirm:$false -ErrorAction SilentlyContinue
     Disable-WindowsPrivilege -Name $script:restorePrivilege -Confirm:$false -ErrorAction SilentlyContinue
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Scoped Windows privilege lifecycle' -Tag 'Integration', 'WindowsOnly', 'RequiresElevation' {

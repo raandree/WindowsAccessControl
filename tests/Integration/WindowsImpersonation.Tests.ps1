@@ -2,7 +2,7 @@
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     $script:userName = 'WacImp' + [guid]::NewGuid().ToString('N').Substring(0, 10)
     $script:innerUserName = 'WacImp' + [guid]::NewGuid().ToString('N').Substring(0, 10)
@@ -45,7 +45,6 @@ AfterAll {
     $script:password = $null
     $script:credential = $null
     $script:innerCredential = $null
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Local Windows impersonation' -Tag 'Integration', 'WindowsOnly', 'RequiresElevation' {

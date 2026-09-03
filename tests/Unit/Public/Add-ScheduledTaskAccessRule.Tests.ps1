@@ -10,11 +10,7 @@ Describe 'Add-ScheduledTaskAccessRule behavior' -Tag 'Unit', 'WindowsOnly' {
         $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
             Sort-Object -Property { [version]$_.Directory.Name } -Descending |
             Select-Object -First 1
-        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
-    }
-
-    AfterAll {
-        Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
+        Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     }
 
     It 'Should not expose folder inheritance scope on a leaf task' {

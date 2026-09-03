@@ -3,7 +3,7 @@ BeforeAll {
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     function Get-TestSecurityDescriptor {
         param(
@@ -51,10 +51,6 @@ BeforeAll {
             [System.Security.Principal.SecurityIdentifier]
         ))
     }
-}
-
-AfterAll {
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'NTFS descriptor-aware mutators' -Tag 'Unit', 'WindowsOnly' {

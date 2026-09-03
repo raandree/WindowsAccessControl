@@ -2,7 +2,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     $script:testId = [guid]::NewGuid().ToString('N')
     $script:root = 'HKCU:\Software\WindowsAccessControlInheritanceTest'
@@ -39,7 +39,6 @@ AfterAll {
             Remove-Item -LiteralPath $script:root -Force -ErrorAction SilentlyContinue
         }
     }
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Get-RegistryKeyAccessRule inheritance source' -Tag 'Integration', 'WindowsOnly' {

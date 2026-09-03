@@ -2,7 +2,7 @@
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:password = New-Object -TypeName System.Security.SecureString
     foreach ($character in 'not-a-real-password'.ToCharArray()) {
         $script:password.AppendChar($character)
@@ -18,7 +18,6 @@ AfterAll {
     $script:password.Dispose()
     $script:password = $null
     $script:credential = $null
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Invoke-WindowsAccessControl' -Tag 'Unit', 'WindowsOnly' {

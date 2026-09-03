@@ -10,16 +10,12 @@ Describe 'Get-TaskFolderSecurityDescriptor behavior' -Tag 'Unit', 'WindowsOnly' 
         $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
             Sort-Object -Property { [version]$_.Directory.Name } -Descending |
             Select-Object -First 1
-        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+        Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
         $descriptor = [Security.AccessControl.RawSecurityDescriptor]::new(
             'D:(A;;FR;;;WD)'
         )
         $script:descriptorBytes = [byte[]]::new($descriptor.BinaryLength)
         $descriptor.GetBinaryForm($script:descriptorBytes, 0)
-    }
-
-    AfterAll {
-        Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
     }
 
     It 'Should return a typed descriptor through the worker path' {

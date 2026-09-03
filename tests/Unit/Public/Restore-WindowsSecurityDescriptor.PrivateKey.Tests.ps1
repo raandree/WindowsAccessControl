@@ -2,7 +2,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     $script:canonicalTarget =
         'CertificatePrivateKey:Cng:Machine:' + ('A1B2C3D4' * 8)
@@ -55,7 +55,6 @@ BeforeAll {
 
 AfterAll {
     Remove-Item -LiteralPath $script:backupRoot -Recurse -Force -ErrorAction SilentlyContinue
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Certificate private-key restore routing' -Tag 'Unit', 'WindowsOnly' {

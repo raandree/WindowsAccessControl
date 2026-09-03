@@ -5,7 +5,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     # 0xE0010000: DELETE plus GENERIC_READ, GENERIC_WRITE and GENERIC_EXECUTE.
     $script:genericExecuteWriteReadMask = [uint32]3758161920
@@ -128,10 +128,6 @@ BeforeAll {
             }
         }
     }
-}
-
-AfterAll {
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'NTFS generic-bit and orphaned access control entry reporting' -Tag 'Integration', 'WindowsOnly' {

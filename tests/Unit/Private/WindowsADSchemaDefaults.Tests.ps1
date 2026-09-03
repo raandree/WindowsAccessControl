@@ -2,14 +2,10 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:module = Get-Module WindowsAccessControl
     $script:domainSid = [Security.Principal.SecurityIdentifier]::new('S-1-5-21-11-22-33')
     $script:rootSid = [Security.Principal.SecurityIdentifier]::new('S-1-5-21-44-55-66')
-}
-
-AfterAll {
-    Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Active Directory schema default internals' -Tag 'Unit', 'WindowsOnly' {
@@ -175,10 +171,8 @@ Describe 'Active Directory rights mask binding' -Tag 'Unit', 'WindowsOnly' {
             )
             $attribute.Transform($null, 0x10000000)
         }
-        $expectedRightsType = & $script:module { [WindowsActiveDirectoryRights] }
 
-        $rights.GetType().FullName | Should -BeExactly $expectedRightsType.FullName
-        $rights.GetType().IsEnum | Should -BeTrue
+        $rights | Should -BeOfType ([WindowsActiveDirectoryRights])
         [int]$rights | Should -Be 0x10000000
     }
 

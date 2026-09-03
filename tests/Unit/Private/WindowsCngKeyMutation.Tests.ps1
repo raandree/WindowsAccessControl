@@ -2,7 +2,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:module = Get-Module WindowsAccessControl
 
     function script:ConvertTo-DescriptorBinaryForm {
@@ -21,10 +21,6 @@ BeforeAll {
     }
 
     $script:baselineSddl = 'D:P(A;;0xd01f01ff;;;SY)(A;;0xd01f01ff;;;BA)'
-}
-
-AfterAll {
-    Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Certificate private-key rights normalization' -Tag 'Unit', 'WindowsOnly' {

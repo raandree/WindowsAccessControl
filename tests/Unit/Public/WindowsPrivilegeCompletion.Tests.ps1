@@ -2,7 +2,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:module = Get-Module -Name 'WindowsAccessControl'
 
     function Get-PrivilegeCompletion {
@@ -13,10 +13,6 @@ BeforeAll {
 
         @((TabExpansion2 -inputScript $InputScript -cursorColumn $InputScript.Length).CompletionMatches)
     }
-}
-
-AfterAll {
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Windows privilege name completion' -Tag 'Unit', 'WindowsOnly' {

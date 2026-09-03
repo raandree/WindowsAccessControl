@@ -6,7 +6,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:module = Get-Module -Name WindowsAccessControl
     & $script:module {
         if (-not (Get-Command Get-WindowsAccessControlDscAccessRule -ErrorAction SilentlyContinue)) {
@@ -36,10 +36,6 @@ BeforeAll {
         }
         $instance
     }
-}
-
-AfterAll {
-    Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Access-rule presence DSC resource behavior' -Tag 'Unit', 'WindowsOnly' {

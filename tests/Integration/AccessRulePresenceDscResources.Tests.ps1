@@ -2,7 +2,7 @@
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:module = Get-Module WindowsAccessControl
 
     function New-AccessRuleDscResourceInstance {
@@ -42,7 +42,6 @@
 AfterAll {
     Get-Service -Name 'WacDscRule*' -ErrorAction SilentlyContinue |
         ForEach-Object { & sc.exe delete $_.Name 2>&1 | Out-Null }
-    Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Access-rule presence DSC resources' -Tag 'Integration', 'WindowsOnly', 'RequiresElevation' {

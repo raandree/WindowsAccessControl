@@ -4,7 +4,7 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     $script:currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     # Nothing resolves this identifier, so denying it cannot lock the test out.
@@ -89,10 +89,6 @@ BeforeAll {
         $findingPattern = '^' + [regex]::Escape($Path) + '\s*:'
         -not @($output | Where-Object { $_ -match $findingPattern })
     }
-}
-
-AfterAll {
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'NTFS icacls differential oracle' -Tag 'Integration', 'WindowsOnly' {

@@ -3,12 +3,8 @@
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
     $script:manifestData = Import-PowerShellDataFile -Path $moduleManifest.FullName
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:module = Get-Module -Name WindowsAccessControl
-}
-
-AfterAll {
-    Remove-Module -Name WindowsAccessControl -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Access-rule presence DSC resource contract' -Tag 'Unit', 'WindowsOnly' {

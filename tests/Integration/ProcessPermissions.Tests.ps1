@@ -2,7 +2,7 @@
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     $script:testSid = 'S-1-1-0'
     $script:childProcesses = [System.Collections.Generic.List[System.Diagnostics.Process]]::new()
@@ -75,7 +75,6 @@ AfterAll {
         Test-WindowsPrivilege -Name $privilegeName |
             Should -Be $script:initialPrivilegeState[$privilegeName]
     }
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Process security descriptors' -Tag 'Integration', 'WindowsOnly' {

@@ -2,15 +2,11 @@ BeforeAll {
     $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:module = Get-Module -Name 'WindowsAccessControl'
     $script:canonicalTarget =
         'CertificatePrivateKey:Cng:Machine:' + ('A1B2C3D4' * 8)
     $script:providerName = 'Microsoft Software Key Storage Provider'
-}
-
-AfterAll {
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Certificate private-key backup record' -Tag 'Unit', 'WindowsOnly' {

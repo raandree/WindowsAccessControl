@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-09-02
+last-verified: 2026-09-03
 owner: active-agent
 source: repository evidence
 ---
@@ -14,15 +14,15 @@ bounded Active Directory command families are complete for their accepted
 increments. Bounded execution, canonical write serialization, metrics, exact
 DSC resources for the original five families, unattended domain-lab evidence,
 and fail-closed CNG private-key mutation are independently reviewed. OI-11,
-ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, OI-28, OI-29, and OI-30 are closed.
+ENT-8, OI-18, OI-22, OI-23, OI-24, OI-27, OI-28, OI-29, OI-30, and OI-31 are
+closed, and the open-issue register now has no items.
 The 80 percent coverage gate is met over the commands the test profile can
 execute; ADR 0027 records the asserted scope and ADR 0025 keeps the threshold.
 The domain-lab document currently measures the previous build, so the identity
 guard refuses it and the merged number is not available until the lab
 acceptance is rerun. The domain-lab acceptance runs in both
 supported PowerShell editions over eight suites, and also against the installed
-package rather than only the build output. OI-31 is the only remaining
-issue, and only its enumeration-identity half is still open.
+package rather than only the build output.
 Every numbered specification is Accepted; 0008 was the last Draft.
 The wiki documents every public command and every DSC resource, and the module
 ships conceptual and external help.
@@ -30,6 +30,30 @@ The package is licensed, documented, and ready to release; the `v0.1.0` tag is
 not cut and nothing is published.
 
 ## Recent milestones
+
+- 2026-09-03: Closed OI-31 by reproducing it. The intermittent `Expected [X],
+    but got [X]` failures happen when the test process compiles the module file
+    a second time: PowerShell caches a file's compiled script block by path and
+    content, and a read that misses that cache builds a second dynamic assembly
+    carrying a second copy of every module-defined class and enumeration. All
+    six script-side resolution routes were measured and every one of them stays
+    pinned to the first copy while the module's own commands emit the second, so
+    no assertion could have been rewritten to be correct. The gate suites now
+    import the module without `-Force` and never unload it, the two tests whose
+    subject is the load and unload cycle do it inside `Start-Job`, both strict
+    assertions are restored, and a new QA suite walks the abstract syntax tree of
+    every gate test file to keep it that way. The trigger that fired on
+    2026-08-11 is still unnamed: the engine's own cache drop above 1024 entries
+    is what the reproducer uses, but a measured `build, test` process peaked at
+    528 entries and a bare Pester run at 411, the two import routes spell the
+    module path identically, and `Get-DscResource` reuses the loaded instance in
+    both editions. The fix removes the precondition rather than one trigger. The
+    reproducer was repeated ten times in each mode with ten of ten behaving as
+    expected, and the local gate is green at 17 tasks, 0 errors, 0 warnings,
+    1,742 tests passed, 0 failed, 2 skipped, and 81.92 percent asserted
+    coverage. One local constraint follows: `docs` and `test` can no longer
+    share a process, which is how `build.yaml` and the CI workflow already run
+    them.
 
 - 2026-09-02: Merged `ai/document-dsc-resources-and-external-help` into `main`,
     retaining the later Active Directory caller-effective-access and lab-runner

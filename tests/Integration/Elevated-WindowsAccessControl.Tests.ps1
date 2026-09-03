@@ -4,7 +4,7 @@ BeforeAll {
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $script:currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     $script:enabledPrivileges = [System.Collections.Generic.List[string]]::new()
     $script:privilegeReasons = @{}
@@ -43,7 +43,6 @@ AfterAll {
     foreach ($privilegeName in $script:enabledPrivileges) {
         Disable-WindowsPrivilege -Name $privilegeName -Confirm:$false
     }
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Elevated WindowsAccessControl acceptance' -Tag 'Integration', 'WindowsOnly', 'RequiresElevation' {

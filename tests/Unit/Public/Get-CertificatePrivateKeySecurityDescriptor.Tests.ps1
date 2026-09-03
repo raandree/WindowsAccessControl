@@ -12,11 +12,7 @@ Describe 'Get-CertificatePrivateKeySecurityDescriptor behavior' `
         $moduleManifest = Get-ChildItem -Path "$PSScriptRoot\..\..\..\output\module\WindowsAccessControl\*\WindowsAccessControl.psd1" |
             Sort-Object -Property { [version]$_.Directory.Name } -Descending |
             Select-Object -First 1
-        Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
-    }
-
-    AfterAll {
-        Remove-Module WindowsAccessControl -Force -ErrorAction SilentlyContinue
+        Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     }
 
     It 'Should delegate one exact certificate, provider, and key identity' {

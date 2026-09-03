@@ -13,11 +13,28 @@ BeforeDiscovery {
 
     $script:moduleName = $ProjectName
 
-    Remove-Module -Name $script:moduleName -Force -ErrorAction SilentlyContinue
-
     $mut = Get-Module -Name $script:moduleName -ListAvailable |
         Select-Object -First 1 |
-            Import-Module -Force -ErrorAction Stop -PassThru
+            Import-Module -ErrorAction Stop -PassThru
+
+    <#
+        The test phase must not re-import the module under test, because a read
+        of the module file that misses the engine script-block cache compiles a
+        second copy of every module-defined type and strands every script-side
+        reference to the first one (OI-31). That leaves this suite dependent on
+        how the module was already loaded, so say so here rather than letting
+        every discovery-driven quality gate fail one by one.
+    #>
+    if (-not (Get-Module -Name $script:moduleName).ExportedFormatFiles)
+    {
+        throw (
+            "'$script:moduleName' is loaded from its root module rather than its manifest, " +
+            'so it exports every private function and carries no format data. A ' +
+            'documentation task loads it that way, which means the docs and test ' +
+            'workflows are sharing one process. Run them separately, as build.yaml and ' +
+            'the CI workflow do.'
+        )
+    }
 }
 
 BeforeAll {
@@ -102,16 +119,34 @@ Describe 'Changelog Management' -Tag 'Changelog' {
 }
 
 Describe 'General module control' -Tags 'FunctionalQuality' {
-    It 'Should import without errors' {
-        { Import-Module -Name $script:moduleName -Force -ErrorAction Stop } | Should -Not -Throw
+    It 'Should import and remove without errors' {
+        # The cycle runs in a child process. Importing the module a second time
+        # in this one compiles it again whenever the read misses the engine
+        # script-block cache, and every module-defined type would then exist
+        # twice for the rest of the run.
+        $job = Start-Job -ScriptBlock {
+            param($ModuleName)
 
-        Get-Module -Name $script:moduleName | Should -Not -BeNullOrEmpty
-    }
+            Import-Module -Name $ModuleName -ErrorAction Stop
+            $imported = [bool](Get-Module -Name $ModuleName)
 
-    It 'Should remove without error' {
-        { Remove-Module -Name $script:moduleName -ErrorAction Stop } | Should -Not -Throw
+            Remove-Module -Name $ModuleName -ErrorAction Stop
 
-        Get-Module $script:moduleName | Should -BeNullOrEmpty
+            [pscustomobject]@{
+                Imported = $imported
+                Removed  = -not (Get-Module -Name $ModuleName)
+            }
+        } -ArgumentList $script:moduleName
+
+        try {
+            Wait-Job -Job $job -Timeout 300 | Should -Not -BeNullOrEmpty
+            $result = Receive-Job -Job $job -ErrorAction Stop
+
+            $result.Imported | Should -BeTrue
+            $result.Removed | Should -BeTrue
+        } finally {
+            Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 

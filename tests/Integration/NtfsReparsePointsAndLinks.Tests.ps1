@@ -6,7 +6,7 @@ BeforeAll {
             Sort-Object -Property { [version]$_.Directory.Name } -Descending |
             Select-Object -First 1
     ).FullName
-    Import-Module -Name $script:moduleManifestPath -Force -ErrorAction Stop
+    Import-Module -Name $script:moduleManifestPath -ErrorAction Stop
 
     $script:currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
     $script:symbolicLinkSkipReason = $null
@@ -86,7 +86,6 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
     foreach ($link in $script:createdLinks) {
         try {
             if ([System.IO.Directory]::Exists($link)) {
@@ -218,7 +217,7 @@ Describe 'NTFS reparse point and link behavior' -Tag 'Integration', 'WindowsOnly
             $job = Start-Job -ScriptBlock {
                 param($ManifestPath, $Root)
 
-                Import-Module -Name $ManifestPath -Force -ErrorAction Stop
+                Import-Module -Name $ManifestPath -ErrorAction Stop
                 @(Get-NTFSAccessRule -Path (Join-Path $Root '*')).Count
             } -ArgumentList $script:moduleManifestPath, $fixture.Root
 

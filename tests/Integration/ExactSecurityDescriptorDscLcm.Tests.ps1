@@ -27,7 +27,7 @@ BeforeAll {
         -Destination $script:machineModulePath `
         -Recurse `
         -Force
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $normalizedModuleRoot = $script:moduleRoot.TrimEnd('\')
     $env:PSModulePath = @($env:PSModulePath -split ';' | Where-Object {
         $_.TrimEnd('\') -ne $normalizedModuleRoot
@@ -35,7 +35,6 @@ BeforeAll {
 }
 
 AfterAll {
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
     if ($script:machineModulePath) {
         Remove-Item `
             -LiteralPath $script:machineModulePath `

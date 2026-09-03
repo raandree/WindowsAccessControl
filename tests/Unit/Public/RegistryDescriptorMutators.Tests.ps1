@@ -3,7 +3,7 @@ BeforeAll {
         Sort-Object -Property { [version]$_.Directory.Name } -Descending |
         Select-Object -First 1
 
-    Import-Module -Name $moduleManifest.FullName -Force -ErrorAction Stop
+    Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 
     function Get-TestRegistryDescriptor {
         param(
@@ -34,10 +34,6 @@ BeforeAll {
                 -TypeName 'WindowsAccessControl.RegistryKeySecurityDescriptor'
         }
     }
-}
-
-AfterAll {
-    Remove-Module -Name 'WindowsAccessControl' -Force -ErrorAction SilentlyContinue
 }
 
 Describe 'Registry descriptor-aware mutators' -Tag 'Unit', 'WindowsOnly' {
