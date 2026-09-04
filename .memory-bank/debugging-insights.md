@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-08-16
+last-verified: 2026-09-04
 owner: software-engineer
 source: implementation and test evidence
 ---
@@ -757,6 +757,14 @@ fresh output directory. Confirm the failure is an exclusive generated-file
 lock, remove any module loaded from that output root, and rerun the same clean
 build once. Do not alter source or suppress the build error.
 
+The usual holder is an interactive session, not a race: any probe that imported
+the built module keeps `WindowsAccessControl.psm1` open for the life of that
+host, so a later `-Tasks build` fails with `IOException` from
+`Set-Content`. That includes the terminal you are typing in and any detached
+`-NoExit` host left behind by an earlier run. `Remove-Module` in the session
+that did the import releases it; test with
+`[System.IO.File]::Open($path, 'Open', 'Write', 'None')` before rebuilding.
+
 ## SMB share descriptor metadata preservation
 
 `SetNamedSecurityInfoW` with `SE_LMSHARE` can clear a share description even
@@ -892,3 +900,42 @@ A machine certificate is requested by the machine account, so the fix is to run
 the request as `SYSTEM` exactly as autoenrollment does: register a scheduled
 task with a `ServiceAccount` principal, have it write its result as JSON, and
 read that file back. That needs no delegation and no stored credential.
+
+## `Expected [X], but got [X]` means the module was compiled twice
+
+A strict type assertion that fails with the same type name on both sides is not
+a bad assertion. PowerShell compiles a module file into a dynamic assembly
+carrying every class and enumeration it declares, and caches the compiled script
+block keyed by file path and file content. A read that misses that cache
+compiles the file again, and from then on the module's own commands emit types
+from the second assembly while every script-side reference resolves the first.
+
+Confirm it in one line before theorising, because the message cannot:
+
+```powershell
+@([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object {
+    $_.GetType('WindowsServiceControlManagerRights', $false, $false)
+}).Count
+```
+
+Two or more is the defect. Do not try to write an assertion that survives it:
+a type literal, a literal evaluated in the module's own scope, a bound script
+block, `-as [type]`, a `[type]` cast, and `Invoke-Expression` were each measured
+and all six stay pinned to the first copy. Nothing written in script can name
+the copy the module currently emits, which is why weakening the assertion to a
+name comparison only hides it.
+
+It will not reproduce by running the failing test alone. To force it, import the
+module, clear the cache through
+`[scriptblock].GetMethod('ClearScriptBlockCache', 'Static, NonPublic')`, then
+re-import. Ten of ten poisoned runs failed with the original text, ten of ten
+clean runs passed.
+
+The precondition is a second read of the module file, and that is what the
+repository now removes: `tests/QA/TestSuiteModuleIdentity.Tests.ps1` walks the
+syntax tree of every gate, Lab, and Performance file to forbid a forced import
+or an in-process unload, and `.build/ModuleCompilation.build.ps1` measures the
+outcome in an `Exit-Build` block so a red suite still reports it. The trigger
+that fired on 2026-08-11 was never named; the engine's own cache drop above 1024
+entries reproduces it, but a real gate peaked at 528 entries. Removing the
+precondition closes every trigger at once, so do not spend the day naming one.
