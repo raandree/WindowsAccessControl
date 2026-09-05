@@ -9,13 +9,13 @@ source: current task evidence
 
 ## Current task
 
-The user requested unattended closure of the repository audit gaps, including
-live validation, and explicitly granted access to the existing lab. Work is on
-`ai/specification-code-audit`, based on `124a356`; this turn's edits are not yet
-committed. The user accepted the review and requested user-impact documentation
-and development-cycle close-out. Documentation is complete; the final coverage
-assertion and local commit remain pending. Do not publish, push, tag, or change
-repository settings without a specific request.
+The audit closure is complete on `ai/specification-code-audit`. Commit
+`6f7ba15` contains the reviewed fixes, regression guards, and user-impact
+documentation. Both local gates and all final lab profiles passed. The
+heartbeat was cancelled after completion; its terminal exit was intentional.
+Do not publish, push, tag, or change repository settings without a specific
+request. No migration is required; public commands and object properties are
+unchanged.
 
 ## Implemented
 
@@ -45,7 +45,7 @@ repository settings without a specific request.
     diagnostics, and complete release notes in user-facing terms. The final
     release-note task passed without changing the tested manifest or package.
 
-## Verified so far
+## Final verification
 
 - Specification QA: 20 passed, zero failed or skipped. The final Desktop QA
     and console-log regression run passed 25 tests. The new guards and
@@ -70,8 +70,12 @@ repository settings without a specific request.
     changed files were normalized to `.gitattributes`. The corrected Desktop
     local-only pass has 1,708 passing tests, but coverage is 79.72%, below
     the unchanged 80% threshold. The import location held stale lab evidence;
-    the fresh final lab document was accepted and the merge is running after
-    1,709 tests passed with zero failures and two environmental skips.
+    the fresh final lab document was accepted and the final gate passed:
+    1,709 tests, zero failures, two environmental skips, and 90.37% asserted
+    coverage (7,407 of 8,196 in-scope commands). Whole-module coverage is
+    90.34%; the 16 lab-only files are reported at 89.46%. All ten build tasks
+    passed with zero errors or warnings. This Desktop coverage verdict uses
+    current lab evidence; it does not claim the local-only profile reaches 80%.
     A clean-main baseline reproduced all 17 completion failures and stopped
     before the threshold assertion. This proves the completion defect was
     pre-existing, not a baseline coverage percentage. Its worktree is removed.
@@ -84,8 +88,9 @@ repository settings without a specific request.
     zero failures or skips and eight ready cleanup ledgers per edition.
     Required services on both controllers and the member were independently
     confirmed running after acceptance at 22:56 UTC.
-- The independent review approved the exact current 31-file code and
-    documentation diff against main, with no Blockers or Majors. Two Minor
+- The independent review approved the 31-file code and documentation diff
+    against main, with no Blockers or Majors. The final user-impact wording
+    was subsequently self-reviewed and checked. Two Minor
     observations are contained to the trusted lab harness: predictable console
     filenames and executing a repository-owned AST fragment in a unit test.
     An independent VM check found no broad user read grant on the new raw log
@@ -98,7 +103,7 @@ repository settings without a specific request.
 - Vendored bootstrap TODOs stay upstream: Sampler rules prohibit local edits
     to `build.ps1` and `Resolve-Dependency.ps1`.
 
-## Evidence and remaining process
+## Retained evidence
 
 Evidence root is
 `C:/Users/install/AppData/Local/Temp/2/wac-closure-a8d8a95f9dd14813907a881c8cef950e`.
@@ -112,8 +117,9 @@ Read result markers and logs; a PID alone does not prove success.
 - Final Desktop gate: PID 6216, marker
     `detached-e86d746a8fcb44b7bc8d1c267c084090.exit`.
 - Desktop gate with current lab evidence: PID 8676, marker
-    `detached-bb5e32a0893643eda99f135e2e366c32.exit`; log
+    `detached-bb5e32a0893643eda99f135e2e366c32.exit` is 0; log
     `wac-desktop-merged-coverage-13f2c78bc6804b1e87d041cc327183bf.log`.
+    Completed at 23:01 UTC; no validation process remains active.
 - Completed clean-main Desktop baseline: marker
     `detached-eaaef34f574c49ffb39e41a1fce3984d.exit`; log
     `wac-main-desktop-baseline3-16149d5df7964daa9921d25d52218747.log`.
@@ -138,18 +144,16 @@ Read result markers and logs; a PID alone does not prove success.
     administrator's `TEMP` directory on `F1ADC1`. Use a separate
     `Invoke-LabCommand` session to inspect progress. Console logs are private
     diagnostics; only redacted JSON is shareable evidence.
-- Heartbeat job: `wac-closure-a8d8a95f`, ten-minute cadence. Re-arm each tick
-    while needed and cancel it at completion. Last armed at 22:53 UTC for
-    23:03 UTC. Only the Desktop coverage merge is still running.
+- Heartbeat job `wac-closure-a8d8a95f` was stopped at 23:02 UTC after the final
+    gate passed. Do not re-arm it for this completed cycle.
 
-## Remaining work
+## Closure
 
-1. Read the merged Desktop gate's actual threshold assertion and completion
-    marker. Do not weaken assertions or introduce exclusions to pass it.
-2. Cancel the heartbeat after completion. The temporary worktree, dependency
-    junction, old payload logs, and scratch coverage script are already gone.
-3. Record the final verdict, run Memory Bank health checks, review the staged
-    diff, and commit locally. No push, publication, or tag.
+The reviewed implementation and user documentation are committed locally as
+`6f7ba15`. The temporary worktree, dependency junction, old payload logs, and
+scratch coverage script are removed. Final evidence is retained above. No push,
+publication, or tag was performed. Further work requires a new task; accepted
+deferrals and remote release operations remain outside this cycle.
 
 Historical OI-31 diagnostics remain in [debugging-insights.md](debugging-insights.md)
 and in the pre-audit history. Current contract authority remains

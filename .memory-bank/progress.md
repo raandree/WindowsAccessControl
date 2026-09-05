@@ -12,22 +12,31 @@ source: repository evidence
 The accepted increments expose 105 commands and 20 DSC resources over the local
 and bounded enterprise families. The formal issue register is empty. The audit
 gaps are implemented and independently approved. User-impact documentation and
-generated release notes are complete; only the Desktop coverage merge and local
-commit remain. [Active context](activeContext.md) records the evidence paths.
+generated release notes are complete. Commit `6f7ba15` records the reviewed
+change on `ai/specification-code-audit`; all required validation has passed.
+[Active context](activeContext.md) records the evidence paths.
 
 The final Core gate passed 1,753 tests with two environmental skips and 81.92%
-asserted coverage. Desktop passed 1,709 tests with two skips; the current lab
-document was accepted for merging. All three final lab profiles passed 93 tests
-and eight cleanup checks: instrumented Desktop build, installed Desktop package,
-and installed Core package. The clean-main comparison reproduced 17 completion
-failures; the branch repairs them. Local-only Desktop coverage was 79.72%, so
-the final merged threshold must not be inferred from those passing tests.
+asserted coverage. Desktop passed 1,709 tests with two skips and 90.37% asserted
+coverage after merging current lab evidence, above the unchanged 80% gate.
+All three final lab profiles passed 93 tests and eight cleanup checks:
+instrumented Desktop build, installed Desktop package, and installed Core
+package. The clean-main comparison reproduced 17 completion failures; the branch
+repairs them. Local-only Desktop coverage was 79.72%; the merged pass does not
+claim that profile alone reaches the threshold.
 
 No release has been published. Public GitHub has zero open issues and three
 Dependabot pull requests. Publication, tags, and social-preview settings are
 separate remote operations, not implied by local defect closure.
 
 ## Recent milestones
+
+- 2026-09-05: Closed the validated cycle locally in `6f7ba15`. The Desktop
+    coverage merge completed at 23:01 UTC with 90.37% asserted coverage and
+    90.34% whole-module coverage; all ten tasks passed without warnings.
+    Monitoring was stopped at 23:02 UTC. Both package editions and the
+    instrumented lab build had already passed all 93 tests and cleanup checks.
+    No push, release, or tag was performed.
 
 - 2026-09-05: The user accepted the security and quality review and requested
     development-cycle close-out. Documented reliable privilege-name completion,
