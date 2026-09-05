@@ -99,7 +99,7 @@ absent implementation.
 | ENT-5 | Delivered | ADR 0016 and ADR 0023 plus the NFR-18 evidence |
 | ENT-6 | Delivered | `Invoke-WindowsAccessControlBatch.Tests.ps1`, `Get-WindowsAccessControlMetric.Tests.ps1`, and the per-family command-contract suites |
 | ENT-7 | Delivered | `Invoke-WindowsAccessControlDomainLabAcceptance` suite heartbeats, exact sanitized skip reasons, cleanup-ledger gate, and atomic evidence |
-| ENT-8 | Delivered for the shipped families | Cross-edition runs, analyzer and package QA, the six-suite lab acceptance, and the recorded independent reviews; every release candidate reruns the gate |
+| ENT-8 | Delivered for the shipped families | Cross-edition runs, analyzer and package QA, the eight-suite lab acceptance, and the recorded independent reviews; every release candidate reruns the gate |
 
 ### Task Scheduler
 
@@ -267,14 +267,14 @@ consistent nonterminating-error metrics, single-target behavior, and
 cross-module write serialization. The same focused gate runs under PowerShell
 7 and Windows PowerShell 5.1.
 
-`Invoke-WindowsAccessControlDomainLabAcceptance` runs the four live domain-lab
-suites plus the CNG inspection suite in fixed order, records suite start/end
+`Invoke-WindowsAccessControlDomainLabAcceptance` runs its eight live
+domain-lab suites in fixed order, records suite start/end
 heartbeats and exact sanitized
 skip reasons, and verifies both lab boundaries after every suite. A suite with
 zero passing tests or any skip fails the profile. Retained JSON is atomic,
 sanitizes infrastructure-shaped values, and rejects known plan identifiers. The
-completed profile passed 18 tests with five ready cleanup checks and no failures
-or skips.
+profile's current test and cleanup-check counts are recorded in
+`.memory-bank/progress.md` rather than pinned here.
 
 The complete repository profile runs on the management host in both supported
 PowerShell editions. Domain-controller policy denies interactive logon to its
@@ -342,12 +342,13 @@ not depend on it.
 
 ## Exact descriptor DSC evidence
 
-`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies nine manifest
+`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies ten manifest
 exports, `Get-DscResource` discovery, composite keys, mandatory SDDL, and
 read-only prefixed reasons. `ExactSecurityDescriptorResource.Tests.ps1` covers
 class orchestration and canonical mismatch reasons in PowerShell 7. Private
 adapter tests cover every object-family route in both editions, including the
-SMB share, Active Directory, task folder, and registered-task routes, the
+SMB share, Active Directory, task folder, registered-task, and certificate
+private-key routes, the
 access-section gate, the
 required allowed organizational unit, the required allowed root path, and the
 object-GUID pin re-asserted
@@ -365,18 +366,21 @@ asserting that the DACL reported with `-Sections All` equals the DACL reported
 with `-Sections Access` for an inherited ACE.
 Unit tests reject omitted selected
 owner, group, DACL, and SACL data and cover present/absent combined protection.
-Desktop-only LCM evidence compiles all five resources into one MOF and invokes
-the all-section NTFS resource through `Invoke-DscResource`. The fixture installs
+Desktop-only LCM evidence compiles the five local-family resources into one MOF
+and invokes
+the all-section NTFS resource through `Invoke-DscResource`. A second
+configuration compiles the five enterprise-family resources. The fixture
+installs
 the discovered module version machine-wide only for the test, refuses
 collisions, and removes the installation afterward.
 
 ## Access-rule presence DSC evidence
 
 `AccessRulePresenceResourceContract.Tests.ps1` verifies the public Ensure enum,
-nine resource exports, typed composite keys, default `Present`, read-only
+ten resource exports, typed composite keys, default `Present`, read-only
 reasons, and that every `AppliesTo` property advertises the same values as its
 cmdlet. Class tests cover compliance reasons and adapter routing. Adapter tests
-cover all nine families, exact mask/qualifier/scope matching, inherited-rule
+cover all ten families, exact mask/qualifier/scope matching, inherited-rule
 rejection, idempotence, duplicate removal, unsigned high-bit rights,
 directory matching on both object GUIDs plus the inheritance type, task-folder
 inheritance-scope matching, and the required allowed root path.

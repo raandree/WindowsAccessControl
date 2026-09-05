@@ -117,9 +117,18 @@ Stable PowerShell type names identify module output:
 - `WindowsAccessControl.ProcessSecurityDescriptor`
 - `WindowsAccessControl.SmbShareAccessRule`
 - `WindowsAccessControl.SmbShareSecurityDescriptor`
+- `WindowsAccessControl.SmbShareEffectiveAccess`
 - `WindowsAccessControl.ADObjectAccessRule`
 - `WindowsAccessControl.ADObjectCallerEffectiveAccess`
 - `WindowsAccessControl.ADObjectSecurityDescriptor`
+- `WindowsAccessControl.ADSchemaDefaultAccessRule`
+- `WindowsAccessControl.TaskFolderAccessRule`
+- `WindowsAccessControl.TaskFolderSecurityDescriptor`
+- `WindowsAccessControl.ScheduledTaskAccessRule`
+- `WindowsAccessControl.ScheduledTaskSecurityDescriptor`
+- `WindowsAccessControl.CertificatePrivateKeyAccessRule`
+- `WindowsAccessControl.CertificatePrivateKeySecurityDescriptor`
+- `WindowsAccessControl.CertificateCriticalBinding`
 - `WindowsAccessControl.Metric`
 
 Native .NET rule or descriptor objects remain available as properties where a
@@ -165,9 +174,10 @@ name the mask, names the four generic rights, `ACCESS_SYSTEM_SECURITY`, and
 `MAXIMUM_ALLOWED` when the enum omits them, and reports anything still unnamed
 as a hexadecimal remainder. The default table views report this property.
 
-The module ships curated default table views for `AccessRule`, `AuditRule`,
-`Owner`, `EffectiveAccess`, and `Privilege`. Other result types remain fully
-inspectable without a mandatory default view.
+The module ships curated default table views for twenty result types: every
+rule family except the certificate private key, both effective-access results,
+`Owner`, and `Privilege`. Descriptor, backup-record, identity, inheritance,
+and metric results remain fully inspectable without a mandatory default view.
 
 ## Access-rule commands
 
@@ -238,11 +248,12 @@ Arbitrary owner assignment can require `SeRestorePrivilege`.
 The `Sections` value selects any combination of owner, group, DACL, and SACL.
 Copy, backup, and restore preserve sections outside that selection (ADR 0003).
 The unified backup accepts descriptor output from filesystem, registry,
-service/SCM, pinned process, SMB share, Active Directory, task folder, and
-registered-task commands. Record
+service/SCM, pinned process, SMB share, Active Directory, task folder,
+registered-task, and certificate private-key commands. Record
 version is a property of the object family: the five local families use
-schema-version 1 and the four server-qualified families use schema-version 2
-(ADR 0016 and ADR 0023). A record whose family and version disagree is rejected
+schema-version 1 and the five server-qualified families use schema-version 2
+(ADR 0016 and ADR 0023; specification 0017 adds the private-key family). A
+record whose family and version disagree is rejected
 in both directions.
 
 Every record contains object family, target and canonical identity, native
@@ -253,7 +264,11 @@ creation `FILETIME`. Version-2 records additionally bind `Server`, plus
 digest. A Task Scheduler record adds no field: its `Target` is the absolute
 task path, so the canonical target is exactly `<family>:<SERVER>:<TARGET>` in
 uppercase and restore derives the folder and leaf by splitting `Target` at its
-last separator. The envelope `SchemaVersion` is the highest record version
+last separator. A certificate private-key record binds `ProviderName`,
+`KeyName`, `KeyScope`, and `CertificateThumbprint`; the digest covers those
+four for that family alone, so a version-2 record written before the family
+existed keeps its hash. The envelope `SchemaVersion` is the highest record
+version
 present, and restore rejects a document that declares a lower version than one
 of its records.
 
@@ -506,8 +521,9 @@ rejects a candidate whose target changed after the staging read. Task Scheduler
 can reorder ACEs and add `DACL_AUTO_INHERITED`; stored-state verification
 ignores only those system-derived differences while retaining
 duplicate-sensitive native ACE and caller-controlled flag comparison, so ACE
-order is neither preserved nor verified. Audit rules, SACL, backup/restore,
-DSC, and direct remote APIs remain outside this contract.
+order is neither preserved nor verified. Audit rules, SACL, and direct remote
+APIs remain outside this contract. Backup, restore, and desired state arrived
+with specification 0014.
 
 ## Certificate private-key commands
 

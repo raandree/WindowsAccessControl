@@ -247,7 +247,7 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             Join-Path $script:decisionRoot 'README.md'
         ) -Raw
 
-        foreach ($closedIssue in 5, 6, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30) {
+        foreach ($closedIssue in 5, 6, 8, 9, 10, 11, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31) {
             $openIssues | Should -Not -Match "(?m)^## OI-$closedIssue`:"
         }
         $coverageDecisionName = '0027-assert-coverage-over-executable-scope.md'

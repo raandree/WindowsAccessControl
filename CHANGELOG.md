@@ -384,6 +384,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Correct the specification statements that had fallen behind the code. The
+    public API contract said Task Scheduler backup, restore, and desired state
+    remained outside it, while the same document tables four Task Scheduler DSC
+    resources and specification 0014 delivers the portability; it counted four
+    server-qualified backup families at record version 2 where there are five,
+    omitting the certificate private key and the four fields its record binds;
+    its list of stable output type names omitted nine names the module stamps
+    and its own command tables return; and it named five curated table views
+    where the module ships twenty. The traceability contract still said the two
+    DSC contract suites verify nine exports, where both now enumerate ten, and
+    still described the domain-lab acceptance as four suites plus the private-key
+    suite at a fixed eighteen tests, where the runner fixes eight suites and the
+    same document places run counts in the Memory Bank. No behavior changed;
+    each correction was verified against the source, the manifest, the format
+    file, and the suites themselves
+- Pin OI-31 closed in the QA specification guard, which had stopped at OI-30.
+    Reopening the entry in the register now fails the guard
+
 - Fix the intermittent `Expected [X], but got [X]` failures in whole-suite test
     runs, and restore the strict enumeration type assertions that had been
     weakened to a name comparison to work around them. PowerShell compiles a
