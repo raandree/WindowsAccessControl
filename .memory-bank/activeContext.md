@@ -9,9 +9,11 @@ source: current task evidence
 
 ## Current task
 
-The audit closure is complete on `ai/specification-code-audit`. Commit
-`6f7ba15` contains the reviewed fixes, regression guards, and user-impact
-documentation. Both local gates and all final lab profiles passed. The
+The audit closure is complete on `ai/specification-code-audit`, which is six
+commits ahead of `main` and ends at `5d291c5`. This cycle added `6f7ba15` for
+the reviewed fixes, regression guards, and user-impact documentation, then
+`b27ea16` and `5d291c5` for the evidence records and their privacy correction.
+Both local gates and all final lab profiles passed. The
 heartbeat was cancelled after completion; its terminal exit was intentional.
 Do not publish, push, tag, or change repository settings without a specific
 request. No migration is required; public commands and object properties are
@@ -151,10 +153,12 @@ profile paths out of this version-controlled file.
 ## Closure
 
 The reviewed implementation and user documentation are committed locally as
-`6f7ba15`. The temporary worktree, dependency junction, old payload logs, and
-scratch coverage script are removed. Final evidence is retained above. No push,
-publication, or tag was performed. Further work requires a new task; accepted
-deferrals and remote release operations remain outside this cycle.
+`6f7ba15`, with `b27ea16` and `5d291c5` recording and correcting the evidence
+notes. The working tree is clean. The temporary worktree, dependency junction,
+old payload logs, and scratch coverage script are removed. Final evidence is
+retained above. No push, publication, or tag was performed. Further work
+requires a new task; accepted deferrals and remote release operations remain
+outside this cycle.
 
 Historical OI-31 diagnostics remain in [debugging-insights.md](debugging-insights.md)
 and in the pre-audit history. Current contract authority remains

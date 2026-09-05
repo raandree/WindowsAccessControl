@@ -13,8 +13,9 @@ The accepted increments expose 105 commands and 20 DSC resources over the local
 and bounded enterprise families. The formal issue register is empty. The audit
 gaps are implemented and independently approved. User-impact documentation and
 generated release notes are complete. Commit `6f7ba15` records the reviewed
-change on `ai/specification-code-audit`; all required validation has passed.
-[Active context](activeContext.md) records the evidence paths.
+change on `ai/specification-code-audit`, which ends at `5d291c5`; all required
+validation has passed. [Active context](activeContext.md) records the evidence
+paths.
 
 The final Core gate passed 1,753 tests with two environmental skips and 81.92%
 asserted coverage. Desktop passed 1,709 tests with two skips and 90.37% asserted
@@ -36,6 +37,10 @@ separate remote operations, not implied by local defect closure.
     90.34% whole-module coverage; all ten tasks passed without warnings.
     Monitoring was stopped at 23:02 UTC. Both package editions and the
     instrumented lab build had already passed all 93 tests and cleanup checks.
+    A closing self-review then found that the evidence note had introduced the
+    local Windows account name into a version-controlled file, which `main` did
+    not contain; `5d291c5` replaced it with `%TEMP%` while keeping every marker
+    identifier. Record transient host paths without a user profile.
     No push, release, or tag was performed.
 
 - 2026-09-05: The user accepted the security and quality review and requested
