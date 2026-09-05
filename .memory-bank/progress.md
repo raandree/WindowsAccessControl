@@ -31,6 +31,30 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-09-05: Audited the specifications against the code. The register in
+    `specs/open-issues.md` is empty and the implemented surface matches its
+    contract exactly: 105 public commands and 20 DSC resources, each named in
+    `specs/0003`, documented under `docs/`, and covered by a test file of its
+    own name; every test file and script the specifications name exists, and all
+    39 roadmap task identifiers in 0008 are mapped in 0005. Every gap found is
+    specification text that trails the code. `specs/0005` lists 89 of the 105
+    commands in its command-evidence table, still says the two DSC contract
+    suites verify "nine" exports where both enumerate ten, and still describes
+    the lab acceptance as four suites plus the CNG suite at 18 tests and
+    ENT-8 as six suites, where the runner fixes eight. `specs/0003` says Task
+    Scheduler backup/restore and DSC "remain outside this contract" while the
+    same file tables four Task Scheduler DSC resources and 0014 delivers the
+    portability; it counts "four server-qualified families" at record version 2
+    where FR-25 and `ConvertTo-WindowsSecurityDescriptorBackupRecord` have five,
+    omitting the certificate private key; its output-type list omits nine names
+    the module stamps and its own tables return; and its format-view sentence
+    names five views where the module ships eighteen. The root cause is
+    asymmetric guarding: `tests/QA/Specifications.Tests.ps1` asserts that every
+    exported command appears in 0003, and nothing asserts the 0005 table, the
+    stated counts, or the output-type list. Two smaller items: the private-key
+    rule type is the only rule family without a curated table view, and the QA
+    closed-issue loop stops at OI-30, so OI-31 has no regression pin.
+
 - 2026-09-03: Closed OI-31 by reproducing it. The intermittent `Expected [X],
     but got [X]` failures happen when the test process compiles the module file
     a second time: PowerShell caches a file's compiled script block by path and

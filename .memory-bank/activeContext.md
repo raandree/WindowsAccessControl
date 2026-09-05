@@ -135,6 +135,13 @@ Rerun the domain-lab acceptance when the lab is next available. It is the only
 thing that can validate the domain-lab suites now importing once, and it still
 measures the previous build for coverage.
 
+A specification audit on 2026-09-05 found no gap between the accepted contract
+and the implemented surface, and a cluster of specification text that trails
+the code in 0003 and 0005. `progress.md` carries the itemized list. Nothing
+blocks a release on it, and closing it should also close the guard asymmetry
+that let it happen: the QA specification suite pins the 0003 command catalog
+and pins nothing in 0005.
+
 ## What the independent review changed
 
 The review was scoped to test integrity rather than classic security, and it
