@@ -105,10 +105,11 @@ unchanged.
 
 ## Retained evidence
 
-Evidence root is
-`C:/Users/install/AppData/Local/Temp/2/wac-closure-a8d8a95f9dd14813907a881c8cef950e`.
-Its generated `run-state.json` contains complete process, log, and result paths.
-Read result markers and logs; a PID alone does not prove success.
+Evidence root is `%TEMP%\wac-closure-a8d8a95f9dd14813907a881c8cef950e` on the
+development host, alongside the markers and logs named below. Its generated
+`run-state.json` contains complete process, log, and result paths. Read result
+markers and logs; a PID alone does not prove success. Keep host-specific
+profile paths out of this version-controlled file.
 
 - Final Core gate: PID 15032, marker
     `detached-b451393af889451f88e4220b3c22d101.exit`.
