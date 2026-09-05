@@ -7,6 +7,7 @@
     $script:module = Get-Module -Name WindowsAccessControl
 }
 
+# FR-26: rule-presence resources expose every supported family and canonical key.
 Describe 'Access-rule presence DSC resource contract' -Tag 'Unit', 'WindowsOnly' {
     It 'Should expose the WindowsAccessControlDscEnsure enum' {
         ([System.Management.Automation.PSTypeName]'WindowsAccessControlDscEnsure').Type |

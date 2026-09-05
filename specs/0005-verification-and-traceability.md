@@ -99,7 +99,7 @@ absent implementation.
 | ENT-5 | Delivered | ADR 0016 and ADR 0023 plus the NFR-18 evidence |
 | ENT-6 | Delivered | `Invoke-WindowsAccessControlBatch.Tests.ps1`, `Get-WindowsAccessControlMetric.Tests.ps1`, and the per-family command-contract suites |
 | ENT-7 | Delivered | `Invoke-WindowsAccessControlDomainLabAcceptance` suite heartbeats, exact sanitized skip reasons, cleanup-ledger gate, and atomic evidence |
-| ENT-8 | Delivered for the shipped families | Cross-edition runs, analyzer and package QA, the eight-suite lab acceptance, and the recorded independent reviews; every release candidate reruns the gate |
+| ENT-8 | Delivered for the shipped families | Cross-edition runs, analyzer and package QA, the domain-lab acceptance profile, and the recorded independent reviews; every release candidate reruns the gate |
 
 ### Task Scheduler
 
@@ -154,97 +154,117 @@ absent implementation.
 
 ## Public command evidence
 
-| Command | Direct specs | Primary boundary | Privilege-gated evidence |
-| --- | ---: | --- | --- |
-| `Add-NTFSAccessRule` | 5 | Live NTFS | Not required |
-| `Add-NTFSAuditRule` | 3 | Unit descriptor | Live SACL add/query |
-| `Backup-NTFSItemSecurityDescriptor` | 4 | Live NTFS DACL and aggregate bounded reads | Live SACL backup |
-| `Backup-WindowsSecurityDescriptor` | 6 | Live NTFS, registry, service/SCM, and process | SHA-256, X.509, atomic replacement, duplicate rejection, and absent SACL |
-| `Clear-NTFSAccessRule` | 1 | Live NTFS | Not required |
-| `Clear-NTFSAuditRule` | 1 | Unit descriptor | Live SACL clear |
-| `Copy-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Live SACL copy and section preservation |
-| `Disable-NTFSItemInheritance` | 1 | Live NTFS DACL | Audit inheritance workflow |
-| `Disable-WindowsPrivilege` | 2 | Token integration | Not required |
-| `Enable-NTFSItemInheritance` | 2 | Live NTFS DACL | Audit inheritance cleanup |
-| `Enable-WindowsPrivilege` | 1 | Token integration | Not required |
-| `Get-NTFSAccessRule` | 8 | Live NTFS and Unit | Not required |
-| `Get-NTFSAuditRule` | 2 | Unit descriptor | Live SACL add/query |
-| `Get-NTFSItemEffectiveAccess` | 1 | Live NTFS Authz | Not required |
-| `Get-NTFSItemInheritance` | 1 | Live NTFS DACL | Audit inheritance workflow |
-| `Get-NTFSItemOwner` | 3 | Live NTFS plus canonical batch deduplication and prevalidation | Not required; also read back by arbitrary-owner acceptance |
-| `Get-NTFSItemSecurityDescriptor` | 1 | Live NTFS DACL | Live SACL backup |
-| `Edit-NTFSItemSecurityDescriptor` | 4 | Unit boundary plus live NTFS DACL | One read/write, `WhatIf`, callback failure, loaded-section enforcement |
-| `Edit-RegistryKeySecurityDescriptor` | 4 | Unit contract plus live registry DACL | One read/write, callback failure, loaded-section enforcement, staged inheritance |
-| `Get-WindowsPrivilege` | 1 | Token integration | Not required |
-| `New-NTFSAccessRule` | 1 | Unit descriptor | Not required |
-| `New-NTFSAuditRule` | 1 | Unit descriptor | Not required |
-| `Remove-NTFSAccessRule` | 4 | Live NTFS | Not required |
-| `Remove-NTFSAuditRule` | 4 | Unit descriptor | Live SACL set/remove |
-| `Resolve-WindowsIdentity` | 1 | Identity Unit | Not required |
-| `Restore-NTFSItemSecurityDescriptor` | 5 | Live NTFS DACL and historical schema 1 | Live SACL restore and family isolation |
-| `Restore-WindowsSecurityDescriptor` | 7 | Live NTFS, registry, service/SCM, and process | Whole-envelope validation, mixed-signature rejection, and X.509 verification |
-| `Set-NTFSAccessRule` | 1 | Live NTFS | Not required |
-| `Set-NTFSAuditRule` | 1 | Unit descriptor | Live SACL set/remove |
-| `Set-NTFSItemOwner` | 1 | Live current owner | Arbitrary-owner workflow |
-| `Test-NTFSItemAcl` | 2 | Live and synthetic DACL | Not required |
-| `Test-WindowsPrivilege` | 1 | Token integration | Not required |
-| `Get-RegistryKeySecurityDescriptor` | 3 | Live registry plus canonical batch deduplication and metrics | SACL path included in registry acceptance |
-| `Set-RegistryKeySecurityDescriptor` | 1 | Live registry | SACL path included in registry acceptance |
-| `Get-RegistryKeyAccessRule` | 8 | Live registry, including direct-parent, original-grandparent, mixed-rule, explicit-only, WOW64-view, and provider-object provenance behavior | Not required |
-| `Add-RegistryKeyAccessRule` | 1 | Live registry | Not required |
-| `Set-RegistryKeyAccessRule` | 1 | Live registry | Not required |
-| `Remove-RegistryKeyAccessRule` | 1 | Live registry | Not required |
-| `Clear-RegistryKeyAccessRule` | 1 | Live registry | Not required |
-| `Get-RegistryKeyAuditRule` | 1 | Live registry SACL | Scoped `SeSecurityPrivilege` |
-| `Add-RegistryKeyAuditRule` | 1 | Live registry SACL | Scoped `SeSecurityPrivilege` |
-| `Set-RegistryKeyAuditRule` | 2 | Live registry SACL | Scoped `SeSecurityPrivilege` |
-| `Remove-RegistryKeyAuditRule` | 1 | Live registry SACL | Scoped `SeSecurityPrivilege` |
-| `Clear-RegistryKeyAuditRule` | 2 | Live registry SACL | Scoped `SeSecurityPrivilege` |
-| `Get-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
-| `Enable-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
-| `Disable-RegistryKeyInheritance` | 1 | Live registry | Access and audit state |
-| `Get-ServiceSecurityDescriptor` | 2 | Live service and SCM | Named service plus SCM handle reads |
-| `Set-ServiceSecurityDescriptor` | 2 | Live service and SCM | DACL round trip and `WhatIf` |
-| `Get-ServiceAccessRule` | 2 | Live service and SCM | Typed domain-right outputs |
-| `Add-ServiceAccessRule` | 1 | Live service | Not required |
-| `Set-ServiceAccessRule` | 1 | Live service | Opposite qualifier preservation |
-| `Remove-ServiceAccessRule` | 1 | Live service | Not required |
-| `Clear-ServiceAccessRule` | 1 | Live service | Not required |
-| `Get-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
-| `Add-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
-| `Set-ServiceAuditRule` | 1 | Live service SACL | Audit-flag isolation |
-| `Remove-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
-| `Clear-ServiceAuditRule` | 1 | Live service SACL | Scoped `SeSecurityPrivilege` |
-| `Get-ProcessSecurityDescriptor` | 4 | Live process | Process, PID, module output, and handle targets |
-| `Set-ProcessSecurityDescriptor` | 2 | Live process | Pinned and caller-handle no-op round trips |
-| `Get-ProcessAccessRule` | 1 | Live process | Typed process rights |
-| `Add-ProcessAccessRule` | 1 | Live process | Not required |
-| `Set-ProcessAccessRule` | 1 | Live process | Opposite qualifier preservation |
-| `Remove-ProcessAccessRule` | 1 | Live process | Exact native ACE removal |
-| `Clear-ProcessAccessRule` | 1 | Live process | Account-scoped clear |
-| `Get-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
-| `Add-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
-| `Set-ProcessAuditRule` | 1 | Live process SACL | Audit-flag isolation |
-| `Remove-ProcessAuditRule` | 1 | Live process SACL | Exact native ACE removal |
-| `Clear-ProcessAuditRule` | 1 | Live process SACL | Scoped `SeSecurityPrivilege` |
-| `Get-WindowsAccessControlMetric` | 1 | Thread-safe aggregate snapshot Unit test | Redacted output contract |
-| `Get-SmbShareSecurityDescriptor` | 1 | Disposable local share DACL plus canonical deduplication | Remote and special-share rejection |
-| `Get-SmbShareEffectiveAccess` | 2 | Disposable local share SID-derived Authz | Explicit local context and backing-NTFS exclusion |
-| `Set-SmbShareSecurityDescriptor` | 1 | Disposable local share DACL no-op/rollback | `WhatIf`, section and description preservation |
-| `Get-SmbShareAccessRule` | 1 | Disposable local share native ACE enumeration | Typed mask and unrelated-ACE preservation |
-| `Add-SmbShareAccessRule` | 1 | Disposable local share delegated add | `WhatIf`, exact mask, metadata preservation |
-| `Remove-SmbShareAccessRule` | 1 | Disposable local share exact native removal | Canonical target validation and rollback |
-| `Get-ADObjectSecurityDescriptor` | 1 | Signed/sealed LDAP disposable-OU read | Explicit or discovered DC and immutable GUID binding |
-| `Set-ADObjectSecurityDescriptor` | 1 | Delegated disposable-OU DACL round trip | `WhatIf`, allowed-OU and protected-target rejection |
-| `Get-ADObjectAccessRule` | 1 | Common/object ACE enumeration in disposable OU | GUID and inheritance preservation, ancestor provenance, resolved schema names |
-| `Get-ADObjectCallerEffectiveAccess` | 1 | Constructed-attribute read in disposable OU | Caller-scoped context label and a delegated-versus-administrator difference in the same object |
-| `Add-ADObjectAccessRule` | 1 | Delegated object-specific ACE add | Non-Domain-Admin, idempotence, prevalidation, rollback |
-| `Remove-ADObjectAccessRule` | 1 | Exact object-ACE removal | GUID revalidation and stale-target rejection |
-| `Get-TaskFolderSecurityDescriptor` | 1 | Disposable local task-folder DACL | Local path and system-tree rejection |
-| `Set-TaskFolderSecurityDescriptor` | 2 | Disposable local task-folder DACL round trip | `WhatIf`, allowed-root containment, SYSTEM preservation, rollback |
-| `Get-ScheduledTaskSecurityDescriptor` | 1 | Disposable local registered-task DACL | Exact parent path and task-name binding |
-| `Set-ScheduledTaskSecurityDescriptor` | 2 | Disposable local registered-task DACL round trip | `WhatIf`, principal-ACE flag, task-definition preservation, rollback |
-| `Get-CertificatePrivateKeySecurityDescriptor` | 2 | Disposable non-exportable software CNG key DACL | Exact provider/key identity, certificate lifetime, no key material |
+Every manifest export appears once. The direct evidence links a command-specific
+suite; the boundary columns also summarize the integration and lab evidence
+mapped above. Run counts belong to the retained test results, not this catalog.
+
+| Command | Direct evidence | Primary boundary | Privilege-gated evidence |
+| --- | --- | --- | --- |
+| `Add-NTFSAccessRule` | [Tests](../tests/Integration/Add-NTFSAccessRule.Tests.ps1) | Live NTFS | Not required |
+| `Add-NTFSAuditRule` | [Tests](../tests/Unit/Public/Add-NTFSAuditRule.Tests.ps1) | Unit descriptor | Live SACL add/query |
+| `Backup-NTFSItemSecurityDescriptor` | [Tests](../tests/Integration/Backup-NTFSItemSecurityDescriptor.Tests.ps1) | Live NTFS DACL and aggregate bounded reads | Live SACL backup |
+| `Backup-WindowsSecurityDescriptor` | [Tests](../tests/Unit/Public/Backup-WindowsSecurityDescriptor.Tests.ps1) | Live NTFS, registry, service/SCM, and process | SHA-256, X.509, atomic replacement, duplicate rejection, and absent SACL |
+| `Clear-NTFSAccessRule` | [Tests](../tests/Integration/Clear-NTFSAccessRule.Tests.ps1) | Live NTFS | Not required |
+| `Clear-NTFSAuditRule` | [Tests](../tests/Unit/Public/Clear-NTFSAuditRule.Tests.ps1) | Unit descriptor | Live SACL clear |
+| `Copy-NTFSItemSecurityDescriptor` | [Tests](../tests/Integration/Copy-NTFSItemSecurityDescriptor.Tests.ps1) | Live NTFS DACL | Live SACL copy and section preservation |
+| `Disable-NTFSItemInheritance` | [Tests](../tests/Integration/Disable-NTFSItemInheritance.Tests.ps1) | Live NTFS DACL | Audit inheritance workflow |
+| `Disable-WindowsPrivilege` | [Tests](../tests/Integration/Disable-WindowsPrivilege.Tests.ps1) | Token integration | Not required |
+| `Enable-NTFSItemInheritance` | [Tests](../tests/Integration/Enable-NTFSItemInheritance.Tests.ps1) | Live NTFS DACL | Audit inheritance cleanup |
+| `Enable-WindowsPrivilege` | [Tests](../tests/Integration/Enable-WindowsPrivilege.Tests.ps1) | Token integration | Not required |
+| `Get-NTFSAccessRule` | [Tests](../tests/Unit/Public/Get-NTFSAccessRule.Tests.ps1) | Live NTFS and Unit | Not required |
+| `Get-NTFSAuditRule` | [Tests](../tests/Unit/Public/Get-NTFSAuditRule.Tests.ps1) | Unit descriptor | Live SACL add/query |
+| `Get-NTFSItemEffectiveAccess` | [Tests](../tests/Unit/Public/Get-NTFSItemEffectiveAccess.Tests.ps1) | Live NTFS Authz | Not required |
+| `Get-NTFSItemInheritance` | [Tests](../tests/Integration/Get-NTFSItemInheritance.Tests.ps1) | Live NTFS DACL | Audit inheritance workflow |
+| `Get-NTFSItemOwner` | [Tests](../tests/Integration/Get-NTFSItemOwner.Tests.ps1) | Live NTFS plus canonical batch deduplication and prevalidation | Not required; also read back by arbitrary-owner acceptance |
+| `Get-NTFSItemSecurityDescriptor` | [Tests](../tests/Integration/Get-NTFSItemSecurityDescriptor.Tests.ps1) | Live NTFS DACL | Live SACL backup |
+| `Edit-NTFSItemSecurityDescriptor` | [Tests](../tests/Unit/Public/Edit-NTFSItemSecurityDescriptor.Tests.ps1) | Unit boundary plus live NTFS DACL | One read/write, `WhatIf`, callback failure, loaded-section enforcement |
+| `Edit-RegistryKeySecurityDescriptor` | [Tests](../tests/Unit/Public/Edit-RegistryKeySecurityDescriptor.Tests.ps1) | Unit contract plus live registry DACL | One read/write, callback failure, loaded-section enforcement, staged inheritance |
+| `Get-WindowsPrivilege` | [Tests](../tests/Integration/Get-WindowsPrivilege.Tests.ps1) | Token integration | Not required |
+| `New-NTFSAccessRule` | [Tests](../tests/Unit/Public/New-NTFSAccessRule.Tests.ps1) | Unit descriptor | Not required |
+| `New-NTFSAuditRule` | [Tests](../tests/Unit/Public/New-NTFSAuditRule.Tests.ps1) | Unit descriptor | Not required |
+| `Remove-NTFSAccessRule` | [Tests](../tests/Integration/Remove-NTFSAccessRule.Tests.ps1) | Live NTFS | Not required |
+| `Remove-NTFSAuditRule` | [Tests](../tests/Unit/Public/Remove-NTFSAuditRule.Tests.ps1) | Unit descriptor | Live SACL set/remove |
+| `Resolve-WindowsIdentity` | [Tests](../tests/Unit/Public/Resolve-WindowsIdentity.Tests.ps1) | Identity Unit | Not required |
+| `Restore-NTFSItemSecurityDescriptor` | [Tests](../tests/Integration/Restore-NTFSItemSecurityDescriptor.Tests.ps1) | Live NTFS DACL and historical schema 1 | Live SACL restore and family isolation |
+| `Restore-WindowsSecurityDescriptor` | [Tests](../tests/Unit/Public/Restore-WindowsSecurityDescriptor.Tests.ps1) | Live NTFS, registry, service/SCM, and process | Whole-envelope validation, mixed-signature rejection, and X.509 verification |
+| `Set-NTFSAccessRule` | [Tests](../tests/Integration/Set-NTFSAccessRule.Tests.ps1) | Live NTFS | Not required |
+| `Set-NTFSAuditRule` | [Tests](../tests/Unit/Public/Set-NTFSAuditRule.Tests.ps1) | Unit descriptor | Live SACL set/remove |
+| `Set-NTFSItemOwner` | [Tests](../tests/Integration/Set-NTFSItemOwner.Tests.ps1) | Live current owner | Arbitrary-owner workflow |
+| `Test-NTFSItemAcl` | [Tests](../tests/Integration/Test-NTFSItemAcl.Tests.ps1) | Live and synthetic DACL | Not required |
+| `Test-WindowsPrivilege` | [Tests](../tests/Integration/Test-WindowsPrivilege.Tests.ps1) | Token integration | Not required |
+| `Get-RegistryKeySecurityDescriptor` | [Tests](../tests/Unit/Public/Get-RegistryKeySecurityDescriptor.Tests.ps1) | Live registry plus canonical batch deduplication and metrics | SACL path included in registry acceptance |
+| `Set-RegistryKeySecurityDescriptor` | [Tests](../tests/Unit/Public/Set-RegistryKeySecurityDescriptor.Tests.ps1) | Live registry | SACL path included in registry acceptance |
+| `Get-RegistryKeyAccessRule` | [Tests](../tests/Unit/Public/Get-RegistryKeyAccessRule.Tests.ps1) | Live registry, including direct-parent, original-grandparent, mixed-rule, explicit-only, WOW64-view, and provider-object provenance behavior | Not required |
+| `Add-RegistryKeyAccessRule` | [Tests](../tests/Unit/Public/Add-RegistryKeyAccessRule.Tests.ps1) | Live registry | Not required |
+| `Set-RegistryKeyAccessRule` | [Tests](../tests/Unit/Public/Set-RegistryKeyAccessRule.Tests.ps1) | Live registry | Not required |
+| `Remove-RegistryKeyAccessRule` | [Tests](../tests/Unit/Public/Remove-RegistryKeyAccessRule.Tests.ps1) | Live registry | Not required |
+| `Clear-RegistryKeyAccessRule` | [Tests](../tests/Unit/Public/Clear-RegistryKeyAccessRule.Tests.ps1) | Live registry | Not required |
+| `Get-RegistryKeyAuditRule` | [Tests](../tests/Unit/Public/Get-RegistryKeyAuditRule.Tests.ps1) | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Add-RegistryKeyAuditRule` | [Tests](../tests/Unit/Public/Add-RegistryKeyAuditRule.Tests.ps1) | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Set-RegistryKeyAuditRule` | [Tests](../tests/Unit/Public/Set-RegistryKeyAuditRule.Tests.ps1) | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Remove-RegistryKeyAuditRule` | [Tests](../tests/Unit/Public/Remove-RegistryKeyAuditRule.Tests.ps1) | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Clear-RegistryKeyAuditRule` | [Tests](../tests/Unit/Public/Clear-RegistryKeyAuditRule.Tests.ps1) | Live registry SACL | Scoped `SeSecurityPrivilege` |
+| `Get-RegistryKeyInheritance` | [Tests](../tests/Unit/Public/Get-RegistryKeyInheritance.Tests.ps1) | Live registry | Access and audit state |
+| `Enable-RegistryKeyInheritance` | [Tests](../tests/Unit/Public/Enable-RegistryKeyInheritance.Tests.ps1) | Live registry | Access and audit state |
+| `Disable-RegistryKeyInheritance` | [Tests](../tests/Unit/Public/Disable-RegistryKeyInheritance.Tests.ps1) | Live registry | Access and audit state |
+| `Get-ServiceSecurityDescriptor` | [Tests](../tests/Unit/Public/Get-ServiceSecurityDescriptor.Tests.ps1) | Live service and SCM | Named service plus SCM handle reads |
+| `Set-ServiceSecurityDescriptor` | [Tests](../tests/Unit/Public/Set-ServiceSecurityDescriptor.Tests.ps1) | Live service and SCM | DACL round trip and `WhatIf` |
+| `Get-ServiceAccessRule` | [Tests](../tests/Unit/Public/Get-ServiceAccessRule.Tests.ps1) | Live service and SCM | Typed domain-right outputs |
+| `Add-ServiceAccessRule` | [Tests](../tests/Unit/Public/Add-ServiceAccessRule.Tests.ps1) | Live service | Not required |
+| `Set-ServiceAccessRule` | [Tests](../tests/Unit/Public/Set-ServiceAccessRule.Tests.ps1) | Live service | Opposite qualifier preservation |
+| `Remove-ServiceAccessRule` | [Tests](../tests/Unit/Public/Remove-ServiceAccessRule.Tests.ps1) | Live service | Not required |
+| `Clear-ServiceAccessRule` | [Tests](../tests/Unit/Public/Clear-ServiceAccessRule.Tests.ps1) | Live service | Not required |
+| `Get-ServiceAuditRule` | [Tests](../tests/Unit/Public/Get-ServiceAuditRule.Tests.ps1) | Live service SACL | Scoped `SeSecurityPrivilege` |
+| `Add-ServiceAuditRule` | [Tests](../tests/Unit/Public/Add-ServiceAuditRule.Tests.ps1) | Live service SACL | Scoped `SeSecurityPrivilege` |
+| `Set-ServiceAuditRule` | [Tests](../tests/Unit/Public/Set-ServiceAuditRule.Tests.ps1) | Live service SACL | Audit-flag isolation |
+| `Remove-ServiceAuditRule` | [Tests](../tests/Unit/Public/Remove-ServiceAuditRule.Tests.ps1) | Live service SACL | Scoped `SeSecurityPrivilege` |
+| `Clear-ServiceAuditRule` | [Tests](../tests/Unit/Public/Clear-ServiceAuditRule.Tests.ps1) | Live service SACL | Scoped `SeSecurityPrivilege` |
+| `Get-ProcessSecurityDescriptor` | [Tests](../tests/Unit/Public/Get-ProcessSecurityDescriptor.Tests.ps1) | Live process | Process, PID, module output, and handle targets |
+| `Set-ProcessSecurityDescriptor` | [Tests](../tests/Unit/Public/Set-ProcessSecurityDescriptor.Tests.ps1) | Live process | Pinned and caller-handle no-op round trips |
+| `Get-ProcessAccessRule` | [Tests](../tests/Unit/Public/Get-ProcessAccessRule.Tests.ps1) | Live process | Typed process rights |
+| `Add-ProcessAccessRule` | [Tests](../tests/Unit/Public/Add-ProcessAccessRule.Tests.ps1) | Live process | Not required |
+| `Set-ProcessAccessRule` | [Tests](../tests/Unit/Public/Set-ProcessAccessRule.Tests.ps1) | Live process | Opposite qualifier preservation |
+| `Remove-ProcessAccessRule` | [Tests](../tests/Unit/Public/Remove-ProcessAccessRule.Tests.ps1) | Live process | Exact native ACE removal |
+| `Clear-ProcessAccessRule` | [Tests](../tests/Unit/Public/Clear-ProcessAccessRule.Tests.ps1) | Live process | Account-scoped clear |
+| `Get-ProcessAuditRule` | [Tests](../tests/Unit/Public/Get-ProcessAuditRule.Tests.ps1) | Live process SACL | Scoped `SeSecurityPrivilege` |
+| `Add-ProcessAuditRule` | [Tests](../tests/Unit/Public/Add-ProcessAuditRule.Tests.ps1) | Live process SACL | Scoped `SeSecurityPrivilege` |
+| `Set-ProcessAuditRule` | [Tests](../tests/Unit/Public/Set-ProcessAuditRule.Tests.ps1) | Live process SACL | Audit-flag isolation |
+| `Remove-ProcessAuditRule` | [Tests](../tests/Unit/Public/Remove-ProcessAuditRule.Tests.ps1) | Live process SACL | Exact native ACE removal |
+| `Clear-ProcessAuditRule` | [Tests](../tests/Unit/Public/Clear-ProcessAuditRule.Tests.ps1) | Live process SACL | Scoped `SeSecurityPrivilege` |
+| `Get-WindowsAccessControlMetric` | [Tests](../tests/Unit/Public/Get-WindowsAccessControlMetric.Tests.ps1) | Thread-safe aggregate snapshot Unit test | Redacted output contract |
+| `Get-SmbShareSecurityDescriptor` | [Tests](../tests/Unit/Public/Get-SmbShareSecurityDescriptor.Tests.ps1) | Disposable local share DACL plus canonical deduplication | Remote and special-share rejection |
+| `Get-SmbShareEffectiveAccess` | [Tests](../tests/Unit/Public/Get-SmbShareEffectiveAccess.Tests.ps1) | Disposable local share SID-derived Authz | Explicit local context and backing-NTFS exclusion |
+| `Set-SmbShareSecurityDescriptor` | [Tests](../tests/Unit/Public/Set-SmbShareSecurityDescriptor.Tests.ps1) | Disposable local share DACL no-op/rollback | `WhatIf`, section and description preservation |
+| `Get-SmbShareAccessRule` | [Tests](../tests/Unit/Public/Get-SmbShareAccessRule.Tests.ps1) | Disposable local share native ACE enumeration | Typed mask and unrelated-ACE preservation |
+| `Add-SmbShareAccessRule` | [Tests](../tests/Unit/Public/Add-SmbShareAccessRule.Tests.ps1) | Disposable local share delegated add | `WhatIf`, exact mask, metadata preservation |
+| `Remove-SmbShareAccessRule` | [Tests](../tests/Unit/Public/Remove-SmbShareAccessRule.Tests.ps1) | Disposable local share exact native removal | Canonical target validation and rollback |
+| `Get-ADObjectSecurityDescriptor` | [Tests](../tests/Unit/Public/Get-ADObjectSecurityDescriptor.Tests.ps1) | Signed/sealed LDAP disposable-OU read | Explicit or discovered DC and immutable GUID binding |
+| `Set-ADObjectSecurityDescriptor` | [Tests](../tests/Unit/Public/Set-ADObjectSecurityDescriptor.Tests.ps1) | Delegated disposable-OU DACL round trip | `WhatIf`, allowed-OU and protected-target rejection |
+| `Get-ADObjectAccessRule` | [Tests](../tests/Unit/Public/Get-ADObjectAccessRule.Tests.ps1) | Common/object ACE enumeration in disposable OU | GUID and inheritance preservation, ancestor provenance, resolved schema names |
+| `Get-ADObjectCallerEffectiveAccess` | [Tests](../tests/Unit/Public/Get-ADObjectCallerEffectiveAccess.Tests.ps1) | Constructed-attribute read in disposable OU | Caller-scoped context label and a delegated-versus-administrator difference in the same object |
+| `Add-ADObjectAccessRule` | [Tests](../tests/Unit/Public/Add-ADObjectAccessRule.Tests.ps1) | Delegated object-specific ACE add | Non-Domain-Admin, idempotence, prevalidation, rollback |
+| `Remove-ADObjectAccessRule` | [Tests](../tests/Unit/Public/Remove-ADObjectAccessRule.Tests.ps1) | Exact object-ACE removal | GUID revalidation and stale-target rejection |
+| `Get-TaskFolderSecurityDescriptor` | [Tests](../tests/Unit/Public/Get-TaskFolderSecurityDescriptor.Tests.ps1) | Disposable local task-folder DACL | Local path and system-tree rejection |
+| `Set-TaskFolderSecurityDescriptor` | [Tests](../tests/Unit/Public/Set-TaskFolderSecurityDescriptor.Tests.ps1) | Disposable local task-folder DACL round trip | `WhatIf`, allowed-root containment, SYSTEM preservation, rollback |
+| `Get-ScheduledTaskSecurityDescriptor` | [Tests](../tests/Unit/Public/Get-ScheduledTaskSecurityDescriptor.Tests.ps1) | Disposable local registered-task DACL | Exact parent path and task-name binding |
+| `Set-ScheduledTaskSecurityDescriptor` | [Tests](../tests/Unit/Public/Set-ScheduledTaskSecurityDescriptor.Tests.ps1) | Disposable local registered-task DACL round trip | `WhatIf`, principal-ACE flag, task-definition preservation, rollback |
+| `Get-CertificatePrivateKeySecurityDescriptor` | [Tests](../tests/Unit/Public/Get-CertificatePrivateKeySecurityDescriptor.Tests.ps1) | Disposable non-exportable software CNG key DACL | Exact provider/key identity, certificate lifetime, no key material |
+| `Set-NTFSItemSecurityDescriptor` | [Tests](../tests/Unit/Public/Set-NTFSItemSecurityDescriptor.Tests.ps1) | Detached NTFS descriptor persistence and live round trip | Selected-section enforcement, `WhatIf`, stale concurrency-token refusal |
+| `Invoke-WindowsAccessControl` | [Tests](../tests/Unit/Public/Invoke-WindowsAccessControl.Tests.ps1) | Scoped local interactive logon and callback execution | Identity restoration, token disposal, argument forwarding, sanitized failure |
+| `Get-ADObjectSchemaDefaultAccessRule` | [Tests](../tests/Unit/Public/Get-ADObjectSchemaDefaultAccessRule.Tests.ps1) | Schema default descriptor read over the pinned LDAP connection | Domain-relative SID expansion and schema-default filtering in the lab |
+| `Set-ADObjectAccessRule` | [Tests](../tests/Unit/Public/Set-ADObjectAccessRule.Tests.ps1) | Delegated replacement of matching directory ACEs | Object-GUID scope preservation, concurrent-change and lockout refusal |
+| `Clear-ADObjectAccessRule` | [Tests](../tests/Unit/Public/Clear-ADObjectAccessRule.Tests.ps1) | Explicit directory ACE removal | Inherited and unrelated ACE preservation, deny-removal warning, lockout refusal |
+| `Get-TaskFolderAccessRule` | [Tests](../tests/Unit/Public/Get-TaskFolderAccessRule.Tests.ps1) | Disposable task-folder native ACE enumeration | Typed folder rights and inheritance-scope mapping |
+| `Add-TaskFolderAccessRule` | [Tests](../tests/Unit/Public/Add-TaskFolderAccessRule.Tests.ps1) | Disposable task-folder typed ACE add | Allowed-root containment, SYSTEM preservation, scope-aware idempotence |
+| `Remove-TaskFolderAccessRule` | [Tests](../tests/Unit/Public/Remove-TaskFolderAccessRule.Tests.ps1) | Exact task-folder ACE removal | Inherited-rule refusal, target revalidation, rollback |
+| `Get-ScheduledTaskAccessRule` | [Tests](../tests/Unit/Public/Get-ScheduledTaskAccessRule.Tests.ps1) | Disposable registered-task native ACE enumeration | Typed leaf rights and exact task identity |
+| `Add-ScheduledTaskAccessRule` | [Tests](../tests/Unit/Public/Add-ScheduledTaskAccessRule.Tests.ps1) | Disposable registered-task typed ACE add | Allowed-root containment, SYSTEM and task-definition preservation |
+| `Remove-ScheduledTaskAccessRule` | [Tests](../tests/Unit/Public/Remove-ScheduledTaskAccessRule.Tests.ps1) | Exact registered-task ACE removal | Target revalidation, already-absent idempotence, rollback |
+| `Get-CertificatePrivateKeyAccessRule` | [Tests](../tests/Unit/Public/Get-CertificatePrivateKeyAccessRule.Tests.ps1) | Disposable non-exportable software CNG key ACE enumeration | Certificate and key selectors, native mask and caller-certificate lifetime |
+| `Add-CertificatePrivateKeyAccessRule` | [Tests](../tests/Unit/Public/Add-CertificatePrivateKeyAccessRule.Tests.ps1) | Disposable software CNG key allow-rule add | Critical-binding refusal, required-grant preservation, stored-state verification |
+| `Remove-CertificatePrivateKeyAccessRule` | [Tests](../tests/Unit/Public/Remove-CertificatePrivateKeyAccessRule.Tests.ps1) | Exact software CNG key ACE removal | Required-grant preservation, exact rollback and no private-key material |
+| `Set-CertificatePrivateKeySecurityDescriptor` | [Tests](../tests/Unit/Public/Set-CertificatePrivateKeySecurityDescriptor.Tests.ps1) | Software CNG key DACL round trip and restore | Provider, binding, canonical-identity and concurrency gates |
+| `Test-CertificatePrivateKeyCriticalBinding` | [Tests](../tests/Unit/Public/Test-CertificatePrivateKeyCriticalBinding.Tests.ps1) | Key-based service-binding discovery | HTTP.sys binding cycle and directory-service certificate-store evidence |
 
 Cross-cutting checks add Unit-level mutator `WhatIf` specifications in
 `tests/Unit/MutatorSafety.Tests.ps1` and the QA specification contract in
@@ -267,7 +287,7 @@ consistent nonterminating-error metrics, single-target behavior, and
 cross-module write serialization. The same focused gate runs under PowerShell
 7 and Windows PowerShell 5.1.
 
-`Invoke-WindowsAccessControlDomainLabAcceptance` runs its eight live
+`Invoke-WindowsAccessControlDomainLabAcceptance` runs the following live
 domain-lab suites in fixed order, records suite start/end
 heartbeats and exact sanitized
 skip reasons, and verifies both lab boundaries after every suite. A suite with
@@ -275,6 +295,22 @@ zero passing tests or any skip fails the profile. Retained JSON is atomic,
 sanitizes infrastructure-shaped values, and rejects known plan identifiers. The
 profile's current test and cleanup-check counts are recorded in
 `.memory-bank/progress.md` rather than pinned here.
+
+### Domain-lab suites
+
+The QA suite compares this ordered inventory with the acceptance runner and
+verifies every linked file exists.
+
+| Suite | Primary boundary |
+| --- | --- |
+| [WindowsAccessControl.DomainLab.Live.Tests.ps1](../tests/Lab/WindowsAccessControl.DomainLab.Live.Tests.ps1) | Fixture lifecycle, containment, and cleanup readiness |
+| [CertificatePrivateKeyPermissions.Live.Tests.ps1](../tests/Lab/CertificatePrivateKeyPermissions.Live.Tests.ps1) | CNG inspection, mutation, service bindings, portability, desired state, and renewal |
+| [TaskSchedulerPermissions.Live.Tests.ps1](../tests/Lab/TaskSchedulerPermissions.Live.Tests.ps1) | Folder and registered-task permissions, portability, and desired state |
+| [SmbSharePermissions.Live.Tests.ps1](../tests/Lab/SmbSharePermissions.Live.Tests.ps1) | Local share DACLs, share-only effective access, portability, and desired state |
+| [ADObjectPermissions.Live.Tests.ps1](../tests/Lab/ADObjectPermissions.Live.Tests.ps1) | Delegated LDAP writes, caller-scoped access, containment, portability, and desired state |
+| [ADSchemaDefaultAndObjectType.Live.Tests.ps1](../tests/Lab/ADSchemaDefaultAndObjectType.Live.Tests.ps1) | Schema defaults and object-type resolution |
+| [ForeignPrincipalPermissions.Live.Tests.ps1](../tests/Lab/ForeignPrincipalPermissions.Live.Tests.ps1) | Cross-domain, trusted-forest, and orphaned identities |
+| [ADObjectReplication.Live.Tests.ps1](../tests/Lab/ADObjectReplication.Live.Tests.ps1) | Replication, immutable identity, concurrent writers, outage, and recovery |
 
 The complete repository profile runs on the management host in both supported
 PowerShell editions. Domain-controller policy denies interactive logon to its
@@ -293,8 +329,9 @@ hard timing assertion.
 The 80 percent threshold is asserted over the commands the running test profile
 can execute, and the merged module is measured by both profiles that execute it.
 The default Pester profile cannot reach a domain controller or a member server,
-so it executes no command at all of fifteen Active Directory and SMB share
-source files. Asserting the whole module against that profile reports those
+so it executes no command at all of the configured domain-lab-only Active
+Directory and SMB share source files. Asserting the whole module against that
+profile reports those
 files as insufficiently tested when the domain-lab suites do test them. ADR 0025
 records the decision to fix the measurement rather than the threshold, and ADR
 0027 records the scope the threshold is asserted over.
@@ -342,8 +379,9 @@ not depend on it.
 
 ## Exact descriptor DSC evidence
 
-`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies ten manifest
-exports, `Get-DscResource` discovery, composite keys, mandatory SDDL, and
+`ExactSecurityDescriptorResourceContract.Tests.ps1` verifies every
+exact-descriptor manifest export, `Get-DscResource` discovery, composite keys,
+mandatory SDDL, and
 read-only prefixed reasons. `ExactSecurityDescriptorResource.Tests.ps1` covers
 class orchestration and canonical mismatch reasons in PowerShell 7. Private
 adapter tests cover every object-family route in both editions, including the
@@ -366,21 +404,21 @@ asserting that the DACL reported with `-Sections All` equals the DACL reported
 with `-Sections Access` for an inherited ACE.
 Unit tests reject omitted selected
 owner, group, DACL, and SACL data and cover present/absent combined protection.
-Desktop-only LCM evidence compiles the five local-family resources into one MOF
-and invokes
-the all-section NTFS resource through `Invoke-DscResource`. A second
-configuration compiles the five enterprise-family resources. The fixture
-installs
+Desktop-only LCM evidence compiles the local-family descriptor and rule
+resources into one MOF and the enterprise-family resources into a second MOF.
+It invokes the all-section NTFS resource through `Invoke-DscResource`. The
+fixture installs
 the discovered module version machine-wide only for the test, refuses
 collisions, and removes the installation afterward.
 
 ## Access-rule presence DSC evidence
 
 `AccessRulePresenceResourceContract.Tests.ps1` verifies the public Ensure enum,
-ten resource exports, typed composite keys, default `Present`, read-only
+every rule-presence resource export, typed composite keys, default `Present`,
+read-only
 reasons, and that every `AppliesTo` property advertises the same values as its
 cmdlet. Class tests cover compliance reasons and adapter routing. Adapter tests
-cover all ten families, exact mask/qualifier/scope matching, inherited-rule
+cover every supported family, exact mask/qualifier/scope matching, inherited-rule
 rejection, idempotence, duplicate removal, unsigned high-bit rights,
 directory matching on both object GUIDs plus the inheritance type, task-folder
 inheritance-scope matching, and the required allowed root path.
@@ -407,7 +445,8 @@ invalidate an existing local backup.
 `AccessRulePresenceDscResources.Tests.ps1` converges `Present` and `Absent` on
 disposable NTFS, HKCU, and named-service targets, then performs SCM and pinned
 process convergence with exact DACL rollback in `finally`. The Desktop LCM gate
-compiles all ten class resources into one MOF and invokes NTFS rule add/remove
+compiles local and enterprise resource pairs into separate MOFs and invokes
+NTFS rule add/remove
 through `Invoke-DscResource`, restoring the original DACL afterward.
 
 ## Privileged release evidence

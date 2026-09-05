@@ -5,6 +5,7 @@ BeforeAll {
     Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 }
 
+# FR-22, NFR-15: bounded callbacks, selected sections, and at most one persistence operation.
 Describe 'Edit-NTFSItemSecurityDescriptor' -Tag 'Unit', 'WindowsOnly' {
     It 'Should export the bounded editing contract' {
         $command = Get-Command Edit-NTFSItemSecurityDescriptor `

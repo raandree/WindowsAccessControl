@@ -220,6 +220,7 @@ AfterAll {
     }
 }
 
+# FR-27: objectGUID survives rename and move and rejects distinguished-name reuse.
 Describe 'Active Directory multi-controller identity' `
     -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     It 'Should pin each explicit domain controller and report one immutable identity' {
@@ -603,6 +604,7 @@ Describe 'Active Directory concurrent writers' `
     }
 }
 
+# NFR-20: an unavailable pinned controller fails instead of silently redirecting a request.
 Describe 'Active Directory pinned-controller outage' `
     -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     It 'Should fail a pinned read and write instead of redirecting to a surviving controller' {

@@ -12,7 +12,7 @@ group mutation, and key creation, deletion, or export.
 
 ## Two ways to name a key
 
-Every command in this family accepts two selectors:
+Descriptor and access-rule commands accept two selectors:
 
 | Parameter set | Selector | Use it when |
 | --- | --- | --- |
@@ -62,6 +62,11 @@ The module cross-checks provider and key identity, verifies that a
 key-addressed target is an RSA key in the requested machine or user scope, and
 reads only the DACL with a silent provider query. No private-key bytes are
 returned.
+
+Access rules display as a table with `Key`, `Scope`, `Account`, `Rights`, and
+`Type` columns. If an account cannot be resolved, `Account` displays its SID.
+This changes only the default display: the returned objects and their
+properties are unchanged, and `Format-List *` still shows every property.
 
 The canonical target is
 `CertificatePrivateKey:Cng:<Machine|User>:<64 hex characters>`, where the hash

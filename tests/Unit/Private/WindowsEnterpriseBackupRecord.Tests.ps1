@@ -5,6 +5,7 @@ BeforeAll {
     Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 }
 
+# FR-25, NFR-18: versioned enterprise records bind authority and immutable target identity.
 Describe 'Enterprise backup schema version 2' -Tag 'Unit', 'WindowsOnly' {
     BeforeAll {
         function Get-TestSmbDescriptor {

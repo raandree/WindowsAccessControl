@@ -7,6 +7,7 @@ BeforeAll {
     $script:currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 }
 
+# FR-4: identity-and-qualifier replacement preserves unrelated rules.
 Describe 'Set-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
     It 'Should bind a hexadecimal literal mask the enumeration cannot name' {
         $testFile = Join-Path -Path $TestDrive -ChildPath 'hex-literal-mask.txt'

@@ -94,6 +94,7 @@ AfterAll {
     }
 }
 
+# FR-19, NFR-11, NFR-12: pinned signed/sealed LDAP, delegated writes, containment, and rollback.
 Describe 'Active Directory object DACL commands' `
     -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     AfterEach {

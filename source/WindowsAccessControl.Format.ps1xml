@@ -489,5 +489,31 @@
         </TableRowEntries>
       </TableControl>
     </View>
+    <View>
+      <Name>WindowsAccessControl.CertificatePrivateKeyAccessRule</Name>
+      <ViewSelectedBy>
+        <TypeName>WindowsAccessControl.CertificatePrivateKeyAccessRule</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader><Label>Key</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Scope</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Account</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Rights</Label></TableColumnHeader>
+          <TableColumnHeader><Label>Type</Label></TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem><PropertyName>KeyName</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>KeyScope</PropertyName></TableColumnItem>
+              <TableColumnItem><ScriptBlock>if ($_.Account) { $_.Account } else { $_.SID }</ScriptBlock></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessRightsDisplay</PropertyName></TableColumnItem>
+              <TableColumnItem><PropertyName>AccessControlType</PropertyName></TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
   </ViewDefinitions>
 </Configuration>

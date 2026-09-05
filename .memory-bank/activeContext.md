@@ -1,215 +1,156 @@
 ---
 status: current
-last-verified: 2026-09-03
-owner: active-agent
+last-verified: 2026-09-05
+owner: software-engineer
 source: current task evidence
 ---
 
 # Active context
 
-## Current focus
+## Current task
 
-OI-31 is closed, and it was closed by reproducing the failure rather than by
-arguing about it. The register had recorded `Expected
-[WindowsServiceControlManagerRights], but got
-[WindowsServiceControlManagerRights]` as a mechanism nobody had demonstrated,
-with the duplicate-import explanation marked disproved and both affected
-assertions weakened to a name-plus-`IsEnum` comparison.
+The user requested unattended closure of the repository audit gaps, including
+live validation, and explicitly granted access to the existing lab. Work is on
+`ai/specification-code-audit`, based on `124a356`; this turn's edits are not yet
+committed. The user accepted the review and requested user-impact documentation
+and development-cycle close-out. Documentation is complete; the final coverage
+assertion and local commit remain pending. Do not publish, push, tag, or change
+repository settings without a specific request.
 
-The mechanism is a second compilation of the module file. PowerShell compiles a
-module file into a dynamic assembly that carries every class and enumeration the
-file declares, and caches the compiled script block keyed by file path and file
-content. An import that reads the module file when the cache does not hold it
-compiles the file again, so a second `PowerShell Class Assembly` goes live with
-a second copy of every module-defined type.
+## Implemented
 
-What makes it unfixable from the assertion side is what happens next. The
-module's own commands emit the new copy and its type accelerators are
-re-registered onto it, but every script-side reference keeps resolving the
-first copy: a type literal, a literal evaluated inside the module's own scope,
-a script block bound to the module, `-as [type]`, a `[type]` cast, and
-`Invoke-Expression` were each measured and all six were stale. There is no
-expression a test can write that names the module's current type, so the only
-repair is to stop reading the module file a second time.
+- The command-evidence catalog covers every export and links to its actual
+    command-specific test suite. Some original commands have Integration suites,
+    not Unit/Public suites; the earlier audit overstated that distinction.
+- Specification QA checks all requirement references, command rows and links,
+    output types, DSC exports, canonical status, and ordered lab suites.
+- Private-key access rules have a default table with key, scope, identity,
+    readable rights, and qualifier; unresolved accounts fall back to the SID.
+- Stale path, private-key selector, concurrency, replication, coverage, and
+    documentation statements are corrected. Existing contextual ADR links were
+    retained and missing ones added. Accepted deferrals remain unchanged.
+- The lab host runner now retains per-edition console logs on the management VM
+    in the running administrator's private TEMP directory, while preserving
+    returned output and exit codes. Only redacted JSON is shareable evidence.
+- A real Desktop runtime defect is fixed: a bounded batch left the privilege
+    completer's static helper bound to a disposed worker context. The lookup is
+    now instance-bound. The retained before/after batch regression failed
+    without the two-line fix and passes with it; all 18 focused tests pass.
+- Repeated Added, Changed, and Fixed headings within Unreleased were merged.
+    All 754 non-heading content lines were preserved; the changelog parser had
+    previously missed content across repeated categories. A regression protects
+    per-release category uniqueness.
+- The usage guide explains the private-key rule table and unchanged object
+    properties. The changelog describes reliable privilege completion, private
+    diagnostics, and complete release notes in user-facing terms. The final
+    release-note task passed without changing the tested manifest or package.
 
-The trigger that fired on 2026-08-11 is still unnamed, and the fix does not
-depend on naming it. Three candidates were measured. The engine's own cache
-drop above 1024 entries is real and is what the reproducer uses, but a real
-`build, test` process peaked at 528 cached script blocks with no drop event and
-a bare Pester run over the same suites peaked at 411, so the suite does not
-reach it on this host. The `-ListAvailable` route in `tests/QA/module.tests.ps1`
-and the `Get-ChildItem` route every other file uses produce byte-identical path
-strings, so the cache key does not split. `Get-DscResource -Module
-WindowsAccessControl` reuses the loaded instance in both editions rather than
-reading a second copy. What is named is the precondition, a second read of the
-module file, and removing every test-authored one closes every trigger the
-test suite can reach. It does not close them all: the module's own
-`Invoke-WindowsAccessControlBatch` imports the manifest into a runspace pool in
-the same process whenever a bounded batch has both a throttle limit above one
-and more than one target. Measured against a pool built the same way, that read
-yields one live copy throughout, so it is benign rather than merely invisible,
-and it is why the build asserts the copy count rather than trusting the rules.
+## Verified so far
 
-The gate suites now do that. `tests/QA`, `tests/Unit`, and `tests/Integration`
-import the module without `-Force`, which is a no-op once it is loaded, and no
-longer unload it. The two places that genuinely test the load and unload cycle,
-the type-accelerator lifecycle test and the QA module-control test, run it
-inside `Start-Job`, where it happens in another process. Both strict assertions
-are restored.
+- Specification QA: 20 passed, zero failed or skipped. The final Desktop QA
+    and console-log regression run passed 25 tests. The new guards and
+    format/log fixes were first demonstrated red.
+- Packaging: 22 tasks, zero errors or warnings; package
+    `output/WindowsAccessControl.0.2.0-specification.nupkg`, 105 commands and 20
+    DSC resources. GitVersion 5.12.0 is installed under the user's local app-data
+    folder; Sampler intentionally normalizes its compound prerelease label.
+- The first packaging attempt had a transient output-file sharing violation.
+    An exclusive-read probe subsequently succeeded; the unchanged rerun passed.
+    No process was killed and no retry was added to the build. Owner unconfirmed.
+- Full local Core gate: 1,751 passed, zero failed, two privilege/environment
+    skips; 81.92% asserted coverage; all 35 module-defined types compiled once.
+    The changelog-only guard was added afterward and passes in focused Core QA.
+- Final Core gate: 1,753 passed, zero failed, two environmental skips, 81.92%
+    asserted coverage, all 35 module-defined types compiled once. The final
+    package matches the built module/manifest/format bytes and contains 21
+    conceptual help files plus external help. Module SHA-256 is
+    `E82AF3DACC764D37DEACB55CFBDB427A1ED42C357919E9DBB7386C7FDBD5D349`.
+- The first Desktop gate had 17 completion failures plus a Git line-ending
+    warning. The completion defect was reproduced without coverage and fixed;
+    changed files were normalized to `.gitattributes`. The corrected Desktop
+    local-only pass has 1,708 passing tests, but coverage is 79.72%, below
+    the unchanged 80% threshold. The import location held stale lab evidence;
+    the fresh final lab document was accepted and the merge is running after
+    1,709 tests passed with zero failures and two environmental skips.
+    A clean-main baseline reproduced all 17 completion failures and stopped
+    before the threshold assertion. This proves the completion defect was
+    pre-existing, not a baseline coverage percentage. Its worktree is removed.
+- The isolated Hyper-V lab has 13 running VMs. Authenticated checks passed on
+    the management controller, replication partner, and member. The current lab
+    earlier candidate passed 93 tests across eight suites in both editions.
+    The final instrumented Desktop build pass also passed all 93 tests and
+    eight suites with every cleanup ledger ready, at 45.43% lab coverage.
+    Installed-package acceptance passed all 93 tests in both editions, with
+    zero failures or skips and eight ready cleanup ledgers per edition.
+    Required services on both controllers and the member were independently
+    confirmed running after acceptance at 22:56 UTC.
+- The independent review approved the exact current 31-file code and
+    documentation diff against main, with no Blockers or Majors. Two Minor
+    observations are contained to the trusted lab harness: predictable console
+    filenames and executing a repository-owned AST fragment in a unit test.
+    An independent VM check found no broad user read grant on the new raw log
+    and no old console logs left in the payload directory.
+- Final documentation checks: all 20 specification tests passed after the
+    user-impact edits; Markdown rendering, table columns, local anchors, and
+    diff whitespace passed. The release-note task passed with zero warnings.
+- Public GitHub state: zero open issues, three Dependabot pull requests, no
+    published releases, and the generated rather than custom social preview.
+- Vendored bootstrap TODOs stay upstream: Sampler rules prohibit local edits
+    to `build.ps1` and `Resolve-Dependency.ps1`.
 
-The earlier entry was half right rather than wrong. Repeated `-Force` imports
-really are harmless while the cache holds, which is why three of them in a small
-script never reproduced anything; the trigger is the cache miss and the import
-is only what acts on it.
+## Evidence and remaining process
 
-## What changed
+Evidence root is
+`C:/Users/install/AppData/Local/Temp/2/wac-closure-a8d8a95f9dd14813907a881c8cef950e`.
+Its generated `run-state.json` contains complete process, log, and result paths.
+Read result markers and logs; a PID alone does not prove success.
 
-- Restored `Should -BeOfType ([WindowsServiceControlManagerRights])` in
-    `ServicePermissions.Tests.ps1` and
-    `Should -BeOfType ([WindowsActiveDirectoryRights])` in
-    `WindowsADSchemaDefaults.Tests.ps1`, and deleted the stale comment that
-    still named the disproved duplicate-import cause.
-- Dropped `-Force` from the module import in every gate test file and removed
-    every in-process `Remove-Module` of the module under test.
-- Moved the accelerator lifecycle test in
-    `WindowsSecurityDescriptorEngine.Tests.ps1` and the QA `General module
-    control` test into `Start-Job`. Each still proves what it proved before,
-    now without compiling the module twice in the shared process.
-- Added `tests/QA/TestSuiteModuleIdentity.Tests.ps1`, which walks the abstract
-    syntax tree of every gate test file, fails on a forced import or an
-    in-process unload of the module under test, and treats a call inside a
-    `Start-Job` script block as out of process. Its third test pins the host
-    behaviour the two rules exist for.
-- Made `tests/QA/module.tests.ps1` refuse a process in which the module is
-    loaded from its root module rather than its manifest. That is what a
-    documentation task leaves behind, and the reset this suite used to perform
-    is the thing OI-31 removes, so the condition is now named once instead of
-    failing 750 discovery-driven quality gates one by one.
-- Removed OI-31 from `specs/open-issues.md`; the register now has no open
-    items.
+- Final Core gate: PID 15032, marker
+    `detached-b451393af889451f88e4220b3c22d101.exit`.
+- Final package: PID 14452, marker
+    `detached-c9acabafb6b6471d89f0ce43b1a65907.exit`.
+- Final Desktop gate: PID 6216, marker
+    `detached-e86d746a8fcb44b7bc8d1c267c084090.exit`.
+- Desktop gate with current lab evidence: PID 8676, marker
+    `detached-bb5e32a0893643eda99f135e2e366c32.exit`; log
+    `wac-desktop-merged-coverage-13f2c78bc6804b1e87d041cc327183bf.log`.
+- Completed clean-main Desktop baseline: marker
+    `detached-eaaef34f574c49ffb39e41a1fce3984d.exit`; log
+    `wac-main-desktop-baseline3-16149d5df7964daa9921d25d52218747.log`.
+    The temporary worktree and dependency junction were removed. Inspect the
+    inner build result, not just the launcher marker: the session's native
+    wrapper emitted marker 0 although the baseline build exited 1.
+- Final lab chain: PID 18316, marker
+    `detached-48bcc4fa0e8b4073828fe3e0c43d9358.exit`; log is
+    `wac-lab-final-a1bf4f4864c8455c913c3b9ea55fb8b9.log` in `Temp/2`.
+    The chain checks evidence/cleanup after the build pass before installing
+    the package and running both editions. Results go under the evidence root
+    as `lab-final-build-desktop.json`, `final-domain-lab-coverage.xml`, and
+    `lab-final-installed-desktop.json` / `lab-final-installed-core.json`.
+- Final documentation regression: marker
+    `detached-aa72694507994eb380945eb953ed4950.exit` is 0; log
+    `wac-closeout-specifications-0f282bbb6bf049ad919bc9c9251deaae.log`.
+- Final release notes: marker
+    `detached-c7680a6655a14736a1fa1710e48b319a.exit` is 0; log
+    `wac-closeout-release-notes-4c8b54b6eb3d4a47ae181d68ca87a843.log`.
+- These markers are in the same `Temp/2` directory as the evidence root.
+- Lab console: `wac-lab-acceptance-<edition>.console.log` in the running
+    administrator's `TEMP` directory on `F1ADC1`. Use a separate
+    `Invoke-LabCommand` session to inspect progress. Console logs are private
+    diagnostics; only redacted JSON is shareable evidence.
+- Heartbeat job: `wac-closure-a8d8a95f`, ten-minute cadence. Re-arm each tick
+    while needed and cancel it at completion. Last armed at 22:53 UTC for
+    23:03 UTC. Only the Desktop coverage merge is still running.
 
-## The one constraint this introduced
+## Remaining work
 
-The `docs` and `test` workflows can no longer share a process. A documentation
-task imports the built module from its `.psm1`, which exports all 267 functions
-instead of the 105 the manifest names and applies no format data, and the QA
-suite used to repair that with a `Remove-Module` plus a forced manifest import.
-That repair is exactly the second read of the module file OI-31 is about, and it
-is not safe to keep: if the repair misses the engine cache it creates the second
-copy itself. `build.yaml` already puts `docs` in `pack` rather than in `test`,
-and the CI workflow already runs `pack` and `test` as separate jobs, so nothing
-shipping changes. A local `-Tasks build, docs, test` now fails immediately with
-that explanation instead of cascading.
+1. Read the merged Desktop gate's actual threshold assertion and completion
+    marker. Do not weaken assertions or introduce exclusions to pass it.
+2. Cancel the heartbeat after completion. The temporary worktree, dependency
+    junction, old payload logs, and scratch coverage script are already gone.
+3. Record the final verdict, run Memory Bank health checks, review the staged
+    diff, and commit locally. No push, publication, or tag.
 
-## Acceptance evidence
-
-- The deterministic reproducer runs the two real test files after clearing the
-    engine cache and re-importing: 2 live copies of the enumeration and the
-    exact recorded failure text. The same files without that step: 1 copy,
-    39 of 39 passing.
-- Every type-resolution route was measured before and after a second
-    compilation. Before: accelerator, literal, module-scope literal, bound
-    script block, `-as [type]`, `[type]` cast, and `Invoke-Expression` all
-    agree. After: only the accelerator and the module's own commands move to
-    the new type.
-- An instrumented gate run in one process sampled the engine script-block cache
-    every 25 milliseconds. A bare Pester run over the three gate suites peaked
-    at 411 entries; a real `./build.ps1 -Tasks build, test` process peaked at
-    528. Neither recorded a drop event, and both ended with one live copy of the
-    enumeration.
-- The deterministic reproducer was repeated ten times in each mode: ten of ten
-    poisoned runs produced two live copies and the recorded failure, and ten of
-    ten clean runs produced one live copy and 39 of 39 passing.
-- The guard was run against a throwaway worktree of pre-fix `main` with only the
-    new suite copied in: 0 passed, 2 failed. It fails without the fix and passes
-    with it.
-- The full local gate passes: `./build.ps1 -Tasks build, test`, 17 tasks, 0
-    errors, 0 warnings, 1,742 tests passed, 0 failed, 2 skipped, and 81.92
-    percent asserted coverage over the 80 percent threshold.
-- The focused suite, the two restored assertions plus the new QA suite, passes
-    42 of 42 with 0 skips.
-
-## Next step
-
-Rerun the domain-lab acceptance when the lab is next available. It is the only
-thing that can validate the domain-lab suites now importing once, and it still
-measures the previous build for coverage.
-
-A specification audit on 2026-09-05 found no gap between the accepted contract
-and the implemented surface, and a cluster of specification text that trails
-the code in 0003 and 0005. `progress.md` carries the itemized list. Nothing
-blocks a release on it, and closing it should also close the guard asymmetry
-that let it happen: the QA specification suite pins the 0003 command catalog
-and pins nothing in 0005.
-
-## What the independent review changed
-
-The review was scoped to test integrity rather than classic security, and it
-found two things the green gate could not.
-
-The first is that the invariant was overstated. `Invoke-WindowsAccessControlBatch`
-imports the manifest into a runspace pool in the same process whenever a bounded
-batch has both a throttle limit above one and more than one target, so the
-module reads its own file even after every test-authored read is gone. The
-changelog, the guard header and two entries here all claimed a second
-compilation was structurally impossible. A guard that watches only the call
-sites you thought of needs an end-to-end assertion behind it, which is now an
-`Exit-Build` block in `.build/ModuleCompilation.build.ps1`.
-
-The second is that the guard was blind to the file the defect lived in.
-`tests/QA/module.tests.ps1` contains no occurrence of the module name, so the
-file-level scope match never fired, and its removal named the module through a
-variable. Both lines the fix deleted could have been restored with the guard
-green. Scope is decided per call now, and the hole was proven closed by
-re-adding `-Force` and watching the guard name the exact location.
-
-One review finding did not survive its own experiment. The three batch metric
-tests were said to pass only by alphabetical luck once the module stopped being
-re-imported. Running the integration suites in reverse file order passes 277 of
-277 both before and after the change, so the order dependence is theoretical.
-The assertions were still made deltas, matching their three siblings, but as
-consistency rather than as a demonstrated defect.
-
-## Evidence added after the review
-
-- Pester discovery-only diff between the pre-fix and post-fix commits: 1,742
-    tests in 163 containers before, 1,744 in 164 after. Exactly two removed, the
-    two QA tests deliberately replaced, and four added. No test silently stopped
-    being discovered.
-- The gate passes at 17 tasks with the exit block reporting one runtime copy of
-    all 35 module-defined types: 1,742 passed, 0 failed, 2 skipped, 81.92 percent
-    asserted coverage.
-- A Windows PowerShell 5.1 run of the DSC suites, the path that copies the
-    module to the machine module path, also ends at one copy. That run had 30 of
-    40 tests failing outside the Sampler environment, so it exercises the path
-    less than a real gate would.
-
-## What the second independent review changed
-
-It approved with comments and found one thing the green gate could not: the
-assertion it had just asked for did not measure what it claimed.
-
-The task never called `Set-SamplerTaskVariable`, so `$ProjectName` was populated
-only because another module's task file happens to default it and is dot-sourced
-first. Had that default gone away the name would have been empty, and the task
-would have taken its "not loaded, skipping" branch and reported nothing. An
-inert gate that looks green is worse than no gate. It now resolves the name
-itself and throws rather than skipping.
-
-Worse, it was a workflow task placed after `Pester_Tests_Stop_On_Fail`, and a
-duplicate compilation surfaces as a failing type assertion. The one run that
-needed the measurement was the one run that never reached it. It is an
-`Exit-Build` block now, which was confirmed by running a build to failure and
-watching the block still report. It returns early when nothing ran Pester, so
-`-Tasks build` alone stays silent, and its probe set is derived from the
-module's own `ImplementingAssembly` so a rename cannot silently empty it.
-
-The review also asked whether the runspace pool leaves a second copy behind.
-Measured directly against a pool built the same way: one copy after import,
-while the pool is open, after a worker ran, after disposal, and after a
-collection. "Measured benign" now rests on that rather than on the absence of a
-symptom.
-
-The guard's whole-file exemptions were the last blind spot: one of them covered
-the very line this work rewrote. Exemptions are per call site now, and only the
-call arguments decide which module a call names.
+Historical OI-31 diagnostics remain in [debugging-insights.md](debugging-insights.md)
+and in the pre-audit history. Current contract authority remains
+[specs/README.md](../specs/README.md).

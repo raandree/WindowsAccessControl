@@ -7,6 +7,7 @@
     $script:module = Get-Module -Name 'WindowsAccessControl'
 }
 
+# FR-26: exact-descriptor resources expose every supported family and canonical key.
 Describe 'Exact security descriptor DSC resource contract' -Tag 'Unit', 'WindowsOnly' {
     It 'Should export and discover <Name>' -ForEach @(
         @{

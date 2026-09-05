@@ -182,6 +182,7 @@ AfterAll {
     }
 }
 
+# FR-18, FR-21, NFR-11, NFR-14: local share writes and explicitly share-only Authz results.
 Describe 'SMB share DACL commands' -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     AfterEach {
         Invoke-Command `

@@ -386,11 +386,18 @@ foreach ($edition in $editions) {
                 $arguments += @('-CoverageOutputPath', $CoveragePath)
             }
 
+            # Raw console output is not redacted, and the payload directory
+            # inherits a BUILTIN\Users read grant, so keep the log out of it.
+            $consoleLogPath = Join-Path $env:TEMP (
+                'wac-lab-acceptance-{0}.console.log' -f $Edition.ToLowerInvariant()
+            )
             $output = & $executable @arguments 2>&1 |
-                ForEach-Object { [string]$_ }
+                ForEach-Object { [string]$_ } |
+                Tee-Object -FilePath $consoleLogPath
             [pscustomobject]@{
-                ExitCode = $LASTEXITCODE
-                Output   = $output
+                ExitCode       = $LASTEXITCODE
+                Output         = $output
+                ConsoleLogPath = $consoleLogPath
             }
         } `
         -ArgumentList $RemoteRepositoryPath, $DomainDistinguishedName, $MemberServer, $remoteEvidencePath, $remoteCoveragePath, $edition, $installedModuleRoot `
@@ -398,6 +405,9 @@ foreach ($edition in $editions) {
         -NoDisplay
 
     $acceptanceOutput.Output | Write-Information -InformationAction Continue
+    Write-Information (
+        "Console output retained at '$($acceptanceOutput.ConsoleLogPath)'."
+    ) -InformationAction Continue
     Write-Information (
         '[{0:O}] EDITION END {1} exit={2}' -f
             [datetime]::UtcNow, $edition, $acceptanceOutput.ExitCode

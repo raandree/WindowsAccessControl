@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-25
+last-verified: 2026-09-05
 owner: shared
 source: repository evidence
 ---
@@ -23,10 +23,12 @@ or .NET access-control classes directly.
     the Service Control Manager, and pinned live processes; owner, group, DACL,
     SACL, descriptor portability, identity, privileges, effective access,
     metrics, and supported inheritance workflows.
-- Planned enterprise expansion: scheduled tasks and task folders, CAPI/CNG
-    certificate private keys, SMB shares, and Active Directory objects. This
-    work is gated on a disposable domain lab, remote-security contracts, API
-    probes, and separate executable evidence for each family.
+- Accepted enterprise increments: scheduled tasks and task folders, persisted
+    RSA private keys in Microsoft Software Key Storage Provider, local SMB
+    shares, and bounded Active Directory objects. DACL management, portability,
+    and desired state follow specifications 0009-0017; specification 0018 adds
+    caller-scoped directory write-access inspection. CAPI and other providers
+    remain unsupported. The disposable domain lab validates these boundaries.
 - Deferred: printers, WMI namespaces, event-log channels, mandatory integrity
     labels, HTTP.sys URL reservations, Remote Desktop Services listeners, named
     pipes, PowerShell/WinRM endpoints, MSMQ queues, and device ACLs.

@@ -5,6 +5,7 @@
     Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 }
 
+# NFR-19: compliance uses provider-stored rights and exact rule identity.
 Describe 'Windows access control DSC access-rule adapters' -Tag 'Unit', 'WindowsOnly' {
     InModuleScope WindowsAccessControl {
         BeforeEach {

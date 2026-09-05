@@ -195,6 +195,7 @@ AfterAll {
     }
 }
 
+# FR-20, NFR-13: contained task writes preserve SYSTEM access, task definitions, and COM lifetime.
 Describe 'Task Scheduler DACL descriptor commands' -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     AfterEach {
         Invoke-Command `

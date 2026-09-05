@@ -13,6 +13,24 @@ BeforeAll {
 }
 
 Describe 'Specification contract' -Tag 'QA', 'Specifications' {
+    It 'Should keep each changelog category unique within a release' {
+        $changelog = Get-Content -LiteralPath (
+            Join-Path $script:repositoryRoot 'CHANGELOG.md'
+        ) -Raw
+        $releases = [regex]::Matches(
+            $changelog, '(?ms)^## (?<Version>[^\r\n]+)\r?\n(?<Changes>.*?)(?=^## |\z)'
+        )
+        $releases.Count | Should -BeGreaterThan 0
+        foreach ($release in $releases) {
+            $categories = @([regex]::Matches(
+                $release.Groups['Changes'].Value, '(?m)^### ([^\r\n]+)'
+            ) | ForEach-Object { $_.Groups[1].Value })
+            $categories.Count | Should -Be (@($categories | Sort-Object -Unique).Count) -Because (
+                'release {0} must not repeat a category' -f $release.Groups['Version'].Value
+            )
+        }
+    }
+
     It 'Should contain the indexed specification structure' {
         $requiredPaths = @(
             'README.md'
@@ -35,7 +53,7 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         foreach ($specification in $specifications) {
             $index | Should -Match ([regex]::Escape($specification.Name))
             $heading = Get-Content -LiteralPath $specification.FullName -TotalCount 5
-            $heading -join "`n" | Should -Match 'Status: (Draft|Accepted|Superseded)'
+            $heading -join "`n" | Should -MatchExactly '(?m)^Status: (Draft|Accepted|Superseded)\.'
         }
     }
 
@@ -79,6 +97,169 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
         foreach ($commandName in $manifest.ExportedFunctions.Keys) {
             $contractToken = [char]96 + $commandName + [char]96
             $apiContract | Should -Match ([regex]::Escape($contractToken))
+        }
+    }
+
+    It 'Should reference every requirement from a test-suite comment' {
+        $requirements = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0002-requirements.md'
+        ) -Raw
+        $identifiers = @([regex]::Matches($requirements, '\b(?:FR|NFR)-\d+\b').Value |
+            Sort-Object -Unique)
+        $comments = foreach ($testFile in Get-ChildItem -LiteralPath (
+            Join-Path $script:repositoryRoot 'tests'
+        ) -Recurse -File -Filter '*.Tests.ps1') {
+            $tokens = $null
+            $parseErrors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile(
+                $testFile.FullName, [ref]$tokens, [ref]$parseErrors
+            )
+            $parseErrors | Should -BeNullOrEmpty -Because $testFile.Name
+            $tokens | Where-Object Kind -eq 'Comment' | ForEach-Object Text
+        }
+        $references = @([regex]::Matches(
+            ($comments -join "`n"), '\b(?:FR|NFR)-\d+\b'
+        ).Value | Sort-Object -Unique)
+
+        Compare-Object -ReferenceObject $identifiers -DifferenceObject $references |
+            Should -BeNullOrEmpty
+    }
+
+    It 'Should document every exported command exactly once in the evidence table' {
+        $manifest = Import-PowerShellDataFile (
+            Join-Path $script:repositoryRoot 'source\WindowsAccessControl.psd1'
+        )
+        $traceability = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0005-verification-and-traceability.md'
+        ) -Raw
+        $section = [regex]::Match(
+            $traceability,
+            '(?ms)^## Public command evidence\r?\n(?<Table>.*?)(?=^## |\z)'
+        )
+        $section.Success | Should -BeTrue
+        $commands = @([regex]::Matches(
+            $section.Groups['Table'].Value,
+            '(?m)^\| `(?<Command>[^`]+)` \|'
+        ) | ForEach-Object { $_.Groups['Command'].Value })
+
+        $commands | Should -Not -BeNullOrEmpty
+        $commands.Count | Should -Be (@($commands | Sort-Object -Unique).Count)
+        Compare-Object -ReferenceObject $manifest.FunctionsToExport -DifferenceObject $commands |
+            Should -BeNullOrEmpty
+    }
+
+    It 'Should link every command evidence row to its command-specific suite' {
+        $traceability = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0005-verification-and-traceability.md'
+        ) -Raw
+        $section = [regex]::Match(
+            $traceability,
+            '(?ms)^## Public command evidence\r?\n(?<Table>.*?)(?=^## |\z)'
+        )
+        $section.Success | Should -BeTrue
+        $rows = [regex]::Matches(
+            $section.Groups['Table'].Value,
+            '(?m)^\| `(?<Command>[A-Za-z]+-[A-Za-z0-9]+)` \| (?<Evidence>[^|]+) \|'
+        )
+        $rows.Count | Should -BeGreaterThan 0
+        foreach ($row in $rows) {
+            $commandName = $row.Groups['Command'].Value
+            $link = [regex]::Match(
+                $row.Groups['Evidence'].Value.Trim(),
+                ('^\[Tests\]\(\.\./(?<Path>tests/(?:Unit/Public|Integration)/{0}\.Tests\.ps1)\)$' -f
+                    [regex]::Escape($commandName))
+            )
+            $link.Success | Should -BeTrue -Because "$commandName must link to its actual test suite"
+            Join-Path $script:repositoryRoot $link.Groups['Path'].Value | Should -Exist
+        }
+    }
+
+    It 'Should list the output types declared by public help and selected by format views' {
+        $apiContract = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0003-public-api.md'
+        ) -Raw
+        $section = [regex]::Match($apiContract, '(?ms)^### Output types\r?\n(?<Types>.*?)(?=^## |\z)')
+        $section.Success | Should -BeTrue
+        $listedTypes = @([regex]::Matches(
+            $section.Groups['Types'].Value, '(?m)^- `(WindowsAccessControl\.[A-Za-z0-9]+)`'
+        ) | ForEach-Object { $_.Groups[1].Value })
+        $listedTypes.Count | Should -Be (@($listedTypes | Sort-Object -Unique).Count)
+        $helpTypes = foreach ($commandFile in Get-ChildItem -LiteralPath (
+            Join-Path $script:repositoryRoot 'source/Public'
+        ) -File -Filter '*.ps1') {
+            $content = Get-Content -LiteralPath $commandFile.FullName -Raw
+            $outputs = [regex]::Match(
+                $content, '(?ms)^\s*\.OUTPUTS\r?\n(?<Outputs>.*?)(?=^\s*(?:\.[A-Z]+|#>))'
+            )
+            [regex]::Matches($outputs.Groups['Outputs'].Value, 'WindowsAccessControl\.[A-Za-z0-9]+').Value
+        }
+        [xml]$formatData = Get-Content -LiteralPath (
+            Join-Path $script:repositoryRoot 'source/WindowsAccessControl.Format.ps1xml'
+        ) -Raw
+        $expectedTypes = @($helpTypes) + @(
+            $formatData.Configuration.ViewDefinitions.View.ViewSelectedBy.TypeName
+        )
+        $expectedTypes | Should -Not -BeNullOrEmpty
+        foreach ($typeName in $expectedTypes | Sort-Object -Unique) {
+            $listedTypes | Should -Contain $typeName
+        }
+    }
+
+    It 'Should list every exported DSC resource exactly once in the API tables' {
+        $manifest = Import-PowerShellDataFile (
+            Join-Path $script:repositoryRoot 'source/WindowsAccessControl.psd1'
+        )
+        $apiContract = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0003-public-api.md'
+        ) -Raw
+        $resources = @([regex]::Matches(
+            $apiContract, '(?m)^\| `(WindowsAccessControl[A-Za-z0-9]+)` \|'
+        ) | ForEach-Object { $_.Groups[1].Value })
+        $resources | Should -Not -BeNullOrEmpty
+        $resources.Count | Should -Be (@($resources | Sort-Object -Unique).Count)
+        Compare-Object -ReferenceObject $manifest.DscResourcesToExport -DifferenceObject $resources |
+            Should -BeNullOrEmpty
+    }
+
+    It 'Should document the exact ordered domain-lab suite inventory' {
+        $tokens = $null
+        $parseErrors = $null
+        $runner = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $script:repositoryRoot 'tests/Lab/WindowsAccessControl.DomainLab.psm1'),
+            [ref]$tokens, [ref]$parseErrors
+        )
+        $parseErrors | Should -BeNullOrEmpty
+        $acceptanceFunction = $runner.Find({
+            param($node)
+            $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+                $node.Name -eq 'Invoke-WindowsAccessControlDomainLabAcceptance'
+        }, $true)
+        $acceptanceFunction | Should -Not -BeNullOrEmpty
+        $assignments = @($acceptanceFunction.Body.FindAll({
+            param($node)
+            $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+                $node.Left -is [System.Management.Automation.Language.VariableExpressionAst] -and
+                $node.Left.VariablePath.UserPath -eq 'suiteNames'
+        }, $true))
+        $assignments.Count | Should -Be 1
+        $suiteNames = @($assignments[0].Right.FindAll({
+            param($node)
+            $node -is [System.Management.Automation.Language.StringConstantExpressionAst]
+        }, $true) | ForEach-Object Value)
+        $suiteNames | Should -Not -BeNullOrEmpty
+        $traceability = Get-Content -LiteralPath (
+            Join-Path $script:specRoot '0005-verification-and-traceability.md'
+        ) -Raw
+        $section = [regex]::Match(
+            $traceability, '(?ms)^### Domain-lab suites\r?\n(?<Suites>.*?)(?=^#{1,3} |\z)'
+        )
+        $section.Success | Should -BeTrue
+        $documentedNames = @([regex]::Matches(
+            $section.Groups['Suites'].Value, '\]\(\.\./tests/Lab/([^/()]+\.Live\.Tests\.ps1)\)'
+        ) | ForEach-Object { $_.Groups[1].Value })
+        $documentedNames | Should -Be $suiteNames
+        foreach ($suiteName in $suiteNames) {
+            Join-Path $script:repositoryRoot "tests/Lab/$suiteName" | Should -Exist
         }
     }
 
@@ -138,6 +319,8 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
             'WindowsAccessControl.SmbShareEffectiveAccess'
             'WindowsAccessControl.ADObjectAccessRule'
             'WindowsAccessControl.ADObjectCallerEffectiveAccess'
+            'WindowsAccessControl.ADSchemaDefaultAccessRule'
+            'WindowsAccessControl.CertificatePrivateKeyAccessRule'
         )
 
         foreach ($typeName in $requiredTypes) {
@@ -185,6 +368,46 @@ Describe 'Specification contract' -Tag 'QA', 'Specifications' {
                 TableColumnItems.TableColumnItem.PropertyName
         )
         $registryAccessRuleColumns | Should -Contain 'InheritedFrom'
+    }
+
+    It 'Should format a private-key rule with <ExpectedIdentity>' -ForEach @(
+        @{ Account = 'WAC\Reader'; ExpectedIdentity = 'WAC\Reader' }
+        @{ Account = $null; ExpectedIdentity = 'S-1-5-21-111-222-333-444' }
+    ) {
+        $orphanSid = 'S-1-5-21-111-222-333-444'
+        # Format data is process-global, so render in a child process rather
+        # than leak a prepended format file into the shared test session.
+        $rendered = Start-Job -ScriptBlock {
+            param($FormatPath, $Account, $Sid)
+
+            Update-FormatData -PrependPath $FormatPath -ErrorAction Stop
+            $rule = [pscustomobject]@{
+                KeyName             = 'WacDisplayKey'
+                KeyScope            = 'Machine'
+                Account             = $Account
+                SID                 = $Sid
+                AccessRightsDisplay = 'Read'
+                AccessControlType   = 'Allow'
+                NativeAce           = 'not-for-default-display'
+            }
+            $rule.PSObject.TypeNames.Insert(
+                0, 'WindowsAccessControl.CertificatePrivateKeyAccessRule'
+            )
+            $rule | Format-Table | Out-String -Width 240
+        } -ArgumentList @(
+            (Join-Path $script:repositoryRoot 'source\WindowsAccessControl.Format.ps1xml')
+            $Account
+            $orphanSid
+        ) | Receive-Job -Wait -AutoRemoveJob
+
+        $rendered | Should -Match '(?m)^Key\s+Scope\s+Account\s+Rights\s+Type\s*$'
+        $rendered | Should -Match ([regex]::Escape($ExpectedIdentity))
+        $rendered | Should -Match 'WacDisplayKey\s+Machine'
+        $rendered | Should -Match 'Read\s+Allow'
+        $rendered | Should -Not -Match 'not-for-default-display|NativeAce'
+        if ($Account) {
+            $rendered | Should -Not -Match ([regex]::Escape($orphanSid))
+        }
     }
 
     It 'Should index every architecture decision record' {

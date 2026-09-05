@@ -150,6 +150,18 @@ the first cannot. Measured on 2026-08-08, the instrumented Windows PowerShell
 pass took 22 minutes and the uninstrumented PowerShell 7 pass 5 minutes. Run a
 single edition with `-PowerShellEdition Core`.
 
+Each pass retains its console output on the management domain controller as
+`wac-lab-acceptance-<edition>.console.log` in the running administrator's `TEMP`
+directory, and the runner prints the resolved path. The log advances while the
+child process runs, so a separate session can inspect suite progress without
+waiting for the host runner to return.
+
+That log is raw child-process output and is **not** redacted, unlike the
+retained JSON evidence. It is deliberately kept out of `C:\WacRepo`, because
+that payload directory inherits a `BUILTIN\Users` read grant, which on a domain
+controller includes every domain user. Treat it as an administrator-only
+diagnostic, delete it when an investigation ends, and share only the JSON.
+
 Remove the lab:
 
 ```powershell

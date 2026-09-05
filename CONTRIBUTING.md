@@ -30,9 +30,12 @@ exclude them are recorded decisions, not gaps.
 A change that alters behavior changes a specification first. The QA suite
 enforces the structure: every specification is indexed, requirement identifiers
 are unique, every requirement traces to executable evidence, every exported
-command appears in the public API contract, and every decision record is
-indexed. A pull request that changes behavior without the matching
-specification and evidence fails that suite.
+command appears in the public API and evidence catalogs, and every decision
+record is indexed. Evidence rows link to command-specific tests, requirement
+identifiers appear in the comments of the suites that prove them, and the
+documented output types, DSC exports, and lab inventory match their sources.
+Behavioral assertions still require review; a matching identifier alone is not
+proof that a requirement is implemented.
 
 Open an issue before a large change. It is cheaper to agree on scope than to
 withdraw a finished branch.
@@ -47,12 +50,20 @@ withdraw a finished branch.
 
 There are also `build` and `test` tasks in the VS Code workspace.
 
+Release validation must use the same GitVersion 5.12.0 version as CI. Install
+the .NET tool when an SDK is available, or use the official standalone Windows
+release, then pass its `NuGetVersionV2` value through `$env:ModuleVersion` when
+running Sampler. Without a version value or GitVersion, Sampler falls back to
+`0.0.1`; that development fallback is not a release-version calculation. Keep
+the source manifest's placeholder version unchanged.
+
 Run the build in a separate console rather than in an editor-hosted terminal.
 The suite spawns runspaces and child processes, and an editor-hosted session
 can hang on them.
 
-The full gate takes about 25 minutes. It runs the unit, integration, QA, and
-performance suites, applies PSScriptAnalyzer, and asserts code coverage.
+The full gate takes about 25 minutes. It runs the unit, integration, and QA
+suites, applies PSScriptAnalyzer, and asserts code coverage. Performance
+benchmarks are separate from that gate.
 
 Run `docs` and `test` as separate invocations rather than as one task list. A
 documentation task imports the built module from its root module rather than
@@ -74,7 +85,7 @@ a regression test that fails without the fix.
 | `tests/Performance` | Bounded-execution benchmarks. Repeatable evidence, no hard timing assertions |
 | `tests/Lab` | The multi-forest domain acceptance lab. Not required for a pull request; see below |
 
-The QA suite requires every public command to have a unit test file, a
+The QA suite requires every public command to have a command-specific test file, a
 `.SYNOPSIS`, a `.DESCRIPTION` longer than 40 characters, at least one example,
 and a description for every parameter.
 

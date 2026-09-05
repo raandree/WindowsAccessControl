@@ -5,6 +5,7 @@ BeforeAll {
     Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 }
 
+# FR-12: canonical-order reporting without rewriting the descriptor.
 Describe 'Test-NTFSItemAcl' -Tag 'Integration', 'WindowsOnly' {
     It 'Should report a normal filesystem ACL as canonical' {
         $testFile = Join-Path -Path $TestDrive -ChildPath 'canonical.txt'

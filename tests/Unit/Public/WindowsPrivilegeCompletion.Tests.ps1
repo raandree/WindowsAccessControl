@@ -78,4 +78,21 @@ Describe 'Windows privilege name completion' -Tag 'Unit', 'WindowsOnly' {
             $completion | Should -BeNullOrEmpty
         }
     }
+
+    Context 'Worker runspace lifetime' {
+        It 'Should retain privilege completion after a bounded read batch is disposed' {
+            $targets = @(
+                New-Item -Path (Join-Path $TestDrive 'First') -ItemType Directory
+                New-Item -Path (Join-Path $TestDrive 'Second') -ItemType Directory
+            )
+            $expected = Get-PrivilegeCompletion -InputScript 'Enable-WindowsPrivilege -Name Se'
+            $expected.CompletionText | Should -Contain 'SeSecurityPrivilege'
+
+            $null = Get-NTFSItemOwner -LiteralPath $targets.FullName -ThrottleLimit 2
+            $actual = Get-PrivilegeCompletion -InputScript 'Enable-WindowsPrivilege -Name Se'
+
+            $actual.CompletionText | Should -Be $expected.CompletionText
+            $actual.CompletionText | Should -Contain 'SeSecurityPrivilege'
+        }
+    }
 }

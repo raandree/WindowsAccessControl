@@ -7,6 +7,7 @@ BeforeAll {
     $script:currentSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 }
 
+# FR-1: identity filters and native inheritance provenance.
 Describe 'Get-NTFSAccessRule' -Tag 'Integration', 'WindowsOnly' {
     It 'Should filter explicit access rules by SID' {
         $testFile = Join-Path -Path $TestDrive -ChildPath 'filter.txt'

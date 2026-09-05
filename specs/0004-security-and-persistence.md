@@ -15,7 +15,10 @@ The module operates on four independently selectable descriptor sections:
 
 Public objects include portable metadata and keep the native descriptor or rule
 where exact Windows semantics matter. The module does not invent an alternative
-ACL engine.
+ACL engine. The shared binary descriptor model follows
+[ADR 0010](decisions/0010-use-shared-binary-security-descriptor-engine.md), using
+only in-box managed APIs and Windows interop as required by
+[ADR 0002](decisions/0002-use-only-in-box-runtime-security-apis.md).
 
 ## Section-scoped persistence
 
@@ -35,7 +38,9 @@ same-target lock, invokes trusted caller code, and writes only the originally
 selected sections at most once. Callback output is not command output. A
 callback exception, invalid native descriptor, or selection of an unloaded
 section fails before persistence. External writers remain a last-writer-wins
-race until the separately tracked optimistic-concurrency contract ships.
+race by default. `RequireUnchanged`, defined in specification 0007, re-reads the
+selected sections and rejects a stale `ConcurrencyToken` before persistence.
+The check narrows but does not eliminate the race with an external writer.
 Caller callbacks are dispatched sequentially and are never invoked concurrently
 from multiple runspaces. `WhatIf` gates only the descriptor write; trusted
 callback code remains responsible for its own non-descriptor side effects.
@@ -96,7 +101,8 @@ the native hive form to the provider form, and a native form that is not a
 supported local hive is reported as no source rather than as an unopenable
 path. Windows rejects `SE_REGISTRY_WOW64_32KEY` and `SE_REGISTRY_WOW64_64KEY`
 for inheritance-source lookups, so the `Registry32` and `Registry64` views
-report a null source rather than an ancestor resolved against a different view.
+report a null source rather than an ancestor resolved against a different view
+([ADR 0019](decisions/0019-report-null-registry-provenance-for-wow64-views.md)).
 The native entry point rejects any other object type so the guarantee does not
 depend on its caller.
 

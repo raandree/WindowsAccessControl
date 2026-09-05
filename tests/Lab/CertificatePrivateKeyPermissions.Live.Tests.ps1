@@ -61,6 +61,7 @@ AfterAll {
     }
 }
 
+# FR-23, NFR-16: exact non-exportable software-key identity and caller-owned certificate lifetime.
 Describe 'Certificate private-key DACL inspection' `
     -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     It 'Should read the exact non-exportable software CNG key without disposing the certificate' {
@@ -126,6 +127,7 @@ Describe 'Certificate private-key DACL inspection' `
     }
 }
 
+# FR-24, NFR-17: provider and critical-binding refusals, required grants, and exact rollback.
 Describe 'Certificate private-key DACL mutation' `
     -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     It 'Should add, exactly remove, and refuse an unsafe private-key rule change' {

@@ -5,6 +5,7 @@ BeforeAll {
     Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 }
 
+# FR-9: copying selected sections preserves the remaining descriptor.
 Describe 'Copy-NTFSItemSecurityDescriptor' -Tag 'Integration', 'WindowsOnly' {
     It 'Should copy only the selected DACL through destination pipeline input' {
         $source = Join-Path -Path $TestDrive -ChildPath 'source.txt'

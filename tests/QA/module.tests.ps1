@@ -1,3 +1,4 @@
+# NFR-1, NFR-2, NFR-5, NFR-10: import, runtime dependencies, analysis, and package contracts.
 BeforeDiscovery {
     $projectPath = "$($PSScriptRoot)\..\.." | Convert-Path
 

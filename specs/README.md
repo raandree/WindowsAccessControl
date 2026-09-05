@@ -102,7 +102,8 @@ A future change starts as `Draft` and becomes `Accepted` when approved.
 
 Cross-cutting decisions are recorded as immutable ADRs under
 [decisions/](decisions/README.md) using the MADR structure. A later ADR
-supersedes an accepted decision rather than rewriting its history.
+supersedes an accepted decision rather than rewriting its history, following
+[ADR 0000](decisions/0000-use-architecture-decision-records.md).
 
 ## Open issues
 

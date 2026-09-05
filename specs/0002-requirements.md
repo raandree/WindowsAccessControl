@@ -85,9 +85,10 @@ Status: Accepted. These stable, testable identifiers define the implemented
   as the generic rights, including when the entry belongs to an unresolvable
   security identifier, through every supported removal route.
 - **FR-29**: Resolve every NTFS target through one path contract that refuses a
-  Win32 device-namespace path, treats a literal path as literal, resolves a
-  drive specification to the volume root directory, and reports the same
-  descriptor for a universal naming convention path as for the local path.
+  Win32 device-namespace path and an ambiguous bare drive specification, treats
+  a literal path as literal, accepts an explicit volume-root path, and reports
+  the same descriptor for a universal naming convention path as for the local
+  path.
 - **FR-30**: Address the object the caller named when reading and writing a
   descriptor, so a junction, a symbolic link, or a volume mount point resolves
   to its own descriptor, and operate only on the targets the caller supplies so

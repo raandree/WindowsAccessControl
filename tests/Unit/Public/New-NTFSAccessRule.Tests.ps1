@@ -6,6 +6,7 @@ BeforeAll {
     Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
 }
 
+# FR-2: reusable typed access rules and Explorer-style scope.
 Describe 'New-NTFSAccessRule' -Tag 'Unit', 'WindowsOnly' {
     It 'Should create a reusable rule with Explorer-style scope' {
         $result = New-NTFSAccessRule -Account 'S-1-1-0' -AccessRights Read -AppliesTo FilesOnly

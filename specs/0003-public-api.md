@@ -174,10 +174,12 @@ name the mask, names the four generic rights, `ACCESS_SYSTEM_SECURITY`, and
 `MAXIMUM_ALLOWED` when the enum omits them, and reports anything still unnamed
 as a hexadecimal remainder. The default table views report this property.
 
-The module ships curated default table views for twenty result types: every
-rule family except the certificate private key, both effective-access results,
-`Owner`, and `Privilege`. Descriptor, backup-record, identity, inheritance,
-and metric results remain fully inspectable without a mandatory default view.
+The module ships curated default table views for every access and audit rule
+family, schema-default rules, NTFS and SMB effective-access results,
+caller-scoped directory write access, `Owner`, and `Privilege`. One view can
+select multiple result types, such as service and SCM rules. Descriptor,
+backup-record, identity, inheritance, and metric results remain fully
+inspectable without a mandatory default view.
 
 ## Access-rule commands
 
@@ -534,10 +536,10 @@ with specification 0014.
 | `Add-CertificatePrivateKeyAccessRule` | exact `X509Certificate2` | none / `CertificatePrivateKeyAccessRule` |
 | `Remove-CertificatePrivateKeyAccessRule` | exact `X509Certificate2` | none |
 | `Set-CertificatePrivateKeySecurityDescriptor` | exact `X509Certificate2` | none / `CertificatePrivateKeySecurityDescriptor` |
-| `Test-CertificatePrivateKeyCriticalBinding` | thumbprints | `CertificateCriticalBinding` |
+| `Test-CertificatePrivateKeyCriticalBinding` | exact `X509Certificate2` | `CertificateCriticalBinding` |
 
-Every command requires the exact expected CNG provider and persisted key name.
-The first five accept two selectors: the default `Certificate` parameter set
+The first five commands require the exact expected CNG provider and persisted
+key name and accept two selectors: the default `Certificate` parameter set
 adds an exact caller-owned certificate, and the `Key` parameter set replaces it
 with `KeyScope`, which is `Machine` or `User`. Both resolve the same key, take
 the same canonical write lock, and pass through the same gates; the
@@ -657,7 +659,8 @@ that re-read and the LDAP write is narrowed, not eliminated.
 
 An optional credential binds directly to the selected DC. It is never emitted,
 and it is not used to locate a domain controller. Directory commands operate on
-DACLs only and expose no SACL or replication contract. Portability and
+DACLs only and expose no SACL or replication-control API. Specification 0016
+defines their cross-controller consistency and outage behavior. Portability and
 desired-state support arrived with specification 0013; ADR 0022 defers
 directory effective access, so the module never presents a locally constructed
 Authz result as a directory access decision.

@@ -1,5 +1,7 @@
 # Changelog
 
+<!-- markdownlint-configure-file {"MD024": {"siblings_only": true}} -->
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
@@ -267,249 +269,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     top of that baseline with the suite that requires it, maps each machine to
     the behavior it serves, and documents the deployment and acceptance workflow
 
-### Changed
-
-- Expand the comment-based help examples for `Add-ADObjectAccessRule` and its
-    sibling mutators `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, and
-    `Clear-ADObjectAccessRule`. Each command had carried only one or two basic
-    examples; they now also show granting rights to several accounts in one
-    write, scoping an ACE to a single attribute or extended right such as
-    Reset Password, an explicit deny rule, `RemovalMode Rights` subtraction,
-    and a piped batch across multiple distinguished names
-- Split `source/Classes` one class per file. The twenty DSC resources were
-    declared in two files grouped by behavior, and both DscResource.DocGenerator
-    documentation tasks resolve a resource's source as `Classes/???.<ClassName>.ps1`
-    or `Classes/<ClassName>.ps1`, so neither could find them and both had to be
-    dropped from the build. Each resource now has its own file named for it. The
-    class bodies are unchanged, and the order they are merged in is unchanged
-- Write the `ThrottleLimit` default on one line in the 56 commands that spread it
-    over four. platyPS serializes a parameter default into the `Default value`
-    field of the markdown YAML block, and a multi-line expression produced three
-    lines that are not `key: value`, which broke every page it appeared on and
-    made the external help file impossible to generate. The 20 enterprise commands
-    already wrote the same expression on one line, so this makes the whole module
-    consistent. The computed default is unchanged
-- Restructure the per-specification scope notes in `specs/README.md` into a
-    `Scope notes` list with one entry per specification. Each new specification
-    had appended a sentence to one shared paragraph without re-wrapping it, so
-    the source carried ragged line breaks and the rendered section had grown
-    into a seventeen-sentence block that repeated the identity the status table
-    above it already states. The status lifecycle sentence now sits under the
-    table it governs. No scope claim changed
-- Publish the module from the continuous integration pipeline. A build of the
-    default branch, or of a stable `v*` tag, now packages the module, creates the
-    GitHub release with the NuGet package attached, publishes to the PowerShell
-    Gallery, and raises the changelog pull request. The publish job requires both
-    the `GitHubToken` and the `GalleryApiToken` repository secret and fails when
-    either is missing, because a skipped GitHub release combined with a
-    successful Gallery publish ships a version without the tag the next version
-    calculation depends on. It runs only on the upstream repository, so a fork
-    and a pull request never reach the Gallery, and a release run is never
-    cancelled by a newer one
-- Remove any PowerShell 7 `$PSHOME\Modules` directory from the machine module
-    search path before the Windows PowerShell 5.1 test job runs. PowerShell 7
-    ships `Core`-only copies of the in-box `Microsoft.PowerShell.*` modules, and
-    when its module directory precedes the in-box one, Windows PowerShell
-    resolves those first and cannot load them. Every host that has to autoload
-    one then fails: `build.ps1` reports `Import-PowerShellDataFile` as
-    unrecognized, and the DSC engine reports that `Get-Acl` was found but its
-    module could not be loaded. The step is a no-op on a worker that does not
-    carry such an entry
-- Accept specification 0008. The enterprise roadmap is no longer a Draft: the
-    acceptance conditions are recorded against the artifacts that satisfy them,
-    the seven open questions are answered by the contracts that resolved them,
-    and the claims that replication evidence was blocked and that open issue
-    OI-18 tracked it are removed, because specification 0016 closed both
-- Assert the 80 percent code-coverage threshold over the commands the running
-    test profile can execute rather than over the whole module, so the same gate
-    produces a verdict in the hosted build and on a host that has run the domain
-    lab. Every measured line of the built module is attributed to its source file
-    through the `#Region` markers ModuleBuilder writes, and only the fifteen
-    Active Directory and SMB share files the local profile executes no command of
-    are declared out of scope. The threshold is unchanged, the whole-module and
-    domain-lab-only numbers are reported on every run together with whether
-    domain-lab evidence was merged, and the build fails both when a declared path
-    matches no source file and when the local profile does execute a declared
-    file
-- Treat a domain-lab coverage document that measures another build as absent
-    with a warning instead of failing the build. It is still never merged, so a
-    union of disjoint line sets stays impossible, but a contributor who cannot
-    run the lab is no longer blocked by evidence only the lab can refresh
-- Assert the 80 percent code-coverage threshold over the local run merged with
-    the domain-lab acceptance instead of over the local run alone, so the gate
-    measures the Active Directory, certificate private-key, SMB share, and Task
-    Scheduler families that the default Pester profile structurally cannot
-    execute; the threshold is unchanged and no test was added to reach it
-- Collect code coverage in `Invoke-WindowsAccessControlDomainLabAcceptance`,
-    including for the suites whose real work runs in a member-server session,
-    by publishing the measurable locations of the module under test, arming them
-    in the member runspace, and adding the returned hit counts to the
-    harness-side counts
-- Run the domain-lab acceptance in a child console process on the management
-    domain controller, because a session runspace allows only 165 nested script
-    frames there against 4694 in a console host, and the directory suites fail
-    with a call-depth overflow rather than their asserted rejection once
-    coverage instrumentation is added
-- Key the private-key critical-binding gate on the write target's own public
-    key, read from the key rather than from a certificate, so it applies
-    identically whether the key was addressed through a certificate or through
-    its provider and key name. A public key that cannot be read throws instead of
-    reporting no binding
-- Report the owning computer as `Server` on every certificate private-key
-    descriptor and access rule, so evidence and portability records name the
-    machine that produced them
-- Rebuild a private-key candidate descriptor from its access section before the
-    provider write, so an owner, group, or SACL supplied in `Sddl` is dropped
-    rather than carried into the binary form
-- Resolve a bound certificate against every local machine certificate store that
-    exists plus the `NTDS` service store, instead of a fixed list of four
-    stores, so a binding created against another store no longer blocks every
-    private-key write on the machine; the stores a binding names in practice are
-    searched first and the search stops once every bound thumbprint is resolved
-- Read the `NTDS` service store natively under `CERT_SYSTEM_STORE_SERVICES`,
-    which `StoreLocation` cannot address, so the LDAPS branch of the
-    critical-binding gate is reachable on a domain controller
-- Derive a concurrency token from their own read in
-    `Add-CertificatePrivateKeyAccessRule` and
-    `Remove-CertificatePrivateKeyAccessRule` when the caller supplies none, so a
-    change another writer makes between that read and the write is rejected
-    instead of overwritten
-- Warn from `Remove-CertificatePrivateKeyAccessRule` naming every account the
-    request did not match, because rights are matched exactly and a revocation
-    that removed nothing must not look like one that succeeded
-- Qualify Task Scheduler canonical identity by the owning computer, so
-    `CanonicalTarget` is now `TaskFolder:<COMPUTER>:<PATH>` or
-    `ScheduledTask:<COMPUTER>:<PATH>` instead of the previous `Local` form, and
-    a registered task in the root folder no longer reports a doubled separator
-
-### Fixed
-
-- Correct the specification statements that had fallen behind the code. The
-    public API contract said Task Scheduler backup, restore, and desired state
-    remained outside it, while the same document tables four Task Scheduler DSC
-    resources and specification 0014 delivers the portability; it counted four
-    server-qualified backup families at record version 2 where there are five,
-    omitting the certificate private key and the four fields its record binds;
-    its list of stable output type names omitted nine names the module stamps
-    and its own command tables return; and it named five curated table views
-    where the module ships twenty. The traceability contract still said the two
-    DSC contract suites verify nine exports, where both now enumerate ten, and
-    still described the domain-lab acceptance as four suites plus the private-key
-    suite at a fixed eighteen tests, where the runner fixes eight suites and the
-    same document places run counts in the Memory Bank. No behavior changed;
-    each correction was verified against the source, the manifest, the format
-    file, and the suites themselves
-- Pin OI-31 closed in the QA specification guard, which had stopped at OI-30.
-    Reopening the entry in the register now fails the guard
-
-- Fix the intermittent `Expected [X], but got [X]` failures in whole-suite test
-    runs, and restore the strict enumeration type assertions that had been
-    weakened to a name comparison to work around them. PowerShell compiles a
-    module file into a dynamic assembly carrying every class and enumeration it
-    declares, and caches the compiled script block keyed by file path and file
-    content. A read that misses that cache compiles the file again, and from
-    then on the module's commands emit the new copy of each type while every
-    script-side reference to it — a type literal, a literal evaluated in the
-    module's own scope, a bound script block, `-as [type]`, a `[type]` cast,
-    `Invoke-Expression` — keeps resolving the first copy. No test could name the
-    current type, which is why the failure was unreproducible in isolation and
-    why rewriting the assertion was never the repair. The gate suites now import
-    the module without `-Force` and never unload it, so no test authors a repeat
-    read of the module file; the two places that genuinely test the load and
-    unload cycle do it inside `Start-Job`. A QA suite enforces both rules over
-    `tests/QA`, `tests/Unit`, `tests/Integration`, `tests/Lab` and
-    `tests/Performance`, a build exit block asserts that no module-defined type
-    ended the test process with more than one runtime copy, and the host
-    behaviour they exist for is pinned by a test. One
-    consequence is worth knowing locally: the `docs` and `test` workflows can no
-    longer share a process, because a documentation task imports the built
-    module from its root module rather than its manifest and the QA suite used
-    to repair that with the very re-import this change removes. `build.yaml`
-    already places `docs` in `pack`, and the CI workflow already runs `pack` and
-    `test` as separate jobs; a local `-Tasks build, docs, test` now says so
-    instead of failing test by test
-- Fix the NTFS path input matrix and the reparse point suites failing on a
-    hosted build agent. Both root their fixtures at `TEMP`, and a GitHub-hosted
-    Windows runner reports that variable in its 8.3 short form
-    (`C:\Users\RUNNER~1\...`), while the module reports the expanded name the
-    file system provider hands back. Four tests therefore compared two
-    spellings of the same directory and failed on every build, in both
-    editions. Each fixture root is now canonicalized once, so an assertion
-    compares the path the module returns against the path the fixture created
-    rather than against the environment variable it was derived from
-- Fix a bounded-parallel batch silently dropping a target. A worker runspace
-    re-invokes the public command with the already-bound parameters, and
-    `WindowsAccessRightsTransformAttribute` was a PowerShell class: a class
-    instance carries the session state of the runspace that created it, and the
-    engine invoked the attribute from a pooled worker whose session state for
-    that class was not established, so parameter binding threw
-    `Object reference not set to an instance of an object` and that target
-    produced no rule. The attribute is now compiled through `Add-Type` in the
-    module prefix, so its `Transform` is IL with no session state to lose.
-    Measured over six instrumented iterations of the same test file each: five
-    of six runs failed with 22 transformation faults before, none of six after.
-    The batch test now also asserts an empty error stream, because the count it
-    asserted before could not say why a target went missing
-- Fix `-AccessRights` refusing a hexadecimal literal on the eight NTFS access
-    and audit rule commands. `Add-NTFSAccessRule -AccessRights 0x10000000`
-    failed at argument transformation while the identical value written as a
-    decimal literal, a string, or a variable bound without complaint. Each of
-    those parameters declared `[FileSystemRights]` next to the rights transform,
-    and a hexadecimal literal is the one argument form the engine converts to
-    the declared type before the transform runs; that conversion refuses a mask
-    the enumeration cannot name. The parameters now let the transform own the
-    whole conversion, and each command keeps a test that binds a hexadecimal
-    literal and one that still refuses an unknown rights name. Measured on
-    2026-08-11 in PowerShell 7.6.3 and Windows PowerShell 5.1
-- Fix access rules reporting a signed integer instead of rights names. A .NET
-    rights enum has no name for the four `GENERIC_*` bits, and `Enum.ToString`
-    abandons every name it did resolve as soon as one bit is unnameable. Windows
-    splits an inheritable entry that carries generic rights into a mapped copy
-    and an inherit-only copy that keeps the generic bits, so any directory under
-    a volume root listed one `Authenticated Users` entry as `Modify,
-    Synchronize` and the next as `-536805376`. Every rule object now also
-    carries `AccessRightsDisplay`, which reuses the enum rendering wherever the
-    enum can name the mask and otherwise names the generic rights,
-    `ACCESS_SYSTEM_SECURITY`, and `MAXIMUM_ALLOWED`, leaving any remainder as
-    hexadecimal. The default table views report it, and NTFS rules gained the
-    `AccessMask` property the other object families already expose
-- Fix `Get-NTFSItemEffectiveAccess` failing outright on a granted mask that
-    `FileSystemRights` cannot name. The enum cast rejects such a value rather
-    than boxing it, so the command threw instead of reporting the access it had
-    just computed
-- Fix two registry inheritance-source unit tests failing on Windows PowerShell
-    5.1. `Get-Acl -LiteralPath` cannot resolve a registry key there and returns
-    nothing, and `-bor` on two `AceFlags` values throws `InvalidCastException`
-    because that enum is backed by `Byte`. The tests now read the key with
-    `-Path` and build the ACE flags through `[int]` operands
-- Fix `-Sections All` reporting inherited NTFS access rules as explicit rules.
-    `GetNamedSecurityInfo` clears `INHERITED_ACE` on every DACL entry when the
-    SACL is requested in the same call, so a whole-descriptor capture recorded
-    inherited entries as explicit ones. Replaying that descriptor wrote them as
-    explicit entries and detached the target from its parent, and the exact
-    NTFS descriptor DSC resource never converged. The DACL now always comes
-    from a read that omits the SACL, and the audited SACL is grafted onto it.
-    See ADR 0028
-- Fix the domain lab inventory claiming that a lab web server produces the
-    HTTP.sys binding evidence; the evidence comes from a disposable `netsh http`
-    binding on the fixture member server, and the web-server role is reserved
-- Fix the private-key service-preservation gate refusing an exact reassert of a
-    stored DACL that contains an inherit-only service ACE, which grants nothing
-    and must not count as access the candidate has to preserve
-- Fix a private-key DACL protection-state mismatch being detected only after a
-    real provider write and a rollback; it is now refused before the write
-- Fix `Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` silently
-    discarding a rule that matched an existing account and rights combination
-    but declared a different `AppliesTo` inheritance scope
-- Fix the account column printing nothing for an access or audit rule whose
-    identity Windows cannot translate. A deleted account, an unreachable domain,
-    and a foreign principal all rendered as an empty cell, so the entry could
-    not be recognized without inspecting the object. Every rule table view now
-    falls back to the security identifier, while the `Account` property stays
-    empty and `IsOrphaned` keeps reporting the unresolved state
-
-### Added
-
 - Add schema-version-2 descriptor portability for Task Scheduler folders and
     registered tasks, qualifying canonical identity by the owning computer
     (`TaskFolder:<COMPUTER>:<PATH>`) so a record cannot be replayed on another
@@ -655,6 +414,119 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Expand the comment-based help examples for `Add-ADObjectAccessRule` and its
+    sibling mutators `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, and
+    `Clear-ADObjectAccessRule`. Each command had carried only one or two basic
+    examples; they now also show granting rights to several accounts in one
+    write, scoping an ACE to a single attribute or extended right such as
+    Reset Password, an explicit deny rule, `RemovalMode Rights` subtraction,
+    and a piped batch across multiple distinguished names
+- Split `source/Classes` one class per file. The twenty DSC resources were
+    declared in two files grouped by behavior, and both DscResource.DocGenerator
+    documentation tasks resolve a resource's source as `Classes/???.<ClassName>.ps1`
+    or `Classes/<ClassName>.ps1`, so neither could find them and both had to be
+    dropped from the build. Each resource now has its own file named for it. The
+    class bodies are unchanged, and the order they are merged in is unchanged
+- Write the `ThrottleLimit` default on one line in the 56 commands that spread it
+    over four. platyPS serializes a parameter default into the `Default value`
+    field of the markdown YAML block, and a multi-line expression produced three
+    lines that are not `key: value`, which broke every page it appeared on and
+    made the external help file impossible to generate. The 20 enterprise commands
+    already wrote the same expression on one line, so this makes the whole module
+    consistent. The computed default is unchanged
+- Restructure the per-specification scope notes in `specs/README.md` into a
+    `Scope notes` list with one entry per specification. Each new specification
+    had appended a sentence to one shared paragraph without re-wrapping it, so
+    the source carried ragged line breaks and the rendered section had grown
+    into a seventeen-sentence block that repeated the identity the status table
+    above it already states. The status lifecycle sentence now sits under the
+    table it governs. No scope claim changed
+- Publish the module from the continuous integration pipeline. A build of the
+    default branch, or of a stable `v*` tag, now packages the module, creates the
+    GitHub release with the NuGet package attached, publishes to the PowerShell
+    Gallery, and raises the changelog pull request. The publish job requires both
+    the `GitHubToken` and the `GalleryApiToken` repository secret and fails when
+    either is missing, because a skipped GitHub release combined with a
+    successful Gallery publish ships a version without the tag the next version
+    calculation depends on. It runs only on the upstream repository, so a fork
+    and a pull request never reach the Gallery, and a release run is never
+    cancelled by a newer one
+- Remove any PowerShell 7 `$PSHOME\Modules` directory from the machine module
+    search path before the Windows PowerShell 5.1 test job runs. PowerShell 7
+    ships `Core`-only copies of the in-box `Microsoft.PowerShell.*` modules, and
+    when its module directory precedes the in-box one, Windows PowerShell
+    resolves those first and cannot load them. Every host that has to autoload
+    one then fails: `build.ps1` reports `Import-PowerShellDataFile` as
+    unrecognized, and the DSC engine reports that `Get-Acl` was found but its
+    module could not be loaded. The step is a no-op on a worker that does not
+    carry such an entry
+- Accept specification 0008. The enterprise roadmap is no longer a Draft: the
+    acceptance conditions are recorded against the artifacts that satisfy them,
+    the seven open questions are answered by the contracts that resolved them,
+    and the claims that replication evidence was blocked and that open issue
+    OI-18 tracked it are removed, because specification 0016 closed both
+- Assert the 80 percent code-coverage threshold over the commands the running
+    test profile can execute rather than over the whole module, so the same gate
+    produces a verdict in the hosted build and on a host that has run the domain
+    lab. Every measured line of the built module is attributed to its source file
+    through the `#Region` markers ModuleBuilder writes, and only the fifteen
+    Active Directory and SMB share files the local profile executes no command of
+    are declared out of scope. The threshold is unchanged, the whole-module and
+    domain-lab-only numbers are reported on every run together with whether
+    domain-lab evidence was merged, and the build fails both when a declared path
+    matches no source file and when the local profile does execute a declared
+    file
+- Treat a domain-lab coverage document that measures another build as absent
+    with a warning instead of failing the build. It is still never merged, so a
+    union of disjoint line sets stays impossible, but a contributor who cannot
+    run the lab is no longer blocked by evidence only the lab can refresh
+- Assert the 80 percent code-coverage threshold over the local run merged with
+    the domain-lab acceptance instead of over the local run alone, so the gate
+    measures the Active Directory, certificate private-key, SMB share, and Task
+    Scheduler families that the default Pester profile structurally cannot
+    execute; the threshold is unchanged and no test was added to reach it
+- Collect code coverage in `Invoke-WindowsAccessControlDomainLabAcceptance`,
+    including for the suites whose real work runs in a member-server session,
+    by publishing the measurable locations of the module under test, arming them
+    in the member runspace, and adding the returned hit counts to the
+    harness-side counts
+- Run the domain-lab acceptance in a child console process on the management
+    domain controller, because a session runspace allows only 165 nested script
+    frames there against 4694 in a console host, and the directory suites fail
+    with a call-depth overflow rather than their asserted rejection once
+    coverage instrumentation is added
+- Key the private-key critical-binding gate on the write target's own public
+    key, read from the key rather than from a certificate, so it applies
+    identically whether the key was addressed through a certificate or through
+    its provider and key name. A public key that cannot be read throws instead of
+    reporting no binding
+- Report the owning computer as `Server` on every certificate private-key
+    descriptor and access rule, so evidence and portability records name the
+    machine that produced them
+- Rebuild a private-key candidate descriptor from its access section before the
+    provider write, so an owner, group, or SACL supplied in `Sddl` is dropped
+    rather than carried into the binary form
+- Resolve a bound certificate against every local machine certificate store that
+    exists plus the `NTDS` service store, instead of a fixed list of four
+    stores, so a binding created against another store no longer blocks every
+    private-key write on the machine; the stores a binding names in practice are
+    searched first and the search stops once every bound thumbprint is resolved
+- Read the `NTDS` service store natively under `CERT_SYSTEM_STORE_SERVICES`,
+    which `StoreLocation` cannot address, so the LDAPS branch of the
+    critical-binding gate is reachable on a domain controller
+- Derive a concurrency token from their own read in
+    `Add-CertificatePrivateKeyAccessRule` and
+    `Remove-CertificatePrivateKeyAccessRule` when the caller supplies none, so a
+    change another writer makes between that read and the write is rejected
+    instead of overwritten
+- Warn from `Remove-CertificatePrivateKeyAccessRule` naming every account the
+    request did not match, because rights are matched exactly and a revocation
+    that removed nothing must not look like one that succeeded
+- Qualify Task Scheduler canonical identity by the owning computer, so
+    `CanonicalTarget` is now `TaskFolder:<COMPUTER>:<PATH>` or
+    `ScheduledTask:<COMPUTER>:<PATH>` instead of the previous `Local` form, and
+    a registered task in the root folder no longer reports a doubled separator
+
 - **Breaking:** qualify the SMB share canonical target and write-lock key with
     the owning computer name. `SmbShare:Local:<SHARE>` becomes
     `SmbShare:<SERVER>:<SHARE>`, and share targets, descriptors, and rules now
@@ -702,30 +574,150 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `ValidateSet` that matches the cmdlet surface, so `Get-DscResource -Syntax`
     advertises the allowed values and invalid values fail at compile time
 
-### Security
-
-- Reject a Task Scheduler DACL write that newly denies an identity in the Task
-    Scheduler service token the read, write, or run access the service requires
-- Reject object and compound ACEs in a Task Scheduler DACL, which the store
-    silently re-revisions so exact-persistence verification cannot succeed
-- Reject a Task Scheduler rule mutation whose target DACL changed after the
-    staging read, instead of silently clobbering the concurrent change
-- Verify the Task Scheduler rollback descriptor and report an indeterminate
-    stored state when it cannot be confirmed
-- Validate every unified backup record, digest, signature, canonical target,
-    and process instance before restoring the first descriptor
-- Reject recomputed-digest signature tampering, mixed signed/unsigned
-    envelopes, duplicate targets, omitted selected ACL sections, and null DACLs
-- Validate backup schema, record paths, item types, section masks, and SDDL
-    before restoring security descriptors
-- Persist only modified descriptor sections to avoid unintended SACL or owner
-    changes during DACL operations
-- Reject remote `RegistryKey` objects before their local-looking names can be
-    normalized to local targets
-- Zero unmanaged password memory, restore the caller identity after every
-    impersonation path, and dispose local logon tokens before returning
-
 ### Fixed
+
+- Keep privilege-name tab completion working in Windows PowerShell 5.1 after
+    commands process multiple targets in parallel; available privileges and
+    permission checks are unchanged
+- Retain per-edition lab console logs in the running administrator's `TEMP`
+    directory for live progress and failure diagnosis; these private logs are
+    unredacted, while shareable JSON evidence and exit status are unchanged
+    ([lab diagnostics](tests/Lab/README.md#run-the-lab))
+- Show certificate private-key access rules in a key, scope, account, rights,
+    and type table, with SID fallback for unresolved accounts; returned object
+    properties are unchanged
+    ([key inspection](docs/usage/certificate-private-keys.md#inspect-a-key-dacl))
+- Include all unreleased entries in generated release notes by consolidating
+    repeated changelog categories without removing their contents
+- Complete the [command evidence catalog](specs/0005-verification-and-traceability.md#public-command-evidence)
+    with direct test links for every export, and guard requirement references,
+    public output types, DSC exports, and the ordered domain-lab inventory
+- Align the path, certificate-binding, concurrency, and verification contracts
+    with their accepted implementations and document real local release-version
+    calculation in the [contributor guide](CONTRIBUTING.md#build-and-test)
+- Correct the specification statements that had fallen behind the code. The
+    public API contract said Task Scheduler backup, restore, and desired state
+    remained outside it, while the same document tables four Task Scheduler DSC
+    resources and specification 0014 delivers the portability; it counted four
+    server-qualified backup families at record version 2 where there are five,
+    omitting the certificate private key and the four fields its record binds;
+    its list of stable output type names omitted nine names the module stamps
+    and its own command tables return; and its format-view description omitted
+    later result families. The traceability contract still said the two
+    DSC contract suites verify nine exports, where both now enumerate ten, and
+    still described the domain-lab acceptance as four suites plus the private-key
+    suite at a fixed eighteen tests, where the runner fixes eight suites and the
+    same document places run counts in the Memory Bank. No behavior changed;
+    each correction was verified against the source, the manifest, the format
+    file, and the suites themselves
+- Pin OI-31 closed in the QA specification guard, which had stopped at OI-30.
+    Reopening the entry in the register now fails the guard
+
+- Fix the intermittent `Expected [X], but got [X]` failures in whole-suite test
+    runs, and restore the strict enumeration type assertions that had been
+    weakened to a name comparison to work around them. PowerShell compiles a
+    module file into a dynamic assembly carrying every class and enumeration it
+    declares, and caches the compiled script block keyed by file path and file
+    content. A read that misses that cache compiles the file again, and from
+    then on the module's commands emit the new copy of each type while every
+    script-side reference to it — a type literal, a literal evaluated in the
+    module's own scope, a bound script block, `-as [type]`, a `[type]` cast,
+    `Invoke-Expression` — keeps resolving the first copy. No test could name the
+    current type, which is why the failure was unreproducible in isolation and
+    why rewriting the assertion was never the repair. The gate suites now import
+    the module without `-Force` and never unload it, so no test authors a repeat
+    read of the module file; the two places that genuinely test the load and
+    unload cycle do it inside `Start-Job`. A QA suite enforces both rules over
+    `tests/QA`, `tests/Unit`, `tests/Integration`, `tests/Lab` and
+    `tests/Performance`, a build exit block asserts that no module-defined type
+    ended the test process with more than one runtime copy, and the host
+    behaviour they exist for is pinned by a test. One
+    consequence is worth knowing locally: the `docs` and `test` workflows can no
+    longer share a process, because a documentation task imports the built
+    module from its root module rather than its manifest and the QA suite used
+    to repair that with the very re-import this change removes. `build.yaml`
+    already places `docs` in `pack`, and the CI workflow already runs `pack` and
+    `test` as separate jobs; a local `-Tasks build, docs, test` now says so
+    instead of failing test by test
+- Fix the NTFS path input matrix and the reparse point suites failing on a
+    hosted build agent. Both root their fixtures at `TEMP`, and a GitHub-hosted
+    Windows runner reports that variable in its 8.3 short form
+    (`C:\Users\RUNNER~1\...`), while the module reports the expanded name the
+    file system provider hands back. Four tests therefore compared two
+    spellings of the same directory and failed on every build, in both
+    editions. Each fixture root is now canonicalized once, so an assertion
+    compares the path the module returns against the path the fixture created
+    rather than against the environment variable it was derived from
+- Fix a bounded-parallel batch silently dropping a target. A worker runspace
+    re-invokes the public command with the already-bound parameters, and
+    `WindowsAccessRightsTransformAttribute` was a PowerShell class: a class
+    instance carries the session state of the runspace that created it, and the
+    engine invoked the attribute from a pooled worker whose session state for
+    that class was not established, so parameter binding threw
+    `Object reference not set to an instance of an object` and that target
+    produced no rule. The attribute is now compiled through `Add-Type` in the
+    module prefix, so its `Transform` is IL with no session state to lose.
+    Measured over six instrumented iterations of the same test file each: five
+    of six runs failed with 22 transformation faults before, none of six after.
+    The batch test now also asserts an empty error stream, because the count it
+    asserted before could not say why a target went missing
+- Fix `-AccessRights` refusing a hexadecimal literal on the eight NTFS access
+    and audit rule commands. `Add-NTFSAccessRule -AccessRights 0x10000000`
+    failed at argument transformation while the identical value written as a
+    decimal literal, a string, or a variable bound without complaint. Each of
+    those parameters declared `[FileSystemRights]` next to the rights transform,
+    and a hexadecimal literal is the one argument form the engine converts to
+    the declared type before the transform runs; that conversion refuses a mask
+    the enumeration cannot name. The parameters now let the transform own the
+    whole conversion, and each command keeps a test that binds a hexadecimal
+    literal and one that still refuses an unknown rights name. Measured on
+    2026-08-11 in PowerShell 7.6.3 and Windows PowerShell 5.1
+- Fix access rules reporting a signed integer instead of rights names. A .NET
+    rights enum has no name for the four `GENERIC_*` bits, and `Enum.ToString`
+    abandons every name it did resolve as soon as one bit is unnameable. Windows
+    splits an inheritable entry that carries generic rights into a mapped copy
+    and an inherit-only copy that keeps the generic bits, so any directory under
+    a volume root listed one `Authenticated Users` entry as `Modify,
+    Synchronize` and the next as `-536805376`. Every rule object now also
+    carries `AccessRightsDisplay`, which reuses the enum rendering wherever the
+    enum can name the mask and otherwise names the generic rights,
+    `ACCESS_SYSTEM_SECURITY`, and `MAXIMUM_ALLOWED`, leaving any remainder as
+    hexadecimal. The default table views report it, and NTFS rules gained the
+    `AccessMask` property the other object families already expose
+- Fix `Get-NTFSItemEffectiveAccess` failing outright on a granted mask that
+    `FileSystemRights` cannot name. The enum cast rejects such a value rather
+    than boxing it, so the command threw instead of reporting the access it had
+    just computed
+- Fix two registry inheritance-source unit tests failing on Windows PowerShell
+    5.1. `Get-Acl -LiteralPath` cannot resolve a registry key there and returns
+    nothing, and `-bor` on two `AceFlags` values throws `InvalidCastException`
+    because that enum is backed by `Byte`. The tests now read the key with
+    `-Path` and build the ACE flags through `[int]` operands
+- Fix `-Sections All` reporting inherited NTFS access rules as explicit rules.
+    `GetNamedSecurityInfo` clears `INHERITED_ACE` on every DACL entry when the
+    SACL is requested in the same call, so a whole-descriptor capture recorded
+    inherited entries as explicit ones. Replaying that descriptor wrote them as
+    explicit entries and detached the target from its parent, and the exact
+    NTFS descriptor DSC resource never converged. The DACL now always comes
+    from a read that omits the SACL, and the audited SACL is grafted onto it.
+    See ADR 0028
+- Fix the domain lab inventory claiming that a lab web server produces the
+    HTTP.sys binding evidence; the evidence comes from a disposable `netsh http`
+    binding on the fixture member server, and the web-server role is reserved
+- Fix the private-key service-preservation gate refusing an exact reassert of a
+    stored DACL that contains an inherit-only service ACE, which grants nothing
+    and must not count as access the candidate has to preserve
+- Fix a private-key DACL protection-state mismatch being detected only after a
+    real provider write and a rollback; it is now refused before the write
+- Fix `Add-RegistryKeyAccessRule` and `Add-RegistryKeyAuditRule` silently
+    discarding a rule that matched an existing account and rights combination
+    but declared a different `AppliesTo` inheritance scope
+- Fix the account column printing nothing for an access or audit rule whose
+    identity Windows cannot translate. A deleted account, an unreachable domain,
+    and a foreign principal all rendered as an empty cell, so the entry could
+    not be recognized without inspecting the object. Every rule table view now
+    falls back to the security identifier, while the `Account` property stays
+    empty and `IsOrphaned` keeps reporting the unresolved state
 
 - Correct the published Active Directory authority contract, which still stated
     that the commands reject implicit domain-controller discovery after that
@@ -769,3 +761,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     writes
 - Use Pester breakpoint coverage so Windows PowerShell 5.1 exact-descriptor DSC
     integration tests remain constructible after LCM acceptance
+
+### Security
+
+- Reject a Task Scheduler DACL write that newly denies an identity in the Task
+    Scheduler service token the read, write, or run access the service requires
+- Reject object and compound ACEs in a Task Scheduler DACL, which the store
+    silently re-revisions so exact-persistence verification cannot succeed
+- Reject a Task Scheduler rule mutation whose target DACL changed after the
+    staging read, instead of silently clobbering the concurrent change
+- Verify the Task Scheduler rollback descriptor and report an indeterminate
+    stored state when it cannot be confirmed
+- Validate every unified backup record, digest, signature, canonical target,
+    and process instance before restoring the first descriptor
+- Reject recomputed-digest signature tampering, mixed signed/unsigned
+    envelopes, duplicate targets, omitted selected ACL sections, and null DACLs
+- Validate backup schema, record paths, item types, section masks, and SDDL
+    before restoring security descriptors
+- Persist only modified descriptor sections to avoid unintended SACL or owner
+    changes during DACL operations
+- Reject remote `RegistryKey` objects before their local-looking names can be
+    normalized to local targets
+- Zero unmanaged password memory, restore the caller identity after every
+    impersonation path, and dispose local logon tokens before returning

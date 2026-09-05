@@ -1,6 +1,7 @@
 # Design Concept: WindowsAccessControl
 
-> Status: ACCEPTED
+Status: Accepted.
+
 > Interview conducted: 2026-07-25
 > Override log: The user requested one consolidated grill round and no later
 > questions. Fifty questions covered all twelve Grill-Me categories, and the

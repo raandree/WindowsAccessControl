@@ -1,7 +1,7 @@
 class WindowsPrivilegeNameCompleter : System.Management.Automation.IArgumentCompleter {
     # The privilege constants defined by winnt.h, mapped to the user right name
     # the Windows security policy editor shows for each one.
-    static [System.Collections.Specialized.OrderedDictionary] GetKnownPrivilege() {
+    hidden [System.Collections.Specialized.OrderedDictionary] GetKnownPrivilege() {
         return [ordered]@{
             SeAssignPrimaryTokenPrivilege             = 'Replace a process level token'
             SeAuditPrivilege                          = 'Generate security audits'
@@ -56,7 +56,7 @@ class WindowsPrivilegeNameCompleter : System.Management.Automation.IArgumentComp
         # text is literal, so an unbalanced bracket cannot fail the keystroke.
         $pattern = '*{0}*' -f [System.Management.Automation.WildcardPattern]::Escape($word)
 
-        foreach ($privilege in [WindowsPrivilegeNameCompleter]::GetKnownPrivilege().GetEnumerator()) {
+        foreach ($privilege in $this.GetKnownPrivilege().GetEnumerator()) {
             if ($privilege.Key -like $pattern) {
                 $results.Add(
                     [System.Management.Automation.CompletionResult]::new(
