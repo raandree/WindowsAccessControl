@@ -31,6 +31,27 @@ not cut and nothing is published.
 
 ## Recent milestones
 
+- 2026-09-05: Closed the seven proven-false specification statements the audit
+    found, on `ai/specification-code-audit`. `specs/0003` now admits Task
+    Scheduler backup, restore, and desired state instead of excluding them,
+    counts five server-qualified backup families and names the four fields a
+    private-key record binds, lists the nine output type names the module stamps
+    that it had omitted, and states twenty curated table views rather than five.
+    `specs/0005` says ten DSC exports where both contract suites enumerate ten,
+    names the certificate private-key adapter route, distinguishes the two LCM
+    configurations, and describes the lab acceptance as its eight suites with
+    the run counts left to this file, which is the rule that document already
+    states. The QA closed-issue loop now pins OI-31. Evidence: the QA
+    specification suite passes 11 of 11; the new pin was proved able to fail by
+    reopening `## OI-31:` in the register, watching it go red, and restoring the
+    file byte for byte; `Get-ChangelogData` still parses the changelog;
+    PSScriptAnalyzer reports nothing on the changed test file; and no edited
+    line exceeds the 80-column convention. G8 and G9 from the audit are
+    deliberately left open: a table view for the private-key rule family changes
+    user-visible output, and back-filling requirement identifiers into 29 test
+    files is a convention decision. So is the guard that would stop `specs/0005`
+    drifting again, which needs a rule for what belongs in its command table.
+
 - 2026-09-05: Audited the specifications against the code. The register in
     `specs/open-issues.md` is empty and the implemented surface matches its
     contract exactly: 105 public commands and 20 DSC resources, each named in
