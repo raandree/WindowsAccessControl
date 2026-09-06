@@ -9,12 +9,12 @@ source: current task evidence
 
 ## Current task
 
-The user rejected a custom wiki build task. The uncommitted override, helper,
-and their tests were removed after comparing the stock publisher with DSC
-Community pipelines. The production change is now only
-`jobs.publish.runs-on: ubuntu-latest` in `.github/workflows/build.yml`.
-Build, documentation generation, and both test editions remain on Windows.
-Changes remain uncommitted; no external publication was performed.
+The wiki publication incident is closed. The user committed and pushed
+`830a909` to `main`; GitHub Actions run `34055979655` passed all four jobs,
+including Ubuntu publication of `0.2.0-preview0002`. The live wiki Home page
+names that version and its sidebar lists generated commands and DSC resources.
+The standard imported wiki task is retained, with no custom override. Only
+these closure records were edited in this turn; no commit or remote write ran.
 
 ## Reproduction and comparison
 
@@ -76,11 +76,15 @@ standard `Publish_GitHub_Wiki_Content` task:
 - Desktop log: `%TEMP%\wac-stock-wiki-desktop-8ccbab6efb5e44e5aade4bbfcfddf3fb.log`;
   exit marker is 0 and `STOCK-WIKI-DESKTOP-DONE` is present.
 
-## Remaining validation
+## Hosted validation and closure
 
-There is no configured local Linux distribution. Actual Ubuntu publication of
-this artifact remains unverified until the hosted pipeline runs. The upstream
-wait-before-read defect is still present; the runner change follows the
-standard pipeline rather than repairing that dependency for arbitrarily large
-output on every platform. A one-time manual wiki seed was considered but not
-performed; it would leave future large Windows additions exposed to the bug.
+- [Run 47](https://github.com/raandree/WindowsAccessControl/actions/runs/34055979655)
+  completed successfully for `830a909` on 2026-09-06 at 20:05 UTC.
+- The Windows build and both PowerShell test jobs passed. The Ubuntu publish
+  job passed secret verification, release publication, and the changelog step.
+- The live wiki Home page is stamped `v0.2.0-preview0002`; generated command
+  and DSC resource navigation is present. No manual wiki seed was needed.
+- This supplies the previously missing hosted Linux evidence. No further work
+  remains for this incident. The upstream wait-before-read defect is not
+  repaired generally, so this result is not a guarantee for arbitrarily large
+  process output on every platform.

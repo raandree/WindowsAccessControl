@@ -9,15 +9,21 @@ source: repository evidence
 
 ## Current status
 
-The user rejected the custom wiki task. Publication now selects Ubuntu and
-retains the standard Sampler tasks, matching ActiveDirectoryDsc and
-SqlServerDsc. The override and helper are removed; all 20 build-specific tests
-pass in both PowerShell editions. A direct upstream probe shows initial
-Windows imports time out while updates of the same 127 existing pages
-succeed. Hosted Ubuntu publication is still unverified. Changes remain
-uncommitted; no remote write ran.
+Wiki publication is verified and the incident is closed. The user pushed
+`830a909` to `main`; run `34055979655` passed the Windows build, both test
+editions, and Ubuntu publication of `0.2.0-preview0002`. The generated wiki is
+live with that version. The standard task remains in use without an override.
+Only closure records were edited in this turn, without a commit or remote
+write.
 
 ## Recent milestones
+
+- 2026-09-06: Confirmed hosted closure in run `34055979655` for `830a909`.
+    All four jobs passed; the Ubuntu publish job completed at 20:04:59 UTC.
+    The live wiki Home page names `v0.2.0-preview0002` and the sidebar contains
+    generated command and DSC resource navigation. The standard task works on
+    the selected runner, closing the outstanding Linux validation without a
+    custom task or manual wiki seed. No further incident work remains.
 
 - 2026-09-06: Reinvestigated why the stock wiki publisher works elsewhere.
     With the actual release archive and upstream 0.13.0 on Windows, 126 added

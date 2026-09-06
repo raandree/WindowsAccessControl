@@ -25,7 +25,8 @@ Keep wiki publication on the standard imported Sampler task, not a local
 override. Compare initial imports with incremental updates and compare runner
 platforms before replacing a dependency. Package and test this module on
 Windows; publish the prepared artifacts on Ubuntu as the DSC Community
-reference pipelines do. Hosted Linux validation remains required.
+reference pipelines do. Run `34055979655` verified this split on 2026-09-06:
+the standard task published `0.2.0-preview0002` and its generated wiki.
 
 | Decision | Summary |
 | --- | --- |
