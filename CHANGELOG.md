@@ -576,6 +576,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Run release publication on Ubuntu with the standard wiki publishing task,
+    following the DSC Community pipeline pattern and avoiding the Windows
+    large-initial-commit timeout; module packaging and tests remain on Windows
+    ([DscResource.DocGenerator#111](https://github.com/dsccommunity/DscResource.DocGenerator/issues/111))
 - Offer enumeration-name completion for `AccessRights` on every NTFS and
     Active Directory rule command that also accepts raw 32-bit access masks;
     hexadecimal masks such as `0x10000000` remain supported

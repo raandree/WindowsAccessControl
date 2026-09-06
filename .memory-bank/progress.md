@@ -9,14 +9,32 @@ source: repository evidence
 
 ## Current status
 
-GitHub Actions run `34026468199` partially published
-`0.2.0-preview0001` before the wiki task failed. The GitHub release and Gallery
-package exist; the wiki was not changed. `DscResource.DocGenerator` 0.13.0
-deadlocked on the output from a 127-file `git commit` and timed out after 120
-seconds. [Active context](activeContext.md) records the evidence and rerun risk.
-No remote operation or production-file change was performed in the diagnosis.
+The user rejected the custom wiki task. Publication now selects Ubuntu and
+retains the standard Sampler tasks, matching ActiveDirectoryDsc and
+SqlServerDsc. The override and helper are removed; all 20 build-specific tests
+pass in both PowerShell editions. A direct upstream probe shows initial
+Windows imports time out while updates of the same 127 existing pages
+succeed. Hosted Ubuntu publication is still unverified. Changes remain
+uncommitted; no remote write ran.
 
 ## Recent milestones
+
+- 2026-09-06: Reinvestigated why the stock wiki publisher works elsewhere.
+    With the actual release archive and upstream 0.13.0 on Windows, 126 added
+    files plus Home timed out at 3,042 ms with a shortened 3,000 ms timeout;
+    modifying 127 existing files passed in 157 ms and emitted only 112 bytes.
+    A quiet initial commit passed in 104 ms. Both DSC Community comparison
+    pipelines publish on Ubuntu. Removed the rejected custom publisher and
+    changed only the publish runner; build/test runners and standard task
+    order are unchanged. The new workflow guard was red then green; all 20
+    build-specific tests pass in both editions, and Sampler resolves the
+    upstream wiki task.
+    Actual Ubuntu publication awaits a hosted run. No commit or remote write.
+
+- 2026-09-06: A custom wiki workaround passed the Core and Desktop gates
+    (1,771 and 1,726 tests; 82.40% and 80.20% asserted coverage), but remained
+    uncommitted. It was subsequently withdrawn at the user's request in favor
+    of the standard task and runner investigation recorded above.
 
 - 2026-09-06: Diagnosed GitHub Actions run `34026468199`, attempt 2. Secret
     validation, the GitHub release, both release assets, and PowerShell Gallery

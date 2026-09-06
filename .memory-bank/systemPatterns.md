@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-09-05
+last-verified: 2026-09-06
 owner: software-engineer
 source: repository evidence
 ---
@@ -21,6 +21,11 @@ Process wrappers must drain redirected output while a child runs; waiting for
 exit before reading can deadlock on a large Git commit summary. Treat a publish
 workflow as non-atomic and inspect every external destination before rerunning
 after a late-stage failure.
+Keep wiki publication on the standard imported Sampler task, not a local
+override. Compare initial imports with incremental updates and compare runner
+platforms before replacing a dependency. Package and test this module on
+Windows; publish the prepared artifacts on Ubuntu as the DSC Community
+reference pipelines do. Hosted Linux validation remains required.
 
 | Decision | Summary |
 | --- | --- |
