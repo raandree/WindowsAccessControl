@@ -9,64 +9,44 @@ source: current task evidence
 
 ## Current task
 
-GitHub Actions run `34021812398` failed in the Windows PowerShell 5.1 job
-because every new `AccessRights` argument completer returned no matches after
-the test process disposed a bounded worker runspace. The controlling static
-PowerShell class method had the same lifetime defect previously fixed in the
-privilege completer. The implementation, regression guard, executable-scope
-coverage repair, and release note are complete on
-`ai/fix-desktop-rights-completion`. No push, publication, tag, or repository
-setting change was requested or performed.
+GitHub Actions run `34026468199`, attempt 2, partially published
+`0.2.0-preview0001` and then failed in `Publish_GitHub_Wiki_Content`. The
+GitHub release, its two assets, and the PowerShell Gallery package exist, but
+the wiki still contains only its initial `Home.md`. This turn diagnosed the
+failure without changing the workflow, source, repository settings, or any
+remote state.
 
-## Implemented
+## Diagnosis
 
-- `WindowsAccessRightsCompletion.Complete()` is a hidden instance method.
-  Filesystem and Active Directory completers inherit it and call it through
-  `$this`, binding completion to the live completer instead of a static script
-  method that can retain a disposed worker context.
-- The access-rights completion suite compares results before and after a real
-  two-target `Get-NTFSItemOwner` batch. The new check failed on Windows
-  PowerShell 5.1 before the implementation change and passes afterward.
-- A direct unit test now verifies normalized certificate bindings from
-  HTTP.sys, WinRM, and Remote Desktop. This covers a locally reachable safety
-  probe that callers previously mocked and restores the hosted executable-scope
-  coverage gate without accepting stale domain-lab evidence or lowering the
-  threshold.
-- The Unreleased changelog records reliable `AccessRights` completion after
-  parallel multi-target commands and confirms that raw mask binding is
-  unchanged.
+- The failed command was `git commit --message ...`, not a clone or push.
+  It ran for the `Invoke-Git` timeout of 120 seconds and returned sentinel exit
+  code `-1` with empty standard output and standard error.
+- `DscResource.DocGenerator` 0.13.0 redirects both Git output streams, waits
+  for Git to exit, and reads the streams only afterward. The generated archive
+  contains 127 files whose per-file create summary is about 6,878 bytes. That
+  fills the redirected pipe, so Git blocks waiting for a reader while the
+  parent blocks waiting for Git.
+- This is the open upstream bug
+  [DscResource.DocGenerator#111](https://github.com/dsccommunity/DscResource.DocGenerator/issues/111).
+  The latest release and the current upstream source still contain the faulty
+  wait-before-read implementation.
+- The wiki head remains its 2026-09-02 initial commit
+  `e25a0b8b1fe63fb6842eaccdbbc55f741d0fd3da`, with no release tag. The token
+  was not the cause: secret validation, GitHub release writes, and Gallery
+  publication all succeeded before the local wiki commit hung.
 
-## Final verification
+## Partial release state
 
-- The red Desktop regression passed 12 tests and failed the new worker-lifetime
-  check because `Modify` became null after the batch. After the fix, all 13
-  focused completion tests pass in both Windows PowerShell 5.1 and PowerShell
-  7.
-- The module build passed seven tasks with zero errors or warnings.
-- Final Windows PowerShell 5.1 gate: 1,723 passed, zero failed, two
-  environmental skips; 80.20% asserted coverage (6,583 of 8,208 executable
-  commands); all ten tasks passed with zero errors or warnings.
-- Final PowerShell 7 gate: 1,768 passed, zero failed, two environmental skips;
-  82.40% asserted coverage (6,763 of 8,208 executable commands); all ten tasks
-  passed with zero errors or warnings.
-- The retained domain-lab coverage correctly remained unmerged because it
-  measures the earlier `0.2.0` module. ADR 0027 requires the hosted profile to
-  pass over its executable scope without that evidence.
-- The certificate-binding test passes after restoring the prior
-  `$LASTEXITCODE` in `finally`. The built module and both tests parse without
-  errors. PSScriptAnalyzer reports zero warnings or errors and one expected
-  informational cross-file notice for `WindowsActiveDirectoryRights`.
-- VS Code diagnostics and `git diff --check` report no errors.
+- GitHub release `v0.2.0-preview0001` exists for commit `764f0b1` with
+  `WindowsAccessControl.0.2.0-preview0001.nupkg` and `WikiContent.zip`.
+- PowerShell Gallery version `0.2.0-preview0001` was published at
+  2026-09-06 10:51:48 UTC.
+- A blind rerun can collide with the immutable Gallery version before it
+  reaches the wiki task. Remediation and rerun remain explicit follow-up work.
 
-## Retained evidence
+## Next action
 
-- Desktop final log: `%TEMP%\wac-desktop-final-7e21e8f515cd4629ae67558287d9ed9d.log`.
-- Core final log: `%TEMP%\wac-core-final-a63ed95748ca4afeab9bcc2f128aa9a4.log`.
-- The corresponding detached markers are `0`, and both logs contain their
-  unique DONE marker.
-
-## Closure
-
-The implementation, tests, and repository records are complete. Git history is
-authoritative for local commit status. Remote mutation remains outside this
-task unless the user explicitly requests it.
+Repair or replace the dependency's Git process wrapper so redirected streams
+are drained while the process runs, or use a repository-owned wiki publish
+step that commits quietly. Account for the existing GitHub release and Gallery
+package before rerunning any publish workflow.

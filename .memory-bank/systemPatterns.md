@@ -17,6 +17,10 @@ their regressions compare completion before and after a real bounded batch.
 Flexible-mask parameters stay untyped; completers expose accepted enum names
 while the transformation attribute preserves raw and unnamed mask bits.
 Raw logs stay in administrator TEMP; only redacted JSON is shareable evidence.
+Process wrappers must drain redirected output while a child runs; waiting for
+exit before reading can deadlock on a large Git commit summary. Treat a publish
+workflow as non-atomic and inspect every external destination before rerunning
+after a late-stage failure.
 
 | Decision | Summary |
 | --- | --- |

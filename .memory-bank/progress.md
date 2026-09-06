@@ -9,19 +9,25 @@ source: repository evidence
 
 ## Current status
 
-GitHub Actions run `34021812398` is repaired on
-`ai/fix-desktop-rights-completion`. Access-rights completion remains available
-in Windows PowerShell 5.1 after a bounded worker pool is disposed, and hosted
-executable-scope coverage passes without stale domain-lab evidence. Final
-Desktop passed 1,723 tests with two environmental skips and 80.20% asserted
-coverage; final Core passed 1,768 tests with two skips and 82.40% coverage.
-Both Sampler gates passed ten tasks with zero errors or warnings.
-[Active context](activeContext.md) records the evidence paths.
-
-No release, push, publication, tag, pull request, or repository-setting change
-was performed. Those remain explicit user-controlled remote operations.
+GitHub Actions run `34026468199` partially published
+`0.2.0-preview0001` before the wiki task failed. The GitHub release and Gallery
+package exist; the wiki was not changed. `DscResource.DocGenerator` 0.13.0
+deadlocked on the output from a 127-file `git commit` and timed out after 120
+seconds. [Active context](activeContext.md) records the evidence and rerun risk.
+No remote operation or production-file change was performed in the diagnosis.
 
 ## Recent milestones
+
+- 2026-09-06: Diagnosed GitHub Actions run `34026468199`, attempt 2. Secret
+    validation, the GitHub release, both release assets, and PowerShell Gallery
+    publication succeeded. `Publish_GitHub_Wiki_Content` then hung at
+    `git commit` for exactly the dependency's 120-second timeout and reported
+    exit code `-1` with empty output. The generated archive has 127 files and
+    about 6,878 bytes of per-file commit summary. `Invoke-Git` waits for Git to
+    exit before draining redirected output, reproducing the open upstream bug
+    DscResource.DocGenerator#111. The wiki remains at its initial Home page and
+    has no version tag. A blind rerun can collide with the already-published,
+    immutable Gallery version; no rerun or remote mutation was performed.
 
 - 2026-09-06: Fixed GitHub Actions run `34021812398`. A static PowerShell
     class method left all new `AccessRights` completers attached to a disposed
