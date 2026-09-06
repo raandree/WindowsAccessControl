@@ -13,6 +13,8 @@ Commands bind inputs; adapters own validation, native lifetime, selected-section
 persistence, and typed output. Descriptor editing is detached.
 QA checks catalogs; requirement references alone do not prove behavior.
 Completer helpers use instance context, not a worker-bound static context.
+Flexible-mask parameters stay untyped; completers expose accepted enum names
+while the transformation attribute preserves raw and unnamed mask bits.
 Raw logs stay in administrator TEMP; only redacted JSON is shareable evidence.
 
 | Decision | Summary |

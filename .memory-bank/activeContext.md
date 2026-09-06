@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-09-05
+last-verified: 2026-09-06
 owner: software-engineer
 source: current task evidence
 ---
@@ -9,18 +9,20 @@ source: current task evidence
 
 ## Current task
 
-The audit closure is complete on `ai/specification-code-audit`, which is six
-commits ahead of `main` and ends at `5d291c5`. This cycle added `6f7ba15` for
-the reviewed fixes, regression guards, and user-impact documentation, then
-`b27ea16` and `5d291c5` for the evidence records and their privacy correction.
-Both local gates and all final lab profiles passed. The
-heartbeat was cancelled after completion; its terminal exit was intentional.
-Do not publish, push, tag, or change repository settings without a specific
-request. No migration is required; public commands and object properties are
-unchanged.
+The reviewed `ai/access-rights-completion` branch is merged into the validated
+local `main`. Enumeration-name completion now covers every flexible-mask
+`AccessRights` parameter while preserving raw 32-bit mask binding. Stale
+whole-document conflicts retained the current Memory Bank and changelog plus
+the candidate's completion facts. Validation passed and the local merge commit
+is complete. No implementation work remains. Do not push, publish, tag, or
+change repository settings without a specific request.
 
 ## Implemented
 
+- Shared filesystem and Active Directory rights completers enumerate the same
+    types accepted by all eleven transformed public `AccessRights` parameters.
+    The parameters remain untyped so hexadecimal and unnamed masks still reach
+    `WindowsAccessRightsTransformAttribute` unchanged.
 - The command-evidence catalog covers every export and links to its actual
     command-specific test suite. Some original commands have Integration suites,
     not Unit/Public suites; the earlier audit overstated that distinction.
@@ -49,6 +51,21 @@ unchanged.
 
 ## Final verification
 
+- The fresh module build passed seven tasks with zero errors or warnings after
+    an initial documented transient output-file sharing violation cleared and
+    an exclusive-read probe succeeded. No retry was added and no process was
+    killed.
+- The rights and privilege completion suites passed 30 tests in both
+    PowerShell 7 and Windows PowerShell 5.1, with zero failures or skips.
+    Literal wildcard and comma-separated completion probes also passed.
+- The full Core gate passed 1,766 tests with zero failures and two
+    environmental skips. All ten tasks passed with zero errors or warnings;
+    asserted coverage is 81.93% over the unchanged 80% threshold. Stale
+    domain-lab coverage for another build was correctly excluded.
+- Both new files have final newlines and no ScriptAnalyzer warning or error
+    findings. The completer file has one expected informational cross-file
+    notice because `WindowsActiveDirectoryRights` is defined in another source
+    file; ModuleBuilder and both PowerShell editions resolve it successfully.
 - Specification QA: 20 passed, zero failed or skipped. The final Desktop QA
     and console-log regression run passed 25 tests. The new guards and
     format/log fixes were first demonstrated red.

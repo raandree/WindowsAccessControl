@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-09-05
+last-verified: 2026-09-06
 owner: software-engineer
 source: repository evidence
 ---
@@ -12,10 +12,9 @@ source: repository evidence
 The accepted increments expose 105 commands and 20 DSC resources over the local
 and bounded enterprise families. The formal issue register is empty. The audit
 gaps are implemented and independently approved. User-impact documentation and
-generated release notes are complete. Commit `6f7ba15` records the reviewed
-change on `ai/specification-code-audit`, which ends at `5d291c5`; all required
-validation has passed. [Active context](activeContext.md) records the evidence
-paths.
+generated release notes are complete. The reviewed access-rights completion
+branch is merged locally and all required validation has passed.
+[Active context](activeContext.md) records the evidence paths.
 
 The final Core gate passed 1,753 tests with two environmental skips and 81.92%
 asserted coverage. Desktop passed 1,709 tests with two skips and 90.37% asserted
@@ -31,6 +30,14 @@ Dependabot pull requests. Publication, tags, and social-preview settings are
 separate remote operations, not implied by local defect closure.
 
 ## Recent milestones
+
+- 2026-09-06: Reviewed `ai/access-rights-completion` against the validated
+    audit result and found one focused, additive commit. Its production and
+    test files merge cleanly; documentation conflicts came from stale complete
+    copies and retain the current records plus the new completion facts. The
+    fresh build passed, both PowerShell editions passed 30 focused completion
+    tests, and the full Core gate passed 1,766 tests with two environmental
+    skips and 81.93% asserted coverage.
 
 - 2026-09-05: Closed the validated cycle locally in `6f7ba15`. The Desktop
     coverage merge completed at 23:01 UTC with 90.37% asserted coverage and

@@ -576,6 +576,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Offer enumeration-name completion for `AccessRights` on every NTFS and
+    Active Directory rule command that also accepts raw 32-bit access masks;
+    hexadecimal masks such as `0x10000000` remain supported
 - Keep privilege-name tab completion working in Windows PowerShell 5.1 after
     commands process multiple targets in parallel; available privileges and
     permission checks are unchanged
