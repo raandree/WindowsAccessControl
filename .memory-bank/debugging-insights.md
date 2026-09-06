@@ -905,17 +905,24 @@ read that file back. That needs no delegation and no stored credential.
 ## A static completer method can outlive its worker runspace
 
 On Windows PowerShell 5.1, a bounded `Get-NTFSItemOwner` read over two targets
-reproduced privilege completion disappearing after the worker pool was disposed.
-The completer's static `GetKnownPrivilege()` then threw `NullReferenceException`.
-`TabExpansion2` swallowed it and fell back to filenames. The full instrumented
-suite exposed 17 failures, but the isolated suite passed both with and without
-coverage; importing before coverage and DSC discovery were also benign.
+first reproduced privilege completion disappearing after the worker pool was
+disposed. The completer's static `GetKnownPrivilege()` then threw
+`NullReferenceException`, which `TabExpansion2` swallowed. The same sequence
+later made the shared static `WindowsAccessRightsCompletion.Complete()` return
+no filesystem or Active Directory matches in the hosted Desktop gate.
 
-Making the catalog lookup a hidden instance method and calling it through
-`$this` retains the new completer's live context. The permanent regression in
-`WindowsPrivilegeCompletion.Tests.ps1` compares completion before and after a
-real two-target batch. It failed without the fix and passes with it. One runtime
-copy of each type does not prove that a static script method's runspace is live.
+Make every PowerShell class helper reached by an argument completer an instance
+method and call it through `$this`. Permanent regressions compare completion
+before and after a real two-target batch; an isolated completion check before
+the batch cannot expose the lifetime defect. One runtime copy of each type does
+not prove that a static script method's runspace is live.
+
+The fixed Desktop behavior suite then exposed 79.74% executable-scope coverage
+when the stale domain-lab document was correctly excluded. Do not normalize the
+JaCoCo version path, merge stale evidence, lower the threshold, or add synthetic
+lab substitutes. A direct test of the locally reachable certificate-binding
+guard covered HTTP.sys, WinRM, and Remote Desktop behavior and raised the same
+scope to 80.20%, as ADR 0027 requires for hosted builds.
 
 ## `Expected [X], but got [X]` means the module was compiled twice
 

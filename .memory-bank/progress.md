@@ -9,27 +9,29 @@ source: repository evidence
 
 ## Current status
 
-The accepted increments expose 105 commands and 20 DSC resources over the local
-and bounded enterprise families. The formal issue register is empty. The audit
-gaps are implemented and independently approved. User-impact documentation and
-generated release notes are complete. The reviewed access-rights completion
-branch is merged locally and all required validation has passed.
+GitHub Actions run `34021812398` is repaired on
+`ai/fix-desktop-rights-completion`. Access-rights completion remains available
+in Windows PowerShell 5.1 after a bounded worker pool is disposed, and hosted
+executable-scope coverage passes without stale domain-lab evidence. Final
+Desktop passed 1,723 tests with two environmental skips and 80.20% asserted
+coverage; final Core passed 1,768 tests with two skips and 82.40% coverage.
+Both Sampler gates passed ten tasks with zero errors or warnings.
 [Active context](activeContext.md) records the evidence paths.
 
-The final Core gate passed 1,753 tests with two environmental skips and 81.92%
-asserted coverage. Desktop passed 1,709 tests with two skips and 90.37% asserted
-coverage after merging current lab evidence, above the unchanged 80% gate.
-All three final lab profiles passed 93 tests and eight cleanup checks:
-instrumented Desktop build, installed Desktop package, and installed Core
-package. The clean-main comparison reproduced 17 completion failures; the branch
-repairs them. Local-only Desktop coverage was 79.72%; the merged pass does not
-claim that profile alone reaches the threshold.
-
-No release has been published. Public GitHub has zero open issues and three
-Dependabot pull requests. Publication, tags, and social-preview settings are
-separate remote operations, not implied by local defect closure.
+No release, push, publication, tag, pull request, or repository-setting change
+was performed. Those remain explicit user-controlled remote operations.
 
 ## Recent milestones
+
+- 2026-09-06: Fixed GitHub Actions run `34021812398`. A static PowerShell
+    class method left all new `AccessRights` completers attached to a disposed
+    bounded-worker context in Windows PowerShell 5.1. The shared completion
+    method is now instance-bound, and a real before/after batch regression was
+    red then green. A direct HTTP.sys, WinRM, and Remote Desktop binding test
+    raised hosted executable-scope coverage without weakening ADR 0027. Final
+    Desktop: 1,723 passed, zero failed, two skips, 80.20% coverage. Final Core:
+    1,768 passed, zero failed, two skips, 82.40% coverage. Both Sampler gates
+    passed ten tasks with zero errors or warnings; no remote operation ran.
 
 - 2026-09-06: Reviewed `ai/access-rights-completion` against the validated
     audit result and found one focused, additive commit. Its production and
@@ -144,21 +146,3 @@ separate remote operations, not implied by local defect closure.
     coverage. One local constraint follows: `docs` and `test` can no longer
     share a process, which is how `build.yaml` and the CI workflow already run
     them.
-
-- 2026-09-03: Two independent reviews hardened the OI-31 work. The first found
-    that the invariant was overstated and that the guard was blind to the very
-    file the defect lived in; the second found that the end-to-end assertion the
-    first had asked for could not fail. It never resolved its own project name,
-    so it borrowed another module's task default and would have silently skipped
-    if that went away, and it was a workflow task ordered after the Pester task,
-    which a duplicate compilation fails. It is an `Exit-Build` block now, proven
-    by running a build to failure and watching it still report, and its probe set
-    is derived from the module's own implementing assembly rather than from two
-    hand-written names. The guard exempts individual call sites instead of whole
-    files, and the QA refusal measures what it claims: it now throws when nothing
-    is loaded, which previously passed in silence. The runspace-pool read the
-    first review flagged was measured directly and holds one copy at every stage.
-    Gate green at 17 tasks, 0 errors, 0 warnings, 1,742 passed, 0 failed, 2
-    skipped, 81.92 percent asserted coverage, with all 35 module-defined types
-    reported at one runtime copy. The domain-lab suites remain unvalidated until
-    the next acceptance run.

@@ -1,5 +1,5 @@
 class WindowsAccessRightsCompletion {
-    static [System.Collections.Generic.IEnumerable[System.Management.Automation.CompletionResult]] Complete(
+    hidden [System.Collections.Generic.IEnumerable[System.Management.Automation.CompletionResult]] Complete(
         [type]$RightsType,
         [string]$WordToComplete
     ) {
@@ -24,7 +24,7 @@ class WindowsAccessRightsCompletion {
     }
 }
 
-class WindowsFileSystemRightsCompleter : System.Management.Automation.IArgumentCompleter {
+class WindowsFileSystemRightsCompleter : WindowsAccessRightsCompletion, System.Management.Automation.IArgumentCompleter {
     [System.Collections.Generic.IEnumerable[System.Management.Automation.CompletionResult]] CompleteArgument(
         [string]$commandName,
         [string]$parameterName,
@@ -32,14 +32,14 @@ class WindowsFileSystemRightsCompleter : System.Management.Automation.IArgumentC
         [System.Management.Automation.Language.CommandAst]$commandAst,
         [System.Collections.IDictionary]$fakeBoundParameters
     ) {
-        return [WindowsAccessRightsCompletion]::Complete(
+        return $this.Complete(
             [System.Security.AccessControl.FileSystemRights],
             $wordToComplete
         )
     }
 }
 
-class WindowsActiveDirectoryRightsCompleter : System.Management.Automation.IArgumentCompleter {
+class WindowsActiveDirectoryRightsCompleter : WindowsAccessRightsCompletion, System.Management.Automation.IArgumentCompleter {
     [System.Collections.Generic.IEnumerable[System.Management.Automation.CompletionResult]] CompleteArgument(
         [string]$commandName,
         [string]$parameterName,
@@ -47,7 +47,7 @@ class WindowsActiveDirectoryRightsCompleter : System.Management.Automation.IArgu
         [System.Management.Automation.Language.CommandAst]$commandAst,
         [System.Collections.IDictionary]$fakeBoundParameters
     ) {
-        return [WindowsAccessRightsCompletion]::Complete(
+        return $this.Complete(
             [WindowsActiveDirectoryRights],
             $wordToComplete
         )
