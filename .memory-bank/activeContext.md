@@ -9,6 +9,13 @@ source: current task evidence
 
 ## Current task
 
+The user enabled `review: on` for the accepted candidate. One fresh-context
+independent security review of `3321350..358651e` is complete: no Blocker or
+Major findings, one Minor CNG post-write read defect, and one newline Nit.
+Both findings are verified and remain open; this turn changes review records,
+not the accepted runtime artifact. See the
+[reconciled review](../docs/security-review-2026-09-07.md).
+
 Lab acceptance from `5991673` on `ai/test-gap-audit` is complete. The current
 user forbids lab redeployment or removal, merging into main, publishing, and
 pushing. This acceptance is not stable-release approval.
@@ -79,9 +86,12 @@ findings, previous audit-host validation, and specific residual risks. The
 [lab checklist](../tests/Lab/acceptance-checklist.md) covers a fresh payload,
 both editions, an installed-package pass, evidence collection, and rollback.
 Do not claim atomic LDAP writes, exhaustive native fault injection, or live
-validation from unit tests. The final redundant CNG post-write read remains a
-specific, unverified failure-injection follow-up. Independent security review
-is recommended; the user has not enabled independent review.
+validation from unit tests. The final redundant CNG post-write read is a
+confirmed control-flow reliability defect (FIND-001), but provider fault
+injection and the correction remain open before stable release. The independent
+review obligation for `358651e` is complete; its outcome is not unconditional
+release approval. The review ledger and unchanged original report are in
+administrator TEMP under `wac-security-review-ce8512135436429ba24194450bba4877`.
 
 ## Previous verified milestone
 

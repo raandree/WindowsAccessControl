@@ -17,11 +17,18 @@ both editions and all twelve live replication cases. Exact-GUID cleanup
 restored the lab. All four full lab passes now pass with zero skips and ready
 cleanup. Local Core passes 1,805 tests at 91.16 percent asserted coverage;
 Desktop passes 1,760 tests at 90.41 percent. Both have zero failures and two
-existing environment skips. Independent security review and the CNG post-write
-failure-injection follow-up remain open. No remote write is authorized for
-this acceptance task.
+existing environment skips. The requested independent review found no Blocker
+or Major issue. Its Minor CNG post-write defect and newline Nit remain open;
+the CNG correction and fault-injection evidence precede stable release. No
+remote write is authorized for this task.
 
 ## Recent milestones
+
+- 2026-09-07: Completed one independent review of `3321350..358651e` plus the
+    CNG persistence path. Verified one Minor post-write read defect and two
+    missing-newline locations under one Nit; no Blocker or Major findings.
+    Reconciled raw-report tally and topology errors against the retained
+    evidence. No runtime or test code changed and no live tests were repeated.
 
 - 2026-09-07: Checkpointed all thirteen existing lab VMs and verified signed,
     sealed Kerberos LDAP, WSMan, test dependencies, and the renewable template.
@@ -168,29 +175,13 @@ this acceptance task.
     files is a convention decision. So is the guard that would stop `specs/0005`
     drifting again, which needs a rule for what belongs in its command table.
 
-- 2026-09-05: Audited the specifications against the code. The register in
-    `specs/open-issues.md` is empty and the implemented surface matches its
-    contract exactly: 105 public commands and 20 DSC resources, each named in
-    `specs/0003`, documented under `docs/`, and covered by a test file of its
-    own name; every test file and script the specifications name exists, and all
-    39 roadmap task identifiers in 0008 are mapped in 0005. Every gap found is
-    specification text that trails the code. `specs/0005` lists 89 of the 105
-    commands in its command-evidence table, still says the two DSC contract
-    suites verify "nine" exports where both enumerate ten, and still describes
-    the lab acceptance as four suites plus the CNG suite at 18 tests and
-    ENT-8 as six suites, where the runner fixes eight. `specs/0003` says Task
-    Scheduler backup/restore and DSC "remain outside this contract" while the
-    same file tables four Task Scheduler DSC resources and 0014 delivers the
-    portability; it counts "four server-qualified families" at record version 2
-    where FR-25 and `ConvertTo-WindowsSecurityDescriptorBackupRecord` have five,
-    omitting the certificate private key; its output-type list omits nine names
-    the module stamps and its own tables return; and its format-view sentence
-    names five views where the module ships eighteen. The root cause is
-    asymmetric guarding: `tests/QA/Specifications.Tests.ps1` asserts that every
-    exported command appears in 0003, and nothing asserts the 0005 table, the
-    stated counts, or the output-type list. Two smaller items: the private-key
-    rule type is the only rule family without a curated table view, and the QA
-    closed-issue loop stops at OI-30, so OI-31 has no regression pin.
+- 2026-09-05: Specification audit confirmed 105 public commands, 20 DSC
+    resources, and all 39 roadmap identifiers. Documentation trailed code in
+    its command-evidence table, family/resource counts, Task Scheduler scope,
+    output types, and views. The root cause was asymmetric QA guarding:
+    exports were checked in 0003, while the 0005 table and other catalogs were
+    not. The private-key view and OI-31 pin also needed follow-up. Subsequent
+    milestones above record the corrections; detailed counts remain in history.
 
 - 2026-09-03: Closed OI-31: duplicate module compilation created incompatible
     class identities. Ten reproductions per mode and 1,742 passing tests with

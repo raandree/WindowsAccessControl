@@ -116,8 +116,10 @@ DSC staging, focused-test staging, and preservation directories were removed
 after evidence verification. The fresh lab payload and baseline fixtures remain
 available. No merge into main, publication, or remote push was performed.
 
-Independent security review remains recommended for the containment, immutable
-identity, and exact-ACE changes. The redundant CNG post-write read still needs
-targeted failure injection and resolution before stable-release approval.
+The subsequent [independent review](security-review-2026-09-07.md) found no
+Blocker or Major issue in the containment, immutable-identity, exact-ACE,
+fixture, and evidence changes. It confirmed the redundant CNG post-write read
+as a Minor defect; targeted failure injection and correction remain required
+before stable-release approval. A cosmetic newline Nit also remains open.
 The audit's native-failure, soak, unusual-ACE persistence, and topology limits
 remain open; these passes do not establish atomic multi-controller writes.
