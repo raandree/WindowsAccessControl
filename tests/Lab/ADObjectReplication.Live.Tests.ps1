@@ -259,6 +259,7 @@ Describe 'Active Directory multi-controller identity' `
             -DistinguishedName $organizationalUnit -ThrottleLimit 1 -ErrorAction Stop
         Remove-ADOrganizationalUnit -Identity $original.ObjectGuid -Server $script:primaryServer `
             -Confirm:$false -ErrorAction Stop
+        $null = $script:createdOrganizationalUnits.Remove($organizationalUnit)
         $replacement = $null
         try {
             $replacementParameters = @{

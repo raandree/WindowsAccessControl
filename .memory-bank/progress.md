@@ -9,14 +9,33 @@ source: repository evidence
 
 ## Current status
 
-The test-gap audit on `ai/test-gap-audit` adds 30 local cases and two live AD
-cases, fixes three production safety defects and test-harness failure paths,
-and prepares the next lab run. Core tests and coverage pass. Desktop has two
-DSC-engine failures caused by stopped local WinRM. Packaging and artifact
-comparison pass. The user authorized committing and pushing the candidate for
-the other Hyper-V host. Live acceptance and security review remain pending.
+Lab acceptance from `5991673` on `ai/test-gap-audit` is complete. The rebuilt
+package and five isolated Desktop DSC-engine tests pass. Initial Desktop lab
+acceptance exposed a test cleanup defect after 95 passing bodies; its overall
+result remains failed. The test-only fix passes three lifecycle regressions in
+both editions and all twelve live replication cases. Exact-GUID cleanup
+restored the lab. All four full lab passes now pass with zero skips and ready
+cleanup. Local Core passes 1,805 tests at 91.16 percent asserted coverage;
+Desktop passes 1,760 tests at 90.41 percent. Both have zero failures and two
+existing environment skips. Independent security review and the CNG post-write
+failure-injection follow-up remain open. No remote write is authorized for
+this acceptance task.
 
 ## Recent milestones
+
+- 2026-09-07: Checkpointed all thirteen existing lab VMs and verified signed,
+    sealed Kerberos LDAP, WSMan, test dependencies, and the renewable template.
+    Rebuilt and byte-verified the candidate; closed the five-test Desktop DSC
+    gate on the reserved member. Fixed the stale cleanup-list entry exposed by
+    live acceptance, retained the failed evidence, and verified exact-identity
+    recovery. All four repaired passes finish with 95 tests each and clean
+    fixtures. Original installation bytes and ACLs are restored; final lab
+    services, LDAP, and checkpoint checks pass. Local Core passes 1,805 tests
+    and 91.16 percent asserted coverage; Desktop passes 1,760 tests and 90.41
+    percent. Both imported the successful lab coverage byte-for-byte, with the
+    80 percent threshold unchanged. Validation completed at 12:08 UTC and
+    monitoring stopped. The dated lab acceptance report retains candidate
+    hashes and the failure, recovery, and successful-run evidence.
 
 - 2026-09-07: User requested a handoff commit and push on `ai/test-gap-audit`
     after creating the remote branch. Reuse the recorded audit validation;
@@ -173,10 +192,8 @@ the other Hyper-V host. Live acceptance and security review remain pending.
     rule type is the only rule family without a curated table view, and the QA
     closed-issue loop stops at OI-30, so OI-31 has no regression pin.
 
-- 2026-09-03: Closed OI-31 by reproducing it. The intermittent `Expected [X],
-    but got [X]` failures came from a second compilation producing duplicate
-    class identities. Keep imports unforced and do not unload the module in
-    the gate; isolate load/unload tests. The QA AST guard protects this rule.
-    Ten reproductions in each mode confirmed the fix; 1,742 tests passed with
-    two skips and 81.92 percent coverage. Run `docs` and `test` in separate
-    processes. Detailed cache analysis remains in git history.
+- 2026-09-03: Closed OI-31: duplicate module compilation created incompatible
+    class identities. Ten reproductions per mode and 1,742 passing tests with
+    two skips proved the fix; coverage was 81.92 percent. Keep imports unforced,
+    isolate load/unload tests, and run docs/tests in separate processes. The QA
+    AST guard preserves the rule; detailed cache analysis remains in history.

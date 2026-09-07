@@ -576,6 +576,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Release the obsolete cleanup identity in the AD name-reuse acceptance test
+    after successful GUID-based deletion, so suite cleanup does not abort on
+    an already-absent object and leave subsequent fixtures behind
+    ([fixture regression](tests/Unit/Lab/ADObjectReplicationFixtureSafety.Tests.ps1))
 - Require selected PowerShell editions, explicit process exit status, and fresh
     evidence in domain-lab acceptance; report coverage-finalization failures as
     failed evidence and handle empty console output in Windows PowerShell 5.1

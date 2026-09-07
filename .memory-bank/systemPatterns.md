@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-09-06
+last-verified: 2026-09-07
 owner: software-engineer
 source: repository evidence
 ---
@@ -15,8 +15,10 @@ QA checks catalogs; requirement references alone do not prove behavior.
 Containment compares real DN components, and restore must retain the recorded
 GUID through every target-resolution stage. Exact native ACE removal compares
 the full ACE, not only SID, mask, flags, and qualifier. Test cleanup needs an
-explicit ownership record before deleting a staged installation. Acceptance
-requires a nonempty edition set, explicit exit status, fresh per-run artifacts,
+explicit ownership record before deleting a staged installation. Fixtures
+release obsolete cleanup entries after successful deletion; passing test bodies
+do not override a failed Pester container or cleanup ledger. Acceptance requires
+a nonempty edition set, explicit exit status, fresh per-run artifacts,
 and a failure status when coverage finalization fails. A newly exercised
 lab-only source file moves into asserted coverage; the threshold is unchanged.
 Completer helpers use instance context, not a worker-bound static context, and

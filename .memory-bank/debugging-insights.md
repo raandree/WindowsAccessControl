@@ -1,11 +1,24 @@
 ---
 status: current
-last-verified: 2026-09-05
+last-verified: 2026-09-07
 owner: software-engineer
 source: implementation and test evidence
 ---
 
 # Debugging insights
+
+## Deleted fixture identities must leave the cleanup list
+
+The first acceptance of `5991673` passed all 95 test bodies but failed the
+replication container in `AfterAll`: `Remove-ADOrganizationalUnit` threw a
+terminating `ADIdentityNotFoundException` despite `SilentlyContinue`. The new
+expected-GUID case deleted both identities by GUID while leaving its original
+DN in the suite cleanup list. The second deletion aborted the remaining
+cleanup and left eight OUs. Remove that registration only after the original
+deletion succeeds; keep the replacement's exact-GUID `finally` cleanup.
+Three local lifecycle tests cover successful cleanup, original deletion
+failure, and replacement creation failure. The focused live rerun passes all
+twelve replication tests and restores the ten-object harness baseline.
 
 ## The `test` workflow does not build, so it tests the last build
 

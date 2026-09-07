@@ -4,6 +4,10 @@ Use this checklist for the next live run after the
 [2026-09-06 audit](../../docs/test-gap-audit-2026-09-06.md). The local checks
 prepare the candidate; they do not replace live acceptance.
 
+The [2026-09-07 execution record](../../docs/lab-acceptance-2026-09-07.md)
+documents the completed cross-edition, DSC, package, and cleanup gates and the
+test-fixture repair found during that run. A later candidate needs fresh proof.
+
 ## Candidate and prerequisites
 
 - Use the audited topic branch and record its commit and worktree status.

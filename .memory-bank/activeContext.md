@@ -9,58 +9,73 @@ source: current task evidence
 
 ## Current task
 
-Audit the source and tests for missing edge cases and prepare the next live lab
-run. Work is on `ai/test-gap-audit`. On 2026-09-07 the user explicitly requested
-a commit and push of the candidate for testing on the other Hyper-V host.
-The initial inventory covered 294 source and 186 test/support scripts.
+Lab acceptance from `5991673` on `ai/test-gap-audit` is complete. The current
+user forbids lab redeployment or removal, merging into main, publishing, and
+pushing. This acceptance is not stable-release approval.
+The existing thirteen-machine Hyper-V lab is isolated on its internal switch.
+Checkpoint `wac-pre-5991673-884f8279` covers every machine. Both fixture
+controllers passed signed and sealed Kerberos LDAP queries; WSMan, RSAT,
+Pester 5.7.1, both editions, and the renewable CNG template are available.
 
-## Implemented changes
+## Current acceptance evidence
 
-- AD containment follows real parent-DN components, not escaped suffixes.
-- Restore carries the recorded GUID through the optional
-  `Set-ADObjectSecurityDescriptor -ExpectedObjectGuid` guard.
-- Exact native ACE removal compares complete type and payload identity.
-- DSC integration cleanup removes only directories the fixture created.
-- Lab acceptance rejects empty edition lists, missing exit status, failed
-  artifact collection, and failed coverage finalization. Remote artifacts and
-  console logs have per-run identities; empty output is safe in Desktop.
-- Added 30 local regression/characterization cases and two live AD cases.
-- Removed the now locally exercised AD setter from the lab-only coverage
-  exclusion. The threshold remains 80 percent.
-
-## Validation and current execution
-
-- Rebuilt security slice: 41 passed. Changed-script analyzer: zero findings
-  across 17 scripts. The manifest still exports 105 public commands.
-- Final Core Pester: 1,802 passed, zero failed, two environment skips.
-- Core coverage assertion rerun after correcting the exclusion: 82.74 percent
-  asserted, 80.04 percent whole-module, no domain evidence merged.
-- Full Desktop: 1,755 passed, two failed, two environment skips. Both failures
-  are actual DSC-engine calls blocked by stopped local WinRM (manual startup).
-  `Test-WSMan localhost` independently reproduces the connection failure.
-  No service, listener, or firewall setting was changed; the tests are intact.
-  Log: `%TEMP%\wac-validation-Full-Desktop-5663611df8104b0ab5fb72e88b6d0850.log`.
-  Exit marker: `%TEMP%\detached-02fadd535fa745fa841138fb6b7723f2.exit`.
-- Eight live suites discover 95 tests. Discovery is not live acceptance.
-- Packaging passed 22 tasks with zero errors or warnings. Candidate:
-  `output/WindowsAccessControl.0.0.1.nupkg` (local fallback version).
-  Package SHA-256:
-  `9C8E22B13891CB52CACBE6EB7A226D8A108931604964FFEB7ED2E68127A78743`.
-- The packaged module is byte-identical to the tested artifact, with SHA-256
+- Private host TEMP folder:
+  `wac-acceptance-5991673-884f827956f442e0974735805d7d0d0c`.
+- Rebuilt package: 22 tasks, zero errors or warnings. All 25 module payload
+  files match the package, including all 20 DSC resource help files.
+- Package SHA-256:
+  `3D2A97578B142B3131283AF5D519302CE90DB9A6B036B867C0914A2B96505CA7`.
+- The rebuilt module retains the audited SHA-256
   `A70F3C1E5347C8196D5A9656F785C91B9008316E54778C0A3ED389D2DAEF019D`.
-  Archive inspection confirms command help, format data, and all 20 DSC help
-  files. Actual installed-package acceptance remains a lab obligation.
-- Raw validation evidence is retained under administrator TEMP in
-  `wac-audit-evidence-20260906-fa1a1b90ee55445daa9608617d4c1a19`.
-- The user authorized a handoff commit and push despite the local Desktop DSC
-  prerequisite blocker. This is not release approval: live acceptance and
-  independent security review remain pending. No lab execution or publication
-  is part of the handoff.
+- Isolated Desktop DSC on `F1AFile2`: five passed, zero skipped, including both
+  actual engine invocation cases. Guest and host exit markers are zero; NUnit,
+  full Pester results, and independent machine-module cleanup evidence agree.
+- Initial instrumented Desktop run failed after 95 passing test bodies. The
+  new GUID-reuse test left an obsolete DN in the suite cleanup list; deleting
+  that absent object terminated `AfterAll` and left eight disposable OUs.
+  The retained overall result is correctly `Failed`, not an acceptance pass.
+- Fixed only the test cleanup registration after successful GUID deletion.
+  Added three lifecycle cases: two failed before the fix; all three now pass
+  in Core and Desktop. Both changed scripts pass static analysis.
+- Captured the remaining OU GUIDs, DACLs, and creation times before cleanup.
+  Exact-identity cleanup restored both controllers and the ten-object harness
+  baseline. No checkpoint restore, lab removal, or redeployment was needed.
+- The focused live replication rerun passed all twelve tests with zero skips
+  and both cleanup boundaries ready; `replication-focused.exit` is zero.
+- The repaired four-pass sequence finished at 11:40:16 UTC with exit zero.
+  Built Desktop/Core and installed Desktop/Core each passed 95 tests with zero
+  skips and eight ready cleanup entries. Both new live regressions passed in
+  all four logs. Every pass deployed a fresh payload. Records are
+  `accepted-sequence.log`, `accepted-*.json`, and `acceptance-verification.json`.
+- Final local Core passed 1,805 tests with zero failures and two existing
+  environment skips. Asserted coverage is 91.16 percent; whole-module coverage
+  is 91.10 percent. The accepted coverage document was imported byte-for-byte.
+  Two expected warnings come from mocked evidence and coverage copy failures.
+- Final local Desktop passed 1,760 tests with zero failures and the same two
+  environment skips. Asserted coverage is 90.41 percent; whole-module coverage
+  is 90.38 percent. The accepted lab coverage was imported byte-for-byte.
+  Both local ten-task workflows have zero errors and two expected mocked-copy
+  warnings. `local-gates.exit` is zero and `LOCAL-GATES-DONE` is recorded at
+  12:08:04 UTC. No acceptance or local validation process remains; monitoring
+  is stopped. Full results and logs are retained in the evidence folder.
+- The management controller's original `0.0.1` installation was restored with
+  all four original file hashes and the directory ACL unchanged. Its `0.2.0`
+  installation was not replaced. All 25 installed candidate files matched the
+  package before restoration. The reserved DSC
+  staging, focused replication staging, and preservation directories are now
+  removed after verified host evidence collection.
+- Final lab checks: thirteen VMs running, thirteen rollback checkpoints, both
+  controllers answering signed/sealed Kerberos LDAP, zero leftover targets,
+  ten marked baseline objects, and domain/member readiness true. Directory,
+  DNS, KDC, ADWS, WinRM, and CA services are running. No lab test process or raw
+  payload log remains. The fresh `C:\WacRepo` payload and checkpoints remain.
 
 ## Handoff and limits
 
+[Acceptance record](../docs/lab-acceptance-2026-09-07.md) records the current
+four-pass lab evidence, fixture repair, and final cross-edition coverage gates.
 [Audit record](../docs/test-gap-audit-2026-09-06.md) contains the confirmed
-findings and specific residual risks. The
+findings, previous audit-host validation, and specific residual risks. The
 [lab checklist](../tests/Lab/acceptance-checklist.md) covers a fresh payload,
 both editions, an installed-package pass, evidence collection, and rollback.
 Do not claim atomic LDAP writes, exhaustive native fault injection, or live
