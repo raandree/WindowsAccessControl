@@ -158,5 +158,5 @@ function Set-WindowsCngKeySecurityDescriptor {
         throw $writeError
     }
 
-    Write-Output -InputObject (Get-WindowsCngKeySecurityDescriptor -Key $Key) -NoEnumerate
+    Write-Output -InputObject $storedBytes -NoEnumerate
 }

@@ -576,6 +576,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Return the already-verified CNG private-key descriptor bytes after a
+    successful DACL write, avoiding a redundant provider read that could report
+    failure after permissions had already changed
+    ([regression](tests/Unit/Private/WindowsCngKeyMutation.Tests.ps1))
 - Release the obsolete cleanup identity in the AD name-reuse acceptance test
     after successful GUID-based deletion, so suite cleanup does not abort on
     an already-absent object and leave subsequent fixtures behind

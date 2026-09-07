@@ -9,16 +9,50 @@ source: current task evidence
 
 ## Current task
 
-The user enabled `review: on` for the accepted candidate. One fresh-context
-independent security review of `3321350..358651e` is complete: no Blocker or
-Major findings, one Minor CNG post-write read defect, and one newline Nit.
-Both findings are verified and remain open; this turn changes review records,
-not the accepted runtime artifact. See the
-[reconciled review](../docs/security-review-2026-09-07.md).
+FIND-001 is resolved on `ai/test-gap-audit`. The source change replaces only
+the redundant post-verification CNG descriptor read with the already verified
+`$storedBytes`; non-enumerating output, critical-binding checks, verification,
+and rollback remain unchanged. A fresh independent review approved the final
+source and regression with no findings and no Blocker or Major.
 
-Lab acceptance from `5991673` on `ai/test-gap-audit` is complete. The current
-user forbids lab redeployment or removal, merging into main, publishing, and
-pushing. This acceptance is not stable-release approval.
+The newline-only FIND-002 remains deferred. The user forbids lab redeployment
+or removal, merging into `main`, publication, pushing, or any git remote
+mutation. The prior accepted package and lab evidence remain historical proof
+for their original module hash, not release proof for this corrected candidate.
+
+## FIND-001 verification
+
+- Red: PowerShell 7 ran the new real-key regression against `fd07051`; helper
+  read three raised the injected failure after an unmocked read confirmed the
+  requested DACL was stored. Test cleanup had already verified key deletion.
+- Green: the focused regression passed once in Core 7.6.5 and once in Desktop
+  5.1.26100.33296 with zero skips. It asserts exactly two helper reads, exact
+  returned bytes, a non-equivalent candidate, independent stored-DACL
+  equivalence, and cleanup.
+- The full 52-test CNG mutation file passed with zero failures or skips in each
+  local edition. The focused live CNG mutation passed on `F1AFile1`; its
+  descriptor returned byte-for-byte to SHA-256
+  `473155193E7061B6357A560792023B2519B91B7349EB7701F13569541E933676`,
+  and its HTTP.sys binding and staging directories were removed.
+- Full local Core passed 1,806 tests with two environment skips and 83.00
+  percent asserted coverage. Full local Desktop passed 1,761 tests with the
+  same skips and 80.81 percent asserted coverage. Both explicitly report
+  `Domain-lab evidence merged: no`.
+- PSScriptAnalyzer 1.25.0 found nothing in the changed source or test. The built
+  module SHA-256 is
+  `A8E433469F06D54F7B71796A2DA1F6589F8705C3141641BD2EDEE589271D94D7`.
+- The 22-task pack passed without errors or warnings. Package SHA-256 is
+  `D93B2644B31A38B37F9FAC08DBD1D28C85AF8AD452D81E1428E0A3054530588C`,
+  and its root module matches the tested module byte-for-byte.
+- Private evidence is under
+  `%TEMP%\wac-find001-6cf68f013c3948d0919d0f774a10f6b4`. The prior
+  `%TEMP%\wac-acceptance-5991673-884f827956f442e0974735805d7d0d0c`
+  directory remains unchanged.
+
+## Prior candidate acceptance
+
+Lab acceptance from `5991673` on `ai/test-gap-audit` is complete for the prior
+module hash. This acceptance is not stable-release approval for FIND-001.
 The existing thirteen-machine Hyper-V lab is isolated on its internal switch.
 Checkpoint `wac-pre-5991673-884f8279` covers every machine. Both fixture
 controllers passed signed and sealed Kerberos LDAP queries; WSMan, RSAT,
@@ -87,10 +121,10 @@ findings, previous audit-host validation, and specific residual risks. The
 both editions, an installed-package pass, evidence collection, and rollback.
 Do not claim atomic LDAP writes, exhaustive native fault injection, or live
 validation from unit tests. The final redundant CNG post-write read is a
-confirmed control-flow reliability defect (FIND-001), but provider fault
-injection and the correction remain open before stable release. The independent
-review obligation for `358651e` is complete; its outcome is not unconditional
-release approval. The review ledger and unchanged original report are in
+resolved control-flow reliability defect (FIND-001); full domain-lab and
+installed-package reacceptance of the changed candidate remain open before
+stable release. The focused review obligations are complete, but their outcomes
+are not unconditional release approval. The original review ledger remains in
 administrator TEMP under `wac-security-review-ce8512135436429ba24194450bba4877`.
 
 ## Previous verified milestone

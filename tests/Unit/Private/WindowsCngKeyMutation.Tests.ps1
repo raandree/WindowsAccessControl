@@ -599,6 +599,119 @@ Describe 'Certificate private-key desired-state comparison' -Tag 'Unit', 'Window
         }
     }
 
+    It 'Should return verified bytes without a third descriptor read after a successful write' {
+        InModuleScope WindowsAccessControl {
+            $keyName = 'WacFind001-' + [guid]::NewGuid().ToString('N')
+            $provider = [Security.Cryptography.CngProvider]::MicrosoftSoftwareKeyStorageProvider
+            $creationParameters = [Security.Cryptography.CngKeyCreationParameters]::new()
+            $creationParameters.Provider = $provider
+            $key = $null
+            $operationError = $null
+            $returnedValue = $null
+            $candidateWasDifferent = $false
+            $storedMatches = $false
+            $cleanupSucceeded = $false
+            try {
+                $key = [Security.Cryptography.CngKey]::Create(
+                    [Security.Cryptography.CngAlgorithm]::Rsa,
+                    $keyName,
+                    $creationParameters
+                )
+                $script:find001UnmockedRead = (
+                    Get-Command Get-WindowsCngKeySecurityDescriptor -CommandType Function
+                ).ScriptBlock
+                $currentBytes = & $script:find001UnmockedRead -Key $key
+                $users = [Security.Principal.SecurityIdentifier]::new('S-1-5-32-545')
+                $candidateBytes = Invoke-WindowsCngKeyAclRuleMutation `
+                    -SecurityDescriptor $currentBytes `
+                    -Operation Add `
+                    -SecurityIdentifier $users `
+                    -AccessMask 0x00120089L
+                $current = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    $currentBytes,
+                    0
+                )
+                $candidate = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    $candidateBytes,
+                    0
+                )
+                $candidateWasDifferent = -not (
+                    Test-WindowsCngKeyDaclEquivalent -Left $current -Right $candidate
+                )
+
+                $script:find001DescriptorReadCount = 0
+                $script:find001VerifiedBytes = $null
+                Mock Get-WindowsCngKeySecurityDescriptor {
+                    $script:find001DescriptorReadCount++
+                    if ($script:find001DescriptorReadCount -eq 3) {
+                        throw [InvalidOperationException]::new(
+                            'Injected failure on descriptor read 3.'
+                        )
+                    }
+                    $readBytes = & $script:find001UnmockedRead -Key $Key
+                    if ($script:find001DescriptorReadCount -eq 2) {
+                        $script:find001VerifiedBytes = $readBytes
+                    }
+                    Write-Output -InputObject $readBytes -NoEnumerate
+                }
+
+                try {
+                    $returnedValue = Set-WindowsCngKeySecurityDescriptor `
+                        -Target ([pscustomobject]@{
+                            CanonicalTarget = "CertificatePrivateKey:Cng:User:$keyName"
+                        }) `
+                        -Key $key `
+                        -SecurityDescriptor $candidateBytes
+                }
+                catch {
+                    $operationError = $_
+                }
+
+                $independentBytes = & $script:find001UnmockedRead -Key $key
+                $independent = [Security.AccessControl.RawSecurityDescriptor]::new(
+                    $independentBytes,
+                    0
+                )
+                $storedMatches = Test-WindowsCngKeyDaclEquivalent `
+                    -Left $independent `
+                    -Right $candidate
+            }
+            finally {
+                if ($key) {
+                    try {
+                        $key.Delete()
+                    }
+                    finally {
+                        $key.Dispose()
+                    }
+                }
+                $cleanupSucceeded = -not [Security.Cryptography.CngKey]::Exists(
+                    $keyName,
+                    $provider
+                )
+            }
+
+            $cleanupSucceeded | Should -BeTrue
+            $candidateWasDifferent | Should -BeTrue
+            $storedMatches | Should -BeTrue
+            $errorMessage = if ($operationError) {
+                $operationError.Exception.Message
+            }
+            else {
+                '<none>'
+            }
+            $operationError | Should -BeNullOrEmpty -Because (
+                "the independently confirmed DACL matched after " +
+                "$script:find001DescriptorReadCount helper reads; observed '$errorMessage'"
+            )
+            $script:find001DescriptorReadCount | Should -Be 2
+            $returnedBytes = [byte[]]$returnedValue
+            $returnedBytes.Count | Should -Be $script:find001VerifiedBytes.Count
+            [Convert]::ToBase64String($returnedBytes) |
+                Should -BeExactly ([Convert]::ToBase64String($script:find001VerifiedBytes))
+        }
+    }
+
     It 'Should keep an exact reassert a no-op that never reaches the binding gate' {
         InModuleScope WindowsAccessControl {
             $ephemeralKey = [Security.Cryptography.CngKey]::Create(

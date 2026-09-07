@@ -9,20 +9,32 @@ source: repository evidence
 
 ## Current status
 
-Lab acceptance from `5991673` on `ai/test-gap-audit` is complete. The rebuilt
-package and five isolated Desktop DSC-engine tests pass. Initial Desktop lab
-acceptance exposed a test cleanup defect after 95 passing bodies; its overall
-result remains failed. The test-only fix passes three lifecycle regressions in
-both editions and all twelve live replication cases. Exact-GUID cleanup
-restored the lab. All four full lab passes now pass with zero skips and ready
-cleanup. Local Core passes 1,805 tests at 91.16 percent asserted coverage;
-Desktop passes 1,760 tests at 90.41 percent. Both have zero failures and two
-existing environment skips. The requested independent review found no Blocker
-or Major issue. Its Minor CNG post-write defect and newline Nit remain open;
-the CNG correction and fault-injection evidence precede stable release. No
-remote write is authorized for this task.
+FIND-001 is resolved on `ai/test-gap-audit`. The CNG setter now returns the
+bytes already read and verified after persistence rather than performing a
+third provider read. Its real-key regression is red then green, both local
+editions pass the focused and 52-test CNG suites, and a focused live mutation
+restored the managed key byte-for-byte. Full local Core passes 1,806 tests at
+83.00 percent asserted local-only coverage; Desktop passes 1,761 at 80.81
+percent. Both have zero failures, two existing environment skips, and no prior
+lab coverage merged. A fresh independent review approved the correction with
+no findings. Full changed-candidate lab and installed-package reacceptance
+remain release gates; FIND-002 remains deferred. The final local pack passes 22
+tasks without errors or warnings, and its module matches the tested build
+byte-for-byte. No git remote write is authorized.
 
 ## Recent milestones
+
+- 2026-09-07: Resolved FIND-001 test-first. A uniquely named persisted CNG key
+    reproduced the third-read exception after its requested DACL was already
+    stored, then passed with exactly two helper reads after the one-line source
+    correction. Core and Desktop each pass all 52 affected CNG tests; a focused
+    Desktop live mutation restores the fixture descriptor byte-for-byte and
+    removes its binding and staging. Full local runs pass 1,806 and 1,761 tests
+    at 83.00 and 80.81 percent asserted coverage without prior lab evidence.
+    PSScriptAnalyzer is clean on both changed files, and independent review
+    approved with no finding. The 22-task pack is clean and package SHA-256 is
+    `D93B2644B31A38B37F9FAC08DBD1D28C85AF8AD452D81E1428E0A3054530588C`.
+    Prior accepted artifacts remain preserved.
 
 - 2026-09-07: Completed one independent review of `3321350..358651e` plus the
     CNG persistence path. Verified one Minor post-write read defect and two

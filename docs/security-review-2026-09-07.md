@@ -2,8 +2,10 @@
 
 Independent review requested with `review: on` after the
 [lab acceptance](lab-acceptance-2026-09-07.md). The reviewer found no Blocker
-or Major issue in the reviewed candidate. One Minor CNG reliability defect
-and one newline Nit remain open. This is not unconditional release approval.
+or Major issue in the reviewed candidate. The Minor CNG reliability defect was
+resolved on 2026-09-07 with fault-injection evidence and a second independent
+review. The newline Nit remains open. This is not unconditional release
+approval.
 
 ## Findings
 
@@ -35,9 +37,13 @@ both returned bytes and stored DACL. Preserve tests for write/verification
 failure and rollback. A code change still requires rebuild and validation;
 the proposed correction is not declared risk-free because it is small.
 
-Disposition: accepted, open. It does not invalidate the completed acceptance
-of the audited diff. Resolve it and its regression evidence before stable
-release approval. No runtime edit was made during this review.
+Disposition: resolved on 2026-09-07. The persistence helper now returns the
+descriptor bytes already read and verified inside its write handler. A real,
+uniquely named current-user CNG key regression failed against `fd07051` after
+the third helper read threw, while an unmocked read confirmed that the requested
+DACL was already stored. The same test passes after the correction with exactly
+two helper reads, exact returned bytes, independent storage confirmation, and
+verified key cleanup.
 
 ### FIND-002: Nit - missing final newlines in two tests
 
@@ -67,9 +73,9 @@ file was modified during the review.
 | Axis | Assessment |
 | --- | --- |
 | Design | Changed paths reuse existing parsers, target resolution, native ACE equality, and fixture-ownership patterns. |
-| Correctness | No new issue found in escaped-DN containment, recorded GUID propagation, exact ACE removal, DSC fixture ownership, or fail-closed lab evidence. FIND-001 remains in the additional CNG scope. |
+| Correctness | No new issue found in escaped-DN containment, recorded GUID propagation, exact ACE removal, DSC fixture ownership, or fail-closed lab evidence. FIND-001 is resolved by returning the verified CNG bytes. |
 | Complexity | The containment and exact-removal changes remove duplicated decision logic without adding unnecessary abstractions. |
-| Tests | Cross-edition regressions and live acceptance cover the changed boundaries. Third-read CNG fault injection remains missing. |
+| Tests | Cross-edition regressions and live acceptance cover the changed boundaries. Third-read CNG fault injection now proves the corrected post-write path. |
 | Clarity | Names and errors distinguish immutable identity from descriptor freshness. FIND-002 is cosmetic. |
 
 Recommendation: accept the audited changes from this review's perspective,
@@ -109,15 +115,38 @@ not edited after delivery. Its SHA-256 is
 `CB95CEC45BC6EE1AF5726CC4B8AA877B18CA3745789D6BE5257C06E621E233FA`.
 Only this reconciled review record is intended for source control.
 
+## FIND-001 resolution evidence
+
+- The focused regression failed before the fix in PowerShell 7 because helper
+  read three raised the injected exception after the independent DACL check
+  passed. It then passed once in PowerShell 7 and once in Windows PowerShell
+  5.1 with zero skips.
+- The complete 52-test CNG mutation file passed in both editions. A focused
+  live mutation on `F1AFile1` passed in Windows PowerShell 5.1 and restored
+  the original descriptor byte-for-byte; the HTTP.sys binding and both
+  staging directories were absent afterward.
+- The full local Core profile passed 1,806 tests with two environment skips and
+  83.00 percent asserted coverage. The full Desktop profile passed 1,761 tests
+  with the same two skips and 80.81 percent asserted coverage. Both runs
+  explicitly excluded prior lab coverage.
+- PSScriptAnalyzer 1.25.0 reported no finding in either changed file. A fresh
+  independent review of the final source and regression found no issue and
+  approved the correction with no Blocker or Major remaining.
+- The final pack workflow passed 22 tasks with no error or warning. Package
+  SHA-256 is
+  `D93B2644B31A38B37F9FAC08DBD1D28C85AF8AD452D81E1428E0A3054530588C`,
+  and its root module matches the tested module byte-for-byte.
+
 ## Remaining release limits
 
-Resolve FIND-001 with failing-before/passing-after evidence before stable
-release. Broader native-failure injection, interrupted rollback, cancellation,
+FIND-001 is resolved for the changed source. Stable release still requires a
+fresh full domain-lab and installed-package acceptance pass for this candidate;
+the acceptance recorded earlier in this document proves only the prior module
+hash. Broader native-failure injection, interrupted rollback, cancellation,
 handle-growth soak tests, and unusual-ACE persistence remain unproven.
 Do not infer atomic or globally serialized LDAP writes from GUID validation
 or the tested two-controller behavior.
 
-The completed independent review closes the review obligation for the pinned
-candidate, not these follow-ups. Any subsequent runtime correction changes
-the candidate and must be validated before publication. No merge, publish, or
-push was authorized or performed as part of this review.
+The completed independent reviews close the focused review obligations for the
+pinned candidate and FIND-001 correction, not the release follow-ups. No merge,
+publication, push, lab redeployment, or lab removal was authorized or performed.
