@@ -32,6 +32,9 @@ an error-after-persistence path cannot return unnoticed. JaCoCo identity checks
 only source-file and line coordinates; when candidate bytes change without
 moving a measured line, withhold prior lab coverage explicitly rather than
 letting structural identity treat it as current evidence.
+Fresh acceptance means candidate-bound payloads and evidence, not a rebuilt
+lab. Reuse healthy marked fixtures under a checkpoint; verify installation
+bytes/ACL restoration and evidence hashes before removing run-owned staging.
 Process wrappers must drain redirected output while a child runs; waiting for
 exit before reading can deadlock on a large Git commit summary. Treat a publish
 workflow as non-atomic and inspect every external destination before rerunning

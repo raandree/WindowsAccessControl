@@ -139,10 +139,14 @@ Only this reconciled review record is intended for source control.
 
 ## Remaining release limits
 
-FIND-001 is resolved for the changed source. Stable release still requires a
-fresh full domain-lab and installed-package acceptance pass for this candidate;
-the acceptance recorded earlier in this document proves only the prior module
-hash. Broader native-failure injection, interrupted rollback, cancellation,
+FIND-001 is resolved for the changed source. Its
+[current-candidate reacceptance](lab-reacceptance-2026-09-07.md) is complete:
+all four built/installed lab passes, five Desktop DSC-engine tests, and both
+fresh local coverage gates passed with verified restoration and cleanup. This
+new evidence closes the changed-candidate acceptance requirement; the earlier
+record remains proof only for its original module hash. A properly versioned
+release pipeline and explicit publication authorization are still required.
+Broader native-failure injection, interrupted rollback, cancellation,
 handle-growth soak tests, and unusual-ACE persistence remain unproven.
 Do not infer atomic or globally serialized LDAP writes from GUID validation
 or the tested two-controller behavior.

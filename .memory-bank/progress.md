@@ -11,18 +11,32 @@ source: repository evidence
 
 FIND-001 is resolved on `ai/test-gap-audit`. The CNG setter now returns the
 bytes already read and verified after persistence rather than performing a
-third provider read. Its real-key regression is red then green, both local
-editions pass the focused and 52-test CNG suites, and a focused live mutation
-restored the managed key byte-for-byte. Full local Core passes 1,806 tests at
-83.00 percent asserted local-only coverage; Desktop passes 1,761 at 80.81
-percent. Both have zero failures, two existing environment skips, and no prior
-lab coverage merged. A fresh independent review approved the correction with
-no findings. Full changed-candidate lab and installed-package reacceptance
-remain release gates; FIND-002 remains deferred. The final local pack passes 22
-tasks without errors or warnings, and its module matches the tested build
-byte-for-byte. No git remote write is authorized.
+third provider read. The real-key regression is red then green, both editions
+pass the 52-test CNG suite, and independent review approved with no findings.
+The tested package passed 22 build tasks without errors or warnings.
+
+Fresh reacceptance of `f5731f1` has passed all four built/installed lab profiles:
+95 tests each, zero failures or skips, and eight ready cleanup entries. The
+five Desktop DSC-engine tests also passed. Independent checks verified original
+installation bytes/ACLs and fixture cleanup; all 38 guest evidence files were
+retained before staging removal. All thirteen VMs and checkpoints remain.
+Fresh local Core completed at 18:35:18 UTC with 1,806 passed, zero failed, two
+environment skips, and 91.15 percent asserted coverage using the exact new lab
+coverage hash. Desktop completed at 18:52:19 UTC with 1,761 passed, zero failed,
+two environment skips, and 90.41 percent asserted coverage. Both imported the
+current lab coverage byte-for-byte, all terminal markers are zero, and no
+validation process remains. Requested candidate acceptance is complete;
+FIND-002 is deferred. A versioned release still requires explicit authorization.
 
 ## Recent milestones
+
+- 2026-09-07: Completed fresh reacceptance of `f5731f1` without replacing the
+    lab. All four built/installed passes have 95 passed tests, zero failures or
+    skips, and ready cleanup. Five DSC-engine tests and both fresh local gates
+    pass; Core has 91.15 percent asserted coverage and Desktop 90.41 percent.
+    Verified original installation bytes/ACLs, fixture restoration, and all 38
+    retained guest evidence files before staging removal. Thirteen VMs and
+    checkpoints remain. Final completion is 18:52:19 UTC; no git remote mutation.
 
 - 2026-09-07: Resolved FIND-001 test-first. A uniquely named persisted CNG key
     reproduced the third-read exception after its requested DACL was already
@@ -166,34 +180,12 @@ byte-for-byte. No git remote write is authorized.
     proof, and not every direct command test is under Unit/Public. Vendored
     Sampler TODOs remain upstream under the no-local-bootstrap-edit rule.
 
-- 2026-09-05: Closed the seven proven-false specification statements the audit
-    found, on `ai/specification-code-audit`. `specs/0003` now admits Task
-    Scheduler backup, restore, and desired state instead of excluding them,
-    counts five server-qualified backup families and names the four fields a
-    private-key record binds, lists the nine output type names the module stamps
-    that it had omitted, and states twenty curated table views rather than five.
-    `specs/0005` says ten DSC exports where both contract suites enumerate ten,
-    names the certificate private-key adapter route, distinguishes the two LCM
-    configurations, and describes the lab acceptance as its eight suites with
-    the run counts left to this file, which is the rule that document already
-    states. The QA closed-issue loop now pins OI-31. Evidence: the QA
-    specification suite passes 11 of 11; the new pin was proved able to fail by
-    reopening `## OI-31:` in the register, watching it go red, and restoring the
-    file byte for byte; `Get-ChangelogData` still parses the changelog;
-    PSScriptAnalyzer reports nothing on the changed test file; and no edited
-    line exceeds the 80-column convention. G8 and G9 from the audit are
-    deliberately left open: a table view for the private-key rule family changes
-    user-visible output, and back-filling requirement identifiers into 29 test
-    files is a convention decision. So is the guard that would stop `specs/0005`
-    drifting again, which needs a rule for what belongs in its command table.
-
-- 2026-09-05: Specification audit confirmed 105 public commands, 20 DSC
-    resources, and all 39 roadmap identifiers. Documentation trailed code in
-    its command-evidence table, family/resource counts, Task Scheduler scope,
-    output types, and views. The root cause was asymmetric QA guarding:
-    exports were checked in 0003, while the 0005 table and other catalogs were
-    not. The private-key view and OI-31 pin also needed follow-up. Subsequent
-    milestones above record the corrections; detailed counts remain in history.
+- 2026-09-05: Audited 105 public commands, 20 DSC resources, and 39 roadmap
+    identifiers. Corrected seven false specification statements and pinned
+    OI-31 with red/green proof. Eleven specification tests, changelog parsing,
+    and changed-test static analysis passed. Subsequent milestones record
+    completion of the remaining view and traceability work. The detailed audit
+    history remains in `git show f5731f1:.memory-bank/progress.md`.
 
 - 2026-09-03: Closed OI-31: duplicate module compilation created incompatible
     class identities. Ten reproductions per mode and 1,742 passing tests with

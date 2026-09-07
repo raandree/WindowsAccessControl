@@ -9,16 +9,60 @@ source: current task evidence
 
 ## Current task
 
+Reacceptance of the corrected `f5731f1` candidate is complete on
+`ai/test-gap-audit`. All requested lab, installed-package, DSC, and fresh local
+coverage gates passed. The module bytes remain identical to the independently
+approved FIND-001 correction. The next step is the normal versioned release
+workflow, only after explicit user authorization. No merge, tag, publication,
+push, or git remote mutation is authorized or was performed.
+
+## Current acceptance evidence
+
+- Four full lab passes: built Desktop/Core and installed Desktop/Core each
+  passed 95 tests, zero failed or skipped, with eight ready cleanup entries.
+- Isolated Desktop DSC engine: five passed, zero skipped, including both actual
+  engine invocations; its temporary machine-module installation was removed.
+- Fresh local Core 7.6.5: 1,806 passed, zero failed, two environment skips,
+  91.15 percent asserted coverage, completed at 18:35:18 UTC.
+- Fresh local Desktop 5.1.26100.33296: 1,761 passed, zero failed, two environment
+  skips, 90.41 percent asserted coverage, completed at 18:52:19 UTC.
+- Both local ten-task workflows imported the exact fresh lab coverage hash;
+  the 80 percent threshold was unchanged. Their two warnings each were from
+  intentionally mocked evidence-copy failures. The mounted-volume and
+  unavailable SACL-read privilege skips remain disclosed.
+- Original installed module: all four original file hashes and directory ACL
+  restored. Both controllers passed signed/sealed Kerberos LDAP after testing;
+  zero targets remained and ten marked baseline objects were ready.
+- All 38 guest evidence files matched host copies before the two run-owned
+  remote staging directories were removed. No test console, member module
+  staging, or temporary HTTP.sys binding remained. All thirteen VMs and
+  checkpoints `wac-pre-f5731f1-b1fe0b1f` remain; no lab replacement was needed.
+- All host, guest, and local terminal markers are zero. The processes exited
+  and event-based monitoring finished. Do not restart the completed run.
+
+Private host evidence is under administrator `%TEMP%` in
+`wac-reaccept-f5731f1-b1fe0b1f50b042dd8a8b69223ed64375`. The
+[reacceptance record](../docs/lab-reacceptance-2026-09-07.md) is the shareable
+summary; raw logs and installation inventories remain private. The host
+AutomatedLab wrapper rejected `ScriptFileName`, so the private driver used
+validated persistent PSSessions and the unchanged console entry point.
+
+Fresh lab coverage SHA-256 is
+`D4A71389F9539CF05D4BBA5FFA8F318407D7A26E2A116B2E0EBC8D050EBC49AE`.
+The configured coverage path contains this accepted document; the prior file
+was preserved separately. No old lab coverage was reused for the new candidate.
+
+## Corrected candidate
+
 FIND-001 is resolved on `ai/test-gap-audit`. The source change replaces only
 the redundant post-verification CNG descriptor read with the already verified
 `$storedBytes`; non-enumerating output, critical-binding checks, verification,
 and rollback remain unchanged. A fresh independent review approved the final
 source and regression with no findings and no Blocker or Major.
 
-The newline-only FIND-002 remains deferred. The user forbids lab redeployment
-or removal, merging into `main`, publication, pushing, or any git remote
-mutation. The prior accepted package and lab evidence remain historical proof
-for their original module hash, not release proof for this corrected candidate.
+The newline-only FIND-002 remains deferred and non-blocking. Prior packages and
+lab evidence remain historical proof for their original hashes; the current
+reacceptance establishes the corrected candidate's validation.
 
 ## FIND-001 verification
 
@@ -51,79 +95,27 @@ for their original module hash, not release proof for this corrected candidate.
 
 ## Prior candidate acceptance
 
-Lab acceptance from `5991673` on `ai/test-gap-audit` is complete for the prior
-module hash. This acceptance is not stable-release approval for FIND-001.
-The existing thirteen-machine Hyper-V lab is isolated on its internal switch.
-Checkpoint `wac-pre-5991673-884f8279` covers every machine. Both fixture
-controllers passed signed and sealed Kerberos LDAP queries; WSMan, RSAT,
-Pester 5.7.1, both editions, and the renewable CNG template are available.
-
-## Current acceptance evidence
-
-- Private host TEMP folder:
-  `wac-acceptance-5991673-884f827956f442e0974735805d7d0d0c`.
-- Rebuilt package: 22 tasks, zero errors or warnings. All 25 module payload
-  files match the package, including all 20 DSC resource help files.
-- Package SHA-256:
-  `3D2A97578B142B3131283AF5D519302CE90DB9A6B036B867C0914A2B96505CA7`.
-- The rebuilt module retains the audited SHA-256
-  `A70F3C1E5347C8196D5A9656F785C91B9008316E54778C0A3ED389D2DAEF019D`.
-- Isolated Desktop DSC on `F1AFile2`: five passed, zero skipped, including both
-  actual engine invocation cases. Guest and host exit markers are zero; NUnit,
-  full Pester results, and independent machine-module cleanup evidence agree.
-- Initial instrumented Desktop run failed after 95 passing test bodies. The
-  new GUID-reuse test left an obsolete DN in the suite cleanup list; deleting
-  that absent object terminated `AfterAll` and left eight disposable OUs.
-  The retained overall result is correctly `Failed`, not an acceptance pass.
-- Fixed only the test cleanup registration after successful GUID deletion.
-  Added three lifecycle cases: two failed before the fix; all three now pass
-  in Core and Desktop. Both changed scripts pass static analysis.
-- Captured the remaining OU GUIDs, DACLs, and creation times before cleanup.
-  Exact-identity cleanup restored both controllers and the ten-object harness
-  baseline. No checkpoint restore, lab removal, or redeployment was needed.
-- The focused live replication rerun passed all twelve tests with zero skips
-  and both cleanup boundaries ready; `replication-focused.exit` is zero.
-- The repaired four-pass sequence finished at 11:40:16 UTC with exit zero.
-  Built Desktop/Core and installed Desktop/Core each passed 95 tests with zero
-  skips and eight ready cleanup entries. Both new live regressions passed in
-  all four logs. Every pass deployed a fresh payload. Records are
-  `accepted-sequence.log`, `accepted-*.json`, and `acceptance-verification.json`.
-- Final local Core passed 1,805 tests with zero failures and two existing
-  environment skips. Asserted coverage is 91.16 percent; whole-module coverage
-  is 91.10 percent. The accepted coverage document was imported byte-for-byte.
-  Two expected warnings come from mocked evidence and coverage copy failures.
-- Final local Desktop passed 1,760 tests with zero failures and the same two
-  environment skips. Asserted coverage is 90.41 percent; whole-module coverage
-  is 90.38 percent. The accepted lab coverage was imported byte-for-byte.
-  Both local ten-task workflows have zero errors and two expected mocked-copy
-  warnings. `local-gates.exit` is zero and `LOCAL-GATES-DONE` is recorded at
-  12:08:04 UTC. No acceptance or local validation process remains; monitoring
-  is stopped. Full results and logs are retained in the evidence folder.
-- The management controller's original `0.0.1` installation was restored with
-  all four original file hashes and the directory ACL unchanged. Its `0.2.0`
-  installation was not replaced. All 25 installed candidate files matched the
-  package before restoration. The reserved DSC
-  staging, focused replication staging, and preservation directories are now
-  removed after verified host evidence collection.
-- Final lab checks: thirteen VMs running, thirteen rollback checkpoints, both
-  controllers answering signed/sealed Kerberos LDAP, zero leftover targets,
-  ten marked baseline objects, and domain/member readiness true. Directory,
-  DNS, KDC, ADWS, WinRM, and CA services are running. No lab test process or raw
-  payload log remains. The fresh `C:\WacRepo` payload and checkpoints remain.
+The [prior acceptance record](../docs/lab-acceptance-2026-09-07.md) retains the
+earlier candidate's hashes, fixture cleanup failure and repair, recovery, and
+completed gates. Its private artifacts remain under
+`%TEMP%\wac-acceptance-5991673-884f827956f442e0974735805d7d0d0c`.
+Keep the historical failure separate from the successful rerun. Neither its
+module hash nor its older coverage substitutes for the current reacceptance.
 
 ## Handoff and limits
 
-[Acceptance record](../docs/lab-acceptance-2026-09-07.md) records the current
-four-pass lab evidence, fixture repair, and final cross-edition coverage gates.
+[Reacceptance record](../docs/lab-reacceptance-2026-09-07.md) records the current
+four-pass lab evidence, restoration, and final cross-edition coverage gates.
 [Audit record](../docs/test-gap-audit-2026-09-06.md) contains the confirmed
 findings, previous audit-host validation, and specific residual risks. The
 [lab checklist](../tests/Lab/acceptance-checklist.md) covers a fresh payload,
 both editions, an installed-package pass, evidence collection, and rollback.
 Do not claim atomic LDAP writes, exhaustive native fault injection, or live
 validation from unit tests. The final redundant CNG post-write read is a
-resolved control-flow reliability defect (FIND-001); full domain-lab and
-installed-package reacceptance of the changed candidate remain open before
-stable release. The focused review obligations are complete, but their outcomes
+resolved control-flow reliability defect (FIND-001); its full domain-lab,
+installed-package, and current local coverage gates are complete. A properly
+versioned release workflow still needs authorization. Focused reviews are
+complete, but their outcomes
 are not unconditional release approval. The original review ledger remains in
 administrator TEMP under `wac-security-review-ce8512135436429ba24194450bba4877`.
 

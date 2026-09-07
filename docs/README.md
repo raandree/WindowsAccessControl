@@ -23,6 +23,7 @@ what the module does, and comment-based help defines every parameter.
 | [migration-from-ntfspermission.md](migration-from-ntfspermission.md) | Package, command, and output type changes after the rename | Existing `NTFSPermission` and `NTFSSecurity` users |
 | [research.md](research.md) | Source review, platform API semantics, and the comparison that informed the specifications | Contributors and reviewers |
 | [domain-lab-inventory.md](domain-lab-inventory.md) | Machines, forests, and roles of the disposable acceptance lab | Contributors running the lab suites |
+| [lab-reacceptance-2026-09-07.md](lab-reacceptance-2026-09-07.md) | Corrected-candidate lab, package, DSC, local coverage, and cleanup evidence | Maintainers and reviewers |
 
 ## The usage guide
 
