@@ -15,6 +15,9 @@ function Set-ADObjectSecurityDescriptor {
         The organizational unit that bounds every permitted mutation.
     .PARAMETER Sddl
         A structurally valid SDDL document containing a non-null DACL.
+    .PARAMETER ExpectedObjectGuid
+        Requires the target to retain this immutable object GUID. Restore uses
+        this value to reject a distinguished name reused after preparation.
     .PARAMETER Credential
         An optional credential used only for the direct LDAP bind to Server.
     .PARAMETER TimeoutSeconds
@@ -46,6 +49,8 @@ function Set-ADObjectSecurityDescriptor {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$Sddl,
+        [Parameter()]
+        [guid]$ExpectedObjectGuid = [guid]::Empty,
         [Parameter()]
         [pscredential]$Credential,
         [Parameter()]
@@ -91,7 +96,8 @@ function Set-ADObjectSecurityDescriptor {
                 -AllowedBaseDistinguishedName $AllowedBaseDistinguishedName `
                 -Credential $Credential `
                 -TimeoutSeconds $TimeoutSeconds `
-                -ForWrite
+                -ForWrite `
+                -ExpectedObjectGuid $ExpectedObjectGuid
             if ($PSCmdlet.ShouldProcess($target.CanonicalTarget, 'Set Active Directory object DACL')) {
                 Set-WindowsADObjectSecurityDescriptor `
                     -Target $target `

@@ -576,6 +576,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Require selected PowerShell editions, explicit process exit status, and fresh
+    evidence in domain-lab acceptance; report coverage-finalization failures as
+    failed evidence and handle empty console output in Windows PowerShell 5.1
+    ([audit](docs/test-gap-audit-2026-09-06.md))
+- Preserve existing module installations when DSC test setup refuses to
+    overwrite them, and restore the module search path even when cleanup fails
+    ([fixture safety](tests/Unit/DSC/DscLcmFixtureSafety.Tests.ps1))
 - Run release publication on Ubuntu with the standard wiki publishing task,
     following the DSC Community pipeline pattern and avoiding the Windows
     large-initial-commit timeout; module packaging and tests remain on Windows
@@ -774,6 +781,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Enforce Active Directory allowed-OU boundaries at real distinguished-name
+    components so escaped commas cannot impersonate an ancestor separator
+- Preserve the recorded Active Directory object GUID through restore's write
+    path; direct descriptor writes can supply the same `ExpectedObjectGuid`
+    guard to refuse a reused distinguished name
+- Match the complete native ACE during exact removal, preserving neighboring
+    conditional and object-specific ACEs with the same SID, mask, and flags
+    ([audit regressions](docs/test-gap-audit-2026-09-06.md#confirmed-findings))
 - Reject a Task Scheduler DACL write that newly denies an identity in the Task
     Scheduler service token the read, write, or run access the service requires
 - Reject object and compound ACEs in a Task Scheduler DACL, which the store

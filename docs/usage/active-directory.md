@@ -256,6 +256,26 @@ A restore can bind a different writable domain controller than the backup did,
 because identity is matched on the immutable `objectGUID` and the recorded
 domain rather than on the server name.
 
+Restore also carries the recorded GUID through write-time target resolution.
+For a direct descriptor write, pass `ExpectedObjectGuid` from an earlier read
+to reject an object recreated under the same distinguished name:
+
+```powershell
+$descriptor = Get-ADObjectSecurityDescriptor -Server $server -DistinguishedName $targetDn
+$parameters = @{
+  Server = $server
+  DistinguishedName = $targetDn
+  ExpectedObjectGuid = $descriptor.ObjectGuid
+  AllowedBaseDistinguishedName = $baseDn
+  Sddl = $descriptor.Sddl
+  WhatIf = $true
+}
+Set-ADObjectSecurityDescriptor @parameters
+```
+
+This checks identity, not DACL freshness. It does not provide an atomic LDAP
+transaction or prevent competing writes on another controller.
+
 ## Commands on this page
 
 | Area | Commands |

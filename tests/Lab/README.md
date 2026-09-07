@@ -5,6 +5,9 @@ acceptance suites run against, together with the runners and the test-only
 fixture harness. It is written for the operator who deploys the lab on a
 Hyper-V host and runs the unattended acceptance profile.
 
+For the next audit candidate, use the [acceptance checklist](acceptance-checklist.md)
+for detached execution, the new regression cases, and current-run evidence gates.
+
 ## Baseline
 
 The topology starts from the AutomatedLab sample scenario
@@ -151,10 +154,14 @@ pass took 22 minutes and the uninstrumented PowerShell 7 pass 5 minutes. Run a
 single edition with `-PowerShellEdition Core`.
 
 Each pass retains its console output on the management domain controller as
-`wac-lab-acceptance-<edition>.console.log` in the running administrator's `TEMP`
+`wac-lab-evidence-<run-id>-<edition>.console.log` in the running administrator's `TEMP`
 directory, and the runner prints the resolved path. The log advances while the
 child process runs, so a separate session can inspect suite progress without
 waiting for the host runner to return.
+
+Remote evidence and coverage names also include the run ID. A missing current
+artifact cannot be satisfied by a previous run's file. Missing exit status,
+failed evidence collection, and coverage-finalization errors fail acceptance.
 
 That log is raw child-process output and is **not** redacted, unlike the
 retained JSON evidence. It is deliberately kept out of `C:\WacRepo`, because

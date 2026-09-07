@@ -44,6 +44,9 @@ function Invoke-WindowsADCommandBatch {
                     [string]$BoundParameters.AllowedBaseDistinguishedName
                 $resolveParameters.ForWrite = $true
             }
+            if ($BoundParameters.ContainsKey('ExpectedObjectGuid')) {
+                $resolveParameters.ExpectedObjectGuid = $BoundParameters['ExpectedObjectGuid']
+            }
             $target = Resolve-WindowsADObjectTarget @resolveParameters
             [pscustomobject]@{
                 CanonicalTarget = $target.CanonicalTarget

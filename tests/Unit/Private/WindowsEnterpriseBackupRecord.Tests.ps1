@@ -295,6 +295,79 @@ Describe 'Enterprise backup schema version 2' -Tag 'Unit', 'WindowsOnly' {
         }
     }
 
+    It 'Should retain the recorded directory GUID when the name is reused after preparation' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestADDescriptor
+            Root       = $TestDrive
+        } {
+            $destination = Join-Path $Root 'directory-name-reused.json'
+            $Descriptor | Backup-WindowsSecurityDescriptor -DestinationPath $destination -Confirm:$false
+            $script:directoryResolveCount = 0
+            Mock Resolve-WindowsADServer { 'dc02.contoso.test' }
+            Mock Resolve-WindowsADObjectTarget {
+                $script:directoryResolveCount++
+                $liveGuid = if ($script:directoryResolveCount -eq 1) {
+                    $Descriptor.ObjectGuid
+                } else {
+                    [guid]'3a4b5c6d-7e8f-4012-9345-6789abcdef01'
+                }
+                if ($null -ne $ExpectedObjectGuid -and
+                    $ExpectedObjectGuid -ne [guid]::Empty -and $ExpectedObjectGuid -ne $liveGuid) {
+                    throw 'The Active Directory object GUID no longer matches the path-bound target.'
+                }
+                [pscustomobject]@{
+                    ObjectType           = 'ADObject'
+                    Server               = $Server
+                    DistinguishedName    = $Descriptor.DistinguishedName
+                    ObjectGuid           = $liveGuid
+                    DefaultNamingContext = $Descriptor.DefaultNamingContext
+                    CanonicalTarget      = 'ADObject:{0}:{1}' -f $Server.ToUpperInvariant(),
+                        $liveGuid.ToString('D').ToUpperInvariant()
+                }
+            }
+            Mock Set-WindowsADObjectSecurityDescriptor
+
+            {
+                Restore-WindowsSecurityDescriptor -BackupPath $destination -Server 'dc02.contoso.test' `
+                    -AllowedBaseDistinguishedName 'OU=Targets,DC=contoso,DC=test' -Confirm:$false `
+                    -WarningAction SilentlyContinue -ErrorAction Stop
+            } | Should -Throw '*object GUID no longer matches*'
+
+            Should -Invoke Set-WindowsADObjectSecurityDescriptor -Exactly -Times 0
+        }
+    }
+
+    It 'Should restore the recorded directory object through a different writable controller' {
+        InModuleScope WindowsAccessControl -Parameters @{
+            Descriptor = Get-TestADDescriptor
+            Root       = $TestDrive
+        } {
+            $destination = Join-Path $Root 'directory-controller-switch.json'
+            $Descriptor | Backup-WindowsSecurityDescriptor -DestinationPath $destination -Confirm:$false
+            Mock Resolve-WindowsADServer { 'dc02.contoso.test' }
+            Mock Resolve-WindowsADObjectTarget {
+                [pscustomobject]@{
+                    ObjectType           = 'ADObject'
+                    Server               = $Server
+                    DistinguishedName    = $Descriptor.DistinguishedName
+                    ObjectGuid           = $Descriptor.ObjectGuid
+                    DefaultNamingContext = $Descriptor.DefaultNamingContext
+                    CanonicalTarget      = 'ADObject:DC02.CONTOSO.TEST:{0}' -f
+                        $Descriptor.ObjectGuid.ToString('D').ToUpperInvariant()
+                }
+            }
+            Mock Set-WindowsADObjectSecurityDescriptor
+
+            Restore-WindowsSecurityDescriptor -BackupPath $destination -Server 'dc02.contoso.test' `
+                -AllowedBaseDistinguishedName 'OU=Targets,DC=contoso,DC=test' -Confirm:$false `
+                -WarningAction SilentlyContinue -ErrorAction Stop
+
+            Should -Invoke Set-WindowsADObjectSecurityDescriptor -Exactly -Times 1 -ParameterFilter {
+                $Target.ObjectGuid -eq $Descriptor.ObjectGuid -and $Target.Server -eq 'dc02.contoso.test'
+            }
+        }
+    }
+
     It 'Should reject the same directory object captured through two controllers' {
         $first = Get-TestADDescriptor
         $second = Get-TestADDescriptor

@@ -12,6 +12,13 @@ rationale: `git show 124a356:.memory-bank/systemPatterns.md`.
 Commands bind inputs; adapters own validation, native lifetime, selected-section
 persistence, and typed output. Descriptor editing is detached.
 QA checks catalogs; requirement references alone do not prove behavior.
+Containment compares real DN components, and restore must retain the recorded
+GUID through every target-resolution stage. Exact native ACE removal compares
+the full ACE, not only SID, mask, flags, and qualifier. Test cleanup needs an
+explicit ownership record before deleting a staged installation. Acceptance
+requires a nonempty edition set, explicit exit status, fresh per-run artifacts,
+and a failure status when coverage finalization fails. A newly exercised
+lab-only source file moves into asserted coverage; the threshold is unchanged.
 Completer helpers use instance context, not a worker-bound static context, and
 their regressions compare completion before and after a real bounded batch.
 Flexible-mask parameters stay untyped; completers expose accepted enum names

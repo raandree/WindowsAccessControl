@@ -150,33 +150,12 @@ function Invoke-WindowsAclRuleMutation {
             if (-not $qualifiedNativeAce -or -not $knownNativeAce) {
                 throw 'NativeAce must be a qualified known ACE.'
             }
-            $SecurityIdentifier = $qualifiedNativeAce.SecurityIdentifier
-            $AccessMask = $knownNativeAce.AccessMask
-            $qualifier = $qualifiedNativeAce.AceQualifier
-            $AceFlags = $NativeAce.AceFlags
-            $testNativeAceMatch = {
-                param($ace, $matchQualifier, $matchSecurityIdentifier, $matchAccessMask, $matchAceFlags)
-
-                $qualifiedAce = $ace -as [System.Security.AccessControl.QualifiedAce]
-                $knownAce = $ace -as [System.Security.AccessControl.KnownAce]
-                $qualifiedAce -and $knownAce -and
-                    ([int]$ace.AceFlags -band
-                        [int][System.Security.AccessControl.AceFlags]::Inherited) -eq 0 -and
-                    $qualifiedAce.AceQualifier -eq $matchQualifier -and
-                    $qualifiedAce.SecurityIdentifier -eq $matchSecurityIdentifier -and
-                    $knownAce.AccessMask -eq $matchAccessMask -and
-                    $ace.AceFlags -eq $matchAceFlags
-            }
         }
         for ($index = $acl.Count - 1; $index -ge 0; $index--) {
             $isMatch = if ($NativeAce) {
-                $nativeMatchArguments = @(
-                    $qualifier
-                    $SecurityIdentifier
-                    $AccessMask
-                    $AceFlags
-                )
-                & $testNativeAceMatch $acl[$index] @nativeMatchArguments
+                ([int]$acl[$index].AceFlags -band
+                    [int][System.Security.AccessControl.AceFlags]::Inherited) -eq 0 -and
+                    $acl[$index].Equals($NativeAce)
             } else {
                 & $testRuleMatch $acl[$index] $true @matchArguments
             }

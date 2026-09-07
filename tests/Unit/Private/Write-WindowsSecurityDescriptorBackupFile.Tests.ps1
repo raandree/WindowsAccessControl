@@ -47,4 +47,45 @@ Describe 'Write-WindowsSecurityDescriptorBackupFile' -Tag 'Unit', 'WindowsOnly' 
         Get-ChildItem -LiteralPath $TestDrive -Filter '.missing.json.*.tmp' |
             Should -BeNullOrEmpty
     }
+
+    It 'Should preserve a destination created after the existence check' {
+        $backupPath = Join-Path -Path $TestDrive -ChildPath 'created-after-check.json'
+        [System.IO.File]::WriteAllText($backupPath, 'concurrent backup')
+
+        {
+            & $script:module {
+                param($Path)
+                Write-WindowsSecurityDescriptorBackupFile -Path $Path -Content 'replacement' -DestinationExists $false
+            } $backupPath
+        } | Should -Throw
+
+        [System.IO.File]::ReadAllText($backupPath) | Should -BeExactly 'concurrent backup'
+        Get-ChildItem -LiteralPath $TestDrive -Force -Filter '.created-after-check.json.*' |
+            Should -BeNullOrEmpty
+    }
+
+    It 'Should preserve a locked destination and remove replacement artifacts' {
+        $backupPath = Join-Path -Path $TestDrive -ChildPath 'locked.json'
+        [System.IO.File]::WriteAllText($backupPath, 'original backup')
+        $backupStream = [System.IO.File]::Open(
+            $backupPath,
+            [System.IO.FileMode]::Open,
+            [System.IO.FileAccess]::Read,
+            [System.IO.FileShare]::Read
+        )
+        try {
+            {
+                & $script:module {
+                    param($Path)
+                    Write-WindowsSecurityDescriptorBackupFile -Path $Path -Content 'replacement' -DestinationExists $true
+                } $backupPath
+            } | Should -Throw
+
+            [System.IO.File]::ReadAllText($backupPath) | Should -BeExactly 'original backup'
+            Get-ChildItem -LiteralPath $TestDrive -Force -Filter '.locked.json.*' |
+                Should -BeNullOrEmpty
+        } finally {
+            $backupStream.Dispose()
+        }
+    }
 }

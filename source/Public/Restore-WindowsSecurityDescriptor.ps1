@@ -447,6 +447,7 @@ function Restore-WindowsSecurityDescriptor {
                     $setParameters = @{
                         Server                       = $directoryServer
                         DistinguishedName            = $preparedRecord.Record.DistinguishedName
+                        ExpectedObjectGuid           = $preparedRecord.Record.ObjectGuid
                         AllowedBaseDistinguishedName = $AllowedBaseDistinguishedName
                         Sddl                         = $preparedRecord.Record.Sddl
                         Credential                   = $Credential

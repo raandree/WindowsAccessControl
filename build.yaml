@@ -159,7 +159,6 @@ CodeCoverage:
     - Private/New-WindowsADConnection.ps1
     - Private/Resolve-WindowsADObjectTarget.ps1
     - Public/Get-ADObjectSecurityDescriptor.ps1
-    - Public/Set-ADObjectSecurityDescriptor.ps1
     - Private/Invoke-WindowsSmbShareAclRuleMutation.ps1
     - Private/Invoke-WindowsSmbShareCommandBatch.ps1
     - Private/Set-WindowsSmbShareSecurityDescriptor.ps1

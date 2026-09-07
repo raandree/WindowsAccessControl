@@ -1949,7 +1949,7 @@ function Invoke-WindowsAccessControlDomainLabAcceptance {
             SchemaVersion      = 1
             StartedAtUtc       = $startedAtUtc.ToString('O')
             CompletedAtUtc     = [datetime]::UtcNow.ToString('O')
-            Result             = if ($terminalError) { 'Failed' } else { 'Passed' }
+            Result             = if ($terminalError -or $secondaryErrors.Count -gt 0) { 'Failed' } else { 'Passed' }
             CredentialHandling = 'SuiteEphemeralRuntime'
             Suites             = $suiteResults.ToArray()
             CleanupLedger      = $cleanupLedger.ToArray()

@@ -362,6 +362,63 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
             Invoke-Pester -Times 2 -Exactly
     }
 
+    It 'Should retain failed evidence when coverage finalization fails after passing suites' {
+        $outputPath = Join-Path $TestDrive 'domain-lab-coverage-failure.json'
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {
+            [pscustomobject]@{
+                Result = 'Passed'
+                TotalCount = 1
+                PassedCount = 1
+                FailedCount = 0
+                SkippedCount = 0
+                Duration = [timespan]::FromSeconds(1)
+                Tests = @()
+            }
+        }
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Test-WindowsAccessControlDomainLab {
+            [pscustomobject]@{
+                Ready = $true
+                DomainController = [pscustomobject]@{ Ready = $true }
+                MemberServer = [pscustomobject]@{ Ready = $true }
+            }
+        }
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Enter-WindowsAccessControlLabCoverage {
+            param($ModulePath, $WorkingDirectory)
+            [pscustomobject]@{
+                ModulePath = $ModulePath
+                Directory = $WorkingDirectory
+                Breakpoints = @()
+            }
+        }
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Get-Command {
+            [pscustomobject]@{ ScriptBlock = { } }
+        } -ParameterFilter { $Name -eq 'Add-WindowsAccessControlLabCoverageHit' }
+        Mock -ModuleName 'WindowsAccessControl.DomainLab' Get-Command {
+            [pscustomobject]@{
+                ScriptBlock = {
+                    throw 'Expected coverage finalization failure.'
+                }
+            }
+        } -ParameterFilter { $Name -eq 'Exit-WindowsAccessControlLabCoverage' }
+        $parameters = @{
+            RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+            DomainDistinguishedName = 'DC=example,DC=test'
+            MemberServer = 'member01.example.test'
+            OutputPath = $outputPath
+            CoverageOutputPath = Join-Path $TestDrive 'coverage.xml'
+            Confirm = $false
+        }
+
+        $caught = { Invoke-WindowsAccessControlDomainLabAcceptance @parameters } |
+            Should -Throw '*finalization failed*' -PassThru
+
+        @($caught.Exception.InnerExceptions.Message) | Should -Contain 'Expected coverage finalization failure.'
+        $summary = Get-Content -LiteralPath $outputPath -Raw | ConvertFrom-Json
+        $summary.Result | Should -BeExactly 'Failed'
+        $summary.Suites | Should -HaveCount 8
+        $summary.Suites.Result | Should -Not -Contain 'Failed'
+    }
+
     It 'Should retain its evidence writer when a nested suite reloads the harness module' {
         $outputPath = Join-Path $TestDrive 'domain-lab-reload.json'
         Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Pester {

@@ -240,6 +240,45 @@ Describe 'Active Directory object DACL commands' `
         }
     }
 
+    It 'Should reject an escaped name outside the allowed OU without changing its DACL' {
+        $probe = $null
+        try {
+            $probeParameters = @{
+                Name = 'WacBoundary{0},OU=Targets' -f [guid]::NewGuid().ToString('N')
+                Path = $script:rootOu
+                Server = $script:server
+                ProtectedFromAccidentalDeletion = $false
+                PassThru = $true
+                ErrorAction = 'Stop'
+            }
+            $probe = New-ADOrganizationalUnit @probeParameters
+            $before = Get-ADObjectSecurityDescriptor -Server $script:server `
+                -DistinguishedName $probe.DistinguishedName -ThrottleLimit 1 -ErrorAction Stop
+            $parameters = @{
+                Server = $script:server
+                DistinguishedName = $probe.DistinguishedName
+                AllowedBaseDistinguishedName = $script:targetOu
+                Sddl = $before.Sddl
+                ThrottleLimit = 1
+                WhatIf = $true
+                ErrorAction = 'Stop'
+            }
+
+            { Set-ADObjectSecurityDescriptor @parameters } |
+                Should -Throw '*outside the allowed organizational unit*'
+
+            $after = Get-ADObjectSecurityDescriptor -Server $script:server `
+                -DistinguishedName $probe.DistinguishedName -ThrottleLimit 1 -ErrorAction Stop
+            $after.ObjectGuid | Should -Be $before.ObjectGuid
+            $after.Sddl | Should -BeExactly $before.Sddl
+        } finally {
+            if ($probe) {
+                Remove-ADOrganizationalUnit -Identity $probe.ObjectGuid -Server $script:server `
+                    -Confirm:$false -ErrorAction Stop
+            }
+        }
+    }
+
     It 'Should honor WhatIf under the delegated non-Domain-Admin identity' {
         $before = Get-ADObjectSecurityDescriptor `
             -Server $script:server `

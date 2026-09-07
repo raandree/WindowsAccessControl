@@ -11,11 +11,12 @@ function Test-WindowsADDistinguishedNameWithinBase {
         [string]$BaseDistinguishedName
     )
 
-    $DistinguishedName.Equals(
-        $BaseDistinguishedName,
-        [StringComparison]::OrdinalIgnoreCase
-    ) -or $DistinguishedName.EndsWith(
-        ",$BaseDistinguishedName",
-        [StringComparison]::OrdinalIgnoreCase
-    )
+    $candidate = $DistinguishedName
+    while (-not [string]::IsNullOrEmpty($candidate)) {
+        if ($candidate.Equals($BaseDistinguishedName, [StringComparison]::OrdinalIgnoreCase)) {
+            return $true
+        }
+        $candidate = Get-WindowsADParentDistinguishedName -DistinguishedName $candidate
+    }
+    $false
 }

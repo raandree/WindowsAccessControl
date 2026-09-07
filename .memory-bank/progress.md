@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-09-06
+last-verified: 2026-09-07
 owner: software-engineer
 source: repository evidence
 ---
@@ -9,14 +9,34 @@ source: repository evidence
 
 ## Current status
 
-Wiki publication is verified and the incident is closed. The user pushed
-`830a909` to `main`; run `34055979655` passed the Windows build, both test
-editions, and Ubuntu publication of `0.2.0-preview0002`. The generated wiki is
-live with that version. The standard task remains in use without an override.
-Only closure records were edited in this turn, without a commit or remote
-write.
+The test-gap audit on `ai/test-gap-audit` adds 30 local cases and two live AD
+cases, fixes three production safety defects and test-harness failure paths,
+and prepares the next lab run. Core tests and coverage pass. Desktop has two
+DSC-engine failures caused by stopped local WinRM. Packaging and artifact
+comparison pass. The user authorized committing and pushing the candidate for
+the other Hyper-V host. Live acceptance and security review remain pending.
 
 ## Recent milestones
+
+- 2026-09-07: User requested a handoff commit and push on `ai/test-gap-audit`
+    after creating the remote branch. Reuse the recorded audit validation;
+    no runtime code changes were made in this handoff. Keep the two blocked
+    Desktop DSC checks, live acceptance, and independent review as open gates.
+    Generated packages and raw logs remain excluded from the Git transfer.
+
+- 2026-09-06: Audited the complete script inventory and controlling safety
+    paths. Reproduced and fixed escaped-DN containment, restore GUID loss,
+    wrong native ACE removal, DSC cleanup ownership, and misleading lab
+    evidence success. Core: 1,802 passed, zero failed, two environment skips;
+    coverage: 82.74 percent after moving the locally exercised AD setter into
+    asserted scope. Added the audit record and detached lab checklist. All
+    eight live suites discover 95 tests, but no live acceptance was run.
+    Desktop: 1,755 passed, two failed, two skips. The failing DSC-engine calls
+    cannot reach local WS-Management; WinRM is stopped with manual startup.
+    No test or host remoting setting was changed to bypass that prerequisite.
+    Packaging passed all 22 tasks; the local `0.0.1` candidate contains the
+    exact tested module plus generated help. The audit record retains hashes,
+    raw-evidence location, and the remaining lab/review obligations.
 
 - 2026-09-06: Confirmed hosted closure in run `34055979655` for `830a909`.
     All four jobs passed; the Ubuntu publish job completed at 20:04:59 UTC.
@@ -154,25 +174,9 @@ write.
     closed-issue loop stops at OI-30, so OI-31 has no regression pin.
 
 - 2026-09-03: Closed OI-31 by reproducing it. The intermittent `Expected [X],
-    but got [X]` failures happen when the test process compiles the module file
-    a second time: PowerShell caches a file's compiled script block by path and
-    content, and a read that misses that cache builds a second dynamic assembly
-    carrying a second copy of every module-defined class and enumeration. All
-    six script-side resolution routes were measured and every one of them stays
-    pinned to the first copy while the module's own commands emit the second, so
-    no assertion could have been rewritten to be correct. The gate suites now
-    import the module without `-Force` and never unload it, the two tests whose
-    subject is the load and unload cycle do it inside `Start-Job`, both strict
-    assertions are restored, and a new QA suite walks the abstract syntax tree of
-    every gate test file to keep it that way. The trigger that fired on
-    2026-08-11 is still unnamed: the engine's own cache drop above 1024 entries
-    is what the reproducer uses, but a measured `build, test` process peaked at
-    528 entries and a bare Pester run at 411, the two import routes spell the
-    module path identically, and `Get-DscResource` reuses the loaded instance in
-    both editions. The fix removes the precondition rather than one trigger. The
-    reproducer was repeated ten times in each mode with ten of ten behaving as
-    expected, and the local gate is green at 17 tasks, 0 errors, 0 warnings,
-    1,742 tests passed, 0 failed, 2 skipped, and 81.92 percent asserted
-    coverage. One local constraint follows: `docs` and `test` can no longer
-    share a process, which is how `build.yaml` and the CI workflow already run
-    them.
+    but got [X]` failures came from a second compilation producing duplicate
+    class identities. Keep imports unforced and do not unload the module in
+    the gate; isolate load/unload tests. The QA AST guard protects this rule.
+    Ten reproductions in each mode confirmed the fix; 1,742 tests passed with
+    two skips and 81.92 percent coverage. Run `docs` and `test` in separate
+    processes. Detailed cache analysis remains in git history.

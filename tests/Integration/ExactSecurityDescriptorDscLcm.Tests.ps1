@@ -3,6 +3,8 @@
 }
 
 BeforeAll {
+    $script:ownsMachineModulePath = $false
+    $script:ownsMachineModuleParent = $false
     $script:moduleRoot = (Resolve-Path "$PSScriptRoot\..\..\output\module").Path
     $script:originalPSModulePath = $env:PSModulePath
     $moduleManifest = Get-ChildItem -Path "$script:moduleRoot\WindowsAccessControl\*\WindowsAccessControl.psd1" |
@@ -18,15 +20,14 @@ BeforeAll {
     if (Test-Path -LiteralPath $script:machineModulePath) {
         throw "The DSC acceptance test will not overwrite '$script:machineModulePath'."
     }
-    $null = New-Item `
-        -ItemType Directory `
-        -Path $script:machineModuleParent `
-        -Force
-    Copy-Item `
-        -LiteralPath $moduleManifest.Directory.FullName `
-        -Destination $script:machineModulePath `
-        -Recurse `
-        -Force
+    if (-not (Test-Path -LiteralPath $script:machineModuleParent)) {
+        $null = New-Item -ItemType Directory -Path $script:machineModuleParent -ErrorAction Stop
+        $script:ownsMachineModuleParent = $true
+    }
+    $null = New-Item -ItemType Directory -Path $script:machineModulePath -ErrorAction Stop
+    $script:ownsMachineModulePath = $true
+    Get-ChildItem -LiteralPath $moduleManifest.Directory.FullName -Force |
+        Copy-Item -Destination $script:machineModulePath -Recurse -Force -ErrorAction Stop
     Import-Module -Name $moduleManifest.FullName -ErrorAction Stop
     $normalizedModuleRoot = $script:moduleRoot.TrimEnd('\')
     $env:PSModulePath = @($env:PSModulePath -split ';' | Where-Object {
@@ -35,23 +36,19 @@ BeforeAll {
 }
 
 AfterAll {
-    if ($script:machineModulePath) {
-        Remove-Item `
-            -LiteralPath $script:machineModulePath `
-            -Recurse `
-            -Force `
-            -ErrorAction SilentlyContinue
-    }
-    if ($script:machineModuleParent -and
-        (Test-Path -LiteralPath $script:machineModuleParent) -and
-        @(Get-ChildItem -LiteralPath $script:machineModuleParent).Count -eq 0) {
-        Remove-Item `
-            -LiteralPath $script:machineModuleParent `
-            -Force `
-            -ErrorAction SilentlyContinue
-    }
-    if ($script:originalPSModulePath) {
-        $env:PSModulePath = $script:originalPSModulePath
+    try {
+        if ($script:ownsMachineModulePath) {
+            Remove-Item -LiteralPath $script:machineModulePath -Recurse -Force -ErrorAction Stop
+        }
+        if ($script:ownsMachineModuleParent -and
+            (Test-Path -LiteralPath $script:machineModuleParent) -and
+            @(Get-ChildItem -LiteralPath $script:machineModuleParent).Count -eq 0) {
+            Remove-Item -LiteralPath $script:machineModuleParent -Force -ErrorAction Stop
+        }
+    } finally {
+        if ($script:originalPSModulePath) {
+            $env:PSModulePath = $script:originalPSModulePath
+        }
     }
 }
 

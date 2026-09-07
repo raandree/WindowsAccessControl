@@ -253,6 +253,51 @@ Describe 'Active Directory multi-controller identity' `
         $primary.CanonicalTarget | Should -Not -BeExactly $partner.CanonicalTarget
     }
 
+    It 'Should reject an old expected GUID after a distinguished name is reused' {
+        $organizationalUnit = script:New-DisposableOrganizationalUnit -Name 'WacReplExpectedGuid'
+        $original = Get-ADObjectSecurityDescriptor -Server $script:primaryServer `
+            -DistinguishedName $organizationalUnit -ThrottleLimit 1 -ErrorAction Stop
+        Remove-ADOrganizationalUnit -Identity $original.ObjectGuid -Server $script:primaryServer `
+            -Confirm:$false -ErrorAction Stop
+        $replacement = $null
+        try {
+            $replacementParameters = @{
+                Name = 'WacReplExpectedGuid'
+                Path = $script:targetOu
+                Server = $script:primaryServer
+                ProtectedFromAccidentalDeletion = $false
+                PassThru = $true
+                ErrorAction = 'Stop'
+            }
+            $replacement = New-ADOrganizationalUnit @replacementParameters
+            $before = Get-ADObjectSecurityDescriptor -Server $script:primaryServer `
+                -DistinguishedName $replacement.DistinguishedName -ThrottleLimit 1 -ErrorAction Stop
+            $before.ObjectGuid | Should -Not -Be $original.ObjectGuid
+            $parameters = @{
+                Server = $script:primaryServer
+                DistinguishedName = $replacement.DistinguishedName
+                ExpectedObjectGuid = $original.ObjectGuid
+                AllowedBaseDistinguishedName = $script:targetOu
+                Sddl = $original.Sddl
+                ThrottleLimit = 1
+                WhatIf = $true
+                ErrorAction = 'Stop'
+            }
+
+            { Set-ADObjectSecurityDescriptor @parameters } |
+                Should -Throw '*object GUID no longer matches*'
+
+            $after = Get-ADObjectSecurityDescriptor -Server $script:primaryServer `
+                -DistinguishedName $replacement.DistinguishedName -ThrottleLimit 1 -ErrorAction Stop
+            $after.Sddl | Should -BeExactly $before.Sddl
+        } finally {
+            if ($replacement) {
+                Remove-ADOrganizationalUnit -Identity $replacement.ObjectGuid -Server $script:primaryServer `
+                    -Confirm:$false -ErrorAction Stop
+            }
+        }
+    }
+
     It 'Should converge a rule change written on one controller to its replication partner' {
         $organizationalUnit = script:New-DisposableOrganizationalUnit -Name 'WacReplConverge'
         script:Sync-DisposableObject -DistinguishedName $organizationalUnit `

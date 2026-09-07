@@ -120,6 +120,7 @@ param(
     [string]$RemoteRepositoryPath = 'C:\WacRepo',
 
     [Parameter()]
+    [ValidateNotNullOrEmpty()]
     [ValidateSet('Desktop', 'Core')]
     [string[]]$PowerShellEdition = @('Desktop', 'Core'),
 
@@ -322,15 +323,16 @@ if ($ModuleSource -eq 'Installed') {
 }
 
 $editionResults = [Collections.Generic.List[object]]::new()
+$acceptanceRunId = [guid]::NewGuid().ToString('N')
 
 foreach ($edition in $editions) {
     $editionKey = $edition.ToLowerInvariant()
     $armCoverage = $edition -eq $coverageEditionName
     $remoteEvidencePath = Join-Path `
         $RemoteRepositoryPath `
-        ('lab-evidence-{0}.json' -f $editionKey)
+        ('lab-evidence-{0}-{1}.json' -f $acceptanceRunId, $editionKey)
     $remoteCoveragePath = if ($armCoverage) {
-        Join-Path $RemoteRepositoryPath 'lab-coverage.xml'
+        Join-Path $RemoteRepositoryPath ('lab-coverage-{0}.xml' -f $acceptanceRunId)
     }
     else {
         ''
@@ -389,7 +391,7 @@ foreach ($edition in $editions) {
             # Raw console output is not redacted, and the payload directory
             # inherits a BUILTIN\Users read grant, so keep the log out of it.
             $consoleLogPath = Join-Path $env:TEMP (
-                'wac-lab-acceptance-{0}.console.log' -f $Edition.ToLowerInvariant()
+                'wac-{0}.console.log' -f [IO.Path]::GetFileNameWithoutExtension($OutputPath)
             )
             $output = & $executable @arguments 2>&1 |
                 ForEach-Object { [string]$_ } |
@@ -404,7 +406,14 @@ foreach ($edition in $editions) {
         -PassThru `
         -NoDisplay
 
-    $acceptanceOutput.Output | Write-Information -InformationAction Continue
+    $exitCode = 0
+    if (@($acceptanceOutput).Count -ne 1 -or
+        -not [int]::TryParse([string]$acceptanceOutput.ExitCode, [ref]$exitCode)) {
+        throw "The $edition lab pass did not report one explicit process exit status."
+    }
+    foreach ($outputLine in $acceptanceOutput.Output) {
+        Write-Information -MessageData $outputLine -InformationAction Continue
+    }
     Write-Information (
         "Console output retained at '$($acceptanceOutput.ConsoleLogPath)'."
     ) -InformationAction Continue
@@ -415,7 +424,7 @@ foreach ($edition in $editions) {
 
     $editionResults.Add([pscustomobject]@{
         Edition            = $edition
-        ExitCode           = [int]$acceptanceOutput.ExitCode
+        ExitCode           = $exitCode
         RemoteEvidencePath = $remoteEvidencePath
         RemoteCoveragePath = $remoteCoveragePath
         EvidencePath       = Join-Path `
@@ -431,6 +440,7 @@ if (-not (Test-Path -LiteralPath $coverageDirectory -PathType Container)) {
 
 # A failed pass still writes its evidence, so every artifact is carried back
 # before the run is failed.
+$artifactErrors = [Collections.Generic.List[Exception]]::new()
 $session = New-LabPSSession -ComputerName $ManagementDomainController
 try {
     foreach ($editionResult in $editionResults) {
@@ -446,6 +456,7 @@ try {
             ) -InformationAction Continue
         }
         catch {
+            $artifactErrors.Add($_.Exception)
             Write-Warning (
                 "The $($editionResult.Edition) pass produced no evidence file: $($_.Exception.Message)"
             )
@@ -467,6 +478,7 @@ try {
             ) -InformationAction Continue
         }
         catch {
+            $artifactErrors.Add($_.Exception)
             Write-Warning (
                 "The $($editionResult.Edition) pass produced no coverage document: $($_.Exception.Message)"
             )
@@ -475,6 +487,13 @@ try {
 }
 finally {
     Remove-PSSession $session -ErrorAction SilentlyContinue
+}
+
+if ($artifactErrors.Count -gt 0) {
+    throw [AggregateException]::new(
+        'Domain-lab acceptance evidence collection failed. Current-run artifacts are required.',
+        $artifactErrors.ToArray()
+    )
 }
 
 foreach ($editionResult in $editionResults) {
