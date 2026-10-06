@@ -16,10 +16,17 @@ Every mutator requires an explicit `AllowedRootPath`, so a configuration states
 its own containment boundary. On top of that, a write is rejected when it:
 
 - targets the scheduler root or the `\Microsoft` tree;
+- finds the current DACL missing or null, so Local System preservation cannot
+  be verified;
 - fails to retain the current literal Local System ACEs;
 - adds an explicit Local System deny ACE;
 - newly denies any identity in the Task Scheduler service token; or
 - contains an object or compound ACE that the store would silently re-revision.
+
+A target whose DACL has no Local System ACE accepts any candidate without a
+Local System deny ACE, so restoring Local System repairs it. The module does
+not insist on that repair: include a Local System allow ACE in the candidate,
+or Task Scheduler can lose access to the target.
 
 Task Scheduler may reorder ACEs and add its own derived auto-inherited flag
 after a write. The module verifies the native ACE set and the caller-controlled

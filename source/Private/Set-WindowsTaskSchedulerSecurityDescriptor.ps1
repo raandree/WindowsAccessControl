@@ -40,6 +40,11 @@ function Set-WindowsTaskSchedulerSecurityDescriptor {
 
         $currentSddl = [string]$NativeTarget.GetSecurityDescriptor(4)
         $current = [Security.AccessControl.RawSecurityDescriptor]::new($currentSddl)
+        if (-not $current.DiscretionaryAcl) {
+            throw [InvalidOperationException]::new(
+                'The current Task Scheduler DACL is missing or null, so its Local System ACEs and an exact rollback cannot be verified.'
+            )
+        }
         if ($expected -and -not (Test-WindowsTaskSchedulerDaclEquivalent `
                 -Left $current `
                 -Right $expected)) {

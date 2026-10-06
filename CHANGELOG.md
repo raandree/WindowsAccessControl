@@ -576,6 +576,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Accept a Task Scheduler DACL write that restores Local System to a folder or
+    task whose DACL has no Local System ACE; such repairs were refused even
+    though every current Local System ACE was preserved. A current DACL that
+    is missing or null is still refused, now with its own message
+    ([specification](specs/0010-task-scheduler-dacl-management.md#persistence-and-safety))
 - Stop the domain-lab acceptance runner from deleting directories it did not
     create: it marks the payload root, its `package` staging directory, and
     the module version directory it installs, refuses an existing one that is

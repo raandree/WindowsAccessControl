@@ -21,7 +21,7 @@ tables below map a symptom to the rule that produced it.
 | A share command rejects the share | Administrative, drive, IPC, print, clustered, and continuously available shares are out of scope |
 | A directory write is refused as out of bounds | The target is outside `AllowedBaseDistinguishedName` |
 | A directory edit disappeared | Two controllers converged on one survivor; pin one `Server` for both writes |
-| A task write is refused | The target is the scheduler root or `\Microsoft`, or the candidate removes or denies Local System |
+| A task write is refused | The target is the scheduler root or `\Microsoft`, the candidate removes or denies Local System, or the current DACL is missing or null |
 | A private-key write is refused | Run `Test-CertificatePrivateKeyCriticalBinding` to see which binding blocks it |
 | The DSC LCM cannot find the resource | Install the module in a machine-wide module path visible to the SYSTEM process |
 | A remote target is rejected | Enter a remote session and run the command locally on the destination computer |
