@@ -225,6 +225,41 @@ Describe 'Invoke-WindowsAccessControlBatch' -Tag 'Unit', 'WindowsOnly' {
         $targetErrors[0].Exception.Message | Should -Be 'Expected target failure.'
     }
 
+    It 'Should reject <Supplied> without <Missing> before dispatching any target' -ForEach @(
+        @{
+            Supplied         = 'CommandName'
+            Missing          = 'ObjectFamily'
+            MetricParameters = @{ CommandName = 'Test-UnpairedMetricParameter' }
+        }
+        @{
+            Supplied         = 'ObjectFamily'
+            Missing          = 'CommandName'
+            MetricParameters = @{ ObjectFamily = 'FileSystem' }
+        }
+    ) {
+        $recorder = [pscustomobject]@{ InvocationCount = 0 }
+        $worker = & $script:module {
+            {
+                param($InputValue, $Recorder)
+                $Recorder.InvocationCount++
+                $InputValue
+            }
+        }
+
+        {
+            & $script:module {
+                param($Worker, $Recorder, $MetricParameters)
+                Invoke-WindowsAccessControlBatch `
+                    -InputObject @(1, 2) `
+                    -ScriptBlock $Worker `
+                    -ArgumentList $Recorder `
+                    -ThrottleLimit 1 `
+                    @MetricParameters
+            } $worker $recorder $MetricParameters
+        } | Should -Throw -ExceptionType ([System.ArgumentException]) -ExpectedMessage 'CommandName and ObjectFamily must be supplied together.'
+        $recorder.InvocationCount | Should -Be 0
+    }
+
     It 'Should classify a nonterminating inline target error as a failure' {
         $worker = & $script:module {
             {
@@ -434,5 +469,47 @@ $module = Get-Module -Name 'WindowsAccessControl'
             Should -Be @(1, 2)
         $counter.Maximum | Should -Be 1
         $counter.Current | Should -Be 0
+    }
+}
+
+Describe 'Batch adapter workers' -Tag 'Unit', 'WindowsOnly' {
+    It 'Should give each NTFS target its own copy of the shared parameters' {
+        $paths = @(
+            (Join-Path $TestDrive 'first.txt')
+            (Join-Path $TestDrive 'second.txt')
+        )
+        foreach ($path in $paths) {
+            Set-Content -LiteralPath $path -Value 'x'
+        }
+        Mock -ModuleName WindowsAccessControl -CommandName Invoke-WindowsAccessControlBatch -MockWith {
+            [pscustomobject]@{
+                Worker  = $ScriptBlock
+                Context = $ArgumentList[0]
+                Targets = $InputObject
+            }
+        }
+        Mock -ModuleName WindowsAccessControl -CommandName Get-NTFSItemOwner -MockWith {
+            [pscustomobject]@{
+                LiteralPath   = [string]$LiteralPath
+                ThrottleLimit = $ThrottleLimit
+            }
+        }
+
+        $capture = & $script:module {
+            param($Paths)
+            Invoke-WindowsNtfsCommandBatch `
+                -CommandName 'Get-NTFSItemOwner' `
+                -BoundParameters @{ LiteralPath = $Paths; ThrottleLimit = 8 } `
+                -LiteralPath $Paths `
+                -ThrottleLimit 8
+        } $paths
+        $first = & $capture.Worker $capture.Targets[0] $capture.Context
+        $second = & $capture.Worker $capture.Targets[1] $capture.Context
+
+        $first.LiteralPath | Should -BeExactly $capture.Targets[0].LiteralPath
+        $second.LiteralPath | Should -BeExactly $capture.Targets[1].LiteralPath
+        $first.ThrottleLimit | Should -Be 1
+        $capture.Context.Parameters.ContainsKey('LiteralPath') | Should -BeFalse -Because 'a worker must not write its target into the parameters every runspace shares'
+        $capture.Context.Parameters.Keys | Should -Be @('ThrottleLimit')
     }
 }
