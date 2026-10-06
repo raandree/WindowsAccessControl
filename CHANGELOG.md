@@ -17,6 +17,100 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `-ModuleManifestPath` to measure one specific built artifact and record its
     SHA-256 with every run, so a before-and-after comparison names the exact
     module it measured
+- Add a migration guide for `NTFSSecurity` users, whose module is deprecated in
+    favor of this one. It maps every command that the NTFSSecurity 4.2.6 and
+    5.0.0 manifests export to its replacement or to the decision that leaves it
+    out, and it calls out the differences that change what a migrated script
+    does: `Remove-NTFSAccessRule` matches exactly unless `-RemovalMode Rights`
+    is given, the remove, clear, and owner commands prompt for confirmation, and
+    a path longer than 260 characters needs PowerShell 7. The documentation
+    index had pointed NTFSSecurity users at the `NTFSPermission` rename map,
+    which never mentions NTFSSecurity
+
+### Changed
+
+- Speed up the shared descriptor paths that every object family reads through.
+    Measured on PowerShell 7, repeated rights rendering is 69% faster,
+    removed-entry detection over 256 access-control entries 66% faster, and
+    single-target batch dispatch 18% faster; on Windows PowerShell 5.1
+    removed-entry detection is 95% faster. Private-key DACL comparison over
+    256 entries is 15% faster on PowerShell 7 when measured on its own and 4%
+    faster on Windows PowerShell 5.1. The public command surface, output
+    objects, descriptor semantics, and required privileges are unchanged, and
+    filesystem owner reads are unchanged because their cost is the
+    operating-system call rather than the module. See the
+    [measurement report](docs/performance-refactor-2026-09-10.md) for the
+    method, the artifact hashes, and the limits of each figure
+- Keep exact access-control entry identity while comparing descriptors faster.
+    Removed-entry detection for Active Directory still reports one entry per
+    removed copy in its original order and still compares the complete binary
+    entry, so the deny-removal warning raised before a directory write keeps
+    its exact-match guarantee. Private-key DACL comparison keeps an ordered
+    desired-state check separate from unordered post-write verification
+
+### Fixed
+
+- Let `Get-ADObjectCallerEffectiveAccess` answer for a caller who cannot read
+    the object's security descriptor: resolving its targets no longer requests
+    `nTSecurityDescriptor`, which no output property uses. A command that does
+    need the descriptor now fails with an `UnauthorizedAccessException` naming
+    the likely missing read-control access instead of
+    `Cannot index into a null array`
+    ([specification](specs/0018-active-directory-caller-effective-access.md#output-contract))
+- Keep an SMB share description that someone edits while a share DACL write
+    is in flight: the write now reads the description immediately before the
+    native call instead of reusing the value captured at target resolution,
+    restores it only when the native write cleared it, and warns instead of
+    overwriting any other change. A description that cannot be read before
+    the write stops the command before anything is written, and one that
+    cannot be checked or restored after the DACL was written is reported as a
+    warning naming the earlier value instead of failing a change that is
+    already live
+    ([specification](specs/0009-smb-share-and-active-directory-dacl-management.md#smb-share-contract))
+- Accept a Task Scheduler DACL write that restores Local System to a folder or
+    task whose DACL has no Local System ACE; such repairs were refused even
+    though every current Local System ACE was preserved. A current DACL that
+    is missing or null is still refused, now with its own message
+    ([specification](specs/0010-task-scheduler-dacl-management.md#persistence-and-safety))
+- Stop the domain-lab acceptance runner from deleting directories it did not
+    create: it marks the payload root, its `package` staging directory, and
+    the module version directory it installs, refuses an existing one that is
+    unmarked or contains a junction or symbolic link before deleting anything,
+    rejects a payload root that is not a dedicated local directory on the
+    management domain controller, and stops when a remote step does not
+    confirm its directory
+    ([lab guide](tests/Lab/README.md#payload-and-module-ownership))
+- Return the already-verified CNG private-key descriptor bytes after a
+    successful DACL write, avoiding a redundant provider read that could report
+    failure after permissions had already changed
+    ([regression](tests/Unit/Private/WindowsCngKeyMutation.Tests.ps1))
+- Release the obsolete cleanup identity in the AD name-reuse acceptance test
+    after successful GUID-based deletion, so suite cleanup does not abort on
+    an already-absent object and leave subsequent fixtures behind
+    ([fixture regression](tests/Unit/Lab/ADObjectReplicationFixtureSafety.Tests.ps1))
+- Require selected PowerShell editions, explicit process exit status, and fresh
+    evidence in domain-lab acceptance; report coverage-finalization failures as
+    failed evidence and handle empty console output in Windows PowerShell 5.1
+    ([audit](docs/test-gap-audit-2026-09-06.md))
+- Preserve existing module installations when DSC test setup refuses to
+    overwrite them, and restore the module search path even when cleanup fails
+    ([fixture safety](tests/Unit/DSC/DscLcmFixtureSafety.Tests.ps1))
+
+### Security
+
+- Enforce Active Directory allowed-OU boundaries at real distinguished-name
+    components so escaped commas cannot impersonate an ancestor separator
+- Preserve the recorded Active Directory object GUID through restore's write
+    path; direct descriptor writes can supply the same `ExpectedObjectGuid`
+    guard to refuse a reused distinguished name
+- Match the complete native ACE during exact removal, preserving neighboring
+    conditional and object-specific ACEs with the same SID, mask, and flags
+    ([audit regressions](docs/test-gap-audit-2026-09-06.md#confirmed-findings))
+
+## [0.2.0] - 2026-09-06
+
+### Added
+
 - Allow domain-lab acceptance runs to reuse the payload already on the
     management domain controller with `-SkipPayloadDeployment`. The existing
     `-SkipPayload` spelling remains an alias, and `-SkipDeployment` provides a
@@ -57,15 +151,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     filter in the usage guide, which is how an operator separates the
     delegation they configured from the entries a schema class applies to every
     new object
-- Add a migration guide for `NTFSSecurity` users, whose module is deprecated in
-    favor of this one. It maps every command that the NTFSSecurity 4.2.6 and
-    5.0.0 manifests export to its replacement or to the decision that leaves it
-    out, and it calls out the differences that change what a migrated script
-    does: `Remove-NTFSAccessRule` matches exactly unless `-RemovalMode Rights`
-    is given, the remove, clear, and owner commands prompt for confirmation, and
-    a path longer than 260 characters needs PowerShell 7. The documentation
-    index had pointed NTFSSecurity users at the `NTFSPermission` rename map,
-    which never mentions NTFSSecurity
 - Document the twenty DSC resources in the wiki, and ship their conceptual help
     inside the module. The resources were the one part of the public surface a
     reader could not look up anywhere: the wiki carried a page per command and
@@ -429,24 +514,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Speed up the shared descriptor paths that every object family reads through.
-    Measured on PowerShell 7, repeated rights rendering is 69% faster,
-    removed-entry detection over 256 access-control entries 66% faster, and
-    single-target batch dispatch 18% faster; on Windows PowerShell 5.1
-    removed-entry detection is 95% faster. Private-key DACL comparison over
-    256 entries is 15% faster on PowerShell 7 when measured on its own and 4%
-    faster on Windows PowerShell 5.1. The public command surface, output
-    objects, descriptor semantics, and required privileges are unchanged, and
-    filesystem owner reads are unchanged because their cost is the
-    operating-system call rather than the module. See the
-    [measurement report](docs/performance-refactor-2026-09-10.md) for the
-    method, the artifact hashes, and the limits of each figure
-- Keep exact access-control entry identity while comparing descriptors faster.
-    Removed-entry detection for Active Directory still reports one entry per
-    removed copy in its original order and still compares the complete binary
-    entry, so the deny-removal warning raised before a directory write keeps
-    its exact-match guarantee. Private-key DACL comparison keeps an ordered
-    desired-state check separate from unordered post-write verification
 - Expand the comment-based help examples for `Add-ADObjectAccessRule` and its
     sibling mutators `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, and
     `Clear-ADObjectAccessRule`. Each command had carried only one or two basic
@@ -609,51 +676,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Let `Get-ADObjectCallerEffectiveAccess` answer for a caller who cannot read
-    the object's security descriptor: resolving its targets no longer requests
-    `nTSecurityDescriptor`, which no output property uses. A command that does
-    need the descriptor now fails with an `UnauthorizedAccessException` naming
-    the likely missing read-control access instead of
-    `Cannot index into a null array`
-    ([specification](specs/0018-active-directory-caller-effective-access.md#output-contract))
-- Keep an SMB share description that someone edits while a share DACL write
-    is in flight: the write now reads the description immediately before the
-    native call instead of reusing the value captured at target resolution,
-    restores it only when the native write cleared it, and warns instead of
-    overwriting any other change. A description that cannot be read before
-    the write stops the command before anything is written, and one that
-    cannot be checked or restored after the DACL was written is reported as a
-    warning naming the earlier value instead of failing a change that is
-    already live
-    ([specification](specs/0009-smb-share-and-active-directory-dacl-management.md#smb-share-contract))
-- Accept a Task Scheduler DACL write that restores Local System to a folder or
-    task whose DACL has no Local System ACE; such repairs were refused even
-    though every current Local System ACE was preserved. A current DACL that
-    is missing or null is still refused, now with its own message
-    ([specification](specs/0010-task-scheduler-dacl-management.md#persistence-and-safety))
-- Stop the domain-lab acceptance runner from deleting directories it did not
-    create: it marks the payload root, its `package` staging directory, and
-    the module version directory it installs, refuses an existing one that is
-    unmarked or contains a junction or symbolic link before deleting anything,
-    rejects a payload root that is not a dedicated local directory on the
-    management domain controller, and stops when a remote step does not
-    confirm its directory
-    ([lab guide](tests/Lab/README.md#payload-and-module-ownership))
-- Return the already-verified CNG private-key descriptor bytes after a
-    successful DACL write, avoiding a redundant provider read that could report
-    failure after permissions had already changed
-    ([regression](tests/Unit/Private/WindowsCngKeyMutation.Tests.ps1))
-- Release the obsolete cleanup identity in the AD name-reuse acceptance test
-    after successful GUID-based deletion, so suite cleanup does not abort on
-    an already-absent object and leave subsequent fixtures behind
-    ([fixture regression](tests/Unit/Lab/ADObjectReplicationFixtureSafety.Tests.ps1))
-- Require selected PowerShell editions, explicit process exit status, and fresh
-    evidence in domain-lab acceptance; report coverage-finalization failures as
-    failed evidence and handle empty console output in Windows PowerShell 5.1
-    ([audit](docs/test-gap-audit-2026-09-06.md))
-- Preserve existing module installations when DSC test setup refuses to
-    overwrite them, and restore the module search path even when cleanup fails
-    ([fixture safety](tests/Unit/DSC/DscLcmFixtureSafety.Tests.ps1))
 - Run release publication on Ubuntu with the standard wiki publishing task,
     following the DSC Community pipeline pattern and avoiding the Windows
     large-initial-commit timeout; module packaging and tests remain on Windows
@@ -852,14 +874,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Enforce Active Directory allowed-OU boundaries at real distinguished-name
-    components so escaped commas cannot impersonate an ancestor separator
-- Preserve the recorded Active Directory object GUID through restore's write
-    path; direct descriptor writes can supply the same `ExpectedObjectGuid`
-    guard to refuse a reused distinguished name
-- Match the complete native ACE during exact removal, preserving neighboring
-    conditional and object-specific ACEs with the same SID, mask, and flags
-    ([audit regressions](docs/test-gap-audit-2026-09-06.md#confirmed-findings))
 - Reject a Task Scheduler DACL write that newly denies an identity in the Task
     Scheduler service token the read, write, or run access the service requires
 - Reject object and compound ACEs in a Task Scheduler DACL, which the store
