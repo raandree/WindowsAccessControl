@@ -12,14 +12,28 @@ source: repository evidence
 `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
 FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
 found unmerged and untracked work and split it into eight handoffs on local
-`ai/post-release-fixes`. Handoffs 01 and 02 fixed the lab-runner Blocker and
-the Task Scheduler, SMB, and AD review defects there; the restored
-`ai/performance-refactor` branch, three dependabot pull requests with
-inherited failures, unanswered issue #4 with a missing NTFSSecurity migration
-map, an uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit
-remain. `activeContext.md` holds the evidence and the order.
+`ai/post-release-fixes`. Handoffs 01 to 03 fixed the lab-runner Blocker, the
+Task Scheduler, SMB, and AD review defects, and ported and re-measured the
+performance refactor there; three dependabot pull requests with inherited
+failures, unanswered issue #4 with a missing NTFSSecurity migration map, an
+uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit remain.
+`activeContext.md` holds the evidence and the order.
 
 ## Recent milestones
+
+- 2026-10-06: Handoff 03 finished the orphaned performance refactor on
+    `ai/post-release-fixes`, as the user chose. Its code, tests, and
+    evidence were ported without the old Memory Bank hunks, and the code
+    stays one revertable commit. A new test pins the dispatcher's
+    `CommandName`/`ObjectFamily` guard, and one pins an adapter worker's
+    per-target parameter copy; each failed with its guard removed.
+    Re-measured in fresh processes against the branch before the port, with
+    matching hashes and checksums: Core rights display 69 percent faster,
+    removed ACEs 66, dispatch 18, isolated CNG 15; Desktop removed ACEs 95.
+    The Core gate passes 1,917 tests with two environmental skips at 83.11
+    percent asserted coverage; Desktop fails only the two WinRM-bound
+    DSC-engine tests, with 80.95 percent scoped coverage computed. One
+    independent review approved; its Minor and three Nits were addressed.
 
 - 2026-10-06: Handoff 02 fixed three review defects test-first on
     `ai/post-release-fixes`, one commit each. A Task Scheduler write may
@@ -146,37 +160,12 @@ remain. `activeContext.md` holds the evidence and the order.
     uncommitted. It was subsequently withdrawn at the user's request in favor
     of the standard task and runner investigation recorded above.
 
-- 2026-09-06: Diagnosed GitHub Actions run `34026468199`, attempt 2. Secret
-    validation, the GitHub release, both release assets, and PowerShell Gallery
-    publication succeeded. `Publish_GitHub_Wiki_Content` then hung at
-    `git commit` for exactly the dependency's 120-second timeout and reported
-    exit code `-1` with empty output. The generated archive has 127 files and
-    about 6,878 bytes of per-file commit summary. `Invoke-Git` waits for Git to
-    exit before draining redirected output, reproducing the open upstream bug
-    DscResource.DocGenerator#111. The wiki remains at its initial Home page and
-    has no version tag. A blind rerun can collide with the already-published,
-    immutable Gallery version; no rerun or remote mutation was performed.
-
-- 2026-09-06: Fixed GitHub Actions run `34021812398`. A static PowerShell
-    class method left all new `AccessRights` completers attached to a disposed
-    bounded-worker context in Windows PowerShell 5.1. The shared completion
-    method is now instance-bound, and a real before/after batch regression was
-    red then green. A direct HTTP.sys, WinRM, and Remote Desktop binding test
-    raised hosted executable-scope coverage without weakening ADR 0027. Final
-    Desktop: 1,723 passed, zero failed, two skips, 80.20% coverage. Final Core:
-    1,768 passed, zero failed, two skips, 82.40% coverage. Both Sampler gates
-    passed ten tasks with zero errors or warnings; no remote operation ran.
-
-- 2026-09-06: Reviewed `ai/access-rights-completion` against the validated
-    audit result and found one focused, additive commit. Its production and
-    test files merge cleanly; documentation conflicts came from stale complete
-    copies and retain the current records plus the new completion facts. The
-    fresh build passed, both PowerShell editions passed 30 focused completion
-    tests, and the full Core gate passed 1,766 tests with two environmental
-    skips and 81.93% asserted coverage.
-
-- 2026-09-03 to 2026-09-05: OI-31, the 105-command audit, the audit-gap
-    closure, and the `6f7ba15` close-out are in
-    `git show a48ec3d:.memory-bank/progress.md`. Lessons kept: record transient
-    host paths without a user profile; keep imports unforced and run docs and
-    tests in separate processes.
+- 2026-09-03 to 2026-09-06: OI-31, the 105-command audit, the audit-gap
+    closure, the `6f7ba15` close-out, the `34026468199` wiki-publication hang
+    (DscResource.DocGenerator#111), the `34021812398` completer fix, and the
+    `ai/access-rights-completion` review are in
+    `git show 8b67058:.memory-bank/progress.md` and, for the oldest,
+    `git show a48ec3d:.memory-bank/progress.md`. Lessons kept: record
+    transient host paths without a user profile; keep imports unforced and run
+    docs and tests in separate processes; bind completers to an instance, not
+    a disposed worker context.

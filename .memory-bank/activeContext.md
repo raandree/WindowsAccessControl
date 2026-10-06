@@ -9,24 +9,30 @@ source: repository, git reflog, and public GitHub API evidence
 
 ## Current task
 
-Handoff 02 of the 2026-10-06 sequence is complete on the local branch
-`ai/post-release-fixes`: three review defects are fixed test-first, one commit
-each. A Task Scheduler write may now repair a DACL that has no Local System
-ACE, while a missing or null current DACL is still refused. An SMB share DACL
-write reads the description immediately before the native call, keeps a
-concurrent edit, and after a committed write reports description trouble as a
-warning, never an error. `Get-ADObjectCallerEffectiveAccess` no longer
-requests `nTSecurityDescriptor`, and a command that needs a missing descriptor
-raises a typed read-control error. One independent review approved with minor
-findings; the cheap ones were fixed before the commits were finalized. The two
-Desktop DSC-engine tests fail locally only because WinRM is stopped. No live lab
-run took place; handoff 07 runs the two new AD live cases. Next is handoff 03.
-No git remote was mutated.
+Handoff 03 of the 2026-10-06 sequence is complete on the local branch
+`ai/post-release-fixes`; the user chose to finish the orphaned performance
+refactor. `fbced95` ports its code, tests, and benchmarks from
+`ai/performance-refactor` as one revertable `perf:` commit, and `d13a517` and
+`b860448` port its documentation; every Memory Bank hunk resolved to the
+current files. The ported private-key DACL comparison holds over the FIND-001
+returned-bytes setter, and the seven batch adapters still pass handoff 02's
+Task Scheduler, SMB, and AD parameters unchanged. `87d4f35` pins the
+dispatcher's `CommandName`/`ObjectFamily` guard and an NTFS adapter worker's
+per-target parameter copy; each test failed with its guard removed. The
+`docs(performance)` commit re-measured both benchmarks before and after the
+`perf:` commit: hashes and checksums match, and the gains hold. One
+independent review approved with one Minor and three Nits, all addressed. The
+ported `5f06c03` body was reworded because "Major" in it would have made the
+next release 1.0.0. The Desktop gate still fails only the two WinRM-bound
+DSC-engine tests. No live lab run took place; handoff 07 owns the first live
+and installed-package acceptance of the refactor. Next is handoff 04. No git
+remote was mutated.
 
-Handoff 01 made the domain-lab acceptance runner refuse to delete directories
-it did not create. The 2026-10-06 triage below remains the record of the open
-work. `main` is `40e364a`, in sync with `origin/main`; the triage restored the
-deleted local branch `ai/performance-refactor` at `5f06c03`.
+Handoffs 01 and 02 made the lab runner refuse to delete what it did not
+create and fixed the Task Scheduler, SMB, and AD review defects. The
+2026-10-06 triage below remains the record of the open work. `main` is
+`40e364a`, in sync with `origin/main`; `ai/performance-refactor` stays at
+`5f06c03` until handoff 08 deletes it with approval.
 
 ## Handoff sequence
 
@@ -55,13 +61,12 @@ and cleanup. Only 08 touches the remote, with approval per action.
 
 ## Open work, in recommended order
 
-1. **Orphaned performance refactor.** `ai/performance-refactor` holds five
-   commits on `5991673` (2026-09-10): `a3e3152` plus review and documentation
-   commits. It was never pushed, and its ref was deleted before 2026-10-05.
-   Source and test files merge cleanly onto `main`; the Memory Bank files and
-   `docs/README.md` conflict. Its CNG comparison change must be revalidated
-   over `f5731f1`. Live-lab and installed-package acceptance never ran.
-   Decide whether to rebase and finish it or drop it deliberately.
+1. **Performance refactor, ported by handoff 03.** `ai/performance-refactor`
+   (five commits on `5991673`, 2026-09-10, never pushed) is now on
+   `ai/post-release-fixes` as `fbced95`, `d13a517`, and `b860448`, re-measured
+   against the current baseline. Live-lab and installed-package acceptance of
+   it never ran; handoff 07 owns them. The source branch stays at `5f06c03`
+   until handoff 08 deletes it with approval.
 2. **Repository-wide review findings (2026-09-10).** They were recorded only
    on that branch. Rechecked by reading `main` on 2026-10-06, not by running
    anything:
@@ -90,8 +95,9 @@ and cleanup. Only 08 touches the remote, with approval per action.
    - Minor, fixed by handoff 02: `Get-ADObjectCallerEffectiveAccess` requested
      `nTSecurityDescriptor` it never used, and a caller without read-control
      access got a null-index error. Live evidence is owed by handoff 07.
-   - Follow-ups: `README.md` line 315 still calls private keys read-only; the
-     batch dispatcher `CommandName`/`ObjectFamily` guard has no test.
+   - Follow-ups: `README.md` line 315 still calls private keys read-only. The
+     batch dispatcher `CommandName`/`ObjectFamily` guard is tested since
+     handoff 03.
 3. **Dependabot pull requests #1-#3** bump `actions/checkout` to 7.0.1,
    `actions/upload-artifact` to 7.0.1, and `actions/download-artifact` to
    8.0.1. Their red test jobs are inherited: all three branch from `4806726`

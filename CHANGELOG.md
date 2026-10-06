@@ -421,14 +421,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Speed up the shared descriptor paths that every object family reads through.
-    Measured on PowerShell 7 over 256 access-control entries, repeated rights
-    rendering is 66% faster, removed-entry detection 64% faster, and
-    single-target batch dispatch 14% faster; on Windows PowerShell 5.1
-    removed-entry detection is 95% faster. Every measured workload improved on
-    both editions. The public command surface, output objects, descriptor
-    semantics, and required privileges are unchanged, and filesystem owner
-    reads are unchanged because their cost is the operating-system call rather
-    than the module. See the
+    Measured on PowerShell 7, repeated rights rendering is 69% faster,
+    removed-entry detection over 256 access-control entries 66% faster, and
+    single-target batch dispatch 18% faster; on Windows PowerShell 5.1
+    removed-entry detection is 95% faster. Private-key DACL comparison over
+    256 entries is 15% faster on PowerShell 7 when measured on its own and 4%
+    faster on Windows PowerShell 5.1. The public command surface, output
+    objects, descriptor semantics, and required privileges are unchanged, and
+    filesystem owner reads are unchanged because their cost is the
+    operating-system call rather than the module. See the
     [measurement report](docs/performance-refactor-2026-09-10.md) for the
     method, the artifact hashes, and the limits of each figure
 - Keep exact access-control entry identity while comparing descriptors faster.

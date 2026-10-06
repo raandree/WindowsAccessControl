@@ -45,6 +45,13 @@ platforms before replacing a dependency. Package and test this module on
 Windows; publish the prepared artifacts on Ubuntu as the DSC Community
 reference pipelines do. Run `34055979655` verified this split on 2026-09-06:
 the standard task published `0.2.0-preview0002` and its generated wiki.
+Cache only immutable enum data and bounded rendered masks per module
+instance, never descriptors or identity lookups. Binary ACE keys need ordinal
+comparison and duplicate counts, load-bearing for Base64 identities that can
+differ only in case. Measure real PowerShell code in fresh processes: ordinal
+`Hashtable` indexing beat `[ref]` dictionary lookups. Check artifact hashes and
+output checksums before medians, prefer an isolated row over a warm-up-bound
+mixed one, and do not read helper gains as faster native I/O.
 
 | Decision | Summary |
 | --- | --- |

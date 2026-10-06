@@ -61,6 +61,26 @@ task`; pass the list through `-Command` instead. And the `Clean` task deletes
 `output/*`, so a detached run whose transcript is redirected into `output`
 fails on its own open log file. Redirect build logs outside `output`.
 
+Dot-sourcing a changed function inside `& $module { ... }` does not replace a
+rebuild: the exported command can keep the old definition. On 2026-09-10 both
+NTFS filter regression tests stayed red because `Get-Command` still returned
+the old export, and a rebuild turned the same tests green. Test a rebuilt
+artifact, or check the exported definition itself.
+
+## A review severity word in a commit body bumps the version
+
+`GitVersion.yml` reads every commit message case-insensitively for
+`(breaking\schange|breaking|major)\b`, `(adds?|features?|minor)\b`, and
+`\s?(fix|patch)`, and only the last has no leading word boundary. Ordinary
+prose trips them: "no Blocker or Major" in a review summary asks for a new
+major version, "Add regression cases" for a minor one, and "dispatcher",
+"prefix", or the branch name `ai/post-release-fixes` for a patch. On
+2026-10-06 the body of the ported `5f06c03` said "no Blocker or Major"; ported
+verbatim it would have made the next `main` release 1.0.0. Check every message
+against the three patterns before committing, and describe a review severity
+instead of naming it. A minor or patch match is harmless while `v0.2.0` plus
+the existing minor bumps already put `main` on 0.3.0.
+
 ## DscResource.DocGenerator wants one DSC resource class per source file
 
 Adding the DSC Community wiki tasks failed on the first one.
