@@ -1,126 +1,92 @@
 ---
 status: current
-last-verified: 2026-09-07
+last-verified: 2026-10-06
 owner: software-engineer
-source: current task evidence
+source: repository, git reflog, and public GitHub API evidence
 ---
 
 # Active context
 
 ## Current task
 
-Reacceptance of the corrected `f5731f1` candidate is complete on
-`ai/test-gap-audit`. All requested lab, installed-package, DSC, and fresh local
-coverage gates passed. The module bytes remain identical to the independently
-approved FIND-001 correction. The next step is the normal versioned release
-workflow, only after explicit user authorization. No merge, tag, publication,
-push, or git remote mutation is authorized or was performed.
+Post-release triage of open work on 2026-10-06. `main` is `40e364a`, in sync
+with `origin/main`. No code was changed and no git remote was mutated. The
+only repository-state change was restoring the deleted local branch
+`ai/performance-refactor` at `5f06c03` so its commits survive reflog expiry.
 
-## Current acceptance evidence
+## Release state
 
-- Four full lab passes: built Desktop/Core and installed Desktop/Core each
-  passed 95 tests, zero failed or skipped, with eight ready cleanup entries.
-- Isolated Desktop DSC engine: five passed, zero skipped, including both actual
-  engine invocations; its temporary machine-module installation was removed.
-- Fresh local Core 7.6.5: 1,806 passed, zero failed, two environment skips,
-  91.15 percent asserted coverage, completed at 18:35:18 UTC.
-- Fresh local Desktop 5.1.26100.33296: 1,761 passed, zero failed, two environment
-  skips, 90.41 percent asserted coverage, completed at 18:52:19 UTC.
-- Both local ten-task workflows imported the exact fresh lab coverage hash;
-  the 80 percent threshold was unchanged. Their two warnings each were from
-  intentionally mocked evidence-copy failures. The mounted-volume and
-  unavailable SACL-read privilege skips remain disclosed.
-- Original installed module: all four original file hashes and directory ACL
-  restored. Both controllers passed signed/sealed Kerberos LDAP after testing;
-  zero targets remained and ten marked baseline objects were ready.
-- All 38 guest evidence files matched host copies before the two run-owned
-  remote staging directories were removed. No test console, member module
-  staging, or temporary HTTP.sys binding remained. All thirteen VMs and
-  checkpoints `wac-pre-f5731f1-b1fe0b1f` remain; no lab replacement was needed.
-- All host, guest, and local terminal markers are zero. The processes exited
-  and event-based monitoring finished. Do not restart the completed run.
+- `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07: Build run
+  `34158650074` passed, and the GitHub release and PowerShell Gallery package
+  were published at 20:32 UTC. The earlier "release awaits authorization"
+  note was stale.
+- `v0.2.0` is the current stable release (2026-09-06).
+- The [reacceptance record](../docs/lab-reacceptance-2026-09-07.md) and the
+  [security review](../docs/security-review-2026-09-07.md) remain the evidence
+  for the shipped candidate.
 
-Private host evidence is under administrator `%TEMP%` in
-`wac-reaccept-f5731f1-b1fe0b1f50b042dd8a8b69223ed64375`. The
-[reacceptance record](../docs/lab-reacceptance-2026-09-07.md) is the shareable
-summary; raw logs and installation inventories remain private. The host
-AutomatedLab wrapper rejected `ScriptFileName`, so the private driver used
-validated persistent PSSessions and the unchanged console entry point.
+## Open work, in recommended order
 
-Fresh lab coverage SHA-256 is
-`D4A71389F9539CF05D4BBA5FFA8F318407D7A26E2A116B2E0EBC8D050EBC49AE`.
-The configured coverage path contains this accepted document; the prior file
-was preserved separately. No old lab coverage was reused for the new candidate.
+1. **Orphaned performance refactor.** `ai/performance-refactor` holds five
+   commits on `5991673` (2026-09-10): `a3e3152` plus review and documentation
+   commits. It was never pushed, and its ref was deleted before 2026-10-05.
+   Source and test files merge cleanly onto `main`; the Memory Bank files and
+   `docs/README.md` conflict. Its CNG comparison change must be revalidated
+   over `f5731f1`. Live-lab and installed-package acceptance never ran.
+   Decide whether to rebase and finish it or drop it deliberately.
+2. **Repository-wide review findings (2026-09-10).** They were recorded only
+   on that branch. Rechecked by reading `main` on 2026-10-06, not by running
+   anything:
+   - Blocker (lab harness):
+     `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` recursively
+     deletes `-RemoteRepositoryPath` (only `ValidateNotNullOrEmpty`) on the
+     domain controller and replaces any same-version module under
+     `%ProgramFiles%\WindowsPowerShell\Modules\WindowsAccessControl`. There is
+     no ownership marker or backup; a High-impact confirmation is the only
+     guard. Still present.
+   - Major: `Test-WindowsTaskSchedulerSystemAce` returns `$false` when the
+     current DACL has no SYSTEM ACE, so a write that restores SYSTEM is
+     refused. Still present; no test pins it as intended behavior.
+   - Major: `Set-WindowsSmbShareSecurityDescriptor` restores the description
+     captured at target resolution, overwriting a concurrent edit. Still
+     present.
+   - Major: the opt-in ModuleFast path in the vendored `Resolve-Dependency.ps1`
+     downloads and runs `bit.ly/modulefast` unverified. Disabled by default.
+   - Major (CNG final read) is FIND-001, resolved on `main` by `f5731f1`.
+   - Minor: `Resolve-WindowsADObjectTarget` always requests
+     `nTSecurityDescriptor`, and `Get-WindowsADObjectRecord` indexes it
+     without an absence check. `Get-ADObjectCallerEffectiveAccess` does not
+     need it; the impact on callers without read-control access needs live
+     evidence.
+   - Follow-ups: `README.md` line 315 still calls private keys read-only; the
+     batch dispatcher `CommandName`/`ObjectFamily` guard has no test.
+3. **Dependabot pull requests #1-#3** bump `actions/checkout` to 7.0.1,
+   `actions/upload-artifact` to 7.0.1, and `actions/download-artifact` to
+   8.0.1. Their red test jobs are inherited: all three branch from `4806726`
+   (2026-08-15, 42 commits behind `main`), whose own push build failed the
+   same four NTFS path tests. `0502254` fixed those tests the next morning.
+   The API's base `4c204ff` is the later branch tip, and its tests passed.
+   All three merge cleanly onto `main`, and no test pins action versions.
+   The v4 pins raise the Node.js 20 deprecation warning. Land the artifact
+   pair together after reading the major-version release notes.
+4. **Issue #4** (2026-09-07, unanswered) asks whether this module replaces
+   NTFSSecurity. `docs/README.md` and `source/WikiSource/Home.md` promise an
+   NTFSSecurity migration map, but `docs/migration-from-ntfspermission.md`
+   covers only the unpublished NTFSPermission rename. Source material:
+   `docs/research.md#detailed-ntfssecurity-comparison`.
+5. **Changelog.** The v0.2.0 run reported "Send changelog pull request" as
+   successful, yet the repository has no closed pull request. Branch
+   `updateChangelogAfterv0.2.0` (`38cdabd`) inserts `## [0.2.0]` directly
+   below `[Unreleased]`, which would now mislabel seven post-0.2.0 entries;
+   do not merge it as-is. Find the cause before the next stable release.
+6. **FIND-002**: two test files still lack a final newline.
+7. **Housekeeping**: remote `ai/test-gap-audit` is merged. The thirteen lab
+   VMs, their checkpoints, and the administrator `%TEMP%` evidence are not
+   visible from this session's account; confirm before keeping or removing
+   them.
 
-## Corrected candidate
+## Limits
 
-FIND-001 is resolved on `ai/test-gap-audit`. The source change replaces only
-the redundant post-verification CNG descriptor read with the already verified
-`$storedBytes`; non-enumerating output, critical-binding checks, verification,
-and rollback remain unchanged. A fresh independent review approved the final
-source and regression with no findings and no Blocker or Major.
-
-The newline-only FIND-002 remains deferred and non-blocking. Prior packages and
-lab evidence remain historical proof for their original hashes; the current
-reacceptance establishes the corrected candidate's validation.
-
-## FIND-001 verification
-
-- Red: PowerShell 7 ran the new real-key regression against `fd07051`; helper
-  read three raised the injected failure after an unmocked read confirmed the
-  requested DACL was stored. Test cleanup had already verified key deletion.
-- Green: the focused regression passed once in Core 7.6.5 and once in Desktop
-  5.1.26100.33296 with zero skips. It asserts exactly two helper reads, exact
-  returned bytes, a non-equivalent candidate, independent stored-DACL
-  equivalence, and cleanup.
-- The full 52-test CNG mutation file passed with zero failures or skips in each
-  local edition. The focused live CNG mutation passed on `F1AFile1`; its
-  descriptor returned byte-for-byte to SHA-256
-  `473155193E7061B6357A560792023B2519B91B7349EB7701F13569541E933676`,
-  and its HTTP.sys binding and staging directories were removed.
-- Full local Core passed 1,806 tests with two environment skips and 83.00
-  percent asserted coverage. Full local Desktop passed 1,761 tests with the
-  same skips and 80.81 percent asserted coverage. Both explicitly report
-  `Domain-lab evidence merged: no`.
-- PSScriptAnalyzer 1.25.0 found nothing in the changed source or test. The built
-  module SHA-256 is
-  `A8E433469F06D54F7B71796A2DA1F6589F8705C3141641BD2EDEE589271D94D7`.
-- The 22-task pack passed without errors or warnings. Package SHA-256 is
-  `D93B2644B31A38B37F9FAC08DBD1D28C85AF8AD452D81E1428E0A3054530588C`,
-  and its root module matches the tested module byte-for-byte.
-- Private evidence is under
-  `%TEMP%\wac-find001-6cf68f013c3948d0919d0f774a10f6b4`. The prior
-  `%TEMP%\wac-acceptance-5991673-884f827956f442e0974735805d7d0d0c`
-  directory remains unchanged.
-
-## Prior candidate acceptance
-
-The [prior acceptance record](../docs/lab-acceptance-2026-09-07.md) retains the
-earlier candidate's hashes, fixture cleanup failure and repair, recovery, and
-completed gates. Its private artifacts remain under
-`%TEMP%\wac-acceptance-5991673-884f827956f442e0974735805d7d0d0c`.
-Keep the historical failure separate from the successful rerun. Neither its
-module hash nor its older coverage substitutes for the current reacceptance.
-
-## Handoff and limits
-
-[Reacceptance record](../docs/lab-reacceptance-2026-09-07.md) records the current
-four-pass lab evidence, restoration, and final cross-edition coverage gates.
-[Audit record](../docs/test-gap-audit-2026-09-06.md) contains the confirmed
-findings, previous audit-host validation, and specific residual risks. The
-[lab checklist](../tests/Lab/acceptance-checklist.md) covers a fresh payload,
-both editions, an installed-package pass, evidence collection, and rollback.
-Do not claim atomic LDAP writes, exhaustive native fault injection, or live
-validation from unit tests. The final redundant CNG post-write read is a
-resolved control-flow reliability defect (FIND-001); its full domain-lab,
-installed-package, and current local coverage gates are complete. A properly
-versioned release workflow still needs authorization. Focused reviews are
-complete, but their outcomes
-are not unconditional release approval. The original review ledger remains in
-administrator TEMP under `wac-security-review-ce8512135436429ba24194450bba4877`.
-
-## Previous verified milestone
-
-Wiki publication is closed: `830a909`, hosted run `34055979655`, and
-`0.2.0-preview0002` passed the standard Ubuntu publication workflow. Keep the
-standard task and runner split; no local publisher override is needed.
+Remote deletions, pull request comments, issue replies, pushes, and releases
+need explicit user authorization. The review findings above were confirmed by
+reading code, not by fault injection or live runs.

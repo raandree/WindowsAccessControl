@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-09-07
+last-verified: 2026-10-06
 owner: software-engineer
 source: repository evidence
 ---
@@ -9,26 +9,28 @@ source: repository evidence
 
 ## Current status
 
-FIND-001 is resolved on `ai/test-gap-audit`. The CNG setter now returns the
-bytes already read and verified after persistence rather than performing a
-third provider read. The real-key regression is red then green, both editions
-pass the 52-test CNG suite, and independent review approved with no findings.
-The tested package passed 22 build tasks without errors or warnings.
-
-Fresh reacceptance of `f5731f1` has passed all four built/installed lab profiles:
-95 tests each, zero failures or skips, and eight ready cleanup entries. The
-five Desktop DSC-engine tests also passed. Independent checks verified original
-installation bytes/ACLs and fixture cleanup; all 38 guest evidence files were
-retained before staging removal. All thirteen VMs and checkpoints remain.
-Fresh local Core completed at 18:35:18 UTC with 1,806 passed, zero failed, two
-environment skips, and 91.15 percent asserted coverage using the exact new lab
-coverage hash. Desktop completed at 18:52:19 UTC with 1,761 passed, zero failed,
-two environment skips, and 90.41 percent asserted coverage. Both imported the
-current lab coverage byte-for-byte, all terminal markers are zero, and no
-validation process remains. Requested candidate acceptance is complete;
-FIND-002 is deferred. A versioned release still requires explicit authorization.
+`v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
+FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
+found unmerged and untracked work: the restored `ai/performance-refactor`
+branch and its repository-wide review findings, of which the lab-harness
+Blocker and the Task Scheduler and SMB Majors remain on `main`. Also open are
+three dependabot pull requests with inherited failures, unanswered issue #4
+with a missing NTFSSecurity migration map, an uncreated v0.2.0 changelog pull
+request, and the FIND-002 newline nit. `activeContext.md` holds the evidence
+and the recommended order.
 
 ## Recent milestones
+
+- 2026-10-06: Triaged open work. Verified from git, the public GitHub API,
+    and the PowerShell Gallery that `v0.3.0-preview0001` shipped on
+    2026-09-07, so the pending-authorization note was stale. Found the
+    2026-09-10 performance refactor and repository-wide review only on a
+    deleted, never-pushed local branch; restored `ai/performance-refactor` at
+    `5f06c03` before reflog expiry. Rechecked its findings against `main`:
+    the lab-runner deletion, Task Scheduler SYSTEM refusal, SMB description
+    overwrite, and AD descriptor overfetch remain; its CNG Major is FIND-001.
+    Dependabot failures are inherited from their parent `4806726`, fixed on
+    `main` by `0502254`. No code change and no remote mutation.
 
 - 2026-09-07: Completed fresh reacceptance of `f5731f1` without replacing the
     lab. All four built/installed passes have 95 passed tests, zero failures or
