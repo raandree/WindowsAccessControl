@@ -50,6 +50,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- End a release that published without opening its changelog pull request.
+    Sampler's `Create_ChangeLog_GitHub_PR` reports a refused pull request only
+    as a line in the build log, so the v0.2.0 run pushed
+    `updateChangelogAfterv0.2.0`, opened no pull request, and still concluded
+    successfully, which is why the 0.2.0 section never reached `main`. The
+    publish job now asks the GitHub API for the pull request of that branch
+    after the task has run and stops the release when there is none, naming
+    whether the branch itself was pushed
+    ([workflow](.github/workflows/build.yml))
 - Let `Get-ADObjectCallerEffectiveAccess` answer for a caller who cannot read
     the object's security descriptor: resolving its targets no longer requests
     `nTSecurityDescriptor`, which no output property uses. A command that does

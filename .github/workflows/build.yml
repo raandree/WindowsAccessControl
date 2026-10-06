@@ -228,3 +228,64 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           ./build.ps1 -Tasks Create_ChangeLog_GitHub_PR
+
+      # Create_ChangeLog_GitHub_PR catches everything that happens after it
+      # creates the changelog branch and only writes the error to the build log,
+      # and Invoke-Build still exits zero. The v0.2.0 release pushed
+      # updateChangelogAfterv0.2.0, opened no pull request, and reported the step
+      # above as successful. Ask GitHub instead of trusting that conclusion. Only
+      # a stable release tag owes a pull request: UpdateChangelogOnPrerelease is
+      # false in build.yaml, so a pre-release build of main returns before the
+      # task creates a branch.
+      - name: Verify the changelog pull request exists
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GitHubToken: ${{ secrets.GitHubToken }}
+          Repository: ${{ github.repository }}
+          RepositoryOwner: ${{ github.repository_owner }}
+          ChangelogBranch: updateChangelogAfter${{ github.ref_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $header = @{
+              Accept                 = 'application/vnd.github+json'
+              Authorization          = "Bearer $env:GitHubToken"
+              'X-GitHub-Api-Version' = '2022-11-28'
+          }
+
+          $head = '{0}:{1}' -f $env:RepositoryOwner, $env:ChangelogBranch
+          $pullRequestUri = 'https://api.github.com/repos/{0}/pulls?state=all&head={1}' -f $env:Repository, $head
+
+          try {
+              # Counted through the pipeline on purpose: '@(Invoke-RestMethod ...)'
+              # wraps the empty array of a no-match response into one element and
+              # would report a pull request that does not exist.
+              $pullRequest = @(
+                  Invoke-RestMethod -Uri $pullRequestUri -Headers $header |
+                      Where-Object -FilterScript { $null -ne $_.number }
+              )
+          }
+          catch {
+              throw ("Could not read the pull requests of '{0}': {1}" -f $env:Repository, $_.Exception.Message)
+          }
+
+          if ($pullRequest.Count -eq 0) {
+              $branchUri = 'https://api.github.com/repos/{0}/branches/{1}' -f $env:Repository, $env:ChangelogBranch
+              $branchState = 'was never pushed, so the task stopped before it opened one'
+
+              try {
+                  $null = Invoke-RestMethod -Uri $branchUri -Headers $header
+                  $branchState = 'was pushed, so the task stopped at the pull request itself'
+              }
+              catch {
+                  # A missing branch is one of the two reported states, not an error.
+              }
+
+              throw (
+                  "No pull request exists from '{0}'. That branch {1}. The step above reports a refused pull request only as 'Error trying to create ChangeLog Pull Request' in its log. Confirm that the GitHubToken secret grants pull-request write access to '{2}'." -f
+                      $env:ChangelogBranch, $branchState, $env:Repository
+              )
+          }
+
+          '::notice::Changelog pull request #{0} is {1} for {2}.' -f $pullRequest[0].number, $pullRequest[0].state, $env:ChangelogBranch
