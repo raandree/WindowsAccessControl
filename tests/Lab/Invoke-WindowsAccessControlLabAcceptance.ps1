@@ -29,7 +29,14 @@
 
     .PARAMETER RemoteRepositoryPath
         The directory on the management domain controller that receives the
-        minimal repository tree.
+        minimal repository tree. That machine rejects a path that is not
+        absolute on a local fixed drive, is a drive root, passes through a
+        junction or symbolic link, or lies under the Windows directory, Program
+        Files, ProgramData, or the user profile root. The runner replaces the
+        directory only when it is absent, or carries the ownership marker the
+        runner wrote when it created it and contains no junction or symbolic
+        link; tests\Lab\README.md describes the marker and how to resolve a
+        refusal.
 
     .PARAMETER PowerShellEdition
         The PowerShell editions the acceptance runs in, one complete pass each.
@@ -64,7 +71,9 @@
         build wrote to `output\module`. `Installed` expands the packaged module
         into the machine module path of the management domain controller and
         points every suite at that installed copy, which is what proves the
-        package and not only the build output.
+        package and not only the build output. The runner marks the version
+        directory it installs and refuses to replace an installation of the
+        same version that it did not create.
 
     .PARAMETER PackagePath
         The NuGet package an `Installed` run expands. It defaults to the newest
@@ -151,6 +160,56 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Every remote step that creates or deletes a directory on the management domain
+# controller dot-sources this text, so that machine makes each ownership and
+# path decision about its own directories.
+$ownershipGuard = Get-Content `
+    -LiteralPath (Join-Path $PSScriptRoot 'WindowsAccessControl.LabRunnerOwnership.ps1') `
+    -Raw `
+    -ErrorAction Stop
+
+function Assert-LabRunnerStepResult {
+    <#
+        .SYNOPSIS
+            Returns the one directory a remote step reports, or stops the run.
+
+        .DESCRIPTION
+            AutomatedLab can surface a remote failure as a non-terminating error
+            and return no output, so a step that does not report its directory
+            stops the run instead of letting the next step act on a directory
+            that was never checked or prepared.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter()]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Result,
+
+        [Parameter(Mandatory)]
+        [string]$ActivityName,
+
+        [Parameter(Mandatory)]
+        [string]$ComputerName,
+
+        [Parameter()]
+        [string]$ExpectedPath
+    )
+
+    $values = @($Result | Where-Object { $null -ne $_ })
+    $reportedPath = if ($values.Count -eq 1) { [string]$values[0] } else { '' }
+    if ([string]::IsNullOrWhiteSpace($reportedPath) -or
+        ($PSBoundParameters.ContainsKey('ExpectedPath') -and $reportedPath -ne $ExpectedPath)) {
+        throw (
+            "'$ActivityName' on '$ComputerName' did not confirm its directory, so the run stops " +
+            'before anything else changes. Any remote error reported above names the cause.'
+        )
+    }
+
+    $reportedPath
+}
+
 Import-Module -Name AutomatedLab -ErrorAction Stop
 
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).ProviderPath
@@ -221,61 +280,125 @@ if (-not $PSCmdlet.ShouldProcess(
 
 Import-Lab -Name $LabName -NoValidation
 
-if (-not $SkipPayloadDeployment) {
-    Invoke-LabCommand `
-        -ComputerName $ManagementDomainController `
-        -ActivityName 'Reset the acceptance payload directory' `
-        -ScriptBlock {
-            param($Path)
+# The payload root is checked on the machine that uses it, in every mode,
+# before anything there changes.
+$validationActivity = 'Validate the acceptance payload directory'
+$validation = Invoke-LabCommand `
+    -ComputerName $ManagementDomainController `
+    -ActivityName $validationActivity `
+    -ScriptBlock {
+        param($OwnershipGuard, $Path)
 
-            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue
-            $null = New-Item -Path (Join-Path $Path 'output') -ItemType Directory -Force
+        $ErrorActionPreference = 'Stop'
+        . ([scriptblock]::Create($OwnershipGuard))
+        Assert-WindowsAccessControlLabRunnerPayloadPath -Path $Path
+    } `
+    -ArgumentList $ownershipGuard, $RemoteRepositoryPath `
+    -PassThru `
+    -NoDisplay
+$payloadRoot = Assert-LabRunnerStepResult `
+    -Result $validation `
+    -ActivityName $validationActivity `
+    -ComputerName $ManagementDomainController
+
+if (-not $SkipPayloadDeployment) {
+    $resetActivity = 'Reset the acceptance payload directory'
+    $payloadReset = Invoke-LabCommand `
+        -ComputerName $ManagementDomainController `
+        -ActivityName $resetActivity `
+        -ScriptBlock {
+            param($OwnershipGuard, $Path)
+
+            $ErrorActionPreference = 'Stop'
+            . ([scriptblock]::Create($OwnershipGuard))
+            $root = Assert-WindowsAccessControlLabRunnerPayloadPath -Path $Path
+            Reset-WindowsAccessControlLabRunnerDirectory `
+                -Path $root `
+                -Resolution (
+                    'Inspect it, then remove or rename it yourself if it is disposable, or pass ' +
+                    '-RemoteRepositoryPath with a directory that does not exist yet.'
+                )
+            $null = New-Item -Path (Join-Path $root 'output') -ItemType Directory -Force
+            $root
         } `
-        -ArgumentList $RemoteRepositoryPath `
+        -ArgumentList $ownershipGuard, $payloadRoot `
+        -PassThru `
         -NoDisplay
+    $null = Assert-LabRunnerStepResult `
+        -Result $payloadReset `
+        -ActivityName $resetActivity `
+        -ComputerName $ManagementDomainController `
+        -ExpectedPath $payloadRoot
 
     foreach ($item in 'source', 'tests') {
         Copy-LabFileItem `
             -Path (Join-Path $repositoryRoot $item) `
             -ComputerName $ManagementDomainController `
-            -DestinationFolderPath $RemoteRepositoryPath `
+            -DestinationFolderPath $payloadRoot `
             -Recurse
     }
     Copy-LabFileItem `
         -Path (Join-Path $repositoryRoot 'output\module') `
         -ComputerName $ManagementDomainController `
-        -DestinationFolderPath (Join-Path $RemoteRepositoryPath 'output') `
+        -DestinationFolderPath (Join-Path $payloadRoot 'output') `
         -Recurse
 }
 
 $installedModuleRoot = ''
 if ($ModuleSource -eq 'Installed') {
-    $packageDestination = Join-Path $RemoteRepositoryPath 'package'
-    Invoke-LabCommand `
+    $packageDestination = Join-Path $payloadRoot 'package'
+    $packageActivity = 'Reset the package staging directory'
+    $packageReset = Invoke-LabCommand `
         -ComputerName $ManagementDomainController `
-        -ActivityName 'Reset the package staging directory' `
+        -ActivityName $packageActivity `
         -ScriptBlock {
-            param($Path)
+            param($OwnershipGuard, $Path)
 
-            Remove-Item -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue
-            $null = New-Item -Path $Path -ItemType Directory -Force
+            $ErrorActionPreference = 'Stop'
+            . ([scriptblock]::Create($OwnershipGuard))
+            Reset-WindowsAccessControlLabRunnerDirectory `
+                -Path $Path `
+                -Resolution (
+                    'Inspect it, then remove or rename it yourself if it is disposable, or deploy ' +
+                    'a fresh payload without -SkipPayloadDeployment.'
+                )
+            $Path
         } `
-        -ArgumentList $packageDestination `
+        -ArgumentList $ownershipGuard, $packageDestination `
+        -PassThru `
         -NoDisplay
+    $null = Assert-LabRunnerStepResult `
+        -Result $packageReset `
+        -ActivityName $packageActivity `
+        -ComputerName $ManagementDomainController `
+        -ExpectedPath $packageDestination
 
     Copy-LabFileItem `
         -Path $resolvedPackagePath `
         -ComputerName $ManagementDomainController `
         -DestinationFolderPath $packageDestination
 
-    $installedModuleRoot = Invoke-LabCommand `
+    $installActivity = 'Install the packaged module into the machine module path'
+    $installation = Invoke-LabCommand `
         -ComputerName $ManagementDomainController `
-        -ActivityName 'Install the packaged module into the machine module path' `
+        -ActivityName $installActivity `
         -ScriptBlock {
-            param($PackageDirectory)
+            param($OwnershipGuard, $PackageDirectory)
 
             $ErrorActionPreference = 'Stop'
+            . ([scriptblock]::Create($OwnershipGuard))
             Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+            # Everything this step deletes lies inside the package directory,
+            # so that directory must still be the one this run created, with no
+            # junction or symbolic link that a recursive deletion could follow.
+            $packageOwnership = Get-WindowsAccessControlLabRunnerDirectoryState -Path $PackageDirectory
+            if ($packageOwnership.State -ne 'Owned') {
+                throw (
+                    "Refusing to stage the package in '$PackageDirectory' on " +
+                    "'$env:COMPUTERNAME': $($packageOwnership.Reason)"
+                )
+            }
 
             $package = Get-ChildItem -Path (Join-Path $PackageDirectory '*.nupkg') |
                 Sort-Object -Property LastWriteTimeUtc -Descending |
@@ -301,22 +424,35 @@ if ($ModuleSource -eq 'Installed') {
             if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
                 throw 'The package does not contain a WindowsAccessControl manifest.'
             }
-            $version = (Import-PowerShellDataFile -LiteralPath $manifestPath).ModuleVersion
+            $manifestVersion = (Import-PowerShellDataFile -LiteralPath $manifestPath).ModuleVersion
+            $version = $null
+            if (-not [version]::TryParse([string]$manifestVersion, [ref]$version)) {
+                throw "The package manifest declares '$manifestVersion', which is not a module version."
+            }
 
+            # Only the version directory this runner created and marked may be
+            # replaced; an installation it did not create is refused.
             $installRoot = Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules\WindowsAccessControl'
-            $target = Join-Path $installRoot $version
-            Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue
-            $null = New-Item -Path $target -ItemType Directory -Force
+            $target = Join-Path $installRoot $version.ToString()
+            Reset-WindowsAccessControlLabRunnerDirectory `
+                -Path $target `
+                -Resolution (
+                    'Inspect it, then uninstall or move it yourself if it is disposable, or install ' +
+                    'a package with a different module version.'
+                )
             Copy-Item -Path (Join-Path $staging '*') -Destination $target -Recurse -Force
 
             $null = Test-ModuleManifest -Path (Join-Path $target 'WindowsAccessControl.psd1')
             $target
         } `
-        -ArgumentList $packageDestination `
+        -ArgumentList $ownershipGuard, $packageDestination `
         -PassThru `
         -NoDisplay
 
-    $installedModuleRoot = [string]$installedModuleRoot
+    $installedModuleRoot = Assert-LabRunnerStepResult `
+        -Result $installation `
+        -ActivityName $installActivity `
+        -ComputerName $ManagementDomainController
     Write-Information (
         "The packaged module is installed at '$installedModuleRoot'."
     ) -InformationAction Continue
@@ -329,10 +465,10 @@ foreach ($edition in $editions) {
     $editionKey = $edition.ToLowerInvariant()
     $armCoverage = $edition -eq $coverageEditionName
     $remoteEvidencePath = Join-Path `
-        $RemoteRepositoryPath `
+        $payloadRoot `
         ('lab-evidence-{0}-{1}.json' -f $acceptanceRunId, $editionKey)
     $remoteCoveragePath = if ($armCoverage) {
-        Join-Path $RemoteRepositoryPath ('lab-coverage-{0}.xml' -f $acceptanceRunId)
+        Join-Path $payloadRoot ('lab-coverage-{0}.xml' -f $acceptanceRunId)
     }
     else {
         ''
@@ -402,7 +538,7 @@ foreach ($edition in $editions) {
                 ConsoleLogPath = $consoleLogPath
             }
         } `
-        -ArgumentList $RemoteRepositoryPath, $DomainDistinguishedName, $MemberServer, $remoteEvidencePath, $remoteCoveragePath, $edition, $installedModuleRoot `
+        -ArgumentList $payloadRoot, $DomainDistinguishedName, $MemberServer, $remoteEvidencePath, $remoteCoveragePath, $edition, $installedModuleRoot `
         -PassThru `
         -NoDisplay
 

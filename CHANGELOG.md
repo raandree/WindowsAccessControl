@@ -576,6 +576,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Stop the domain-lab acceptance runner from deleting directories it did not
+    create: it marks the payload root, its `package` staging directory, and
+    the module version directory it installs, refuses an existing one that is
+    unmarked or contains a junction or symbolic link before deleting anything,
+    rejects a payload root that is not a dedicated local directory on the
+    management domain controller, and stops when a remote step does not
+    confirm its directory
+    ([lab guide](tests/Lab/README.md#payload-and-module-ownership))
 - Return the already-verified CNG private-key descriptor bytes after a
     successful DACL write, avoiding a redundant provider read that could report
     failure after permissions had already changed

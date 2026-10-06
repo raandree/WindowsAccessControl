@@ -1,11 +1,35 @@
 ---
 status: current
-last-verified: 2026-09-07
+last-verified: 2026-10-06
 owner: software-engineer
 source: implementation and test evidence
 ---
 
 # Debugging insights
+
+## AutomatedLab does not stop on a remote throw
+
+`Invoke-LabCommand` builds its own parameters for `Invoke-LWCommand`, which
+calls `Invoke-Command` without `-ErrorAction`. A terminating error in the
+remote script block therefore reaches the caller as a non-terminating error
+unless the global `$ErrorActionPreference` is `Stop`, and a script that sets
+`Stop` only in its own scope carries on. A step that returned no output is
+retried (`InvokeLabCommandRetries`, default 3, 10 seconds apart) and then
+returns nothing. Read in AutomatedLab 5.61.0 on 2026-10-06, not observed in a
+live run. The acceptance runner has every directory step return its directory
+and stops when that result is missing, so an install refusal cannot degrade
+into a silent build-output pass.
+
+## `$script:` in a Pester mock body names the running script's scope
+
+While a test runs `& .\Invoke-WindowsAccessControlLabAcceptance.ps1`, a mock
+body or `-ParameterFilter` that the script triggers resolves `$script:` to the
+script's scope, not the test file's. `$script:protectedPath` read as `$null`,
+the stand-in for the remote protected directories was never installed, and two
+refusal tests passed on `C:\Users` instead of the test's own directory. Pass
+such values through plain variables set in `BeforeEach` or `It`, which Pester 5
+runs in one scope, and assert the exact expected reason, not just the kind of
+refusal.
 
 ## Deleted fixture identities must leave the cleanup list
 

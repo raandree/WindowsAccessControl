@@ -11,15 +11,27 @@ source: repository evidence
 
 `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
 FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
-found unmerged and untracked work: the restored `ai/performance-refactor`
-branch and its repository-wide review findings, of which the lab-harness
-Blocker and the Task Scheduler and SMB Majors remain on `main`. Also open are
+found unmerged and untracked work and split it into eight handoffs on local
+`ai/post-release-fixes`. Handoff 01 fixed the lab-runner Blocker there; the
+Task Scheduler and SMB Majors, the restored `ai/performance-refactor` branch,
 three dependabot pull requests with inherited failures, unanswered issue #4
 with a missing NTFSSecurity migration map, an uncreated v0.2.0 changelog pull
-request, and the FIND-002 newline nit. `activeContext.md` holds the evidence
-and the recommended order.
+request, and the FIND-002 newline nit remain. `activeContext.md` holds the
+evidence and the order.
 
 ## Recent milestones
+
+- 2026-10-06: Handoff 01 made the domain-lab acceptance runner refuse to
+    delete what it did not create, test-first on `ai/post-release-fixes`. It
+    marks the payload root, `package`, and installed module version directory
+    it creates; replaces only absent or marked directories with no junction or
+    symbolic link inside; validates the payload root on the management
+    controller in every mode; and stops when a remote step does not confirm
+    its directory, because AutomatedLab does not stop on a remote throw. 79
+    lab-runner tests pass in Core 7.6.6 and Desktop 5.1; the full gate passes
+    1,873 tests with two environmental skips at 83.0 percent asserted coverage.
+    One independent review approved with Minor findings; seven fixed, three
+    recorded. No live lab run; handoff 07 owns it.
 
 - 2026-10-06: Wrote eight sequential handoff prompts for the triaged work,
     outside the repository, with a ledger and per-prompt reports. They commit
@@ -150,52 +162,8 @@ and the recommended order.
     tests, and the full Core gate passed 1,766 tests with two environmental
     skips and 81.93% asserted coverage.
 
-- 2026-09-05: Closed the validated cycle locally in `6f7ba15`. The Desktop
-    coverage merge completed at 23:01 UTC with 90.37% asserted coverage and
-    90.34% whole-module coverage; all ten tasks passed without warnings.
-    Monitoring was stopped at 23:02 UTC. Both package editions and the
-    instrumented lab build had already passed all 93 tests and cleanup checks.
-    A closing self-review then found that the evidence note had introduced the
-    local Windows account name into a version-controlled file, which `main` did
-    not contain; `5d291c5` replaced it with `%TEMP%` while keeping every marker
-    identifier. Record transient host paths without a user profile.
-    No push, release, or tag was performed.
-
-- 2026-09-05: The user accepted the security and quality review and requested
-    development-cycle close-out. Documented reliable privilege-name completion,
-    the private-key rule table with SID fallback and unchanged object
-    properties, private lab diagnostics, and complete generated release notes.
-    The final specification regression passed 20 tests. The release-note task
-    passed without altering the validated manifest, module, or package.
-    Both controllers and the member server passed post-acceptance service
-    checks. Temporary baseline worktrees, dependency junctions, and the scratch
-    analysis script were removed; no old raw logs remain in the lab payload.
-
-- 2026-09-05: Closed the remaining local audit gaps with failing-then-passing
-    guards: every export has an evidence row and a real test link, all 52
-    requirement identifiers occur in the suites that prove them, public output
-    types and DSC catalogs are checked, and the documented lab order is compared
-    with its owning function. Added the private-key rule view with orphan SID
-    fallback. Corrected stale selector, path, concurrency, and coverage prose
-    and retained raw lab console output for independent progress inspection.
-    Consolidated duplicate changelog categories without losing any of the 754
-    non-heading content lines; the parser had omitted content across duplicates.
-    The final focused gates pass 20 specification and five runner tests.
-    Earlier audit claims about missing contributor guidance and uncited ADRs
-    were partly false: the guidance and several Markdown links already existed.
-    A rule type is not a view count, a requirement reference is not a behavioral
-    proof, and not every direct command test is under Unit/Public. Vendored
-    Sampler TODOs remain upstream under the no-local-bootstrap-edit rule.
-
-- 2026-09-05: Audited 105 public commands, 20 DSC resources, and 39 roadmap
-    identifiers. Corrected seven false specification statements and pinned
-    OI-31 with red/green proof. Eleven specification tests, changelog parsing,
-    and changed-test static analysis passed. Subsequent milestones record
-    completion of the remaining view and traceability work. The detailed audit
-    history remains in `git show f5731f1:.memory-bank/progress.md`.
-
-- 2026-09-03: Closed OI-31: duplicate module compilation created incompatible
-    class identities. Ten reproductions per mode and 1,742 passing tests with
-    two skips proved the fix; coverage was 81.92 percent. Keep imports unforced,
-    isolate load/unload tests, and run docs/tests in separate processes. The QA
-    AST guard preserves the rule; detailed cache analysis remains in history.
+- 2026-09-03 to 2026-09-05: OI-31, the 105-command audit, the audit-gap
+    closure, and the `6f7ba15` close-out are in
+    `git show a48ec3d:.memory-bank/progress.md`. Lessons kept: record transient
+    host paths without a user profile; keep imports unforced and run docs and
+    tests in separate processes.

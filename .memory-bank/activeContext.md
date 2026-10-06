@@ -9,10 +9,18 @@ source: repository, git reflog, and public GitHub API evidence
 
 ## Current task
 
-Post-release triage of open work on 2026-10-06. `main` is `40e364a`, in sync
-with `origin/main`. No code was changed and no git remote was mutated. The
-only repository-state change was restoring the deleted local branch
-`ai/performance-refactor` at `5f06c03` so its commits survive reflog expiry.
+Handoff 01 of the 2026-10-06 sequence is complete on the local branch
+`ai/post-release-fixes`, created from `ai/post-release-triage`: the
+domain-lab acceptance runner no longer deletes directories it did not create.
+It marks what it creates on the management domain controller, replaces only
+absent or marked directories without a junction or symbolic link inside,
+validates the payload root there in every mode, and stops when a remote step
+does not confirm its directory. No live lab run took place; handoff 07 owns
+it. Next is handoff 02. No git remote was mutated.
+
+The 2026-10-06 triage below remains the record of the open work. `main` is
+`40e364a`, in sync with `origin/main`; the triage restored the deleted local
+branch `ai/performance-refactor` at `5f06c03`.
 
 ## Handoff sequence
 
@@ -51,13 +59,19 @@ and cleanup. Only 08 touches the remote, with approval per action.
 2. **Repository-wide review findings (2026-09-10).** They were recorded only
    on that branch. Rechecked by reading `main` on 2026-10-06, not by running
    anything:
-   - Blocker (lab harness):
+   - Blocker (lab harness), fixed by handoff 01 on `ai/post-release-fixes`:
      `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` recursively
-     deletes `-RemoteRepositoryPath` (only `ValidateNotNullOrEmpty`) on the
-     domain controller and replaces any same-version module under
-     `%ProgramFiles%\WindowsPowerShell\Modules\WindowsAccessControl`. There is
-     no ownership marker or backup; a High-impact confirmation is the only
-     guard. Still present.
+     deleted `-RemoteRepositoryPath` (only `ValidateNotNullOrEmpty`) on the
+     domain controller and replaced any same-version module under
+     `%ProgramFiles%\WindowsPowerShell\Modules\WindowsAccessControl`. It now
+     refuses unmarked directories. The existing `C:\WacRepo` and the `0.0.1`
+     installation on `F1ADC1` predate the marker, so 07 must decide what to do
+     with them before its first run.
+   - Follow-up (review of handoff 01, not scheduled): the SMB, certificate
+     private-key, Task Scheduler, and foreign-principal suites recursively
+     delete `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server
+     without an ownership check; it is a fixed child of the harness's marked
+     member root.
    - Major: `Test-WindowsTaskSchedulerSystemAce` returns `$false` when the
      current DACL has no SYSTEM ACE, so a write that restores SYSTEM is
      refused. Still present; no test pins it as intended behavior.

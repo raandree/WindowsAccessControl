@@ -324,6 +324,29 @@ sequential and bounded-parallel NTFS owner reads over disposable targets. It
 emits elapsed time and throughput plus optional JSON evidence without a flaky
 hard timing assertion.
 
+### Domain-lab payload ownership
+
+`tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` deletes only what it
+created. Before it changes anything on the management domain controller, that
+machine checks `-RemoteRepositoryPath` and rejects a path that is not absolute
+on a local fixed drive, is a drive root, passes through a junction or symbolic
+link, or lies under the Windows directory, Program Files, ProgramData, or the
+user profile root.
+
+The runner writes an ownership marker into each directory it may later replace
+there: the payload root, its `package` staging directory, and the installed
+module version directory. It replaces one of them only when the directory is
+absent, or carries that marker and contains no junction or symbolic link that a
+recursive deletion could follow. Otherwise it stops before deleting anything
+and names the directory and the resolution. A remote step that does not confirm
+the directory it prepared also stops the run, because AutomatedLab can report a
+remote failure without ending the calling script. The runner refuses rather
+than backing up and restoring a directory it does not own.
+[Ownership tests](../tests/Unit/Lab/WindowsAccessControl.LabRunnerOwnership.Tests.ps1)
+prove the path and marker decisions without a lab, and
+[runner tests](../tests/Unit/Lab/Invoke-WindowsAccessControlLabAcceptance.Tests.ps1)
+run the remote steps against disposable local directories.
+
 ## Code coverage measurement
 
 The 80 percent threshold is asserted over the commands the running test profile
