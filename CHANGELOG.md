@@ -57,6 +57,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     filter in the usage guide, which is how an operator separates the
     delegation they configured from the entries a schema class applies to every
     new object
+- Add a migration guide for `NTFSSecurity` users, whose module is deprecated in
+    favor of this one. It maps every command that the NTFSSecurity 4.2.6 and
+    5.0.0 manifests export to its replacement or to the decision that leaves it
+    out, and it calls out the differences that change what a migrated script
+    does: `Remove-NTFSAccessRule` matches exactly unless `-RemovalMode Rights`
+    is given, the remove, clear, and owner commands prompt for confirmation, and
+    a path longer than 260 characters needs PowerShell 7. The documentation
+    index had pointed NTFSSecurity users at the `NTFSPermission` rename map,
+    which never mentions NTFSSecurity
 - Document the twenty DSC resources in the wiki, and ship their conceptual help
     inside the module. The resources were the one part of the public surface a
     reader could not look up anywhere: the wiki carried a page per command and

@@ -165,6 +165,7 @@ refusals in more detail.
 
 - [Documentation index](README.md)
 - [Project overview and command catalog](../README.md)
+- [Migration from NTFSSecurity](migration-from-ntfssecurity.md)
 - [Migration from NTFSPermission](migration-from-ntfspermission.md)
 - [Public API contract](../specs/0003-public-api.md)
 - [Security and persistence contract](../specs/0004-security-and-persistence.md)

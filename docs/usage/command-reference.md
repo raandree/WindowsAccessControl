@@ -187,4 +187,5 @@ List the members of any of them:
 
 - [Usage guide overview](../usage-guide.md)
 - [Public API contract](../../specs/0003-public-api.md)
+- [Migration from NTFSSecurity](../migration-from-ntfssecurity.md)
 - [Migration from NTFSPermission](../migration-from-ntfspermission.md)

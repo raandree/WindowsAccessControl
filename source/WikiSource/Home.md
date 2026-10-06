@@ -49,7 +49,10 @@ Get-DscResource -Module WindowsAccessControl
 - [`docs/usage-guide.md`](https://github.com/raandree/WindowsAccessControl/blob/main/docs/usage-guide.md)
   walks through the common tasks and links to a page for each object family.
 - The [`docs/`](https://github.com/raandree/WindowsAccessControl/tree/main/docs)
-  index lists every guide, including the migration map from `NTFSSecurity`.
+  index lists every guide.
+- [`docs/migration-from-ntfssecurity.md`](https://github.com/raandree/WindowsAccessControl/blob/main/docs/migration-from-ntfssecurity.md)
+  maps every `NTFSSecurity` command to its replacement and explains what
+  changes when a script moves over.
 - The [`specs/`](https://github.com/raandree/WindowsAccessControl/tree/main/specs)
   folder records the accepted behavior, including the cases the module
   deliberately refuses.

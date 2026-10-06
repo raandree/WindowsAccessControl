@@ -38,6 +38,10 @@ to manipulate .NET access-control objects directly.
 The module has no third-party runtime dependency. It supports Windows
 PowerShell 5.1 and PowerShell 7 on Windows.
 
+`WindowsAccessControl` is the successor of `NTFSSecurity`. The
+[NTFSSecurity migration guide](docs/migration-from-ntfssecurity.md) maps every
+NTFSSecurity command to its replacement.
+
 The unpublished package was renamed from `NTFSPermission`. See the
 [migration map](docs/migration-from-ntfspermission.md) for package, command, and
 output type changes.
