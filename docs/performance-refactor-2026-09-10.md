@@ -240,6 +240,10 @@ machine; they are not part of the repository.
   is stopped, so that build stops before its coverage assertion. Coverage
   computed from its JaCoCo document with the repository's own scoping
   functions is 80.95% (6,730 of 8,314).
+- With WinRM later running on the development machine, the Desktop `test` of
+  the same module passed: 1,872 passed, zero failed, two environment skips,
+  and asserted coverage 80.95% (6,730 of 8,314). Both DSC-engine calls pass;
+  they cover no command the rest of the suite leaves uncovered.
 - No domain-lab-only source file ran locally: 0 of 192 commands over 13 files.
 - PSScriptAnalyzer 1.25.0 reports no finding in any of the 22 changed
   PowerShell files.

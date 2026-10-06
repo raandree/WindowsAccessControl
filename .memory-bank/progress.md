@@ -31,8 +31,9 @@ uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit remain.
     matching hashes and checksums: Core rights display 69 percent faster,
     removed ACEs 66, dispatch 18, isolated CNG 15; Desktop removed ACEs 95.
     The Core gate passes 1,917 tests with two environmental skips at 83.11
-    percent asserted coverage; Desktop fails only the two WinRM-bound
-    DSC-engine tests, with 80.95 percent scoped coverage computed. One
+    percent asserted coverage. Once WinRM ran on the development machine,
+    the Desktop gate passed 1,872 at 80.95 percent asserted coverage; before
+    that, only its two WinRM-bound DSC-engine tests failed. One
     independent review approved; its Minor and three Nits were addressed.
 
 - 2026-10-06: Handoff 02 fixed three review defects test-first on

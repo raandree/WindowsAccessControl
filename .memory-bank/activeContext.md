@@ -23,10 +23,11 @@ per-target parameter copy; each test failed with its guard removed. The
 `perf:` commit: hashes and checksums match, and the gains hold. One
 independent review approved with one Minor and three Nits, all addressed. The
 ported `5f06c03` body was reworded because "Major" in it would have made the
-next release 1.0.0. The Desktop gate still fails only the two WinRM-bound
-DSC-engine tests. No live lab run took place; handoff 07 owns the first live
-and installed-package acceptance of the refactor. Next is handoff 04. No git
-remote was mutated.
+next release 1.0.0. With WinRM running on the development machine since a
+later check on 2026-10-06, the Desktop gate passes too: 1,872 tests at 80.95
+percent asserted coverage, a thin margin. No live lab run took place; handoff
+07 owns the first live and installed-package acceptance of the refactor. Next
+is handoff 04. No git remote was mutated.
 
 Handoffs 01 and 02 made the lab runner refuse to delete what it did not
 create and fixed the Task Scheduler, SMB, and AD review defects. The
