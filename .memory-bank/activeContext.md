@@ -9,18 +9,29 @@ source: repository, git reflog, and public GitHub API evidence
 
 ## Current task
 
-Handoff 04 of the 2026-10-06 sequence is complete on the local branch
-`ai/post-release-fixes`. The user confirmed the positioning:
+Handoff 05 of the 2026-10-06 sequence is complete on the local branch
+`ai/post-release-fixes`. The build workflow now pins `actions/checkout`
+v7.0.1, `actions/upload-artifact` v7.0.1, and `actions/download-artifact`
+v8.0.1, each by the 40-character SHA that its own tag resolves to, which ends
+the Node.js 20 deprecation warning. The release notes from v4 to each target
+were read and checked one by one against this workflow: no input changed
+meaning here, so the commit is seven pins and nothing else. The notable
+difference is that `download-artifact` v8 fails a job on a digest mismatch
+instead of warning, which is kept. A new test in `tests/Unit/Build` holds
+every `uses:` reference to a SHA pin with a version comment and to a release
+line that declares Node.js 24. The three Dependabot pull requests are
+superseded: the seven changed lines are byte-identical to their proposals.
+Next is handoff 06. No git remote was mutated.
+
+Handoff 04 settled the NTFSSecurity positioning that the user confirmed:
 `WindowsAccessControl` is the successor of NTFSSecurity, which is deprecated
-and will be archived, as the NTFSSecurity 5.0.0-rc4 Gallery description and
-change log already said on 2026-10-06. `docs/migration-from-ntfssecurity.md`
-maps all 37 commands that the 4.2.6 and 5.0.0-rc4 manifests export, confirmed
-against the built module, with the parameter and output differences and the
-decision behind each missing feature. Every published example ran verbatim in
-Core 7.6.6 and Desktop 5.1. The documentation index, the wiki Home page, the
+and will be archived. `docs/migration-from-ntfssecurity.md` maps all 37
+commands that the 4.2.6 and 5.0.0-rc4 manifests export, confirmed against the
+built module, with the parameter and output differences and the decision
+behind each missing feature. The documentation index, the wiki Home page, the
 README, and three See also lists point at the guide, and the README no longer
 calls private keys read-only. The issue #4 reply is a draft in the handoff
-`reports` folder. Next is handoff 05. No git remote was mutated.
+`reports` folder; its wiki link 404s until `main` has the guide.
 
 Handoffs 01 to 03 made the lab runner refuse to delete what it did not
 create, fixed the Task Scheduler, SMB, and AD review defects, and ported and
@@ -102,15 +113,18 @@ and cleanup. Only 08 touches the remote, with approval per action.
    - Follow-ups: the batch dispatcher `CommandName`/`ObjectFamily` guard is
      tested since handoff 03, and handoff 04 corrected the README private-key
      statement against specification 0015.
-3. **Dependabot pull requests #1-#3** bump `actions/checkout` to 7.0.1,
-   `actions/upload-artifact` to 7.0.1, and `actions/download-artifact` to
-   8.0.1. Their red test jobs are inherited: all three branch from `4806726`
-   (2026-08-15, 42 commits behind `main`), whose own push build failed the
-   same four NTFS path tests. `0502254` fixed those tests the next morning.
-   The API's base `4c204ff` is the later branch tip, and its tests passed.
-   All three merge cleanly onto `main`, and no test pins action versions.
-   The v4 pins raise the Node.js 20 deprecation warning. Land the artifact
-   pair together after reading the major-version release notes.
+3. **Dependabot pull requests #1-#3** are superseded by handoff 05, which
+   applied all three bumps on `ai/post-release-fixes` in one commit:
+   `actions/checkout` 7.0.1, `actions/upload-artifact` 7.0.1, and
+   `actions/download-artifact` 8.0.1, each pinned by the SHA its tag resolves
+   to. The seven changed lines are byte-identical to the three proposals.
+   Reading every release note from v4 to each target found no input that
+   changed meaning for this workflow; `download-artifact` v8 now fails a job
+   on a digest mismatch instead of warning, which is kept. Their red test jobs
+   were inherited anyway: all three branch from `4806726` (2026-08-15, 42
+   commits behind `main`), whose own push build failed the same four NTFS path
+   tests that `0502254` fixed the next morning. Handoff 08 closes #1-#3 with
+   approval, after the pull-request CI proves the bumps.
 4. **Issue #4** (2026-09-07) asks whether this module replaces NTFSSecurity.
    Handoff 04 answered it in `docs/migration-from-ntfssecurity.md` and left
    the reply as a draft in the handoff `reports` folder. Handoff 08 posts it

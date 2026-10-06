@@ -12,14 +12,24 @@ source: repository evidence
 `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
 FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
 found unmerged and untracked work and split it into eight handoffs on local
-`ai/post-release-fixes`. Handoffs 01 to 04 fixed the lab-runner Blocker, the
+`ai/post-release-fixes`. Handoffs 01 to 05 fixed the lab-runner Blocker, the
 Task Scheduler, SMB, and AD review defects, ported and re-measured the
-performance refactor, and wrote the NTFSSecurity migration guide there; three
-dependabot pull requests with inherited failures, the unposted issue #4 reply,
-an uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit
-remain. `activeContext.md` holds the evidence and the order.
+performance refactor, wrote the NTFSSecurity migration guide, and moved the
+build workflow to the Node 24 releases of its three pinned actions there; the
+unposted issue #4 reply, an uncreated v0.2.0 changelog pull request, and the
+FIND-002 newline nit remain. `activeContext.md` holds the evidence and the
+order.
 
 ## Recent milestones
+
+- 2026-10-06: Handoff 05 moved the build workflow to the Node 24 releases of
+    `checkout` 7.0.1, `upload-artifact` 7.0.1, and `download-artifact` 8.0.1,
+    each pinned by the SHA its own tag resolves to. Every release note from v4
+    to the target was checked against this workflow; no input changed meaning,
+    so the commit is seven pins. `download-artifact` v8 now fails a job on a
+    digest mismatch instead of warning, which is kept. A new test holds every
+    `uses:` to a SHA pin with a version comment and a Node 24 release line.
+    Dependabot #1 to #3 are superseded; the pull-request CI in 08 is the proof.
 
 - 2026-10-06: Handoff 04 documented the move from NTFSSecurity, which the
     user positioned as deprecated, with `WindowsAccessControl` as its
