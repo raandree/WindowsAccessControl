@@ -9,36 +9,32 @@ source: repository, git reflog, and public GitHub API evidence
 
 ## Current task
 
-Handoff 03 of the 2026-10-06 sequence is complete on the local branch
-`ai/post-release-fixes`; the user chose to finish the orphaned performance
-refactor. `fbced95` ports its code, tests, and benchmarks from
-`ai/performance-refactor` as one revertable `perf:` commit, and `d13a517` and
-`b860448` port its documentation; every Memory Bank hunk resolved to the
-current files. The ported private-key DACL comparison holds over the FIND-001
-returned-bytes setter, and the seven batch adapters still pass handoff 02's
-Task Scheduler, SMB, and AD parameters unchanged. `87d4f35` pins the
-dispatcher's `CommandName`/`ObjectFamily` guard and an NTFS adapter worker's
-per-target parameter copy; each test failed with its guard removed. The
-`docs(performance)` commit re-measured both benchmarks before and after the
-`perf:` commit: hashes and checksums match, and the gains hold. One
-independent review approved with one Minor and three Nits, all addressed. The
-ported `5f06c03` body was reworded because "Major" in it would have made the
-next release 1.0.0. With WinRM running on the development machine since a
-later check on 2026-10-06, the Desktop gate passes too: 1,872 tests at 80.95
-percent asserted coverage, a thin margin. No live lab run took place; handoff
-07 owns the first live and installed-package acceptance of the refactor. Next
-is handoff 04. No git remote was mutated.
+Handoff 04 of the 2026-10-06 sequence is complete on the local branch
+`ai/post-release-fixes`. The user confirmed the positioning:
+`WindowsAccessControl` is the successor of NTFSSecurity, which is deprecated
+and will be archived, as the NTFSSecurity 5.0.0-rc4 Gallery description and
+change log already said on 2026-10-06. `docs/migration-from-ntfssecurity.md`
+maps all 37 commands that the 4.2.6 and 5.0.0-rc4 manifests export, confirmed
+against the built module, with the parameter and output differences and the
+decision behind each missing feature. Every published example ran verbatim in
+Core 7.6.6 and Desktop 5.1. The documentation index, the wiki Home page, the
+README, and three See also lists point at the guide, and the README no longer
+calls private keys read-only. The issue #4 reply is a draft in the handoff
+`reports` folder. Next is handoff 05. No git remote was mutated.
 
-Handoffs 01 and 02 made the lab runner refuse to delete what it did not
-create and fixed the Task Scheduler, SMB, and AD review defects. On
-2026-10-06 the user reviewed all 14 recorded agent decisions of handoffs 01
-to 03: twelve are accepted as recorded, and the other two were overtaken by
-doing the work (the decision log moved out of `systemPatterns.md`, and specs
-0005 and 0006 name the descriptor benchmark). WinRM stays enabled here.
-Later handoffs ask their own questions with fresh evidence. The
-2026-10-06 triage below remains the record of the open work. `main` is
-`40e364a`, in sync with `origin/main`; `ai/performance-refactor` stays at
-`5f06c03` until handoff 08 deletes it with approval.
+Handoffs 01 to 03 made the lab runner refuse to delete what it did not
+create, fixed the Task Scheduler, SMB, and AD review defects, and ported and
+re-measured the performance refactor; the Desktop gate passes narrowly at
+80.95 percent asserted coverage, and handoff 07 owns the first live and
+installed-package acceptance of the refactor. On 2026-10-06 the user reviewed
+all 14 recorded agent decisions of handoffs 01 to 03: twelve are accepted as
+recorded, and the other two were overtaken by doing the work (the decision log
+moved out of `systemPatterns.md`, and specs 0005 and 0006 name the descriptor
+benchmark). WinRM stays enabled here. Later handoffs ask their own questions
+with fresh evidence. The 2026-10-06 triage below remains the record of the
+open work. `main` is `40e364a`, in sync with `origin/main`;
+`ai/performance-refactor` stays at `5f06c03` until handoff 08 deletes it with
+approval.
 
 ## Handoff sequence
 
@@ -103,9 +99,9 @@ and cleanup. Only 08 touches the remote, with approval per action.
    - Minor, fixed by handoff 02: `Get-ADObjectCallerEffectiveAccess` requested
      `nTSecurityDescriptor` it never used, and a caller without read-control
      access got a null-index error. Live evidence is owed by handoff 07.
-   - Follow-ups: `README.md` line 315 still calls private keys read-only. The
-     batch dispatcher `CommandName`/`ObjectFamily` guard is tested since
-     handoff 03.
+   - Follow-ups: the batch dispatcher `CommandName`/`ObjectFamily` guard is
+     tested since handoff 03, and handoff 04 corrected the README private-key
+     statement against specification 0015.
 3. **Dependabot pull requests #1-#3** bump `actions/checkout` to 7.0.1,
    `actions/upload-artifact` to 7.0.1, and `actions/download-artifact` to
    8.0.1. Their red test jobs are inherited: all three branch from `4806726`
@@ -115,11 +111,16 @@ and cleanup. Only 08 touches the remote, with approval per action.
    All three merge cleanly onto `main`, and no test pins action versions.
    The v4 pins raise the Node.js 20 deprecation warning. Land the artifact
    pair together after reading the major-version release notes.
-4. **Issue #4** (2026-09-07, unanswered) asks whether this module replaces
-   NTFSSecurity. `docs/README.md` and `source/WikiSource/Home.md` promise an
-   NTFSSecurity migration map, but `docs/migration-from-ntfspermission.md`
-   covers only the unpublished NTFSPermission rename. Source material:
-   `docs/research.md#detailed-ntfssecurity-comparison`.
+4. **Issue #4** (2026-09-07) asks whether this module replaces NTFSSecurity.
+   Handoff 04 answered it in `docs/migration-from-ntfssecurity.md` and left
+   the reply as a draft in the handoff `reports` folder. Handoff 08 posts it
+   only with approval and only after the guide reaches `main`, because the
+   linked URL returns 404 until then; re-check the NTFSSecurity Gallery state
+   first. Observation for a later decision: `Remove-NTFSAccessRule` and
+   `Remove-NTFSAuditRule` in their default `Exact` mode remove nothing and
+   report nothing when no identical entry exists, which a migrated
+   NTFSSecurity call that subtracts rights hits. The guide documents it; no
+   behavior changed.
 5. **Changelog.** The v0.2.0 run reported "Send changelog pull request" as
    successful, yet the repository has no closed pull request. Branch
    `updateChangelogAfterv0.2.0` (`38cdabd`) inserts `## [0.2.0]` directly

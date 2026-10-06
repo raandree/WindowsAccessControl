@@ -12,14 +12,24 @@ source: repository evidence
 `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
 FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
 found unmerged and untracked work and split it into eight handoffs on local
-`ai/post-release-fixes`. Handoffs 01 to 03 fixed the lab-runner Blocker, the
-Task Scheduler, SMB, and AD review defects, and ported and re-measured the
-performance refactor there; three dependabot pull requests with inherited
-failures, unanswered issue #4 with a missing NTFSSecurity migration map, an
-uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit remain.
-`activeContext.md` holds the evidence and the order.
+`ai/post-release-fixes`. Handoffs 01 to 04 fixed the lab-runner Blocker, the
+Task Scheduler, SMB, and AD review defects, ported and re-measured the
+performance refactor, and wrote the NTFSSecurity migration guide there; three
+dependabot pull requests with inherited failures, the unposted issue #4 reply,
+an uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit
+remain. `activeContext.md` holds the evidence and the order.
 
 ## Recent milestones
+
+- 2026-10-06: Handoff 04 documented the move from NTFSSecurity, which the
+    user positioned as deprecated, with `WindowsAccessControl` as its
+    successor. `docs/migration-from-ntfssecurity.md` maps every command of the
+    NTFSSecurity 4.2.6 and 5.0.0-rc4 manifests, confirmed against the built
+    module, and names what changes for a migrated script: exact removal by
+    default, confirmation prompts, `AppliesTo` instead of flags, and long
+    paths only in PowerShell 7. Its examples ran verbatim in both editions.
+    The README private-key statement now matches specification 0015, and the
+    issue #4 reply is drafted but not posted.
 
 - 2026-10-06: The user reviewed all 14 recorded agent decisions of handoffs
     01 to 03 and accepted twelve as recorded. The other two were overtaken:
@@ -130,50 +140,15 @@ uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit remain.
     Desktop DSC checks, live acceptance, and independent review as open gates.
     Generated packages and raw logs remain excluded from the Git transfer.
 
-- 2026-09-06: Audited the complete script inventory and controlling safety
-    paths. Reproduced and fixed escaped-DN containment, restore GUID loss,
-    wrong native ACE removal, DSC cleanup ownership, and misleading lab
-    evidence success. Core: 1,802 passed, zero failed, two environment skips;
-    coverage: 82.74 percent after moving the locally exercised AD setter into
-    asserted scope. Added the audit record and detached lab checklist. All
-    eight live suites discover 95 tests, but no live acceptance was run.
-    Desktop: 1,755 passed, two failed, two skips. The failing DSC-engine calls
-    cannot reach local WS-Management; WinRM is stopped with manual startup.
-    No test or host remoting setting was changed to bypass that prerequisite.
-    Packaging passed all 22 tasks; the local `0.0.1` candidate contains the
-    exact tested module plus generated help. The audit record retains hashes,
-    raw-evidence location, and the remaining lab/review obligations.
-
-- 2026-09-06: Confirmed hosted closure in run `34055979655` for `830a909`.
-    All four jobs passed; the Ubuntu publish job completed at 20:04:59 UTC.
-    The live wiki Home page names `v0.2.0-preview0002` and the sidebar contains
-    generated command and DSC resource navigation. The standard task works on
-    the selected runner, closing the outstanding Linux validation without a
-    custom task or manual wiki seed. No further incident work remains.
-
-- 2026-09-06: Reinvestigated why the stock wiki publisher works elsewhere.
-    With the actual release archive and upstream 0.13.0 on Windows, 126 added
-    files plus Home timed out at 3,042 ms with a shortened 3,000 ms timeout;
-    modifying 127 existing files passed in 157 ms and emitted only 112 bytes.
-    A quiet initial commit passed in 104 ms. Both DSC Community comparison
-    pipelines publish on Ubuntu. Removed the rejected custom publisher and
-    changed only the publish runner; build/test runners and standard task
-    order are unchanged. The new workflow guard was red then green; all 20
-    build-specific tests pass in both editions, and Sampler resolves the
-    upstream wiki task.
-    Actual Ubuntu publication awaits a hosted run. No commit or remote write.
-
-- 2026-09-06: A custom wiki workaround passed the Core and Desktop gates
-    (1,771 and 1,726 tests; 82.40% and 80.20% asserted coverage), but remained
-    uncommitted. It was subsequently withdrawn at the user's request in favor
-    of the standard task and runner investigation recorded above.
-
 - 2026-09-03 to 2026-09-06: OI-31, the 105-command audit, the audit-gap
     closure, the `6f7ba15` close-out, the `34026468199` wiki-publication hang
-    (DscResource.DocGenerator#111), the `34021812398` completer fix, and the
-    `ai/access-rights-completion` review are in
-    `git show 8b67058:.memory-bank/progress.md` and, for the oldest,
+    (DscResource.DocGenerator#111), the `34021812398` completer fix, the
+    `ai/access-rights-completion` review, the script-inventory audit, and the
+    wiki-publisher investigation that run `34055979655` closed are in
+    `git show 4461b90:.memory-bank/progress.md`,
+    `git show 8b67058:.memory-bank/progress.md`, and, for the oldest,
     `git show a48ec3d:.memory-bank/progress.md`. Lessons kept: record
     transient host paths without a user profile; keep imports unforced and run
     docs and tests in separate processes; bind completers to an instance, not
-    a disposed worker context.
+    a disposed worker context; publish the wiki with the standard task from an
+    Ubuntu runner.

@@ -316,8 +316,8 @@ remote target parameters.
 
 ## Certificate private keys
 
-The first private-key increment is read-only and supports exact persisted RSA
-keys in Microsoft Software Key Storage Provider. Supply the certificate object,
+Private-key commands read and change the DACL of an exact persisted RSA key in
+Microsoft Software Key Storage Provider. Supply the certificate object,
 provider, and key name so the module can cross-check identity without searching
 stores or exporting key material:
 
@@ -330,8 +330,19 @@ Get-CertificatePrivateKeySecurityDescriptor `
     -KeyName 'WorkloadKey'
 ```
 
-CAPI, hardware, ephemeral, mismatched, and mutation workflows are not part of
-this increment. The command does not dispose the caller-owned certificate.
+`Add-CertificatePrivateKeyAccessRule` grants an account access,
+`Remove-CertificatePrivateKeyAccessRule` removes an exact rule, and
+`Set-CertificatePrivateKeySecurityDescriptor` writes one complete DACL. Every
+write passes fail-closed gates first. Among them, it refuses a new deny rule, a
+DACL without full control for Local System and the Administrators group, and a
+key that an HTTP.sys, WinRM HTTPS, Remote Desktop, or Active Directory LDAPS
+binding uses, which `Test-CertificatePrivateKeyCriticalBinding` reports. The
+family covers DACL descriptors, typed access rules, backup/restore, and DSC.
+CAPI, hardware, removable, ephemeral, and mismatched keys, audit rules, owner
+and group changes, and key creation, deletion, or export are not supported. The
+commands do not dispose the caller-owned certificate. The
+[certificate private-key guide](docs/usage/certificate-private-keys.md) lists
+every gate.
 
 ## Services and the SCM
 
