@@ -12,15 +12,24 @@ source: repository evidence
 `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
 FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
 found unmerged and untracked work and split it into eight handoffs on local
-`ai/post-release-fixes`. Handoffs 01 to 05 fixed the lab-runner Blocker, the
+`ai/post-release-fixes`. Handoffs 01 to 06 fixed the lab-runner Blocker, the
 Task Scheduler, SMB, and AD review defects, ported and re-measured the
-performance refactor, wrote the NTFSSecurity migration guide, and moved the
-build workflow to the Node 24 releases of its three pinned actions there; the
-unposted issue #4 reply, an uncreated v0.2.0 changelog pull request, and the
-FIND-002 newline nit remain. `activeContext.md` holds the evidence and the
-order.
+performance refactor, wrote the NTFSSecurity migration guide, moved the build
+workflow to the Node 24 releases of its three pinned actions, restored the
+0.2.0 changelog section, and closed FIND-002; the unposted issue #4 reply,
+live lab acceptance, and every remote action wait for 07 and 08.
+`activeContext.md` holds the evidence and the order.
 
 ## Recent milestones
+
+- 2026-10-06: Handoff 06 restored the `## [0.2.0] - 2026-09-06` section that
+    the release never merged, with a multiset proof that no content line
+    moved, and made a missing changelog pull request end the release:
+    Sampler's task catches a refused creation and only logs it, which is why
+    the green v0.2.0 step left no pull request behind. The publish job now
+    asks the API for that branch's pull request; a token without pull-request
+    access is the likeliest cause, and the run log would settle it. FIND-002
+    is closed, and QA, Build, and the two suites pass 709 tests per edition.
 
 - 2026-10-06: Handoff 05 moved the build workflow to the Node 24 releases of
     `checkout` 7.0.1, `upload-artifact` 7.0.1, and `download-artifact` 8.0.1,

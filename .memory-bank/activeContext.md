@@ -9,19 +9,33 @@ source: repository, git reflog, and public GitHub API evidence
 
 ## Current task
 
-Handoff 05 of the 2026-10-06 sequence is complete on the local branch
-`ai/post-release-fixes`. The build workflow now pins `actions/checkout`
-v7.0.1, `actions/upload-artifact` v7.0.1, and `actions/download-artifact`
-v8.0.1, each by the 40-character SHA that its own tag resolves to, which ends
-the Node.js 20 deprecation warning. The release notes from v4 to each target
-were read and checked one by one against this workflow: no input changed
-meaning here, so the commit is seven pins and nothing else. The notable
-difference is that `download-artifact` v8 fails a job on a digest mismatch
-instead of warning, which is kept. A new test in `tests/Unit/Build` holds
+Handoff 06 of the 2026-10-06 sequence is complete on the local branch
+`ai/post-release-fixes`. `CHANGELOG.md` carries the `## [0.2.0] - 2026-09-06`
+section that the release pipeline never merged, in the heading format of the
+unmerged branch, with every entry written since still under
+`## [Unreleased]`; a multiset comparison proves that no content line moved
+out or appeared twice. The release no longer reports a changelog pull request
+it never opened: Sampler's `Create_ChangeLog_GitHub_PR` catches a refused
+creation and only writes it to the build log, so the publish job now asks the
+GitHub API for the pull request of the changelog branch after the task and
+ends the run when there is none. The likeliest cause of the v0.2.0 failure is
+a `GitHubToken` secret that grants contents but not pull requests; the step
+log of run `34058863590` would settle it and needs an authenticated download
+by the user. FIND-002 is closed: both test files end with CRLF, and the
+security review records the disposition. Next is handoff 07, which needs the
+Hyper-V host that holds `WindowsAccessControlLab`; this machine runs Hyper-V
+with AutomatedLab but holds no lab virtual machines. No git remote was
+mutated.
+
+Handoff 05 pinned `actions/checkout` 7.0.1, `actions/upload-artifact` 7.0.1,
+and `actions/download-artifact` 8.0.1 by the SHA each tag resolves to, which
+ends the Node.js 20 deprecation warning. Every release note from v4 to each
+target was checked against this workflow and no input changed meaning, so the
+commit is seven pins; `download-artifact` v8 now fails a job on a digest
+mismatch instead of warning, which is kept. A `tests/Unit/Build` test holds
 every `uses:` reference to a SHA pin with a version comment and to a release
 line that declares Node.js 24. The three Dependabot pull requests are
 superseded: the seven changed lines are byte-identical to their proposals.
-Next is handoff 06. No git remote was mutated.
 
 Handoff 04 settled the NTFSSecurity positioning that the user confirmed:
 `WindowsAccessControl` is the successor of NTFSSecurity, which is deprecated
@@ -135,12 +149,15 @@ and cleanup. Only 08 touches the remote, with approval per action.
    report nothing when no identical entry exists, which a migrated
    NTFSSecurity call that subtracts rights hits. The guide documents it; no
    behavior changed.
-5. **Changelog.** The v0.2.0 run reported "Send changelog pull request" as
-   successful, yet the repository has no closed pull request. Branch
-   `updateChangelogAfterv0.2.0` (`38cdabd`) inserts `## [0.2.0]` directly
-   below `[Unreleased]`, which would now mislabel seven post-0.2.0 entries;
-   do not merge it as-is. Find the cause before the next stable release.
-6. **FIND-002**: two test files still lack a final newline.
+5. **Changelog, closed by handoff 06.** `CHANGELOG.md` carries the 0.2.0
+   section, and the publish job now ends a release whose changelog pull
+   request is missing. Branch `updateChangelogAfterv0.2.0` (`38cdabd`) is
+   superseded and must not be merged; handoff 08 deletes it with approval.
+   Left for the user: confirm that the `GitHubToken` secret grants
+   pull-request write access, and download the step log of run `34058863590`
+   if the cause needs proof rather than the best-supported hypothesis.
+6. **FIND-002, closed by handoff 06**: both test files end with CRLF, and
+   `docs/security-review-2026-09-07.md` records the disposition.
 7. **Housekeeping**: remote `ai/test-gap-audit` is merged. The thirteen lab
    VMs, their checkpoints, and the administrator `%TEMP%` evidence are not
    visible from this session's account; confirm before keeping or removing
