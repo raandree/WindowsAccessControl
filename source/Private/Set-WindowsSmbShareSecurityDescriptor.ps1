@@ -16,6 +16,12 @@ function Set-WindowsSmbShareSecurityDescriptor {
         [byte[]]$CurrentSecurityDescriptor
     )
 
+    # SE_LMSHARE writes can clear the share description. Read it as close to the
+    # native write as possible so the compensation never replays a stale value.
+    $descriptionBefore = [string](
+        Get-SmbShare -Name $Target.ShareName -ErrorAction Stop
+    ).Description
+
     $writeError = $null
     try {
         Set-WindowsNamedSecurityDescriptor `
@@ -29,15 +35,37 @@ function Set-WindowsSmbShareSecurityDescriptor {
         $writeError = $_
     }
 
+    # A step after a committed DACL write must not report failure for a change
+    # that is already live, so its warnings ignore a Stop or Inquire preference.
+    $postWriteWarningAction = if ($WarningPreference -in 'Stop', 'Inquire') {
+        'Continue'
+    }
+    else {
+        $WarningPreference
+    }
     $metadataError = $null
     try {
-        $currentShare = Get-SmbShare -Name $Target.ShareName -ErrorAction Stop
-        if ([string]$currentShare.Description -cne [string]$Target.Description) {
-            Set-SmbShare `
-                -Name $Target.ShareName `
-                -Description ([string]$Target.Description) `
-                -Confirm:$false `
-                -ErrorAction Stop
+        $descriptionAfter = [string](
+            Get-SmbShare -Name $Target.ShareName -ErrorAction Stop
+        ).Description
+        if ($descriptionAfter -cne $descriptionBefore) {
+            if ($descriptionAfter.Length -eq 0) {
+                Set-SmbShare `
+                    -Name $Target.ShareName `
+                    -Description $descriptionBefore `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+                Write-Verbose -Message (
+                    "Restored the description of SMB share '{0}' to '{1}' after the DACL write cleared it." -f
+                        $Target.ShareName, $descriptionBefore
+                )
+            }
+            else {
+                Write-Warning -Message (
+                    "The description of SMB share '{0}' changed while its DACL was written and was left as it is. The description before the write was '{1}'." -f
+                        $Target.ShareName, $descriptionBefore
+                ) -WarningAction $postWriteWarningAction
+            }
         }
     }
     catch {
@@ -54,6 +82,9 @@ function Set-WindowsSmbShareSecurityDescriptor {
         throw $writeError
     }
     if ($metadataError) {
-        throw $metadataError
+        Write-Warning -Message (
+            "The DACL of SMB share '{0}' was written, but its description could not be checked or restored: {1} The description before the write was '{2}'." -f
+                $Target.ShareName, $metadataError.Exception.Message, $descriptionBefore
+        ) -WarningAction $postWriteWarningAction
     }
 }

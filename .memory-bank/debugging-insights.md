@@ -806,9 +806,13 @@ that did the import releases it; test with
 ## SMB share descriptor metadata preservation
 
 `SetNamedSecurityInfoW` with `SE_LMSHARE` can clear a share description even
-when only the DACL is selected. Capture the provider description before the
-native write, restore it afterward, and aggregate restoration failure with the
-primary operation failure. A DACL round trip alone is insufficient evidence.
+when only the DACL is selected. Read the provider description immediately
+before the native write, not at target resolution, and afterwards restore it
+only when the write cleared it; any other new value is a concurrent edit to
+keep and report with a warning. Aggregate a restoration failure with a failed
+write, but after a committed write report it as a warning, with a Stop warning
+preference downgraded, so the caller never sees a live change as a failure. A
+DACL round trip alone is insufficient evidence.
 
 Resolve share targets through the local SMB provider rather than accepting a
 syntactically plausible UNC or wildcard. Provider topology is the authority for

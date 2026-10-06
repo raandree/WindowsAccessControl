@@ -576,6 +576,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Keep an SMB share description that someone edits while a share DACL write
+    is in flight: the write now reads the description immediately before the
+    native call instead of reusing the value captured at target resolution,
+    restores it only when the native write cleared it, and warns instead of
+    overwriting any other change. A description that cannot be read before
+    the write stops the command before anything is written, and one that
+    cannot be checked or restored after the DACL was written is reported as a
+    warning naming the earlier value instead of failing a change that is
+    already live
+    ([specification](specs/0009-smb-share-and-active-directory-dacl-management.md#smb-share-contract))
 - Accept a Task Scheduler DACL write that restores Local System to a folder or
     task whose DACL has no Local System ACE; such repairs were refused even
     though every current Local System ACE was preserved. A current DACL that

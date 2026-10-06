@@ -161,7 +161,6 @@ CodeCoverage:
     - Public/Get-ADObjectSecurityDescriptor.ps1
     - Private/Invoke-WindowsSmbShareAclRuleMutation.ps1
     - Private/Invoke-WindowsSmbShareCommandBatch.ps1
-    - Private/Set-WindowsSmbShareSecurityDescriptor.ps1
     - Public/Add-SmbShareAccessRule.ps1
     - Public/Get-SmbShareAccessRule.ps1
     - Public/Get-SmbShareSecurityDescriptor.ps1
