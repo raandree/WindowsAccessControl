@@ -21,6 +21,11 @@ and the recommended order.
 
 ## Recent milestones
 
+- 2026-10-06: Wrote eight sequential handoff prompts for the triaged work,
+    outside the repository, with a ledger and per-prompt reports. They commit
+    to local `ai/post-release-fixes`; only the final prompt touches the
+    remote, with approval per action.
+
 - 2026-10-06: Triaged open work. Verified from git, the public GitHub API,
     and the PowerShell Gallery that `v0.3.0-preview0001` shipped on
     2026-09-07, so the pending-authorization note was stale. Found the

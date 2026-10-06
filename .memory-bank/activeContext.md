@@ -14,6 +14,20 @@ with `origin/main`. No code was changed and no git remote was mutated. The
 only repository-state change was restoring the deleted local branch
 `ai/performance-refactor` at `5f06c03` so its commits survive reflog expiry.
 
+## Handoff sequence
+
+Eight sequential handoff prompts now drive the open work. They live outside
+the repository in the user's desktop folder
+`WindowsAccessControl-handoffs-2026-10-06`, with a README, a ledger, and a
+`reports` folder; trust that ledger and git history for progress. All prompts
+commit to the local integration branch `ai/post-release-fixes`, created from
+`ai/post-release-triage`. Execution order, which supersedes the triage order
+below: 01 lab-runner ownership guard, 02 Task Scheduler, SMB, and AD
+defects, 03 performance-refactor port, 04 NTFSSecurity guide and issue #4
+draft, 05 Actions bumps, 06 changelog section, silent changelog pull request
+step, and FIND-002, 07 live lab acceptance, 08 push, pull request, release,
+and cleanup. Only 08 touches the remote, with approval per action.
+
 ## Release state
 
 - `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07: Build run
