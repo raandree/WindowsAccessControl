@@ -16,11 +16,18 @@ found unmerged and untracked work and split it into eight handoffs on local
 Task Scheduler, SMB, and AD review defects, ported and re-measured the
 performance refactor, wrote the NTFSSecurity migration guide, moved the build
 workflow to the Node 24 releases of its three pinned actions, restored the
-0.2.0 changelog section, and closed FIND-002; the unposted issue #4 reply,
-live lab acceptance, and every remote action wait for 07 and 08.
-`activeContext.md` holds the evidence and the order.
+0.2.0 changelog section, and closed FIND-002. Handoff 07 is Blocked for want
+of the lab host, and handoff 08 waits for the user's approval of each remote
+action. `activeContext.md` holds the evidence and the order.
 
 ## Recent milestones
+
+- 2026-10-06: With the user's overnight delegation, handoff 07 was recorded
+    as Blocked (no lab VMs on this machine) and handoff 08 was prepared up to
+    its first remote action: a pull request body on the repository template,
+    and a simulated merge that GitVersion 5.12.0 versions as
+    `0.3.0-preview0002`. Both full gates pass on `023afe9`: Core 1,931 tests
+    at 83.11 percent asserted coverage, Desktop 1,886 at 80.95 percent.
 
 - 2026-10-06: Handoff 06 restored the `## [0.2.0] - 2026-09-06` section that
     the release never merged, with a multiset proof that no content line
@@ -153,17 +160,13 @@ live lab acceptance, and every remote action wait for 07 and 08.
     monitoring stopped. The dated lab acceptance report retains candidate
     hashes and the failure, recovery, and successful-run evidence.
 
-- 2026-09-07: User requested a handoff commit and push on `ai/test-gap-audit`
-    after creating the remote branch. Reuse the recorded audit validation;
-    no runtime code changes were made in this handoff. Keep the two blocked
-    Desktop DSC checks, live acceptance, and independent review as open gates.
-    Generated packages and raw logs remain excluded from the Git transfer.
-
-- 2026-09-03 to 2026-09-06: OI-31, the 105-command audit, the audit-gap
+- 2026-09-03 to 2026-09-07: OI-31, the 105-command audit, the audit-gap
     closure, the `6f7ba15` close-out, the `34026468199` wiki-publication hang
     (DscResource.DocGenerator#111), the `34021812398` completer fix, the
-    `ai/access-rights-completion` review, the script-inventory audit, and the
-    wiki-publisher investigation that run `34055979655` closed are in
+    `ai/access-rights-completion` review, the script-inventory audit, the
+    wiki-publisher investigation that run `34055979655` closed, and the
+    `ai/test-gap-audit` handoff push are in
+    `git show 023afe9:.memory-bank/progress.md`,
     `git show 4461b90:.memory-bank/progress.md`,
     `git show 8b67058:.memory-bank/progress.md`, and, for the oldest,
     `git show a48ec3d:.memory-bank/progress.md`. Lessons kept: record

@@ -9,23 +9,30 @@ source: repository, git reflog, and public GitHub API evidence
 
 ## Current task
 
-Handoff 06 of the 2026-10-06 sequence is complete on the local branch
-`ai/post-release-fixes`. `CHANGELOG.md` carries the `## [0.2.0] - 2026-09-06`
-section that the release pipeline never merged, in the heading format of the
-unmerged branch, with every entry written since still under
-`## [Unreleased]`; a multiset comparison proves that no content line moved
-out or appeared twice. The release no longer reports a changelog pull request
-it never opened: Sampler's `Create_ChangeLog_GitHub_PR` catches a refused
-creation and only writes it to the build log, so the publish job now asks the
-GitHub API for the pull request of the changelog branch after the task and
-ends the run when there is none. The likeliest cause of the v0.2.0 failure is
-a `GitHubToken` secret that grants contents but not pull requests; the step
-log of run `34058863590` would settle it and needs an authenticated download
-by the user. FIND-002 is closed: both test files end with CRLF, and the
-security review records the disposition. Next is handoff 07, which needs the
-Hyper-V host that holds `WindowsAccessControlLab`; this machine runs Hyper-V
-with AutomatedLab but holds no lab virtual machines. No git remote was
-mutated.
+The 2026-10-06 handoff sequence has run as far as it can without the user,
+who delegated its decisions overnight; every agent decision is in the
+handoff ledger for review. Handoff 07 is Blocked: this machine runs Hyper-V
+and AutomatedLab but holds no lab VMs and no lab store, so live acceptance of
+the combined candidate waits for the lab host and should precede the next
+stable release. Handoff 08 is prepared and stopped before its first remote
+action. Its pull request body follows `.github/PULL_REQUEST_TEMPLATE.md`,
+which the prompt wrongly said did not exist, and its report lists every
+remaining remote step with the exact command. GitVersion 5.12.0 on a
+simulated merge reports `0.3.0-preview0002`. On `023afe9` both full gates
+pass: Core 1,931 passed, 0 failed, 2 skipped at 83.11 percent asserted
+coverage; Desktop 1,886 passed, 0 failed, 2 skipped at 80.95 percent.
+`ai/test-gap-audit` no longer exists on the remote. Next, the user approves
+or declines each remote step of 08, works through the 06 settings checklist,
+and runs 07 on the lab host. No git remote was mutated.
+
+Handoff 06 restored the `## [0.2.0] - 2026-09-06` changelog section that the
+pipeline never merged, with every later entry still under `[Unreleased]` and
+a multiset proof that no line moved, and made a stable release end with an
+error when its changelog pull request is missing, because Sampler's
+`Create_ChangeLog_GitHub_PR` only logs a refused creation. The likeliest
+cause of the v0.2.0 gap is a `GitHubToken` secret without pull-request scope;
+the step log of run `34058863590` would settle it and needs an authenticated
+download by the user. FIND-002 is closed.
 
 Handoff 05 pinned `actions/checkout` 7.0.1, `actions/upload-artifact` 7.0.1,
 and `actions/download-artifact` 8.0.1 by the SHA each tag resolves to, which
