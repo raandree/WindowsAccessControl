@@ -153,6 +153,15 @@ $script:WindowsAccessControlTargetLockSyncRoot = $targetLockState.SyncRoot
 $script:WindowsAccessControlTargetLocks = $targetLockState.Locks
 $script:WindowsAccessControlMetricSyncRoot = [object]::new()
 $script:WindowsAccessControlMetrics = @{}
+$script:WindowsAccessRightsDisplayCache = @{}
+$script:WindowsAccessStandardRightNames = [ordered]@{
+    0x01000000L = 'AccessSystemSecurity'
+    0x02000000L = 'MaximumAllowed'
+    0x10000000L = 'GenericAll'
+    0x20000000L = 'GenericExecute'
+    0x40000000L = 'GenericWrite'
+    0x80000000L = 'GenericRead'
+}
 $script:WindowsADSchemaGuidNames = @{}
 $script:WindowsAccessControlBatchWorker =
     [System.Threading.ThreadLocal[bool]]::new()

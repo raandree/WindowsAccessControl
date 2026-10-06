@@ -61,11 +61,7 @@ function Invoke-WindowsServiceCommandBatch {
     $worker = {
         param($Target, $Context)
 
-        $targetParameters = @{}
-        foreach ($parameterName in $Context.Parameters.Keys) {
-            $targetParameters[$parameterName] =
-                $Context.Parameters[$parameterName]
-        }
+        $targetParameters = $Context.Parameters.Clone()
         if ($Target.ObjectFamily -eq 'ServiceControlManager') {
             $targetParameters.ServiceControlManager = $true
         } else {

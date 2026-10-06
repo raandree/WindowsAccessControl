@@ -77,11 +77,12 @@ function Get-NTFSAuditRule {
         if ($ExcludeInherited -and $ExcludeExplicit) {
             throw 'ExcludeInherited and ExcludeExplicit cannot be used together.'
         }
-        $accountSids = @(
-            foreach ($accountName in $Account) {
-                (Resolve-WindowsIdentityReference -Identity $accountName).Value
-            }
+        $accountSids = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
         )
+        foreach ($accountName in $Account) {
+            $null = $accountSids.Add((Resolve-WindowsIdentityReference -Identity $accountName).Value)
+        }
     }
 
     process {
@@ -110,10 +111,11 @@ function Get-NTFSAuditRule {
                 [System.Security.Principal.SecurityIdentifier]
             )
             foreach ($rule in $rules) {
-                $result = ConvertTo-NTFSAuditRuleObject -Rule $rule -Path $item.FullName
-                if ($accountSids.Count -gt 0 -and $result.SID -notin $accountSids) {
+                if ($accountSids.Count -gt 0 -and
+                    -not $accountSids.Contains($rule.IdentityReference.Value)) {
                     continue
                 }
+                $result = ConvertTo-NTFSAuditRuleObject -Rule $rule -Path $item.FullName
                 if ($Orphaned -and -not $result.IsOrphaned) {
                     continue
                 }

@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add [repeatable descriptor-processing benchmarks](tests/Performance/Measure-DescriptorProcessingPerformance.ps1) and explicit artifact selection for NTFS batch benchmarks, with module hashes and per-run measurements
 - Allow domain-lab acceptance runs to reuse the payload already on the
     management domain controller with `-SkipPayloadDeployment`. The existing
     `-SkipPayload` spelling remains an alias, and `-SkipDeployment` provides a
@@ -414,6 +415,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Reduce repeated rights formatting with bounded per-enum caching, filter NTFS accounts before rule conversion, and streamline parameter copying across all batch adapters
+- Make Active Directory removed-ACE detection use counted ordinal lookups and reduce allocation and sorting overhead in CNG DACL comparison while preserving duplicate ACEs and exact identity
 - Expand the comment-based help examples for `Add-ADObjectAccessRule` and its
     sibling mutators `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, and
     `Clear-ADObjectAccessRule`. Each command had carried only one or two basic

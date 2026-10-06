@@ -31,6 +31,33 @@ Describe 'Get-NTFSAccessRule orphan handling' -Tag 'Unit', 'WindowsOnly' {
         $result.IsOrphaned | Should -BeTrue
     }
 
+    It 'Should not translate or format accounts excluded by the account filter' {
+        $matchingRule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+            [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0'),
+            [System.Security.AccessControl.FileSystemRights]::Read,
+            [System.Security.AccessControl.AccessControlType]::Allow
+        )
+        $script:testSecurity.AddAccessRule($matchingRule)
+        Mock -ModuleName WindowsAccessControl -CommandName ConvertTo-NTFSAccessRuleObject -ParameterFilter {
+            $Rule.IdentityReference.Value -eq $script:orphanSid
+        } -MockWith {
+            throw 'An excluded account must not be translated or formatted.'
+        }
+
+        $parameters = @{
+            LiteralPath      = $script:testFile
+            Account          = 'S-1-1-0'
+            ExcludeInherited = $true
+            ThrottleLimit    = 1
+            ErrorAction      = 'Stop'
+        }
+        $result = @(Get-NTFSAccessRule @parameters)
+
+        $result | Should -HaveCount 1
+        $result[0].SID | Should -Be 'S-1-1-0'
+        Should -Invoke -ModuleName WindowsAccessControl -CommandName ConvertTo-NTFSAccessRuleObject -Times 0 -Exactly
+    }
+
     It 'Should show the SID in the account column of the table view' {
         $result = Get-NTFSAccessRule -LiteralPath $script:testFile -Orphaned
 

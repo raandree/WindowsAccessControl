@@ -73,10 +73,7 @@ function Invoke-WindowsADCommandBatch {
     $worker = {
         param($Target, $Context)
 
-        $targetParameters = @{}
-        foreach ($parameterName in $Context.Parameters.Keys) {
-            $targetParameters[$parameterName] = $Context.Parameters[$parameterName]
-        }
+        $targetParameters = $Context.Parameters.Clone()
         $targetParameters.DistinguishedName = $Target.DistinguishedName
         $script:WindowsAccessControlBatchWorker.Value = $true
         try {

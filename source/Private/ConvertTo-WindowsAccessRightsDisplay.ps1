@@ -11,12 +11,23 @@ function ConvertTo-WindowsAccessRightsDisplay {
     )
 
     $mask = [uint64]$AccessMask
-    $values = [uint64[]]@(
-        foreach ($value in [System.Enum]::GetValues($RightsType)) {
-            [uint64]([int64]$value -band 0xFFFFFFFFL)
+    if (-not $script:WindowsAccessRightsDisplayCache.ContainsKey($RightsType)) {
+        $values = [uint64[]]@(
+            foreach ($value in [System.Enum]::GetValues($RightsType)) {
+                [uint64]([int64]$value -band 0xFFFFFFFFL)
+            }
+        )
+        [System.Array]::Sort($values)
+        $script:WindowsAccessRightsDisplayCache[$RightsType] = [pscustomobject]@{
+            Values = $values
+            Displays = @{}
         }
-    )
-    [System.Array]::Sort($values)
+    }
+    $metadata = $script:WindowsAccessRightsDisplayCache[$RightsType]
+    if ($metadata.Displays.ContainsKey($AccessMask)) {
+        return $metadata.Displays[$AccessMask]
+    }
+    $values = $metadata.Values
 
     # Repeat the greedy decomposition Enum.ToString performs so that the part
     # the enum can name is still rendered by .NET, and only the bits it has no
@@ -40,15 +51,7 @@ function ConvertTo-WindowsAccessRightsDisplay {
     # object type on access, and the standard rights above them are legal in any
     # mask, so an object family whose enum omits them still has to report them by
     # name. Ascending bit order matches Enum.ToString output.
-    $standardRightName = [ordered]@{
-        0x01000000L = 'AccessSystemSecurity'
-        0x02000000L = 'MaximumAllowed'
-        0x10000000L = 'GenericAll'
-        0x20000000L = 'GenericExecute'
-        0x40000000L = 'GenericWrite'
-        0x80000000L = 'GenericRead'
-    }
-    foreach ($entry in $standardRightName.GetEnumerator()) {
+    foreach ($entry in $script:WindowsAccessStandardRightNames.GetEnumerator()) {
         $bit = [uint64]$entry.Key
         if (($residual -band $bit) -eq $bit) {
             $parts.Add($entry.Value)
@@ -60,5 +63,9 @@ function ConvertTo-WindowsAccessRightsDisplay {
         $parts.Add(('0x{0:X8}' -f $residual))
     }
 
-    $parts -join ', '
+    $display = $parts -join ', '
+    if ($metadata.Displays.Count -lt 128) {
+        $metadata.Displays[$AccessMask] = $display
+    }
+    $display
 }

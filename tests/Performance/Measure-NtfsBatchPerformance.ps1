@@ -16,6 +16,9 @@ param(
     ),
 
     [Parameter()]
+    [string]$ModuleManifestPath,
+
+    [Parameter()]
     [string]$OutputPath
 )
 
@@ -23,10 +26,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).Path
-$moduleManifest = Get-ChildItem -Path (
-    Join-Path $repositoryRoot 'output\module\WindowsAccessControl\*\WindowsAccessControl.psd1'
-) | Sort-Object -Property { [version]$_.Directory.Name } -Descending |
-    Select-Object -First 1
+$moduleManifest = if ([string]::IsNullOrWhiteSpace($ModuleManifestPath)) {
+    Get-ChildItem -Path (
+        Join-Path $repositoryRoot 'output\module\WindowsAccessControl\*\WindowsAccessControl.psd1'
+    ) | Sort-Object -Property { [version]$_.Directory.Name } -Descending |
+        Select-Object -First 1
+} else {
+    Get-Item -LiteralPath $ModuleManifestPath -ErrorAction Stop
+}
 if (-not $moduleManifest) {
     throw 'Build the module before running the performance benchmark.'
 }
@@ -103,6 +110,7 @@ try {
         SchemaVersion         = 1
         MeasuredUtc           = [DateTime]::UtcNow.ToString('o')
         ModuleVersion         = $module.Version.ToString()
+        ModuleSha256          = (Get-FileHash -LiteralPath $module.Path -Algorithm SHA256).Hash
         PowerShellVersion     = $PSVersionTable.PSVersion.ToString()
         PowerShellEdition     = $PSVersionTable.PSEdition
         OperatingSystem       = [Environment]::OSVersion.VersionString
