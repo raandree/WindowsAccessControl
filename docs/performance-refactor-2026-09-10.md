@@ -119,6 +119,9 @@ until process exit to preserve the module-identity invariant.
 No migration is needed. Rollback means reverting the focused refactor commit
 and rebuilding; no persisted format or runtime dependency changed. Host WinRM,
 service configuration, and remoting settings were not changed for validation.
-Live domain-lab and installed-package acceptance were not performed. Independent
-review is recommended with `review: on` because the changes affect shared
-batching and security-sensitive ACE comparisons; it was not requested here.
+Live domain-lab and installed-package acceptance were not performed. This diff
+was reviewed for security and quality in the session that wrote it, with no
+Blocker or Major finding; that is not independent review, which stays
+recommended for the shared batching and ACE-comparison changes. A later
+repository-wide review requested changes for findings in other, unchanged
+files, so acceptance is gated on those as well as on the runs above.
