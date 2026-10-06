@@ -9,18 +9,24 @@ source: repository, git reflog, and public GitHub API evidence
 
 ## Current task
 
-Handoff 01 of the 2026-10-06 sequence is complete on the local branch
-`ai/post-release-fixes`, created from `ai/post-release-triage`: the
-domain-lab acceptance runner no longer deletes directories it did not create.
-It marks what it creates on the management domain controller, replaces only
-absent or marked directories without a junction or symbolic link inside,
-validates the payload root there in every mode, and stops when a remote step
-does not confirm its directory. No live lab run took place; handoff 07 owns
-it. Next is handoff 02. No git remote was mutated.
+Handoff 02 of the 2026-10-06 sequence is complete on the local branch
+`ai/post-release-fixes`: three review defects are fixed test-first, one commit
+each. A Task Scheduler write may now repair a DACL that has no Local System
+ACE, while a missing or null current DACL is still refused. An SMB share DACL
+write reads the description immediately before the native call, keeps a
+concurrent edit, and after a committed write reports description trouble as a
+warning, never an error. `Get-ADObjectCallerEffectiveAccess` no longer
+requests `nTSecurityDescriptor`, and a command that needs a missing descriptor
+raises a typed read-control error. One independent review approved with minor
+findings; the cheap ones were fixed before the commits were finalized. The two
+Desktop DSC-engine tests fail locally only because WinRM is stopped. No live lab
+run took place; handoff 07 runs the two new AD live cases. Next is handoff 03.
+No git remote was mutated.
 
-The 2026-10-06 triage below remains the record of the open work. `main` is
-`40e364a`, in sync with `origin/main`; the triage restored the deleted local
-branch `ai/performance-refactor` at `5f06c03`.
+Handoff 01 made the domain-lab acceptance runner refuse to delete directories
+it did not create. The 2026-10-06 triage below remains the record of the open
+work. `main` is `40e364a`, in sync with `origin/main`; the triage restored the
+deleted local branch `ai/performance-refactor` at `5f06c03`.
 
 ## Handoff sequence
 
@@ -72,20 +78,18 @@ and cleanup. Only 08 touches the remote, with approval per action.
      delete `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server
      without an ownership check; it is a fixed child of the harness's marked
      member root.
-   - Major: `Test-WindowsTaskSchedulerSystemAce` returns `$false` when the
-     current DACL has no SYSTEM ACE, so a write that restores SYSTEM is
-     refused. Still present; no test pins it as intended behavior.
-   - Major: `Set-WindowsSmbShareSecurityDescriptor` restores the description
-     captured at target resolution, overwriting a concurrent edit. Still
-     present.
+   - Major, fixed by handoff 02: `Test-WindowsTaskSchedulerSystemAce`
+     refused a write that restores SYSTEM to a DACL without a SYSTEM ACE. A
+     missing or null current DACL is still refused.
+   - Major, fixed by handoff 02: `Set-WindowsSmbShareSecurityDescriptor`
+     restored the description captured at target resolution, overwriting a
+     concurrent edit.
    - Major: the opt-in ModuleFast path in the vendored `Resolve-Dependency.ps1`
      downloads and runs `bit.ly/modulefast` unverified. Disabled by default.
    - Major (CNG final read) is FIND-001, resolved on `main` by `f5731f1`.
-   - Minor: `Resolve-WindowsADObjectTarget` always requests
-     `nTSecurityDescriptor`, and `Get-WindowsADObjectRecord` indexes it
-     without an absence check. `Get-ADObjectCallerEffectiveAccess` does not
-     need it; the impact on callers without read-control access needs live
-     evidence.
+   - Minor, fixed by handoff 02: `Get-ADObjectCallerEffectiveAccess` requested
+     `nTSecurityDescriptor` it never used, and a caller without read-control
+     access got a null-index error. Live evidence is owed by handoff 07.
    - Follow-ups: `README.md` line 315 still calls private keys read-only; the
      batch dispatcher `CommandName`/`ObjectFamily` guard has no test.
 3. **Dependabot pull requests #1-#3** bump `actions/checkout` to 7.0.1,

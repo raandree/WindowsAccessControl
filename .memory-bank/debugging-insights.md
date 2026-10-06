@@ -833,6 +833,19 @@ explicitly before applying the allowed-base check.
 Use `AuthType.Kerberos` with an explicit FQDN server, signing, sealing, disabled
 referrals, and bounded timeouts when the contract requires strict Kerberos.
 
+A domain controller omits `nTSecurityDescriptor` instead of failing the search
+when the bind lacks `READ_CONTROL`. Request it only where a command uses it,
+and check for its absence before indexing it.
+
+## A .NET exception changes shape when it leaves a function
+
+A typed `catch [DirectoryOperationException]` still matches after the native
+call moves into a helper function, but `$_.Exception` in the caller is then a
+`MethodInvocationException`, so a property such as `Response.ResultCode` reads
+as null and the translation silently stops working. Keep a catch that inspects
+exception properties beside the native call, as `Send-WindowsADSearchRequest`
+does, and probe both editions before moving one.
+
 ## Cold-lab timeouts corrupt the shared certificate fixture
 
 A domain-lab acceptance started shortly after the Hyper-V host reboots runs

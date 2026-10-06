@@ -12,14 +12,27 @@ source: repository evidence
 `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
 FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
 found unmerged and untracked work and split it into eight handoffs on local
-`ai/post-release-fixes`. Handoff 01 fixed the lab-runner Blocker there; the
-Task Scheduler and SMB Majors, the restored `ai/performance-refactor` branch,
-three dependabot pull requests with inherited failures, unanswered issue #4
-with a missing NTFSSecurity migration map, an uncreated v0.2.0 changelog pull
-request, and the FIND-002 newline nit remain. `activeContext.md` holds the
-evidence and the order.
+`ai/post-release-fixes`. Handoffs 01 and 02 fixed the lab-runner Blocker and
+the Task Scheduler, SMB, and AD review defects there; the restored
+`ai/performance-refactor` branch, three dependabot pull requests with
+inherited failures, unanswered issue #4 with a missing NTFSSecurity migration
+map, an uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit
+remain. `activeContext.md` holds the evidence and the order.
 
 ## Recent milestones
+
+- 2026-10-06: Handoff 02 fixed three review defects test-first on
+    `ai/post-release-fixes`, one commit each. A Task Scheduler write may
+    repair a DACL without a Local System ACE; a missing or null current DACL
+    is still refused. An SMB DACL write reads the description just before
+    the native call, keeps concurrent edits, and warns instead of failing
+    after a committed write. `Get-ADObjectCallerEffectiveAccess` no longer
+    requests `nTSecurityDescriptor`; an absent descriptor elsewhere raises a
+    typed read-control error. The Core gate passes 1,905 tests with two
+    environmental skips at 83.2 percent asserted coverage. The Desktop gate
+    fails only the two WinRM-bound DSC-engine tests; its scoped coverage,
+    computed from its document, is 81.03 percent. One review approved with
+    minor findings, most fixed. No live lab run; 07 owns two new AD cases.
 
 - 2026-10-06: Handoff 01 made the domain-lab acceptance runner refuse to
     delete what it did not create, test-first on `ai/post-release-fixes`. It

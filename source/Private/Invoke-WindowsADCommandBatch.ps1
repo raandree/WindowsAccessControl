@@ -27,6 +27,9 @@ function Invoke-WindowsADCommandBatch {
         [switch]$SerializeByCanonicalTarget,
 
         [Parameter()]
+        [switch]$ExcludeSecurityDescriptor,
+
+        [Parameter()]
         [System.Management.Automation.ConfirmImpact]$ConfirmationImpact =
             [System.Management.Automation.ConfirmImpact]::None
     )
@@ -46,6 +49,9 @@ function Invoke-WindowsADCommandBatch {
             }
             if ($BoundParameters.ContainsKey('ExpectedObjectGuid')) {
                 $resolveParameters.ExpectedObjectGuid = $BoundParameters['ExpectedObjectGuid']
+            }
+            if ($ExcludeSecurityDescriptor) {
+                $resolveParameters.ExcludeSecurityDescriptor = $true
             }
             $target = Resolve-WindowsADObjectTarget @resolveParameters
             [pscustomobject]@{

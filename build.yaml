@@ -153,11 +153,10 @@ CodeCoverage:
   DomainLabCodeCoverageFile: tests/Lab/coverage/JaCoCo_coverage_DomainLab.xml
   DomainLabOnlySourcePath:
     - Private/Get-WindowsADEffectiveAccessRecord.ps1
-    - Private/Get-WindowsADObjectRecord.ps1
     - Private/Get-WindowsADRootDse.ps1
     - Private/Get-WindowsADRuleEnrichment.ps1
     - Private/New-WindowsADConnection.ps1
-    - Private/Resolve-WindowsADObjectTarget.ps1
+    - Private/Send-WindowsADSearchRequest.ps1
     - Public/Get-ADObjectSecurityDescriptor.ps1
     - Private/Invoke-WindowsSmbShareAclRuleMutation.ps1
     - Private/Invoke-WindowsSmbShareCommandBatch.ps1

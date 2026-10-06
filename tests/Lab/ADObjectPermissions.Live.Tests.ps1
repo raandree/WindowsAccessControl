@@ -216,6 +216,74 @@ Describe 'Active Directory object DACL commands' `
         ($asOperator.SDRightsEffective -band 4) | Should -Be 4
     }
 
+    It 'Should evaluate a caller who cannot read the object security descriptor' {
+        $restricted = $null
+        try {
+            $restrictedParameters = @{
+                Name = 'WacNoReadControl{0}' -f [guid]::NewGuid().ToString('N')
+                Path = $script:targetOu
+                Server = $script:server
+                ProtectedFromAccidentalDeletion = $false
+                PassThru = $true
+                ErrorAction = 'Stop'
+            }
+            $restricted = New-ADOrganizationalUnit @restrictedParameters
+            # A protected DACL drops the inherited Authenticated Users read, so
+            # the operator may read properties but not the descriptor itself.
+            # The runner keeps full control so cleanup never depends on group
+            # membership.
+            $domainAdminSid = "$($script:domain.DomainSID.Value)-512"
+            $runnerSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+            $restrictedSddl = 'D:P(A;;GA;;;{0})(A;;GA;;;{1})(A;;GA;;;SY)(A;;RPLCLO;;;{2})' -f
+                $domainAdminSid, $runnerSid, $script:operator.SID.Value
+            Set-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $restricted.DistinguishedName `
+                -AllowedBaseDistinguishedName $script:targetOu `
+                -Sddl $restrictedSddl `
+                -ThrottleLimit 1 `
+                -Confirm:$false
+
+            $asOperator = Get-ADObjectCallerEffectiveAccess `
+                -Server $script:server `
+                -DistinguishedName $restricted.DistinguishedName `
+                -Credential $script:credential `
+                -ThrottleLimit 1
+
+            $asOperator.DistinguishedName | Should -BeExactly $restricted.DistinguishedName
+            $asOperator.Account | Should -BeExactly $script:credential.UserName
+            ($asOperator.SDRightsEffective -band 4) | Should -Be 0
+            {
+                Get-ADObjectSecurityDescriptor `
+                    -Server $script:server `
+                    -DistinguishedName $restricted.DistinguishedName `
+                    -Credential $script:credential `
+                    -ThrottleLimit 1 `
+                    -ErrorAction Stop
+            } | Should -Throw -ExceptionType ([UnauthorizedAccessException]) `
+                -ExpectedMessage '*READ_CONTROL*'
+        }
+        finally {
+            if ($restricted) {
+                Remove-ADOrganizationalUnit -Identity $restricted.ObjectGuid -Server $script:server `
+                    -Confirm:$false -ErrorAction Stop
+            }
+        }
+    }
+
+    It 'Should report a missing directory object as not found' {
+        $missing = 'OU=WacMissing{0},{1}' -f [guid]::NewGuid().ToString('N'), $script:targetOu
+
+        {
+            Get-ADObjectSecurityDescriptor `
+                -Server $script:server `
+                -DistinguishedName $missing `
+                -ThrottleLimit 1 `
+                -ErrorAction Stop
+        } | Should -Throw -ExceptionType ([System.Management.Automation.ItemNotFoundException]) `
+            -ExpectedMessage '*was not found*'
+    }
+
     It 'Should reject configuration and schema partition reads' {
         foreach ($distinguishedName in @(
                 $script:configurationDn

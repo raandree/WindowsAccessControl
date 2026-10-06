@@ -576,6 +576,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Let `Get-ADObjectCallerEffectiveAccess` answer for a caller who cannot read
+    the object's security descriptor: resolving its targets no longer requests
+    `nTSecurityDescriptor`, which no output property uses. A command that does
+    need the descriptor now fails with an `UnauthorizedAccessException` naming
+    the likely missing read-control access instead of
+    `Cannot index into a null array`
+    ([specification](specs/0018-active-directory-caller-effective-access.md#output-contract))
 - Keep an SMB share description that someone edits while a share DACL write
     is in flight: the write now reads the description immediately before the
     native call instead of reusing the value captured at target resolution,

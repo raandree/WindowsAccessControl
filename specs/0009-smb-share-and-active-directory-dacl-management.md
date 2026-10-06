@@ -85,6 +85,13 @@ Output binds the current distinguished name to immutable `objectGUID` and
 server authority. Before every write, the adapter resolves the same DN again
 and rejects deletion, rename, move, or GUID mismatch.
 
+A domain controller omits `nTSecurityDescriptor` from a search result, rather
+than failing the search, when the bind lacks read-control access to the object.
+A command that needs the descriptor therefore fails with
+`UnauthorizedAccessException` naming the likely missing read-control access
+instead of continuing without it. A command that does not need the descriptor,
+such as `Get-ADObjectCallerEffectiveAccess`, does not request it.
+
 Every AD mutation also requires `AllowedBaseDistinguishedName`. The base must
 resolve to an organizational unit in the default domain partition. The target
 must be that OU or one of its descendants. Domain root, `AdminSDHolder`, the
