@@ -21,6 +21,13 @@ uncreated v0.2.0 changelog pull request, and the FIND-002 newline nit remain.
 
 ## Recent milestones
 
+- 2026-10-06: The user reviewed all 14 recorded agent decisions of handoffs
+    01 to 03 and accepted twelve as recorded. The other two were overtaken:
+    the decision log moved unchanged to `topics/decision-log.md`, bringing
+    `systemPatterns.md` within budget, and specs 0005 and 0006 now name the
+    descriptor benchmark and the per-instance rights cache. WinRM stays
+    enabled; the two lab-runner follow-ups are post-release items.
+
 - 2026-10-06: Handoff 03 finished the orphaned performance refactor on
     `ai/post-release-fixes`, as the user chose. Its code, tests, and
     evidence were ported without the old Memory Bank hunks, and the code

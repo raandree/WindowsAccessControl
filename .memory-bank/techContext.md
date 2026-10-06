@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-07-29
+last-verified: 2026-10-06
 owner: active-agent
 source: repository evidence
 ---
@@ -25,7 +25,10 @@ source: repository evidence
 
 - Windows development host.
 - Build orchestration runs in PowerShell 7.
-- PowerShell 7.6.1 and Windows PowerShell 5.1 are available.
+- PowerShell 7.6.6 and Windows PowerShell 5.1.26100 are available.
+- Local WinRM runs with automatic start and an HTTP listener since
+    2026-10-06; its inbound firewall rules stay disabled on a Public network.
+    The two Desktop DSC-engine tests need it.
 - Git default branch is `main`; the CI migration branch is
     `ai/github-actions-build`.
 

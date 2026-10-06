@@ -30,7 +30,12 @@ percent asserted coverage, a thin margin. No live lab run took place; handoff
 is handoff 04. No git remote was mutated.
 
 Handoffs 01 and 02 made the lab runner refuse to delete what it did not
-create and fixed the Task Scheduler, SMB, and AD review defects. The
+create and fixed the Task Scheduler, SMB, and AD review defects. On
+2026-10-06 the user reviewed all 14 recorded agent decisions of handoffs 01
+to 03: twelve are accepted as recorded, and the other two were overtaken by
+doing the work (the decision log moved out of `systemPatterns.md`, and specs
+0005 and 0006 name the descriptor benchmark). WinRM stays enabled here.
+Later handoffs ask their own questions with fresh evidence. The
 2026-10-06 triage below remains the record of the open work. `main` is
 `40e364a`, in sync with `origin/main`; `ai/performance-refactor` stays at
 `5f06c03` until handoff 08 deletes it with approval.
@@ -79,11 +84,13 @@ and cleanup. Only 08 touches the remote, with approval per action.
      refuses unmarked directories. The existing `C:\WacRepo` and the `0.0.1`
      installation on `F1ADC1` predate the marker, so 07 must decide what to do
      with them before its first run.
-   - Follow-up (review of handoff 01, not scheduled): the SMB, certificate
+   - Post-release follow-ups (user, 2026-10-06): the SMB, certificate
      private-key, Task Scheduler, and foreign-principal suites recursively
      delete `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server
      without an ownership check; it is a fixed child of the harness's marked
-     member root.
+     member root. And `-SkipPayloadDeployment -ModuleSource Installed` with no
+     payload root creates an unmarked root that a later full deployment
+     refuses; it fails safe and can be removed by hand.
    - Major, fixed by handoff 02: `Test-WindowsTaskSchedulerSystemAce`
      refused a write that restores SYSTEM to a DACL without a SYSTEM ACE. A
      missing or null current DACL is still refused.

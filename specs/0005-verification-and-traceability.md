@@ -323,6 +323,10 @@ zero failures or skips and leaves no staged files or local users.
 sequential and bounded-parallel NTFS owner reads over disposable targets. It
 emits elapsed time and throughput plus optional JSON evidence without a flaky
 hard timing assertion.
+`tests/Performance/Measure-DescriptorProcessingPerformance.ps1` measures the
+shared descriptor helpers with a per-run output checksum. Both benchmarks
+record the SHA-256 of the module they measured, so a before-and-after
+comparison checks hashes and checksums before it compares times.
 
 ### Domain-lab payload ownership
 

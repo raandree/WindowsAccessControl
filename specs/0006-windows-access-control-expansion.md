@@ -274,17 +274,29 @@ default, with `ThrottleLimit` defaulting to the smaller of eight and the logical
 processor count. `ThrottleLimit 1` provides deterministic sequential execution.
 
 Identity translation and target normalization are cached within one invocation.
+Immutable rights-enum metadata and at most 128 rendered masks per rights enum
+are cached for the life of a module instance, and every parallel worker
+runspace imports its own instance. Descriptors, identity lookups, tokens, and
+handles are never cached across invocations.
 Each target descriptor is loaded once and persisted once per selected mutation.
 Workers stream completed objects and structured errors without retaining native
 buffers. Representative batch benchmarks must show no material regression from
 the current NTFS implementation; correctness and section preservation remain
 hard gates.
 
-`tests/Performance/Measure-NtfsBatchPerformance.ps1` is the repeatable
+`tests/Performance/Measure-NtfsBatchPerformance.ps1` is the repeatable batch
 benchmark harness. It alternates sequential and bounded-parallel run order,
 uses disposable local files, verifies the complete result count, and records
 elapsed milliseconds plus targets per second. Timing is retained as evidence,
 not enforced as a flaky test threshold.
+
+`tests/Performance/Measure-DescriptorProcessingPerformance.ps1` measures the
+shared descriptor helpers: rights rendering, removed-entry detection,
+private-key DACL equivalence, and single-target dispatch. It warms each
+workload, alternates workload order, and records every elapsed time with a
+per-run output checksum. Both harnesses accept `-ModuleManifestPath` and record
+the module SHA-256, so a comparison checks artifact identity and output
+equality before it compares times.
 
 ## Observability
 
