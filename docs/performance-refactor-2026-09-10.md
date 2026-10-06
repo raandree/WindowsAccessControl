@@ -16,9 +16,15 @@ claim that every workload is faster.
   for membership checks.
 - Count retained Active Directory ACE identities with ordinal hash lookups
   instead of searching and shrinking a list. Preserve full binary identity,
-  duplicate counts, and the original order of removed ACEs.
+  duplicate counts, and the original order of removed ACEs. The comparer has to
+  stay ordinal: those identities are Base64, where two distinct entries can
+  differ only in letter case, so a case-insensitive map would merge them and
+  report a removed entry as retained.
 - Sort CNG comparison keys using ordinal .NET array sorting. Keep ordered
-  desired-state comparison distinct from unordered post-write comparison.
+  desired-state comparison distinct from unordered post-write comparison. Every
+  component of a private-key ACE key is uppercase hexadecimal or a fixed
+  literal, so two keys cannot differ only in case and the ordinal sort is
+  defensive rather than a behavior fix.
 - Replace pipeline-based metric-parameter counting with Boolean checks and
   replace per-target parameter-copy loops with shallow hashtable clones in
   NTFS, registry, service, process, SMB, AD, and Task Scheduler adapters.

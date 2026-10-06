@@ -11,7 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add [repeatable descriptor-processing benchmarks](tests/Performance/Measure-DescriptorProcessingPerformance.ps1) and explicit artifact selection for NTFS batch benchmarks, with module hashes and per-run measurements
+- Add a repeatable descriptor-processing benchmark beside the existing NTFS
+    read benchmark, covering rights rendering, removed-entry detection, DACL
+    equivalence, and single-target dispatch. Both benchmarks now accept
+    `-ModuleManifestPath` to measure one specific built artifact and record its
+    SHA-256 with every run, so a before-and-after comparison names the exact
+    module it measured
 - Allow domain-lab acceptance runs to reuse the payload already on the
     management domain controller with `-SkipPayloadDeployment`. The existing
     `-SkipPayload` spelling remains an alias, and `-SkipDeployment` provides a
@@ -415,8 +420,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Reduce repeated rights formatting with bounded per-enum caching, filter NTFS accounts before rule conversion, and streamline parameter copying across all batch adapters
-- Make Active Directory removed-ACE detection use counted ordinal lookups and reduce allocation and sorting overhead in CNG DACL comparison while preserving duplicate ACEs and exact identity
+- Speed up the shared descriptor paths that every object family reads through.
+    Measured on PowerShell 7 over 256 access-control entries, repeated rights
+    rendering is 66% faster, removed-entry detection 64% faster, and
+    single-target batch dispatch 14% faster; on Windows PowerShell 5.1
+    removed-entry detection is 95% faster. Every measured workload improved on
+    both editions. The public command surface, output objects, descriptor
+    semantics, and required privileges are unchanged, and filesystem owner
+    reads are unchanged because their cost is the operating-system call rather
+    than the module. See the
+    [measurement report](docs/performance-refactor-2026-09-10.md) for the
+    method, the artifact hashes, and the limits of each figure
+- Keep exact access-control entry identity while comparing descriptors faster.
+    Removed-entry detection for Active Directory still reports one entry per
+    removed copy in its original order and still compares the complete binary
+    entry, so the deny-removal warning raised before a directory write keeps
+    its exact-match guarantee. Private-key DACL comparison keeps an ordered
+    desired-state check separate from unordered post-write verification
 - Expand the comment-based help examples for `Add-ADObjectAccessRule` and its
     sibling mutators `Set-ADObjectAccessRule`, `Remove-ADObjectAccessRule`, and
     `Clear-ADObjectAccessRule`. Each command had carried only one or two basic

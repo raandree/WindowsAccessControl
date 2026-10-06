@@ -127,6 +127,18 @@ result instead of a flaky timing assertion:
     -OutputPath .\output\testResults\NtfsBatchBenchmark.json
 ```
 
+A second benchmark measures the shared descriptor paths every object family
+uses, rather than filesystem calls: rights rendering, removed-entry detection,
+DACL equivalence, and single-target dispatch.
+
+```powershell
+.\tests\Performance\Measure-DescriptorProcessingPerformance.ps1 -AceCount 256 -Iterations 5
+```
+
+Run each in a fresh process. Both accept `-ModuleManifestPath` to measure one
+specific built module and record its SHA-256 in the result, which is what lets
+a before-and-after comparison prove which artifact produced each number.
+
 ## Commands on this page
 
 | Area | Commands |
