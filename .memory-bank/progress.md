@@ -9,18 +9,25 @@ source: repository evidence
 
 ## Current status
 
-`v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
-FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
-found unmerged and untracked work and split it into eight handoffs on local
-`ai/post-release-fixes`. Handoffs 01 to 06 fixed the lab-runner Blocker, the
-Task Scheduler, SMB, and AD review defects, ported and re-measured the
-performance refactor, wrote the NTFSSecurity migration guide, moved the build
-workflow to the Node 24 releases of its three pinned actions, restored the
-0.2.0 changelog section, and closed FIND-002. Handoff 07 is Blocked for want
-of the lab host, and handoff 08 waits for the user's approval of each remote
-action. `activeContext.md` holds the evidence and the order.
+`v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07; `v0.2.0` remains
+the stable release. Pull request #5 carried the post-release work that a
+2026-10-06 triage split into eight handoffs: the lab-runner Blocker, the Task
+Scheduler, SMB, and AD review defects, the performance refactor, the
+NTFSSecurity migration guide, the Node 24 action releases, the restored 0.2.0
+changelog section with a release guard, and FIND-002. Handoff 07, live lab
+acceptance, is still owed before the next stable release. `activeContext.md`
+holds the open work.
 
 ## Recent milestones
+
+- 2026-10-07: Published `v0.3.0-preview0002`. The user answered every pending
+    question and ran each remote step from commands the agent handed over,
+    because the house rules block agent pushes; the agent verified each
+    result read-only. Pull request #5 passed CI in both editions without an
+    annotation and merged as `2ebb3a5`; the GitHub release, the Gallery entry,
+    and the wiki Home page carry the version GitVersion had predicted.
+    Dependabot #1-#3 are closed as superseded, issue #4 has its reply, and
+    the stale branches are deleted.
 
 - 2026-10-06: With the user's overnight delegation, handoff 07 was recorded
     as Blocked (no lab VMs on this machine) and handoff 08 was prepared up to
@@ -120,52 +127,14 @@ action. `activeContext.md` holds the evidence and the order.
     Dependabot failures are inherited from their parent `4806726`, fixed on
     `main` by `0502254`. No code change and no remote mutation.
 
-- 2026-09-07: Completed fresh reacceptance of `f5731f1` without replacing the
-    lab. All four built/installed passes have 95 passed tests, zero failures or
-    skips, and ready cleanup. Five DSC-engine tests and both fresh local gates
-    pass; Core has 91.15 percent asserted coverage and Desktop 90.41 percent.
-    Verified original installation bytes/ACLs, fixture restoration, and all 38
-    retained guest evidence files before staging removal. Thirteen VMs and
-    checkpoints remain. Final completion is 18:52:19 UTC; no git remote mutation.
-
-- 2026-09-07: Resolved FIND-001 test-first. A uniquely named persisted CNG key
-    reproduced the third-read exception after its requested DACL was already
-    stored, then passed with exactly two helper reads after the one-line source
-    correction. Core and Desktop each pass all 52 affected CNG tests; a focused
-    Desktop live mutation restores the fixture descriptor byte-for-byte and
-    removes its binding and staging. Full local runs pass 1,806 and 1,761 tests
-    at 83.00 and 80.81 percent asserted coverage without prior lab evidence.
-    PSScriptAnalyzer is clean on both changed files, and independent review
-    approved with no finding. The 22-task pack is clean and package SHA-256 is
-    `D93B2644B31A38B37F9FAC08DBD1D28C85AF8AD452D81E1428E0A3054530588C`.
-    Prior accepted artifacts remain preserved.
-
-- 2026-09-07: Completed one independent review of `3321350..358651e` plus the
-    CNG persistence path. Verified one Minor post-write read defect and two
-    missing-newline locations under one Nit; no Blocker or Major findings.
-    Reconciled raw-report tally and topology errors against the retained
-    evidence. No runtime or test code changed and no live tests were repeated.
-
-- 2026-09-07: Checkpointed all thirteen existing lab VMs and verified signed,
-    sealed Kerberos LDAP, WSMan, test dependencies, and the renewable template.
-    Rebuilt and byte-verified the candidate; closed the five-test Desktop DSC
-    gate on the reserved member. Fixed the stale cleanup-list entry exposed by
-    live acceptance, retained the failed evidence, and verified exact-identity
-    recovery. All four repaired passes finish with 95 tests each and clean
-    fixtures. Original installation bytes and ACLs are restored; final lab
-    services, LDAP, and checkpoint checks pass. Local Core passes 1,805 tests
-    and 91.16 percent asserted coverage; Desktop passes 1,760 tests and 90.41
-    percent. Both imported the successful lab coverage byte-for-byte, with the
-    80 percent threshold unchanged. Validation completed at 12:08 UTC and
-    monitoring stopped. The dated lab acceptance report retains candidate
-    hashes and the failure, recovery, and successful-run evidence.
-
 - 2026-09-03 to 2026-09-07: OI-31, the 105-command audit, the audit-gap
     closure, the `6f7ba15` close-out, the `34026468199` wiki-publication hang
     (DscResource.DocGenerator#111), the `34021812398` completer fix, the
     `ai/access-rights-completion` review, the script-inventory audit, the
-    wiki-publisher investigation that run `34055979655` closed, and the
-    `ai/test-gap-audit` handoff push are in
+    wiki-publisher investigation that run `34055979655` closed, the
+    `ai/test-gap-audit` handoff push, the 2026-09-07 lab checkpoints, review,
+    FIND-001 resolution, and `f5731f1` reacceptance are in
+    `git show 2ebb3a5:.memory-bank/progress.md`,
     `git show 023afe9:.memory-bank/progress.md`,
     `git show 4461b90:.memory-bank/progress.md`,
     `git show 8b67058:.memory-bank/progress.md`, and, for the oldest,
