@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     that the native write clears is restored and reported, a concurrent edit is
     kept with a warning, and a description that cannot be read before the
     write stops the command before anything is written
+- Add live domain-lab cases for the SMB share and Active Directory paths that
+    no test executed. An SDDL without a DACL is refused, `-PassThru` returns
+    the stored descriptor, a rule copy that was not read from the share and a
+    rule bound to another server are refused before anything is removed, and a
+    share DACL write asks for confirmation and writes nothing when the caller
+    cannot answer. A failed inheritance-source or schema-name lookup leaves the
+    rules in the report with a non-terminating error, and an object deleted
+    after target resolution is reported as not found
 
 ### Changed
 

@@ -42,8 +42,8 @@ is not reported as a successful live write.
 | FR-15 | Public command tests and pipeline cases across Integration tests |
 | FR-16 | Path/LiteralPath help QA and filesystem-object pipeline tests |
 | FR-17 | `MutatorSafety.Tests.ps1` |
-| FR-18 | SMB command-contract Unit tests plus disposable share DACL round-trip, add, exact-remove, `WhatIf`, unrelated-ACE preservation, and rollback tests; live description restoration after the native write, concurrent-edit warning, and stop on a description that cannot be read before the write |
-| FR-19 | AD command-contract and LDAP-adapter Unit tests plus disposable-OU signed/sealed read, delegated add, object-ACE exact-remove, `WhatIf`, GUID revalidation, and rollback tests |
+| FR-18 | SMB command-contract Unit tests plus disposable share DACL round-trip, add, exact-remove, `WhatIf`, unrelated-ACE preservation, and rollback tests; live description restoration after the native write, concurrent-edit warning, and stop on a description that cannot be read before the write; live refusal of an SDDL without a DACL, of a rule copy not read from the share, and of a rule bound to another server, the descriptor `-PassThru` returns, and the confirmation a share DACL write asks for |
+| FR-19 | AD command-contract and LDAP-adapter Unit tests plus disposable-OU signed/sealed read, delegated add, object-ACE exact-remove, `WhatIf`, GUID revalidation, and rollback tests; live degraded rule reports when the inheritance-source or schema-name lookup fails, and a not-found report for an object deleted after target resolution |
 | FR-20 | Task Scheduler command-contract and COM-boundary Unit tests plus disposable folder/task DACL reads, `WhatIf`, containment rejection, round trip, task-definition preservation, rollback, and cleanup tests; typed access-rule contract, rights-model mask, `AppliesTo` flag-conversion, inherited-rule rejection, canonical-identity revalidation, and live add/remove tests; live repair of a protected folder and task DACL without Local System and refusal of a Local System deny there |
 | FR-21 | SMB effective-access contract/behavior Unit tests plus delegated local share Authz, canonical deduplication, context-label, and backing-NTFS exclusion live evidence |
 | FR-22 | `Edit-NTFSItemSecurityDescriptor.Tests.ps1` Unit contract plus bounded live add, pass-through, callback-failure, and non-persistence tests; `NtfsDescriptorMutators.Tests.ps1` and `RegistryDescriptorMutators.Tests.ps1` descriptor parameter-set contract, in-memory staging, unloaded-section rejection, and concurrency-token tests; live `NtfsInMemoryDescriptorEditing` and `RegistryInMemoryDescriptorEditing` round-trip, bounded-scope, `RequireUnchanged` stale-rejection, and target-unchanged evidence |
@@ -386,8 +386,10 @@ for every family it exercises and writes one JaCoCo document.
   measured where that code actually runs. The runner publishes the measurable
   locations of the module under test, the suite arms those locations in the
   member runspace, and the hit counts are returned in publication order and
-  added to the harness-side counts. A member module file whose content differs
-  from the measured one is refused rather than measured.
+  added to the harness-side counts. A suite that drives a second member
+  session arms and returns that session under its own name. A member module
+  file whose content differs from the measured one is refused rather than
+  measured.
 - The document is rendered from the harness-side locations, so its package,
   class, and source-file names are relative to the built module directory and
   are identical to the names the repository build produces for the same module

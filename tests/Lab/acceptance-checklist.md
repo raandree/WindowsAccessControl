@@ -149,24 +149,31 @@ installation of the same version.
 
 The most recently added live cases are:
 
-- `Should accept and repair a protected folder and task DACL that has no Local
-  System ACE` in
-  [TaskSchedulerPermissions.Live.Tests.ps1](TaskSchedulerPermissions.Live.Tests.ps1).
-  It creates its own disposable folder and task and deletes both.
-- `Should restore a description that the native DACL write cleared`,
-  `Should keep a description edited during the DACL write and warn with the
-  earlier value`, and `Should stop before writing when the description cannot
-  be read before the write` in
-  [SmbSharePermissions.Live.Tests.ps1](SmbSharePermissions.Live.Tests.ps1).
-  The second races a native watcher against the setter's read-back and retries
-  a lost race, up to five writes; the third injects its read failure through a
-  module-scope shadow of `Get-SmbShare`.
+- The `SMB share DACL command guards` block in
+  [SmbSharePermissions.Live.Tests.ps1](SmbSharePermissions.Live.Tests.ps1):
+  an SDDL without a DACL is refused, `-PassThru` returns the stored
+  descriptor, a rule copy that was not read from the share and a rule bound to
+  another server are refused, and a share DACL write without
+  `-Confirm:$false` asks for confirmation. The last case opens its own member
+  session from a runspace without a user interface, so the prompt fails in
+  every host instead of waiting for a person, and it arms and returns member
+  coverage for that session under the name
+  `SmbSharePermissions.Live.Tests.Confirmation.ps1`.
+- The `Active Directory rule enrichment failures` block and `Should report an
+  object deleted after target resolution as not found` in
+  [ADObjectPermissions.Live.Tests.ps1](ADObjectPermissions.Live.Tests.ps1).
+  No directory condition fails only the enrichment lookups, so a module-scope
+  Pester mock injects each failure after the real descriptor read. The
+  deletion case creates a disposable organizational unit and deletes it
+  inside the effective-access request, before the real request reaches the
+  controller.
 
-Every earlier case still runs, including the escaped-name and reused-GUID
-regressions, which require unchanged DACL evidence and exact-identity cleanup.
-The existing replication suite still intentionally stops and restores the
-partner directory service; check that the partner answers LDAP after the
-suite.
+Every earlier case still runs, including the Task Scheduler repair of a DACL
+without Local System, the SMB description cases, and the escaped-name and
+reused-GUID regressions, which require unchanged DACL evidence and
+exact-identity cleanup. The existing replication suite still intentionally
+stops and restores the partner directory service; check that the partner
+answers LDAP after the suite.
 
 ## Evidence and stop conditions
 

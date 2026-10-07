@@ -966,3 +966,270 @@ namespace WindowsAccessControlLab
         $result.ShadowRemoved | Should -BeTrue
     }
 }
+
+# FR-18, NFR-11: refusals and the confirmation that keep an unintended share
+# write from happening, and the descriptor a write reports.
+Describe 'SMB share DACL command guards' -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    AfterEach {
+        Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:delegatedDescriptor.Sddl, $script:originalDescription `
+            -ScriptBlock {
+                param($ShareName, $Sddl, $Description)
+
+                Set-SmbShareSecurityDescriptor `
+                    -Name $ShareName `
+                    -Sddl $Sddl `
+                    -Confirm:$false
+                Set-SmbShare `
+                    -Name $ShareName `
+                    -Description $Description `
+                    -Confirm:$false
+            }
+    }
+
+    It 'Should refuse an SDDL without a DACL before writing' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName `
+            -ScriptBlock {
+                param($ShareName)
+
+                $sddlBefore = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
+                # No DACL section at all, and a DACL section that is present
+                # but null, which would grant everyone full access.
+                $failures = foreach ($sddl in 'O:BA', 'D:NO_ACCESS_CONTROL') {
+                    try {
+                        Set-SmbShareSecurityDescriptor `
+                            -Name $ShareName `
+                            -Sddl $sddl `
+                            -Confirm:$false `
+                            -ErrorAction Stop
+                        'no failure'
+                    }
+                    catch {
+                        $_.Exception.Message
+                    }
+                }
+                [pscustomobject]@{
+                    Failures = @($failures)
+                    Unchanged = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl -ceq $sddlBefore
+                }
+            }
+
+        @($result.Failures) | Should -Be @(
+            'The supplied SDDL does not contain a non-null DACL.'
+            'The supplied SDDL does not contain a non-null DACL.'
+        )
+        $result.Unchanged | Should -BeTrue
+    }
+
+    It 'Should return the stored descriptor with PassThru' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:testSid `
+            -ScriptBlock {
+                param($ShareName, $TestSid)
+
+                $requested = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl +
+                    "(A;;0x1200a9;;;$TestSid)"
+                $output = @(
+                    Set-SmbShareSecurityDescriptor `
+                        -Name $ShareName `
+                        -Sddl $requested `
+                        -PassThru `
+                        -Confirm:$false
+                )
+                [pscustomobject]@{
+                    Requested = $requested
+                    Output = $output
+                    Stored = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
+                    Description = (Get-SmbShare -Name $ShareName -ErrorAction Stop).Description
+                }
+            }
+
+        @($result.Output) | Should -HaveCount 1
+        $result.Output[0].PSObject.TypeNames |
+            Should -Contain 'Deserialized.WindowsAccessControl.SmbShareSecurityDescriptor'
+        $result.Output[0].ShareName | Should -BeExactly $script:shareName
+        $result.Output[0].Sections.ToString() | Should -Be 'Access'
+        $result.Output[0].Sddl | Should -BeExactly $result.Stored
+        $result.Stored | Should -BeExactly $result.Requested
+        $result.Description | Should -BeExactly $script:originalDescription
+    }
+
+    It 'Should refuse a rule copy that was not read from the share before removing anything' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:testSid `
+            -ScriptBlock {
+                param($ShareName, $TestSid)
+
+                $added = Add-SmbShareAccessRule `
+                    -Name $ShareName `
+                    -Account $TestSid `
+                    -AccessRights Read `
+                    -PassThru `
+                    -Confirm:$false
+                $sddlBefore = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
+                # A rule restored from serialized data and a reshaped copy keep
+                # the rule's values but are no longer the object the share
+                # returned.
+                $copies = @(
+                    [Management.Automation.PSSerializer]::Deserialize(
+                        [Management.Automation.PSSerializer]::Serialize($added)
+                    )
+                    $added | Select-Object -Property *
+                )
+                $failures = foreach ($copy in $copies) {
+                    try {
+                        $copy | Remove-SmbShareAccessRule -Confirm:$false -ErrorAction Stop
+                        'no failure'
+                    }
+                    catch {
+                        $_.Exception.Message
+                    }
+                }
+                [pscustomobject]@{
+                    Failures = @($failures)
+                    Unchanged = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl -ceq $sddlBefore
+                    StillGranted = [bool]@(
+                        Get-SmbShareAccessRule -Name $ShareName | Where-Object { $_.SID -eq $TestSid }
+                    ).Count
+                }
+            }
+
+        @($result.Failures) | Should -Be @(
+            'InputObject must be a path-bound rule from Get-SmbShareAccessRule.'
+            'InputObject must be a path-bound rule from Get-SmbShareAccessRule.'
+        )
+        $result.Unchanged | Should -BeTrue
+        $result.StillGranted | Should -BeTrue
+    }
+
+    It 'Should refuse a rule whose canonical target names another server' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:shareName, $script:testSid `
+            -ScriptBlock {
+                param($ShareName, $TestSid)
+
+                $added = Add-SmbShareAccessRule `
+                    -Name $ShareName `
+                    -Account $TestSid `
+                    -AccessRights Read `
+                    -PassThru `
+                    -Confirm:$false
+                $sddlBefore = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
+                $readTarget = $added.CanonicalTarget
+                $added.CanonicalTarget = 'SmbShare:WACLABOTHER:{0}' -f $ShareName.ToUpperInvariant()
+                $failure = try {
+                    $added | Remove-SmbShareAccessRule -Confirm:$false -ErrorAction Stop
+                    'no failure'
+                }
+                catch {
+                    $_.Exception.Message
+                }
+                [pscustomobject]@{
+                    ReadTarget = $readTarget
+                    Server = [Environment]::MachineName.ToUpperInvariant()
+                    Failure = $failure
+                    Unchanged = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl -ceq $sddlBefore
+                    StillGranted = [bool]@(
+                        Get-SmbShareAccessRule -Name $ShareName | Where-Object { $_.SID -eq $TestSid }
+                    ).Count
+                }
+            }
+
+        $result.ReadTarget | Should -BeExactly (
+            'SmbShare:{0}:{1}' -f $result.Server, $script:shareName.ToUpperInvariant()
+        )
+        $result.Failure | Should -BeExactly 'The SMB share rule target no longer matches its canonical identity.'
+        $result.Unchanged | Should -BeTrue
+        $result.StillGranted | Should -BeTrue
+    }
+
+    It 'Should ask before writing and write nothing when the caller cannot answer' {
+        # Without -Confirm:$false the high-impact write asks the caller first.
+        # A remote prompt goes to the host of the runspace that opened the
+        # session, so a session opened from a runspace without a user interface
+        # answers it with an error in every host, and this case never waits on
+        # a person. Coverage is armed in that session too.
+        $opener = [powershell]::Create()
+        $promptless = $null
+        $coverageArmed = $false
+        try {
+            $null = $opener.AddCommand('New-PSSession').
+                AddParameter('ComputerName', $env:WAC_DOMAIN_LAB_MEMBER).
+                AddParameter('Authentication', 'Kerberos').
+                AddParameter('ErrorAction', 'Stop')
+            $promptless = @($opener.Invoke())[0]
+            Invoke-Command `
+                -Session $promptless `
+                -ArgumentList $script:remoteManifest `
+                -ScriptBlock {
+                    param($Manifest)
+
+                    Import-Module $Manifest -Force -ErrorAction Stop
+                }
+            $null = Enter-WindowsAccessControlMemberCoverage `
+                -Session $promptless `
+                -ModulePath (Join-Path $script:remoteModulePath 'WindowsAccessControl.psm1')
+            $coverageArmed = $true
+            $result = Invoke-Command `
+                -Session $promptless `
+                -ArgumentList $script:shareName, $script:testSid `
+                -ScriptBlock {
+                    param($ShareName, $TestSid)
+
+                    $sddlBefore = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
+                    $descriptionBefore = (Get-SmbShare -Name $ShareName -ErrorAction Stop).Description
+                    $stream = @(
+                        Set-SmbShareSecurityDescriptor `
+                            -Name $ShareName `
+                            -Sddl ($sddlBefore + "(A;;0x1200a9;;;$TestSid)") 2>&1
+                    )
+                    $failures = @($stream | Where-Object { $_ -is [Management.Automation.ErrorRecord] })
+                    [pscustomobject]@{
+                        ConfirmPreference = [string]$ConfirmPreference
+                        OutputCount = $stream.Count - $failures.Count
+                        Failures = @(
+                            $failures | ForEach-Object {
+                                $exception = $_.Exception
+                                while ($exception.InnerException) {
+                                    $exception = $exception.InnerException
+                                }
+                                '{0}: {1}' -f $exception.GetType().FullName, $exception.Message
+                            }
+                        )
+                        Target = 'SmbShare:{0}:{1}' -f
+                            [Environment]::MachineName.ToUpperInvariant(), $ShareName.ToUpperInvariant()
+                        DaclUnchanged = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl -ceq $sddlBefore
+                        DescriptionUnchanged = (Get-SmbShare -Name $ShareName -ErrorAction Stop).Description -ceq
+                            $descriptionBefore
+                    }
+                }
+        }
+        finally {
+            if ($promptless) {
+                if ($coverageArmed) {
+                    $null = Exit-WindowsAccessControlMemberCoverage `
+                        -Session $promptless `
+                        -Name 'SmbSharePermissions.Live.Tests.Confirmation.ps1'
+                }
+                Remove-PSSession -Session $promptless
+            }
+            $opener.Dispose()
+        }
+
+        $result.ConfirmPreference | Should -BeExactly 'High'
+        $result.OutputCount | Should -Be 0
+        @($result.Failures) | Should -HaveCount 1
+        $result.Failures[0] | Should -BeLike 'System.Management.Automation.Host.HostException: *'
+        $result.Failures[0] | Should -Match ([regex]::Escape(
+            'Performing the operation "Set SMB share DACL" on target "{0}".' -f $result.Target
+        ))
+        $result.DaclUnchanged | Should -BeTrue
+        $result.DescriptionUnchanged | Should -BeTrue
+    }
+}
