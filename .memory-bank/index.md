@@ -3,7 +3,7 @@ schema-version: 1
 loading-mode: routed
 status: accepted
 owner: shared
-last-verified: 2026-07-25
+last-verified: 2026-10-06
 source: repository evidence
 ---
 
@@ -31,7 +31,7 @@ read `activeContext.md` before editing.
 | `scope` | Purpose, scope, requirements, Acceptance criteria | `projectbrief.md` |
 | `product` | Users, problem, workflow, experience goal | `productContext.md` |
 | `implementation` | Code, configuration, build, test, dependency, deployment | `techContext.md`, `activeContext.md` |
-| `architecture` | Design, pattern, decision, migration, integration | `systemPatterns.md`, relevant `specs/decisions/*.md` |
+| `architecture` | Design, pattern, decision, migration, integration | `systemPatterns.md`, relevant `specs/decisions/*.md`; `topics/decision-log.md` when a numbered Memory Bank decision matters |
 | `status` | Progress, recent change, open work | `progress.md`, `activeContext.md` |
 | `language` | Canonical terms in authored artifacts | `glossary.md` |
 | `interaction-history` | Session analysis, prompt trends, Memory Bank evals | `promptHistory.md`, `progress.md` |

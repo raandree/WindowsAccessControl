@@ -80,7 +80,14 @@ Task Scheduler. The adapter enables no privilege and sends no outbound request.
 - `ShouldProcess` gates every write with high confirmation impact.
 - The target is resolved again inside the operation-scoped COM boundary.
 - Every current literal Local System ACE must remain byte-identical, and the
-  candidate must not add an explicit Local System deny ACE.
+  candidate must not add an explicit Local System deny ACE. A current DACL
+  without a Local System ACE has nothing to preserve, so any candidate without
+  a Local System deny ACE is accepted, including one that restores Local
+  System. Such a candidate need not grant Local System; if it also drops every
+  other allow ACE that covers the service token, Task Scheduler can lose access
+  to the target. A current descriptor whose DACL is missing or null is
+  refused, because neither Local System preservation nor an exact rollback can
+  be verified against it.
 - A write is rejected when the candidate newly denies any identity in the Task
   Scheduler service token and the denied mask intersects the read, write, or
   run access the service requires. The evaluated set is the live LocalSystem
@@ -125,11 +132,13 @@ Task Scheduler. The adapter enables no privilege and sends no outbound request.
 ## Verification
 
 Unit tests cover path normalization, containment, system-tree rejection, COM
-cleanup after failure, setter flags, Local System preservation, service-token
-deny rejection, object-ACE rejection, stale-descriptor rejection, the two
-rights-model mask tables, `AppliesTo` flag conversion, inheritance-sensitive
-duplicate detection, inherited-rule rejection, canonical-identity revalidation,
-and canonical DACL comparison. Public contract tests cover all ten exports.
+cleanup after failure, setter flags, Local System preservation, repair of a
+DACL without Local System, refusal of a missing or null current DACL,
+service-token deny rejection, object-ACE rejection, stale-descriptor rejection,
+the two rights-model mask tables, `AppliesTo` flag conversion,
+inheritance-sensitive duplicate detection, inherited-rule rejection,
+canonical-identity revalidation, and canonical DACL comparison. Public contract
+tests cover all ten exports.
 
 Disposable live acceptance creates one disabled inert task inside the marked
 folder, proves typed and deduplicated reads, `WhatIf`, unsafe-boundary rejection,

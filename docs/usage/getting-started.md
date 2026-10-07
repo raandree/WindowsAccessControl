@@ -165,4 +165,5 @@ Get-Item -LiteralPath 'HKLM:\Software\Contoso' | Get-RegistryKeyAccessRule
 ## See also
 
 - [Usage guide overview](../usage-guide.md)
+- [Migration from NTFSSecurity](../migration-from-ntfssecurity.md)
 - [Migration from NTFSPermission](../migration-from-ntfspermission.md)

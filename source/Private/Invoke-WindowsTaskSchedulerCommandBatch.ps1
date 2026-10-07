@@ -61,10 +61,7 @@ function Invoke-WindowsTaskSchedulerCommandBatch {
     $worker = {
         param($Target, $Context)
 
-        $targetParameters = @{}
-        foreach ($parameterName in $Context.Parameters.Keys) {
-            $targetParameters[$parameterName] = $Context.Parameters[$parameterName]
-        }
+        $targetParameters = $Context.Parameters.Clone()
         $targetParameters[$Context.PathParameterName] = $Target.TaskPath
         if ($Target.ObjectType -eq 'ScheduledTask') {
             $targetParameters.TaskName = $Target.TaskName

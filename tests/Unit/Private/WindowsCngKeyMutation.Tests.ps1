@@ -77,6 +77,31 @@ Describe 'Certificate private-key rights normalization' -Tag 'Unit', 'WindowsOnl
 
         $result | Should -BeFalse
     }
+
+    It 'Should preserve duplicate ACE counts during an unordered comparison of <Name>' -ForEach @(
+        @{
+            Name = 'the same multiset'
+            RightSddl = 'D:P(A;;FA;;;BA)(A;;FA;;;SY)(A;;FA;;;SY)'
+            Expected = $true
+        }
+        @{
+            Name = 'different multiplicities'
+            RightSddl = 'D:P(A;;FA;;;BA)(A;;FA;;;BA)(A;;FA;;;SY)'
+            Expected = $false
+        }
+    ) {
+        $left = script:ConvertTo-Descriptor 'D:P(A;;FA;;;SY)(A;;FA;;;SY)(A;;FA;;;BA)'
+        $right = script:ConvertTo-Descriptor $RightSddl
+        $originalSddl = $left.GetSddlForm([Security.AccessControl.AccessControlSections]::All)
+
+        $result = & $script:module {
+            param($Left, $Right)
+            Test-WindowsCngKeyDaclEquivalent -Left $Left -Right $Right
+        } $left $right
+
+        $result | Should -Be $Expected
+        $left.GetSddlForm([Security.AccessControl.AccessControlSections]::All) | Should -BeExactly $originalSddl
+    }
 }
 
 Describe 'Certificate private-key protected ACE gate' -Tag 'Unit', 'WindowsOnly' {

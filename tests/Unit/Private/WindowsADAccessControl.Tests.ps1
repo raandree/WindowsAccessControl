@@ -298,6 +298,242 @@ Describe 'Active Directory access-control internals' -Tag 'Unit', 'WindowsOnly' 
         }
     }
 
+    It 'Should keep reading the descriptor when prevalidating descriptor-dependent targets' {
+        InModuleScope WindowsAccessControl {
+            Mock Resolve-WindowsADObjectTarget {
+                param($DistinguishedName)
+                [pscustomobject]@{
+                    CanonicalTarget = "ADObject:DC:$DistinguishedName"
+                    DistinguishedName = $DistinguishedName
+                }
+            }
+            Mock Invoke-WindowsAccessControlBatch
+
+            Invoke-WindowsADCommandBatch `
+                -CommandName Get-ADObjectAccessRule `
+                -BoundParameters @{ Server = 'dc01.example.test'; TimeoutSeconds = 10 } `
+                -Server 'dc01.example.test' `
+                -DistinguishedName 'OU=Lab,DC=example,DC=test' `
+                -TimeoutSeconds 10 `
+                -ThrottleLimit 1
+
+            Should -Invoke Resolve-WindowsADObjectTarget -Times 1 -Exactly `
+                -ParameterFilter { -not $ExcludeSecurityDescriptor }
+        }
+    }
+
+    It 'Should request the descriptor and its DACL control for a descriptor-dependent target' {
+        InModuleScope WindowsAccessControl {
+            $descriptor = [Security.AccessControl.RawSecurityDescriptor]::new(
+                'O:BAG:BAD:(A;;RPWPCCDCLCSWRCWDWOGA;;;BA)'
+            )
+            $script:testDescriptorBytes = [byte[]]::new($descriptor.BinaryLength)
+            $descriptor.GetBinaryForm($script:testDescriptorBytes, 0)
+            $script:testRequests = [System.Collections.Generic.List[object]]::new()
+            Mock Get-WindowsADRootDse {
+                [pscustomobject]@{
+                    DefaultNamingContext = 'DC=example,DC=test'
+                    ConfigurationNamingContext = 'CN=Configuration,DC=example,DC=test'
+                    SchemaNamingContext = 'CN=Schema,CN=Configuration,DC=example,DC=test'
+                    RootDomainNamingContext = 'DC=example,DC=test'
+                }
+            }
+            Mock Send-WindowsADSearchRequest {
+                $script:testRequests.Add($Request)
+                $attributes = @{
+                    objectGUID = @(, [guid]::NewGuid().ToByteArray())
+                    objectClass = @('top', 'organizationalUnit')
+                }
+                if (@($Request.Attributes) -contains 'nTSecurityDescriptor') {
+                    $attributes['nTSecurityDescriptor'] = @(, $script:testDescriptorBytes)
+                }
+                [pscustomobject]@{
+                    Entries = @(
+                        [pscustomobject]@{
+                            DistinguishedName = $Request.DistinguishedName
+                            Attributes = $attributes
+                        }
+                    )
+                }
+            }
+            $connection = [System.DirectoryServices.Protocols.LdapConnection]::new(
+                [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                    'dc01.example.test', 389, $true, $false
+                )
+            )
+            try {
+                $target = Resolve-WindowsADObjectTarget `
+                    -Server 'dc01.example.test' `
+                    -DistinguishedName 'OU=Lab,DC=example,DC=test' `
+                    -TimeoutSeconds 10 `
+                    -Connection $connection
+            }
+            finally {
+                $connection.Dispose()
+            }
+
+            $script:testRequests | Should -HaveCount 1
+            @($script:testRequests[0].Attributes) | Should -Contain 'nTSecurityDescriptor'
+            @(
+                $script:testRequests[0].Controls |
+                    Where-Object { $_ -is [System.DirectoryServices.Protocols.SecurityDescriptorFlagControl] }
+            ) | Should -HaveCount 1
+            [Convert]::ToBase64String($target.BinarySecurityDescriptor) |
+                Should -BeExactly ([Convert]::ToBase64String($script:testDescriptorBytes))
+        }
+    }
+
+    It 'Should resolve a contained write target and read its allowed base without a descriptor' {
+        InModuleScope WindowsAccessControl {
+            $descriptor = [Security.AccessControl.RawSecurityDescriptor]::new(
+                'O:BAG:BAD:(A;;RPWPCCDCLCSWRCWDWOGA;;;BA)'
+            )
+            $script:testDescriptorBytes = [byte[]]::new($descriptor.BinaryLength)
+            $descriptor.GetBinaryForm($script:testDescriptorBytes, 0)
+            $script:testRequests = [System.Collections.Generic.List[object]]::new()
+            Mock Get-WindowsADRootDse {
+                [pscustomobject]@{
+                    DefaultNamingContext = 'DC=example,DC=test'
+                    ConfigurationNamingContext = 'CN=Configuration,DC=example,DC=test'
+                    SchemaNamingContext = 'CN=Schema,CN=Configuration,DC=example,DC=test'
+                    RootDomainNamingContext = 'DC=example,DC=test'
+                }
+            }
+            Mock Send-WindowsADSearchRequest {
+                $script:testRequests.Add($Request)
+                $attributes = @{
+                    objectGUID = @(, [guid]::NewGuid().ToByteArray())
+                    objectClass = @('top', 'organizationalUnit')
+                }
+                if (@($Request.Attributes) -contains 'nTSecurityDescriptor') {
+                    $attributes['nTSecurityDescriptor'] = @(, $script:testDescriptorBytes)
+                }
+                [pscustomobject]@{
+                    Entries = @(
+                        [pscustomobject]@{
+                            DistinguishedName = $Request.DistinguishedName
+                            Attributes = $attributes
+                        }
+                    )
+                }
+            }
+            $connection = [System.DirectoryServices.Protocols.LdapConnection]::new(
+                [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                    'dc01.example.test', 389, $true, $false
+                )
+            )
+            try {
+                $target = Resolve-WindowsADObjectTarget `
+                    -Server 'dc01.example.test' `
+                    -DistinguishedName 'OU=Child,OU=Lab,DC=example,DC=test' `
+                    -AllowedBaseDistinguishedName 'OU=Lab,DC=example,DC=test' `
+                    -TimeoutSeconds 10 `
+                    -ForWrite `
+                    -Connection $connection
+                {
+                    Resolve-WindowsADObjectTarget `
+                        -Server 'dc01.example.test' `
+                        -DistinguishedName 'OU=Other,DC=example,DC=test' `
+                        -AllowedBaseDistinguishedName 'OU=Lab,DC=example,DC=test' `
+                        -TimeoutSeconds 10 `
+                        -ForWrite `
+                        -Connection $connection
+                } | Should -Throw -ExpectedMessage '*outside the allowed organizational unit*'
+            }
+            finally {
+                $connection.Dispose()
+            }
+
+            $target.DistinguishedName | Should -BeExactly 'OU=Child,OU=Lab,DC=example,DC=test'
+            [Convert]::ToBase64String($target.BinarySecurityDescriptor) |
+                Should -BeExactly ([Convert]::ToBase64String($script:testDescriptorBytes))
+            $baseRequests = @(
+                $script:testRequests |
+                    Where-Object DistinguishedName -EQ 'OU=Lab,DC=example,DC=test'
+            )
+            $baseRequests | Should -HaveCount 2
+            foreach ($request in $baseRequests) {
+                @($request.Attributes) | Should -Not -Contain 'nTSecurityDescriptor'
+            }
+        }
+    }
+
+    It 'Should refuse to resolve a write target without its security descriptor' {
+        InModuleScope WindowsAccessControl {
+            Mock Send-WindowsADSearchRequest { throw 'No directory request is expected.' }
+            Mock Get-WindowsADRootDse { throw 'No directory request is expected.' }
+            $connection = [System.DirectoryServices.Protocols.LdapConnection]::new(
+                [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                    'dc01.example.test', 389, $true, $false
+                )
+            )
+            try {
+                {
+                    Resolve-WindowsADObjectTarget `
+                        -Server 'dc01.example.test' `
+                        -DistinguishedName 'OU=Child,OU=Lab,DC=example,DC=test' `
+                        -AllowedBaseDistinguishedName 'OU=Lab,DC=example,DC=test' `
+                        -TimeoutSeconds 10 `
+                        -ForWrite `
+                        -ExcludeSecurityDescriptor `
+                        -Connection $connection
+                } | Should -Throw -ExceptionType ([ArgumentException]) `
+                    -ExpectedMessage '*ExcludeSecurityDescriptor*'
+            }
+            finally {
+                $connection.Dispose()
+            }
+
+            Should -Invoke Get-WindowsADRootDse -Times 0 -Exactly
+            Should -Invoke Send-WindowsADSearchRequest -Times 0 -Exactly
+        }
+    }
+
+    It 'Should name the missing read-control access when a requested descriptor is <Shape>' -ForEach @(
+        @{ Shape = 'absent'; WithEmptyValue = $false }
+        @{ Shape = 'present without a value'; WithEmptyValue = $true }
+    ) {
+        InModuleScope WindowsAccessControl -Parameters @{ WithEmptyValue = $WithEmptyValue } {
+            $script:testWithEmptyValue = $WithEmptyValue
+            Mock Send-WindowsADSearchRequest {
+                # A caller without READ_CONTROL receives the entry without the
+                # attribute rather than an error.
+                $attributes = @{
+                    objectGUID = @(, [guid]::NewGuid().ToByteArray())
+                    objectClass = @('top', 'organizationalUnit')
+                }
+                if ($script:testWithEmptyValue) {
+                    $attributes['nTSecurityDescriptor'] = @()
+                }
+                [pscustomobject]@{
+                    Entries = @(
+                        [pscustomobject]@{
+                            DistinguishedName = $Request.DistinguishedName
+                            Attributes = $attributes
+                        }
+                    )
+                }
+            }
+            $connection = [System.DirectoryServices.Protocols.LdapConnection]::new(
+                [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                    'dc01.example.test', 389, $true, $false
+                )
+            )
+            try {
+                {
+                    Get-WindowsADObjectRecord `
+                        -Connection $connection `
+                        -DistinguishedName 'OU=Lab,DC=example,DC=test' `
+                        -IncludeSecurityDescriptor
+                } | Should -Throw -ExceptionType ([UnauthorizedAccessException]) `
+                    -ExpectedMessage '*READ_CONTROL*'
+            }
+            finally {
+                $connection.Dispose()
+            }
+        }
+    }
+
     It 'Should split a distinguished name at the first unescaped comma only' {
         & $script:module {
             Get-WindowsADParentDistinguishedName `
@@ -1051,6 +1287,57 @@ Describe 'Active Directory broader DACL mutation' -Tag 'Unit', 'WindowsOnly' {
         $removed | Should -HaveCount 2
         @($removed.SID | Sort-Object -Unique) | Should -Be @($script:everyone.Value)
         @($removed.AccessMask | Sort-Object) | Should -Be @(16, 32)
+    }
+
+    It 'Should consume retained duplicate ACEs once and preserve removal order' {
+        $commonAce = New-TestCommonAce -Sid $script:everyone -Mask 16
+        $objectAce = New-TestObjectAce -Sid $script:everyone -Mask 32 -ObjectType $script:userClass
+        $adminAce = New-TestCommonAce -Sid $script:administrators -Mask 0x40000
+        $original = New-TestAdDescriptor -Ace @($commonAce, $objectAce, $commonAce, $adminAce)
+        $current = New-TestAdDescriptor -Ace @($adminAce, $commonAce)
+
+        $removed = @(& $script:module {
+            param($Original, $Current)
+            $parameters = @{ OriginalSecurityDescriptor = $Original; SecurityDescriptor = $Current }
+            Get-WindowsADRemovedAce @parameters
+        } $original $current)
+
+        $removed | Should -HaveCount 2
+        $removed[0] | Should -BeOfType ([Security.AccessControl.ObjectAce])
+        $removed[0].ObjectAceType | Should -Be $script:userClass
+        $removed[0].AccessMask | Should -Be 32
+        $removed[1].AccessMask | Should -Be 16
+        $removed[1].SecurityIdentifier.Value | Should -Be $script:everyone.Value
+    }
+
+    It 'Should compare removed binary ACE identities case-sensitively' {
+        $originalAce = [Security.AccessControl.CommonAce]::new(
+            [Security.AccessControl.AceFlags]::None,
+            [Security.AccessControl.AceQualifier]::AccessAllowed,
+            16,
+            $script:everyone,
+            $true,
+            [byte[]]@(0, 0, 0, 0)
+        )
+        $currentAce = [Security.AccessControl.CommonAce]::new(
+            [Security.AccessControl.AceFlags]::None,
+            [Security.AccessControl.AceQualifier]::AccessAllowed,
+            16,
+            $script:everyone,
+            $true,
+            [byte[]]@(104, 0, 0, 0)
+        )
+        $original = New-TestAdDescriptor -Ace @($originalAce)
+        $current = New-TestAdDescriptor -Ace @($currentAce)
+
+        $removed = @(& $script:module {
+            param($Original, $Current)
+            $parameters = @{ OriginalSecurityDescriptor = $Original; SecurityDescriptor = $Current }
+            Get-WindowsADRemovedAce @parameters
+        } $original $current)
+
+        $removed | Should -HaveCount 1
+        $removed[0].GetOpaque() | Should -Be ([byte[]]@(0, 0, 0, 0))
     }
 
     It 'Should accept a DACL that still grants a principal WriteDacl' {

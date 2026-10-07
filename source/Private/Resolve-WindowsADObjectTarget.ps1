@@ -22,12 +22,20 @@ function Resolve-WindowsADObjectTarget {
         [switch]$ForWrite,
 
         [Parameter()]
+        [switch]$ExcludeSecurityDescriptor,
+
+        [Parameter()]
         [guid]$ExpectedObjectGuid = [guid]::Empty,
 
         [Parameter()]
         [System.DirectoryServices.Protocols.LdapConnection]$Connection
     )
 
+    if ($ForWrite -and $ExcludeSecurityDescriptor) {
+        throw [System.ArgumentException]::new(
+            'A write target needs its security descriptor, so ForWrite and ExcludeSecurityDescriptor cannot be combined.'
+        )
+    }
     $serverName = Resolve-WindowsADServerName -Server $Server
     $ownsConnection = -not $Connection
     $ldapConnection = if ($ownsConnection) {
@@ -54,7 +62,7 @@ function Resolve-WindowsADObjectTarget {
         $record = Get-WindowsADObjectRecord `
             -Connection $ldapConnection `
             -DistinguishedName $DistinguishedName `
-            -IncludeSecurityDescriptor
+            -IncludeSecurityDescriptor:(-not $ExcludeSecurityDescriptor)
         if ($ExpectedObjectGuid -ne [guid]::Empty -and
             $record.ObjectGuid -ne $ExpectedObjectGuid) {
             throw 'The Active Directory object GUID no longer matches the path-bound target.'

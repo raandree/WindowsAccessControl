@@ -29,6 +29,15 @@ test-fixture repair found during that run. A later candidate needs fresh proof.
   was changed. Use a prepared lab machine, and do not skip those tests.
 - Do not use `-SkipPayloadDeployment` for this first run: the old lab payload
   does not contain the new tests or fixes.
+- Decide first what happens to directories that predate the runner's
+  ownership marker, because the runner refuses to replace them. The existing
+  `C:\WacRepo` payload on `F1ADC1` has no marker, and neither has the `0.0.1`
+  installation that the 2026-09-07 reacceptance restored there; a local build
+  without GitVersion has that same version. Either keep such a directory and
+  add a new, absent `RemoteRepositoryPath` to `$parameters` or install a
+  package with another version, or inspect it and remove it yourself. The
+  runner has no backup and restore. See
+  [payload and module ownership](README.md#payload-and-module-ownership).
 
 Inspect the candidate locally:
 
@@ -133,7 +142,9 @@ For the installed pass, use a new run ID and the same detached wrapper. Add
 `ModuleSource = 'Installed'` and an explicit absolute `PackagePath` inside
 `$parameters`, and change `CoverageEdition` to `None`. Do not reuse the first
 run's evidence name. The runner deliberately refuses installed-package coverage
-because it instruments the built module, not the installed copy.
+because it instruments the built module, not the installed copy. It marks the
+module version directory it installs and refuses to replace an unmarked
+installation of the same version.
 
 The new live cases are:
 
@@ -157,8 +168,9 @@ service; check that the partner answers LDAP after the suite.
 - Retain exact failure messages and raw logs in administrator TEMP. Raw logs
   are not sanitized and must not be published or put in the lab payload tree.
 - Stop on a failed suite, missing evidence, unknown exit status, unexpected
-  target, cleanup error, or unavailable prerequisite. Do not weaken a test,
-  force a write, or skip a suite to complete the run.
+  target, cleanup error, unavailable prerequisite, or ownership refusal. Do
+  not weaken a test, force a write, or skip a suite to complete the run, and
+  do not delete a refused directory before inspecting it.
 - Review residual risks in the audit record before treating the candidate as
   release-ready. In particular, request independent security review for the
   containment, immutable-identity, and exact-ACE changes.

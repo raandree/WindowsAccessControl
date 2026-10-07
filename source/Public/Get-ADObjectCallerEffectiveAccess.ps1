@@ -86,7 +86,8 @@ function Get-ADObjectCallerEffectiveAccess {
                 -DistinguishedName $DistinguishedName `
                 -Credential $Credential `
                 -TimeoutSeconds $TimeoutSeconds `
-                -ThrottleLimit $ThrottleLimit
+                -ThrottleLimit $ThrottleLimit `
+                -ExcludeSecurityDescriptor
             return
         }
         $account = if ($Credential) {
@@ -101,12 +102,15 @@ function Get-ADObjectCallerEffectiveAccess {
             -TimeoutSeconds $TimeoutSeconds
         try {
             foreach ($dnValue in $DistinguishedName) {
+                # No output property depends on the descriptor, and a caller
+                # without READ_CONTROL would not receive it.
                 $target = Resolve-WindowsADObjectTarget `
                     -Server $Server `
                     -DistinguishedName ([string]$dnValue) `
                     -Credential $Credential `
                     -TimeoutSeconds $TimeoutSeconds `
-                    -Connection $connection
+                    -Connection $connection `
+                    -ExcludeSecurityDescriptor
                 $record = Get-WindowsADEffectiveAccessRecord `
                     -Connection $connection `
                     -DistinguishedName $target.DistinguishedName

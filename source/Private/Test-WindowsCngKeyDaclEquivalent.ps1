@@ -31,20 +31,22 @@ function Test-WindowsCngKeyDaclEquivalent {
         return $false
     }
 
-    $leftKeys = @(ConvertTo-WindowsCngKeyAceKey -Acl $Left.DiscretionaryAcl)
-    $rightKeys = @(ConvertTo-WindowsCngKeyAceKey -Acl $Right.DiscretionaryAcl)
+    $leftKeys = [string[]]@(ConvertTo-WindowsCngKeyAceKey -Acl $Left.DiscretionaryAcl)
+    $rightKeys = [string[]]@(ConvertTo-WindowsCngKeyAceKey -Acl $Right.DiscretionaryAcl)
     if ($leftKeys.Count -ne $rightKeys.Count) {
         return $false
     }
     # Verification after a write compares the multiset, because the provider
     # decides the stored order. A caller asking whether a candidate is already
     # the desired state must compare the sequence, because ACE order changes
-    # which rule wins. The array wrapper is outside the if so a one-ACE DACL
-    # does not collapse to a string and compare character by character.
-    $leftOrdered = @(if ($Ordered) { $leftKeys } else { $leftKeys | Sort-Object })
-    $rightOrdered = @(if ($Ordered) { $rightKeys } else { $rightKeys | Sort-Object })
-    for ($index = 0; $index -lt $leftOrdered.Count; $index++) {
-        if ($leftOrdered[$index] -cne $rightOrdered[$index]) {
+    # which rule wins. Typed arrays keep a one-ACE DACL from collapsing to a
+    # string and comparing character by character.
+    if (-not $Ordered) {
+        [Array]::Sort($leftKeys, [StringComparer]::Ordinal)
+        [Array]::Sort($rightKeys, [StringComparer]::Ordinal)
+    }
+    for ($index = 0; $index -lt $leftKeys.Count; $index++) {
+        if ($leftKeys[$index] -cne $rightKeys[$index]) {
             return $false
         }
     }

@@ -52,11 +52,7 @@ function Invoke-WindowsRegistryCommandBatch {
     $worker = {
         param($Target, $Context)
 
-        $targetParameters = @{}
-        foreach ($parameterName in $Context.Parameters.Keys) {
-            $targetParameters[$parameterName] =
-                $Context.Parameters[$parameterName]
-        }
+        $targetParameters = $Context.Parameters.Clone()
         $targetParameters.Path = $Target.TargetValue
         $script:WindowsAccessControlBatchWorker.Value = $true
         try {

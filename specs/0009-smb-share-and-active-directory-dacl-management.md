@@ -52,6 +52,20 @@ The implementation uses the shared binary descriptor engine with
 `SE_LMSHARE`. It does not flatten a share DACL through a friendly access-level
 projection.
 
+A native `SE_LMSHARE` write can clear the share description even though only
+the DACL is selected. The setter reads the description immediately before the
+native write and afterwards restores it only when the write cleared it,
+reporting the restoration in the verbose stream. A description that changed to
+any other value reflects a concurrent edit: it is left in place, and a warning
+names the value from before the write. The window is narrowed, not eliminated:
+an edit that lands during the write and is then cleared by it is replaced with
+the value from before the write. A description that cannot be read before the
+write stops the command before anything is written. After a committed write, a
+description that cannot be checked or restored is reported as a warning that
+names the earlier value, because a step after the write must not report
+failure for a change that is already live; a failed restoration after a failed
+write is reported together with the write failure.
+
 ## Active Directory contract
 
 Every AD command requires `DistinguishedName`. `Server` names the final writable
@@ -70,6 +84,13 @@ Targets must resolve inside the selected DC's default domain naming context.
 Output binds the current distinguished name to immutable `objectGUID` and
 server authority. Before every write, the adapter resolves the same DN again
 and rejects deletion, rename, move, or GUID mismatch.
+
+A domain controller omits `nTSecurityDescriptor` from a search result, rather
+than failing the search, when the bind lacks read-control access to the object.
+A command that needs the descriptor therefore fails with
+`UnauthorizedAccessException` naming the likely missing read-control access
+instead of continuing without it. A command that does not need the descriptor,
+such as `Get-ADObjectCallerEffectiveAccess`, does not request it.
 
 Every AD mutation also requires `AllowedBaseDistinguishedName`. The base must
 resolve to an organizational unit in the default domain partition. The target

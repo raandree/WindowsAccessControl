@@ -27,6 +27,9 @@ function Invoke-WindowsADCommandBatch {
         [switch]$SerializeByCanonicalTarget,
 
         [Parameter()]
+        [switch]$ExcludeSecurityDescriptor,
+
+        [Parameter()]
         [System.Management.Automation.ConfirmImpact]$ConfirmationImpact =
             [System.Management.Automation.ConfirmImpact]::None
     )
@@ -46,6 +49,9 @@ function Invoke-WindowsADCommandBatch {
             }
             if ($BoundParameters.ContainsKey('ExpectedObjectGuid')) {
                 $resolveParameters.ExpectedObjectGuid = $BoundParameters['ExpectedObjectGuid']
+            }
+            if ($ExcludeSecurityDescriptor) {
+                $resolveParameters.ExcludeSecurityDescriptor = $true
             }
             $target = Resolve-WindowsADObjectTarget @resolveParameters
             [pscustomobject]@{
@@ -67,10 +73,7 @@ function Invoke-WindowsADCommandBatch {
     $worker = {
         param($Target, $Context)
 
-        $targetParameters = @{}
-        foreach ($parameterName in $Context.Parameters.Keys) {
-            $targetParameters[$parameterName] = $Context.Parameters[$parameterName]
-        }
+        $targetParameters = $Context.Parameters.Clone()
         $targetParameters.DistinguishedName = $Target.DistinguishedName
         $script:WindowsAccessControlBatchWorker.Value = $true
         try {

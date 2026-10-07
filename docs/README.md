@@ -12,7 +12,7 @@ what the module does, and comment-based help defines every parameter.
 | Learn the module from scratch | [Usage guide](usage-guide.md) |
 | Install and run a first command | [Getting started](usage/getting-started.md) |
 | Find the command for a task | [Command reference](usage/command-reference.md) |
-| Move an existing script over | [Migration from NTFSPermission](migration-from-ntfspermission.md) |
+| Move a script over from NTFSSecurity | [Migration from NTFSSecurity](migration-from-ntfssecurity.md) |
 | Fix a failing operation | [Troubleshooting](usage/troubleshooting.md) |
 
 ## Documents in this folder
@@ -20,10 +20,12 @@ what the module does, and comment-based help defines every parameter.
 | Document | Covers | Audience |
 | --- | --- | --- |
 | [usage-guide.md](usage-guide.md) | Entry point and map of every task page | Everyone |
-| [migration-from-ntfspermission.md](migration-from-ntfspermission.md) | Package, command, and output type changes after the rename | Existing `NTFSPermission` and `NTFSSecurity` users |
+| [migration-from-ntfssecurity.md](migration-from-ntfssecurity.md) | Command map, parameter and output differences, and NTFSSecurity features without an equivalent | Existing `NTFSSecurity` users |
+| [migration-from-ntfspermission.md](migration-from-ntfspermission.md) | Package, command, and output type changes after the rename | Builds of the unpublished `NTFSPermission` package |
 | [research.md](research.md) | Source review, platform API semantics, and the comparison that informed the specifications | Contributors and reviewers |
 | [domain-lab-inventory.md](domain-lab-inventory.md) | Machines, forests, and roles of the disposable acceptance lab | Contributors running the lab suites |
 | [lab-reacceptance-2026-09-07.md](lab-reacceptance-2026-09-07.md) | Corrected-candidate lab, package, DSC, local coverage, and cleanup evidence | Maintainers and reviewers |
+| [performance-refactor-2026-09-10.md](performance-refactor-2026-09-10.md) | Performance changes, repeatable measurements, validation evidence, and remaining gates | Contributors and reviewers |
 
 ## The usage guide
 

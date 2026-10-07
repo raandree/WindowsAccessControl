@@ -42,16 +42,14 @@ function Invoke-WindowsAccessControlBatch {
             'SerializeByCanonicalTarget requires CanonicalTargetProperty.'
         )
     }
-    $metricParameterCount = @(
-        $PSBoundParameters.ContainsKey('CommandName')
-        $PSBoundParameters.ContainsKey('ObjectFamily')
-    ) | Where-Object { $_ } | Measure-Object | Select-Object -ExpandProperty Count
-    if ($metricParameterCount -eq 1) {
+    $hasCommandName = $PSBoundParameters.ContainsKey('CommandName')
+    $hasObjectFamily = $PSBoundParameters.ContainsKey('ObjectFamily')
+    if ($hasCommandName -ne $hasObjectFamily) {
         throw [System.ArgumentException]::new(
             'CommandName and ObjectFamily must be supplied together.'
         )
     }
-    $metricsEnabled = $metricParameterCount -eq 2
+    $metricsEnabled = $hasCommandName -and $hasObjectFamily
     $inputValues = @(
         if ($PSBoundParameters.ContainsKey('CanonicalTargetProperty')) {
             $seenTargets = [System.Collections.Generic.HashSet[string]]::new(

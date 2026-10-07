@@ -33,24 +33,20 @@ function Get-WindowsADObjectRecord {
             )
         )
     }
-    try {
-        $response = [System.DirectoryServices.Protocols.SearchResponse](
-            $Connection.SendRequest($request)
-        )
-    }
-    catch [System.DirectoryServices.Protocols.DirectoryOperationException] {
-        if ($_.Exception.Response.ResultCode -eq
-            [System.DirectoryServices.Protocols.ResultCode]::NoSuchObject) {
-            throw [System.Management.Automation.ItemNotFoundException]::new(
-                "Active Directory object was not found: '$DistinguishedName'."
-            )
-        }
-        throw
-    }
+    $response = Send-WindowsADSearchRequest -Connection $Connection -Request $request
     if ($response.Entries.Count -ne 1) {
         throw "Active Directory object did not resolve uniquely: '$DistinguishedName'."
     }
     $entry = $response.Entries[0]
+    if ($IncludeSecurityDescriptor -and (
+            -not $entry.Attributes.Contains('nTSecurityDescriptor') -or
+            $entry.Attributes['nTSecurityDescriptor'].Count -lt 1)) {
+        # The controller omits the attribute instead of failing the search when
+        # the bind lacks READ_CONTROL, so name the likely cause explicitly.
+        throw [System.UnauthorizedAccessException]::new(
+            "Active Directory returned no security descriptor for '$DistinguishedName'. The caller most likely lacks read-control access (READ_CONTROL, shown as Read permissions) on the object."
+        )
+    }
     $guidBytes = [byte[]]$entry.Attributes['objectGUID'][0]
     [pscustomobject]@{
         DistinguishedName = [string]$entry.DistinguishedName

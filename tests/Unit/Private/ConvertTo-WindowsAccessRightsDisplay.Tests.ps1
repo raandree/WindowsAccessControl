@@ -53,6 +53,61 @@ Describe 'Access rights display' -Tag 'Unit', 'WindowsOnly' {
         $display | Should -Be 'GenericExecute, GenericWrite, GenericRead'
     }
 
+    It 'Should keep repeated rights decompositions isolated by enum type' {
+        $comparisons = @(& $script:module {
+            $rightsTypes = @(
+                [System.Security.AccessControl.FileSystemRights]
+                [System.Security.AccessControl.RegistryRights]
+                [WindowsServiceRights]
+            )
+            for ($iteration = 0; $iteration -lt 3; $iteration++) {
+                foreach ($rightsType in $rightsTypes) {
+                    $parameters = @{ AccessMask = 1; RightsType = $rightsType }
+                    [pscustomobject]@{
+                        Actual = ConvertTo-WindowsAccessRightsDisplay @parameters
+                        Expected = [string][System.Enum]::ToObject($rightsType, 1)
+                    }
+                }
+            }
+        })
+
+        $comparisons | Should -HaveCount 9
+        foreach ($comparison in $comparisons) {
+            $comparison.Actual | Should -BeExactly $comparison.Expected
+        }
+    }
+
+    It 'Should still reject a non-enum type after an enum has been used' {
+        {
+            & $script:module {
+                $null = ConvertTo-WindowsAccessRightsDisplay -AccessMask 1 -RightsType (
+                    [System.Security.AccessControl.FileSystemRights]
+                )
+                ConvertTo-WindowsAccessRightsDisplay -AccessMask 1 -RightsType ([string])
+            }
+        } | Should -Throw -ExceptionType ([System.Management.Automation.MethodInvocationException])
+    }
+
+    It 'Should preserve every result when repeated masks exceed the display cache capacity' {
+        $comparisons = @(& $script:module {
+            $rightsType = [System.Security.AccessControl.FileSystemRights]
+            for ($iteration = 0; $iteration -lt 2; $iteration++) {
+                for ($mask = 0; $mask -lt 256; $mask++) {
+                    $parameters = @{ AccessMask = $mask; RightsType = $rightsType }
+                    [pscustomobject]@{
+                        Actual = ConvertTo-WindowsAccessRightsDisplay @parameters
+                        Expected = [string][System.Enum]::ToObject($rightsType, $mask)
+                    }
+                }
+            }
+        })
+
+        $comparisons | Should -HaveCount 512
+        foreach ($comparison in $comparisons) {
+            $comparison.Actual | Should -BeExactly $comparison.Expected
+        }
+    }
+
     It 'Should reject a mask outside the 32-bit range' {
         {
             & $script:module {

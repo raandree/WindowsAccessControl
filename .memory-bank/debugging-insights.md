@@ -1,11 +1,35 @@
 ---
 status: current
-last-verified: 2026-09-07
+last-verified: 2026-10-06
 owner: software-engineer
 source: implementation and test evidence
 ---
 
 # Debugging insights
+
+## AutomatedLab does not stop on a remote throw
+
+`Invoke-LabCommand` builds its own parameters for `Invoke-LWCommand`, which
+calls `Invoke-Command` without `-ErrorAction`. A terminating error in the
+remote script block therefore reaches the caller as a non-terminating error
+unless the global `$ErrorActionPreference` is `Stop`, and a script that sets
+`Stop` only in its own scope carries on. A step that returned no output is
+retried (`InvokeLabCommandRetries`, default 3, 10 seconds apart) and then
+returns nothing. Read in AutomatedLab 5.61.0 on 2026-10-06, not observed in a
+live run. The acceptance runner has every directory step return its directory
+and stops when that result is missing, so an install refusal cannot degrade
+into a silent build-output pass.
+
+## `$script:` in a Pester mock body names the running script's scope
+
+While a test runs `& .\Invoke-WindowsAccessControlLabAcceptance.ps1`, a mock
+body or `-ParameterFilter` that the script triggers resolves `$script:` to the
+script's scope, not the test file's. `$script:protectedPath` read as `$null`,
+the stand-in for the remote protected directories was never installed, and two
+refusal tests passed on `C:\Users` instead of the test's own directory. Pass
+such values through plain variables set in `BeforeEach` or `It`, which Pester 5
+runs in one scope, and assert the exact expected reason, not just the kind of
+refusal.
 
 ## Deleted fixture identities must leave the cleanup list
 
@@ -36,6 +60,26 @@ reaches Invoke-Build as one task named `build,test` and aborts with `Missing
 task`; pass the list through `-Command` instead. And the `Clean` task deletes
 `output/*`, so a detached run whose transcript is redirected into `output`
 fails on its own open log file. Redirect build logs outside `output`.
+
+Dot-sourcing a changed function inside `& $module { ... }` does not replace a
+rebuild: the exported command can keep the old definition. On 2026-09-10 both
+NTFS filter regression tests stayed red because `Get-Command` still returned
+the old export, and a rebuild turned the same tests green. Test a rebuilt
+artifact, or check the exported definition itself.
+
+## A review severity word in a commit body bumps the version
+
+`GitVersion.yml` reads every commit message case-insensitively for
+`(breaking\schange|breaking|major)\b`, `(adds?|features?|minor)\b`, and
+`\s?(fix|patch)`, and only the last has no leading word boundary. Ordinary
+prose trips them: "no Blocker or Major" in a review summary asks for a new
+major version, "Add regression cases" for a minor one, and "dispatcher",
+"prefix", or the branch name `ai/post-release-fixes` for a patch. On
+2026-10-06 the body of the ported `5f06c03` said "no Blocker or Major"; ported
+verbatim it would have made the next `main` release 1.0.0. Check every message
+against the three patterns before committing, and describe a review severity
+instead of naming it. A minor or patch match is harmless while `v0.2.0` plus
+the existing minor bumps already put `main` on 0.3.0.
 
 ## DscResource.DocGenerator wants one DSC resource class per source file
 
@@ -782,9 +826,13 @@ that did the import releases it; test with
 ## SMB share descriptor metadata preservation
 
 `SetNamedSecurityInfoW` with `SE_LMSHARE` can clear a share description even
-when only the DACL is selected. Capture the provider description before the
-native write, restore it afterward, and aggregate restoration failure with the
-primary operation failure. A DACL round trip alone is insufficient evidence.
+when only the DACL is selected. Read the provider description immediately
+before the native write, not at target resolution, and afterwards restore it
+only when the write cleared it; any other new value is a concurrent edit to
+keep and report with a warning. Aggregate a restoration failure with a failed
+write, but after a committed write report it as a warning, with a Stop warning
+preference downgraded, so the caller never sees a live change as a failure. A
+DACL round trip alone is insufficient evidence.
 
 Resolve share targets through the local SMB provider rather than accepting a
 syntactically plausible UNC or wildcard. Provider topology is the authority for
@@ -804,6 +852,19 @@ explicitly before applying the allowed-base check.
 `AuthType.Negotiate` does not prove Kerberos because it can fall back to NTLM.
 Use `AuthType.Kerberos` with an explicit FQDN server, signing, sealing, disabled
 referrals, and bounded timeouts when the contract requires strict Kerberos.
+
+A domain controller omits `nTSecurityDescriptor` instead of failing the search
+when the bind lacks `READ_CONTROL`. Request it only where a command uses it,
+and check for its absence before indexing it.
+
+## A .NET exception changes shape when it leaves a function
+
+A typed `catch [DirectoryOperationException]` still matches after the native
+call moves into a helper function, but `$_.Exception` in the caller is then a
+`MethodInvocationException`, so a property such as `Response.ResultCode` reads
+as null and the translation silently stops working. Keep a catch that inspects
+exception properties beside the native call, as `Send-WindowsADSearchRequest`
+does, and probe both editions before moving one.
 
 ## Cold-lab timeouts corrupt the shared certificate fixture
 

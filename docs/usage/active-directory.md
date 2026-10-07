@@ -184,6 +184,11 @@ results can be compared:
 (Get-ADObjectCallerEffectiveAccess -DistinguishedName $targetDn).WritableAttribute
 ```
 
+The command never reads the object's security descriptor, so it also answers
+for a caller who lacks read-control access to that descriptor. The descriptor
+and rule commands need it; for such a caller they fail with an
+`UnauthorizedAccessException` that names the missing read-control access.
+
 ### Read the four limits before you trust it
 
 - **It is scoped to the bind, and there is no `Account` parameter.** No in-box

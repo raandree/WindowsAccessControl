@@ -55,8 +55,12 @@ and
 Byte inspection confirms that both files lack a final newline. This violates
 the text-file convention but does not change test behavior.
 
-Disposition: accepted, deferred as non-blocking formatting cleanup. No test
-file was modified during the review.
+Disposition: accepted during the review, deferred as non-blocking formatting
+cleanup; no test file was modified then. Resolved on 2026-10-06: each file now
+ends with the CRLF that `.gitattributes` declares for `*.ps1`, which is the
+only change either file received. Byte inspection confirms `0D 0A` as the final
+two bytes, and both suites still pass in PowerShell 7 and Windows PowerShell
+5.1.
 
 ## Scope and assessment
 

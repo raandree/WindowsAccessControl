@@ -98,7 +98,10 @@ and an absent `sDRightsEffective` as zero, which is what "none" means here.
 
 The command is read-only, supports no `ShouldProcess`, mutates nothing, and
 reuses the directory family's existing target resolution, so the naming-context,
-partition, and unique-resolution refusals apply unchanged.
+partition, and unique-resolution refusals apply unchanged. That resolution does
+not request `nTSecurityDescriptor`, because no output property depends on it, so
+a caller without read-control access to the object's security descriptor still
+receives a result.
 
 ## Verification
 
@@ -106,13 +109,20 @@ partition, and unique-resolution refusals apply unchanged.
   parameter, one result per target, the bind identity reported for a supplied
   credential, sorted list output, the section mask mapping including the empty
   case, and the context label.
+- Unit tests replace the LDAP search that target resolution sends and prove
+  that neither the prevalidation of every target nor the per-target resolution
+  requests `nTSecurityDescriptor` or the security-descriptor flag control, and
+  that a caller whose entry carries no descriptor still receives a result.
 - The three-attribute base-scope request itself has no unit-testable seam,
   because it needs a bound `LdapConnection`. Its source file is declared
   domain-lab-only for coverage, and live domain-lab evidence proves it.
 - Live domain-lab evidence reads a real organizational unit as a domain
   administrator and proves a nonzero section mask, a nonempty writable-attribute
   list, and a nonempty creatable-child-class list against the same object
-  `Get-ADObjectAccessRule` reports rules for.
+  `Get-ADObjectAccessRule` reports rules for. It also evaluates the delegated
+  operator on a disposable organizational unit whose protected DACL grants it
+  property reads but not read-control access: the command returns a result,
+  while `Get-ADObjectSecurityDescriptor` fails with the read-control error.
 
 ## See also
 

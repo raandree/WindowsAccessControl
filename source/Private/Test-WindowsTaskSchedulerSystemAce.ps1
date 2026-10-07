@@ -10,6 +10,12 @@ function Test-WindowsTaskSchedulerSystemAce {
     )
 
     $systemSid = 'S-1-5-18'
+    # Without a current DACL neither Local System preservation nor an exact
+    # rollback can be verified, so a missing or null DACL fails closed. A DACL
+    # that merely lacks a Local System ACE has nothing to preserve.
+    if (-not $CurrentDescriptor.DiscretionaryAcl) {
+        return $false
+    }
     $getAceIdentity = {
         param($Ace)
 
@@ -37,9 +43,6 @@ function Test-WindowsTaskSchedulerSystemAce {
         ),
         [StringComparer]::Ordinal
     )
-    if ($currentSystemAces.Count -eq 0) {
-        return $false
-    }
     foreach ($ace in $CandidateDescriptor.DiscretionaryAcl) {
         $knownAce = $ace -as [Security.AccessControl.KnownAce]
         $qualifiedAce = $ace -as [Security.AccessControl.QualifiedAce]

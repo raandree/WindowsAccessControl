@@ -186,6 +186,128 @@ Describe 'Task Scheduler access-control internals' -Tag 'Unit', 'WindowsOnly' {
         }
     }
 
+    It 'Should accept a candidate for a DACL without a Local System ACE: <Candidate>' -ForEach @(
+        @{ Current = 'D:(A;;FA;;;BA)'; Candidate = 'D:(A;;FA;;;BA)(A;;FA;;;SY)' }
+        @{ Current = 'D:P'; Candidate = 'D:P(A;;FA;;;SY)' }
+        @{ Current = 'D:(A;;FA;;;BA)'; Candidate = 'D:(A;;FA;;;BA)(A;;FR;;;AU)' }
+    ) {
+        $accepted = & $script:module {
+            param($CurrentSddl, $CandidateSddl)
+            Test-WindowsTaskSchedulerSystemAce `
+                -CurrentDescriptor ([Security.AccessControl.RawSecurityDescriptor]::new($CurrentSddl)) `
+                -CandidateDescriptor ([Security.AccessControl.RawSecurityDescriptor]::new($CandidateSddl))
+        } $Current $Candidate
+
+        $accepted | Should -BeTrue -Because "$Current has no Local System ACE to preserve"
+    }
+
+    It 'Should refuse a candidate that adds a Local System deny ACE: <Candidate>' -ForEach @(
+        @{ Current = 'D:(A;;FA;;;BA)'; Candidate = 'D:(D;;FA;;;SY)(A;;FA;;;BA)' }
+        @{ Current = 'D:(A;;FA;;;SY)(A;;FA;;;BA)'; Candidate = 'D:(D;;FW;;;SY)(A;;FA;;;SY)(A;;FA;;;BA)' }
+    ) {
+        $accepted = & $script:module {
+            param($CurrentSddl, $CandidateSddl)
+            Test-WindowsTaskSchedulerSystemAce `
+                -CurrentDescriptor ([Security.AccessControl.RawSecurityDescriptor]::new($CurrentSddl)) `
+                -CandidateDescriptor ([Security.AccessControl.RawSecurityDescriptor]::new($CandidateSddl))
+        } $Current $Candidate
+
+        $accepted | Should -BeFalse -Because 'an explicit Local System deny ACE is never accepted'
+    }
+
+    It 'Should refuse a candidate that drops or changes a current Local System ACE: <Candidate>' -ForEach @(
+        @{ Current = 'D:(A;;FA;;;SY)(A;;FA;;;BA)'; Candidate = 'D:(A;;FA;;;BA)' }
+        @{ Current = 'D:(A;;FA;;;SY)(A;;FA;;;BA)'; Candidate = 'D:(A;;FR;;;SY)(A;;FA;;;BA)' }
+        @{ Current = 'D:(A;;FA;;;SY)(A;OICI;FA;;;SY)'; Candidate = 'D:(A;;FA;;;SY)' }
+    ) {
+        $accepted = & $script:module {
+            param($CurrentSddl, $CandidateSddl)
+            Test-WindowsTaskSchedulerSystemAce `
+                -CurrentDescriptor ([Security.AccessControl.RawSecurityDescriptor]::new($CurrentSddl)) `
+                -CandidateDescriptor ([Security.AccessControl.RawSecurityDescriptor]::new($CandidateSddl))
+        } $Current $Candidate
+
+        $accepted | Should -BeFalse -Because 'every current Local System ACE must remain byte-identical'
+    }
+
+    It 'Should refuse a candidate when the current DACL is <Name>' -ForEach @(
+        @{ Name = 'missing from an empty read'; Current = '' }
+        @{ Name = 'missing from the read'; Current = 'O:BA' }
+        @{ Name = 'null'; Current = 'D:NO_ACCESS_CONTROL' }
+    ) {
+        $accepted = & $script:module {
+            param($CurrentSddl)
+            Test-WindowsTaskSchedulerSystemAce `
+                -CurrentDescriptor ([Security.AccessControl.RawSecurityDescriptor]::new($CurrentSddl)) `
+                -CandidateDescriptor ([Security.AccessControl.RawSecurityDescriptor]::new('D:(A;;FA;;;SY)(A;;FA;;;BA)'))
+        } $Current
+
+        $accepted | Should -BeFalse -Because 'Local System preservation and an exact rollback cannot be verified without a current DACL'
+    }
+
+    It 'Should write a candidate that restores Local System to a DACL without one' {
+        & $script:module {
+            $script:storedSddl = 'D:(A;;FA;;;BA)'
+            $candidate = [Security.AccessControl.RawSecurityDescriptor]::new(
+                'D:(A;;FA;;;BA)(A;;FA;;;SY)'
+            )
+            $candidateBytes = [byte[]]::new($candidate.BinaryLength)
+            $candidate.GetBinaryForm($candidateBytes, 0)
+            $script:fakeNative = [pscustomobject]@{}
+            $script:fakeNative | Add-Member ScriptMethod GetSecurityDescriptor {
+                param($Information)
+                $null = $Information
+                $script:storedSddl
+            }
+            $script:fakeNative | Add-Member ScriptMethod SetSecurityDescriptor {
+                param($Sddl, $Flags)
+                $null = $Flags
+                $script:storedSddl = $Sddl
+            }
+            Mock Invoke-WindowsTaskSchedulerComOperation {
+                param($Target, $Operation)
+                $null = $Target
+                & $Operation $script:fakeNative
+            }
+
+            $null = Set-WindowsTaskSchedulerSecurityDescriptor `
+                -Target ([pscustomobject]@{ ObjectType = 'TaskFolder' }) `
+                -SecurityDescriptor $candidateBytes
+
+            $script:storedSddl | Should -BeExactly $candidate.GetSddlForm('Access')
+        }
+    }
+
+    It 'Should refuse to write over a current descriptor that has a null DACL' {
+        & $script:module {
+            $candidate = [Security.AccessControl.RawSecurityDescriptor]::new(
+                'D:(A;;FA;;;SY)(A;;FA;;;BA)'
+            )
+            $candidateBytes = [byte[]]::new($candidate.BinaryLength)
+            $candidate.GetBinaryForm($candidateBytes, 0)
+            $script:fakeNative = [pscustomobject]@{}
+            $script:fakeNative | Add-Member ScriptMethod GetSecurityDescriptor {
+                param($Information)
+                $null = $Information
+                'D:NO_ACCESS_CONTROL'
+            }
+            $script:fakeNative | Add-Member ScriptMethod SetSecurityDescriptor {
+                throw 'Setter must not run.'
+            }
+            Mock Invoke-WindowsTaskSchedulerComOperation {
+                param($Target, $Operation)
+                $null = $Target
+                & $Operation $script:fakeNative
+            }
+
+            {
+                Set-WindowsTaskSchedulerSecurityDescriptor `
+                    -Target ([pscustomobject]@{ ObjectType = 'TaskFolder' }) `
+                    -SecurityDescriptor $candidateBytes
+            } | Should -Throw -ExpectedMessage '*current Task Scheduler DACL is missing or null*'
+        }
+    }
+
     It 'Should treat reordered identical ACEs as equivalent but reject rights changes' {
         $candidate = [Security.AccessControl.RawSecurityDescriptor]::new(
             'D:(A;;FA;;;SY)(A;;FA;;;BA)(A;;RC;;;WD)'

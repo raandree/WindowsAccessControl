@@ -1,4 +1,9 @@
 function Get-WindowsADRemovedAce {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseLiteralInitializerForHashtable',
+        '',
+        Justification = 'Binary ACE identities require an ordinal comparer; a literal hashtable is case-insensitive.'
+    )]
     [CmdletBinding()]
     [OutputType([System.Security.AccessControl.GenericAce])]
     param(
@@ -8,14 +13,6 @@ function Get-WindowsADRemovedAce {
         [Parameter(Mandatory)]
         [byte[]]$SecurityDescriptor
     )
-
-    $getAceBytes = {
-        param([System.Security.AccessControl.GenericAce]$Ace)
-
-        $bytes = [byte[]]::new($Ace.BinaryLength)
-        $Ace.GetBinaryForm($bytes, 0)
-        [Convert]::ToBase64String($bytes)
-    }
 
     $originalAcl = [System.Security.AccessControl.RawSecurityDescriptor]::new(
         $OriginalSecurityDescriptor,
@@ -30,16 +27,25 @@ function Get-WindowsADRemovedAce {
     ).DiscretionaryAcl
 
     # Multiset difference, so a duplicated ACE is reported once per removed copy.
-    $retained = [System.Collections.Generic.List[string]]::new()
+    $retained = [System.Collections.Hashtable]::new(
+        [System.StringComparer]::Ordinal
+    )
     if ($currentAcl) {
         foreach ($ace in $currentAcl) {
-            $retained.Add((& $getAceBytes $ace))
+            $bytes = [byte[]]::new($ace.BinaryLength)
+            $ace.GetBinaryForm($bytes, 0)
+            $identity = [Convert]::ToBase64String($bytes)
+            $remainingCount = [int]$retained[$identity]
+            $retained[$identity] = $remainingCount + 1
         }
     }
     foreach ($ace in $originalAcl) {
-        $index = $retained.IndexOf((& $getAceBytes $ace))
-        if ($index -ge 0) {
-            $retained.RemoveAt($index)
+        $bytes = [byte[]]::new($ace.BinaryLength)
+        $ace.GetBinaryForm($bytes, 0)
+        $identity = [Convert]::ToBase64String($bytes)
+        $remainingCount = [int]$retained[$identity]
+        if ($remainingCount -gt 0) {
+            $retained[$identity] = $remainingCount - 1
             continue
         }
         $ace

@@ -85,6 +85,7 @@ baseline rather than a single-domain one.
 | [Invoke-WindowsAccessControlLabAcceptance.ps1](Invoke-WindowsAccessControlLabAcceptance.ps1) | Copies the current build and the suites into the management domain controller, runs one unattended profile per PowerShell edition there, and carries the redacted evidence and the coverage document back to the host. |
 | [Start-WindowsAccessControlDomainLabAcceptance.ps1](Start-WindowsAccessControlDomainLabAcceptance.ps1) | Starts the profile in a child console process inside the lab, because a session runspace allows far fewer nested script frames than a console host. |
 | [Resolve-WindowsAccessControlLabModuleRoot.ps1](Resolve-WindowsAccessControlLabModuleRoot.ps1) | Returns the module directory every suite imports. It is the build output unless `WAC_LAB_MODULE_ROOT` names an installed module, and it fails rather than falling back when that variable is wrong. |
+| [WindowsAccessControl.LabRunnerOwnership.ps1](WindowsAccessControl.LabRunnerOwnership.ps1) | The runner's ownership and path decisions. Every remote step that creates or deletes a directory on the management domain controller makes them there; see [Payload and module ownership](#payload-and-module-ownership). |
 | [WindowsAccessControl.DomainLab.psm1](WindowsAccessControl.DomainLab.psm1) | Test-only harness: fixture plan, setup, status, teardown, coverage arming, and the unattended acceptance profile. |
 | `*.Live.Tests.ps1` | The eight acceptance suites. |
 | `coverage/` | The JaCoCo document the acceptance carries back. The build merges it into the reported coverage when it measures the current build; see decisions 0025 and 0027. |
@@ -198,6 +199,52 @@ reachable by name from `PSModulePath`.
 Coverage instruments the built module, so an installed-package run refuses to
 arm it. Measuring a module no suite loads would report a green run over an
 unmeasured module rather than report the gap.
+
+## Payload and module ownership
+
+The runner deletes only directories it created. It writes the marker file
+`.windows-access-control-lab-runner` into each directory it may later replace
+on the management domain controller: the payload root named by
+`-RemoteRepositoryPath`, its `package` staging directory, and the installed
+module version directory under
+`%ProgramFiles%\WindowsPowerShell\Modules\WindowsAccessControl`. A later run
+replaces one of them only when it is absent, or still carries that marker and
+contains no junction or symbolic link at any depth, because Windows PowerShell
+5.1 deletes through a junction during a recursive removal.
+
+The management domain controller makes these checks itself, before anything
+there changes and also with `-SkipPayloadDeployment`. The payload root must be
+an absolute path on a local fixed drive, and it must not be a drive root, pass
+through a junction or symbolic link, or lie under the Windows directory,
+Program Files, ProgramData, or the user profile root.
+
+When a directory exists without the marker, or contains a junction or symbolic
+link, the run stops before it deletes anything. The error names the directory,
+and the link when there is one, and the way out:
+
+| Refused directory | Resolution |
+| --- | --- |
+| Payload root | Inspect it, then remove or rename it yourself if it is disposable, or pass `-RemoteRepositoryPath` with a directory that does not exist yet. |
+| `package` under a reused payload root | Inspect it, then remove or rename it yourself if it is disposable, or deploy a fresh payload without `-SkipPayloadDeployment`. |
+| Installed module of the package's version | Inspect it, then uninstall or move it yourself if it is disposable, or install a package with a different module version. |
+
+For a junction or symbolic link, remove the link itself rather than what it
+points to, and run again.
+
+Directories left by runs before the marker existed carry no marker. The
+`C:\WacRepo` payload on `F1ADC1` is one of them, so the first run refuses it.
+The installed-package pass likewise refuses an unmarked installation of the
+package's version, such as the `0.0.1` installation the
+[2026-09-07 reacceptance](../../docs/lab-reacceptance-2026-09-07.md) found and
+restored on `F1ADC1`; a local build without GitVersion also has version
+`0.0.1`. Decide before the run whether to keep such a directory and choose a
+new payload path or package version, or to remove it after confirming that
+nothing else uses it. The runner has no backup and restore; it refuses
+instead.
+
+AutomatedLab can report a failed remote step without ending the calling
+script, so the runner also stops when a step does not confirm the directory it
+checked or prepared.
 
 ## Known gaps
 

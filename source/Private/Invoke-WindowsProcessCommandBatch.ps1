@@ -69,11 +69,7 @@ function Invoke-WindowsProcessCommandBatch {
     $worker = {
         param($Target, $Context)
 
-        $targetParameters = @{}
-        foreach ($parameterName in $Context.Parameters.Keys) {
-            $targetParameters[$parameterName] =
-                $Context.Parameters[$parameterName]
-        }
+        $targetParameters = $Context.Parameters.Clone()
         if ($Target.DescriptorSource -eq 'Handle') {
             $targetParameters.Handle = [IntPtr]$Target.TargetValue
         } else {

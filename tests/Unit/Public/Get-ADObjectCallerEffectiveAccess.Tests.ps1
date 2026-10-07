@@ -115,6 +115,132 @@ Describe 'Get-ADObjectCallerEffectiveAccess behavior' -Tag 'Unit', 'WindowsOnly'
 
         $result.Account | Should -BeExactly 'CONTOSO\analyst'
     }
+
+    It 'Should evaluate a caller who cannot read the security descriptor' {
+        $outcome = InModuleScope WindowsAccessControl {
+            $script:testRequests = [System.Collections.Generic.List[object]]::new()
+            Mock New-WindowsADConnection {
+                [System.DirectoryServices.Protocols.LdapConnection]::new(
+                    [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                        'dc01.example.test',
+                        389
+                    )
+                )
+            }
+            Mock Get-WindowsADRootDse {
+                [pscustomobject]@{
+                    DefaultNamingContext = 'DC=example,DC=test'
+                    ConfigurationNamingContext = 'CN=Configuration,DC=example,DC=test'
+                    SchemaNamingContext = 'CN=Schema,CN=Configuration,DC=example,DC=test'
+                    RootDomainNamingContext = 'DC=example,DC=test'
+                }
+            }
+            Mock Send-WindowsADSearchRequest {
+                $script:testRequests.Add($Request)
+                # Without READ_CONTROL the controller omits nTSecurityDescriptor
+                # from the entry instead of failing the search.
+                [pscustomobject]@{
+                    Entries = @(
+                        [pscustomobject]@{
+                            DistinguishedName = $Request.DistinguishedName
+                            Attributes = @{
+                                objectGUID = @(, [guid]::NewGuid().ToByteArray())
+                                objectClass = @('top', 'organizationalUnit')
+                            }
+                        }
+                    )
+                }
+            }
+            Mock Get-WindowsADEffectiveAccessRecord {
+                [pscustomobject]@{
+                    WritableAttribute = @('description')
+                    CreatableChildClass = @()
+                    SDRightsEffective = 0
+                }
+            }
+
+            $script:WindowsAccessControlBatchWorker.Value = $true
+            try {
+                $result = Get-ADObjectCallerEffectiveAccess `
+                    -Server 'dc01.example.test' `
+                    -DistinguishedName 'OU=Lab,DC=example,DC=test' `
+                    -ThrottleLimit 1
+            }
+            finally {
+                $script:WindowsAccessControlBatchWorker.Value = $false
+            }
+            [pscustomobject]@{
+                Result = $result
+                Requests = $script:testRequests.ToArray()
+            }
+        }
+
+        $outcome.Result.DistinguishedName | Should -BeExactly 'OU=Lab,DC=example,DC=test'
+        $outcome.Result.WritableAttribute | Should -Be @('description')
+        $outcome.Requests | Should -Not -BeNullOrEmpty
+        foreach ($request in $outcome.Requests) {
+            @($request.Attributes) | Should -Not -Contain 'nTSecurityDescriptor'
+            @(
+                $request.Controls |
+                    Where-Object { $_ -is [System.DirectoryServices.Protocols.SecurityDescriptorFlagControl] }
+            ) | Should -BeNullOrEmpty
+        }
+    }
+
+    It 'Should prevalidate every target without requesting the security descriptor' {
+        $requests = InModuleScope WindowsAccessControl {
+            $script:testRequests = [System.Collections.Generic.List[object]]::new()
+            Mock New-WindowsADConnection {
+                [System.DirectoryServices.Protocols.LdapConnection]::new(
+                    [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                        'dc01.example.test',
+                        389
+                    )
+                )
+            }
+            Mock Get-WindowsADRootDse {
+                [pscustomobject]@{
+                    DefaultNamingContext = 'DC=example,DC=test'
+                    ConfigurationNamingContext = 'CN=Configuration,DC=example,DC=test'
+                    SchemaNamingContext = 'CN=Schema,CN=Configuration,DC=example,DC=test'
+                    RootDomainNamingContext = 'DC=example,DC=test'
+                }
+            }
+            Mock Send-WindowsADSearchRequest {
+                $script:testRequests.Add($Request)
+                [pscustomobject]@{
+                    Entries = @(
+                        [pscustomobject]@{
+                            DistinguishedName = $Request.DistinguishedName
+                            Attributes = @{
+                                objectGUID = @(, [guid]::NewGuid().ToByteArray())
+                                objectClass = @('top', 'organizationalUnit')
+                            }
+                        }
+                    )
+                }
+            }
+            Mock Invoke-WindowsAccessControlBatch
+
+            Get-ADObjectCallerEffectiveAccess `
+                -Server 'dc01.example.test' `
+                -DistinguishedName 'OU=One,OU=Lab,DC=example,DC=test',
+                    'OU=Two,OU=Lab,DC=example,DC=test' `
+                -ThrottleLimit 2
+
+            Should -Invoke Invoke-WindowsAccessControlBatch -Times 1 -Exactly
+            , $script:testRequests.ToArray()
+        }
+
+        $requests | Should -HaveCount 2
+        foreach ($request in $requests) {
+            @($request.Attributes) | Should -Not -Contain 'nTSecurityDescriptor'
+            @(
+                $request.Controls |
+                    Where-Object { $_ -is [System.DirectoryServices.Protocols.SecurityDescriptorFlagControl] }
+            ) | Should -BeNullOrEmpty
+        }
+    }
 }
 
 Describe 'Caller-scoped directory result conversion' -Tag 'Unit', 'WindowsOnly' {

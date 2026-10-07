@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-09-07
+last-verified: 2026-10-06
 owner: software-engineer
 source: repository evidence
 ---
@@ -9,26 +9,116 @@ source: repository evidence
 
 ## Current status
 
-FIND-001 is resolved on `ai/test-gap-audit`. The CNG setter now returns the
-bytes already read and verified after persistence rather than performing a
-third provider read. The real-key regression is red then green, both editions
-pass the 52-test CNG suite, and independent review approved with no findings.
-The tested package passed 22 build tasks without errors or warnings.
-
-Fresh reacceptance of `f5731f1` has passed all four built/installed lab profiles:
-95 tests each, zero failures or skips, and eight ready cleanup entries. The
-five Desktop DSC-engine tests also passed. Independent checks verified original
-installation bytes/ACLs and fixture cleanup; all 38 guest evidence files were
-retained before staging removal. All thirteen VMs and checkpoints remain.
-Fresh local Core completed at 18:35:18 UTC with 1,806 passed, zero failed, two
-environment skips, and 91.15 percent asserted coverage using the exact new lab
-coverage hash. Desktop completed at 18:52:19 UTC with 1,761 passed, zero failed,
-two environment skips, and 90.41 percent asserted coverage. Both imported the
-current lab coverage byte-for-byte, all terminal markers are zero, and no
-validation process remains. Requested candidate acceptance is complete;
-FIND-002 is deferred. A versioned release still requires explicit authorization.
+`v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07 with the accepted
+FIND-001 correction; `v0.2.0` remains the stable release. A 2026-10-06 triage
+found unmerged and untracked work and split it into eight handoffs on local
+`ai/post-release-fixes`. Handoffs 01 to 06 fixed the lab-runner Blocker, the
+Task Scheduler, SMB, and AD review defects, ported and re-measured the
+performance refactor, wrote the NTFSSecurity migration guide, moved the build
+workflow to the Node 24 releases of its three pinned actions, restored the
+0.2.0 changelog section, and closed FIND-002. Handoff 07 is Blocked for want
+of the lab host, and handoff 08 waits for the user's approval of each remote
+action. `activeContext.md` holds the evidence and the order.
 
 ## Recent milestones
+
+- 2026-10-06: With the user's overnight delegation, handoff 07 was recorded
+    as Blocked (no lab VMs on this machine) and handoff 08 was prepared up to
+    its first remote action: a pull request body on the repository template,
+    and a simulated merge that GitVersion 5.12.0 versions as
+    `0.3.0-preview0002`. Both full gates pass on `023afe9`: Core 1,931 tests
+    at 83.11 percent asserted coverage, Desktop 1,886 at 80.95 percent.
+
+- 2026-10-06: Handoff 06 restored the `## [0.2.0] - 2026-09-06` section that
+    the release never merged, with a multiset proof that no content line
+    moved, and made a missing changelog pull request end the release:
+    Sampler's task catches a refused creation and only logs it, which is why
+    the green v0.2.0 step left no pull request behind. The publish job now
+    asks the API for that branch's pull request; a token without pull-request
+    access is the likeliest cause, and the run log would settle it. FIND-002
+    is closed, and QA, Build, and the two suites pass 709 tests per edition.
+
+- 2026-10-06: Handoff 05 moved the build workflow to the Node 24 releases of
+    `checkout` 7.0.1, `upload-artifact` 7.0.1, and `download-artifact` 8.0.1,
+    each pinned by the SHA its own tag resolves to. Every release note from v4
+    to the target was checked against this workflow; no input changed meaning,
+    so the commit is seven pins. `download-artifact` v8 now fails a job on a
+    digest mismatch instead of warning, which is kept. A new test holds every
+    `uses:` to a SHA pin with a version comment and a Node 24 release line.
+    Dependabot #1 to #3 are superseded; the pull-request CI in 08 is the proof.
+
+- 2026-10-06: Handoff 04 documented the move from NTFSSecurity, which the
+    user positioned as deprecated, with `WindowsAccessControl` as its
+    successor. `docs/migration-from-ntfssecurity.md` maps every command of the
+    NTFSSecurity 4.2.6 and 5.0.0-rc4 manifests, confirmed against the built
+    module, and names what changes for a migrated script: exact removal by
+    default, confirmation prompts, `AppliesTo` instead of flags, and long
+    paths only in PowerShell 7. Its examples ran verbatim in both editions.
+    The README private-key statement now matches specification 0015, and the
+    issue #4 reply is drafted but not posted.
+
+- 2026-10-06: The user reviewed all 14 recorded agent decisions of handoffs
+    01 to 03 and accepted twelve as recorded. The other two were overtaken:
+    the decision log moved unchanged to `topics/decision-log.md`, bringing
+    `systemPatterns.md` within budget, and specs 0005 and 0006 now name the
+    descriptor benchmark and the per-instance rights cache. WinRM stays
+    enabled; the two lab-runner follow-ups are post-release items.
+
+- 2026-10-06: Handoff 03 finished the orphaned performance refactor on
+    `ai/post-release-fixes`, as the user chose. Its code, tests, and
+    evidence were ported without the old Memory Bank hunks, and the code
+    stays one revertable commit. A new test pins the dispatcher's
+    `CommandName`/`ObjectFamily` guard, and one pins an adapter worker's
+    per-target parameter copy; each failed with its guard removed.
+    Re-measured in fresh processes against the branch before the port, with
+    matching hashes and checksums: Core rights display 69 percent faster,
+    removed ACEs 66, dispatch 18, isolated CNG 15; Desktop removed ACEs 95.
+    The Core gate passes 1,917 tests with two environmental skips at 83.11
+    percent asserted coverage. Once WinRM ran on the development machine,
+    the Desktop gate passed 1,872 at 80.95 percent asserted coverage; before
+    that, only its two WinRM-bound DSC-engine tests failed. One
+    independent review approved; its Minor and three Nits were addressed.
+
+- 2026-10-06: Handoff 02 fixed three review defects test-first on
+    `ai/post-release-fixes`, one commit each. A Task Scheduler write may
+    repair a DACL without a Local System ACE; a missing or null current DACL
+    is still refused. An SMB DACL write reads the description just before
+    the native call, keeps concurrent edits, and warns instead of failing
+    after a committed write. `Get-ADObjectCallerEffectiveAccess` no longer
+    requests `nTSecurityDescriptor`; an absent descriptor elsewhere raises a
+    typed read-control error. The Core gate passes 1,905 tests with two
+    environmental skips at 83.2 percent asserted coverage. The Desktop gate
+    fails only the two WinRM-bound DSC-engine tests; its scoped coverage,
+    computed from its document, is 81.03 percent. One review approved with
+    minor findings, most fixed. No live lab run; 07 owns two new AD cases.
+
+- 2026-10-06: Handoff 01 made the domain-lab acceptance runner refuse to
+    delete what it did not create, test-first on `ai/post-release-fixes`. It
+    marks the payload root, `package`, and installed module version directory
+    it creates; replaces only absent or marked directories with no junction or
+    symbolic link inside; validates the payload root on the management
+    controller in every mode; and stops when a remote step does not confirm
+    its directory, because AutomatedLab does not stop on a remote throw. 79
+    lab-runner tests pass in Core 7.6.6 and Desktop 5.1; the full gate passes
+    1,873 tests with two environmental skips at 83.0 percent asserted coverage.
+    One independent review approved with Minor findings; seven fixed, three
+    recorded. No live lab run; handoff 07 owns it.
+
+- 2026-10-06: Wrote eight sequential handoff prompts for the triaged work,
+    outside the repository, with a ledger and per-prompt reports. They commit
+    to local `ai/post-release-fixes`; only the final prompt touches the
+    remote, with approval per action.
+
+- 2026-10-06: Triaged open work. Verified from git, the public GitHub API,
+    and the PowerShell Gallery that `v0.3.0-preview0001` shipped on
+    2026-09-07, so the pending-authorization note was stale. Found the
+    2026-09-10 performance refactor and repository-wide review only on a
+    deleted, never-pushed local branch; restored `ai/performance-refactor` at
+    `5f06c03` before reflog expiry. Rechecked its findings against `main`:
+    the lab-runner deletion, Task Scheduler SYSTEM refusal, SMB description
+    overwrite, and AD descriptor overfetch remain; its CNG Major is FIND-001.
+    Dependabot failures are inherited from their parent `4806726`, fixed on
+    `main` by `0502254`. No code change and no remote mutation.
 
 - 2026-09-07: Completed fresh reacceptance of `f5731f1` without replacing the
     lab. All four built/installed passes have 95 passed tests, zero failures or
@@ -70,125 +160,17 @@ FIND-002 is deferred. A versioned release still requires explicit authorization.
     monitoring stopped. The dated lab acceptance report retains candidate
     hashes and the failure, recovery, and successful-run evidence.
 
-- 2026-09-07: User requested a handoff commit and push on `ai/test-gap-audit`
-    after creating the remote branch. Reuse the recorded audit validation;
-    no runtime code changes were made in this handoff. Keep the two blocked
-    Desktop DSC checks, live acceptance, and independent review as open gates.
-    Generated packages and raw logs remain excluded from the Git transfer.
-
-- 2026-09-06: Audited the complete script inventory and controlling safety
-    paths. Reproduced and fixed escaped-DN containment, restore GUID loss,
-    wrong native ACE removal, DSC cleanup ownership, and misleading lab
-    evidence success. Core: 1,802 passed, zero failed, two environment skips;
-    coverage: 82.74 percent after moving the locally exercised AD setter into
-    asserted scope. Added the audit record and detached lab checklist. All
-    eight live suites discover 95 tests, but no live acceptance was run.
-    Desktop: 1,755 passed, two failed, two skips. The failing DSC-engine calls
-    cannot reach local WS-Management; WinRM is stopped with manual startup.
-    No test or host remoting setting was changed to bypass that prerequisite.
-    Packaging passed all 22 tasks; the local `0.0.1` candidate contains the
-    exact tested module plus generated help. The audit record retains hashes,
-    raw-evidence location, and the remaining lab/review obligations.
-
-- 2026-09-06: Confirmed hosted closure in run `34055979655` for `830a909`.
-    All four jobs passed; the Ubuntu publish job completed at 20:04:59 UTC.
-    The live wiki Home page names `v0.2.0-preview0002` and the sidebar contains
-    generated command and DSC resource navigation. The standard task works on
-    the selected runner, closing the outstanding Linux validation without a
-    custom task or manual wiki seed. No further incident work remains.
-
-- 2026-09-06: Reinvestigated why the stock wiki publisher works elsewhere.
-    With the actual release archive and upstream 0.13.0 on Windows, 126 added
-    files plus Home timed out at 3,042 ms with a shortened 3,000 ms timeout;
-    modifying 127 existing files passed in 157 ms and emitted only 112 bytes.
-    A quiet initial commit passed in 104 ms. Both DSC Community comparison
-    pipelines publish on Ubuntu. Removed the rejected custom publisher and
-    changed only the publish runner; build/test runners and standard task
-    order are unchanged. The new workflow guard was red then green; all 20
-    build-specific tests pass in both editions, and Sampler resolves the
-    upstream wiki task.
-    Actual Ubuntu publication awaits a hosted run. No commit or remote write.
-
-- 2026-09-06: A custom wiki workaround passed the Core and Desktop gates
-    (1,771 and 1,726 tests; 82.40% and 80.20% asserted coverage), but remained
-    uncommitted. It was subsequently withdrawn at the user's request in favor
-    of the standard task and runner investigation recorded above.
-
-- 2026-09-06: Diagnosed GitHub Actions run `34026468199`, attempt 2. Secret
-    validation, the GitHub release, both release assets, and PowerShell Gallery
-    publication succeeded. `Publish_GitHub_Wiki_Content` then hung at
-    `git commit` for exactly the dependency's 120-second timeout and reported
-    exit code `-1` with empty output. The generated archive has 127 files and
-    about 6,878 bytes of per-file commit summary. `Invoke-Git` waits for Git to
-    exit before draining redirected output, reproducing the open upstream bug
-    DscResource.DocGenerator#111. The wiki remains at its initial Home page and
-    has no version tag. A blind rerun can collide with the already-published,
-    immutable Gallery version; no rerun or remote mutation was performed.
-
-- 2026-09-06: Fixed GitHub Actions run `34021812398`. A static PowerShell
-    class method left all new `AccessRights` completers attached to a disposed
-    bounded-worker context in Windows PowerShell 5.1. The shared completion
-    method is now instance-bound, and a real before/after batch regression was
-    red then green. A direct HTTP.sys, WinRM, and Remote Desktop binding test
-    raised hosted executable-scope coverage without weakening ADR 0027. Final
-    Desktop: 1,723 passed, zero failed, two skips, 80.20% coverage. Final Core:
-    1,768 passed, zero failed, two skips, 82.40% coverage. Both Sampler gates
-    passed ten tasks with zero errors or warnings; no remote operation ran.
-
-- 2026-09-06: Reviewed `ai/access-rights-completion` against the validated
-    audit result and found one focused, additive commit. Its production and
-    test files merge cleanly; documentation conflicts came from stale complete
-    copies and retain the current records plus the new completion facts. The
-    fresh build passed, both PowerShell editions passed 30 focused completion
-    tests, and the full Core gate passed 1,766 tests with two environmental
-    skips and 81.93% asserted coverage.
-
-- 2026-09-05: Closed the validated cycle locally in `6f7ba15`. The Desktop
-    coverage merge completed at 23:01 UTC with 90.37% asserted coverage and
-    90.34% whole-module coverage; all ten tasks passed without warnings.
-    Monitoring was stopped at 23:02 UTC. Both package editions and the
-    instrumented lab build had already passed all 93 tests and cleanup checks.
-    A closing self-review then found that the evidence note had introduced the
-    local Windows account name into a version-controlled file, which `main` did
-    not contain; `5d291c5` replaced it with `%TEMP%` while keeping every marker
-    identifier. Record transient host paths without a user profile.
-    No push, release, or tag was performed.
-
-- 2026-09-05: The user accepted the security and quality review and requested
-    development-cycle close-out. Documented reliable privilege-name completion,
-    the private-key rule table with SID fallback and unchanged object
-    properties, private lab diagnostics, and complete generated release notes.
-    The final specification regression passed 20 tests. The release-note task
-    passed without altering the validated manifest, module, or package.
-    Both controllers and the member server passed post-acceptance service
-    checks. Temporary baseline worktrees, dependency junctions, and the scratch
-    analysis script were removed; no old raw logs remain in the lab payload.
-
-- 2026-09-05: Closed the remaining local audit gaps with failing-then-passing
-    guards: every export has an evidence row and a real test link, all 52
-    requirement identifiers occur in the suites that prove them, public output
-    types and DSC catalogs are checked, and the documented lab order is compared
-    with its owning function. Added the private-key rule view with orphan SID
-    fallback. Corrected stale selector, path, concurrency, and coverage prose
-    and retained raw lab console output for independent progress inspection.
-    Consolidated duplicate changelog categories without losing any of the 754
-    non-heading content lines; the parser had omitted content across duplicates.
-    The final focused gates pass 20 specification and five runner tests.
-    Earlier audit claims about missing contributor guidance and uncited ADRs
-    were partly false: the guidance and several Markdown links already existed.
-    A rule type is not a view count, a requirement reference is not a behavioral
-    proof, and not every direct command test is under Unit/Public. Vendored
-    Sampler TODOs remain upstream under the no-local-bootstrap-edit rule.
-
-- 2026-09-05: Audited 105 public commands, 20 DSC resources, and 39 roadmap
-    identifiers. Corrected seven false specification statements and pinned
-    OI-31 with red/green proof. Eleven specification tests, changelog parsing,
-    and changed-test static analysis passed. Subsequent milestones record
-    completion of the remaining view and traceability work. The detailed audit
-    history remains in `git show f5731f1:.memory-bank/progress.md`.
-
-- 2026-09-03: Closed OI-31: duplicate module compilation created incompatible
-    class identities. Ten reproductions per mode and 1,742 passing tests with
-    two skips proved the fix; coverage was 81.92 percent. Keep imports unforced,
-    isolate load/unload tests, and run docs/tests in separate processes. The QA
-    AST guard preserves the rule; detailed cache analysis remains in history.
+- 2026-09-03 to 2026-09-07: OI-31, the 105-command audit, the audit-gap
+    closure, the `6f7ba15` close-out, the `34026468199` wiki-publication hang
+    (DscResource.DocGenerator#111), the `34021812398` completer fix, the
+    `ai/access-rights-completion` review, the script-inventory audit, the
+    wiki-publisher investigation that run `34055979655` closed, and the
+    `ai/test-gap-audit` handoff push are in
+    `git show 023afe9:.memory-bank/progress.md`,
+    `git show 4461b90:.memory-bank/progress.md`,
+    `git show 8b67058:.memory-bank/progress.md`, and, for the oldest,
+    `git show a48ec3d:.memory-bank/progress.md`. Lessons kept: record
+    transient host paths without a user profile; keep imports unforced and run
+    docs and tests in separate processes; bind completers to an instance, not
+    a disposed worker context; publish the wiki with the standard task from an
+    Ubuntu runner.
