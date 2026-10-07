@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-10-06
+last-verified: 2026-10-07
 owner: software-engineer
 source: implementation and test evidence
 ---
@@ -1036,3 +1036,32 @@ outcome in an `Exit-Build` block so a red suite still reports it. The trigger
 that fired on 2026-08-11 was never named; the engine's own cache drop above 1024
 entries reproduces it, but a real gate peaked at 528 entries. Removing the
 precondition closes every trigger at once, so do not spend the day naming one.
+
+## Lab-host evidence and completion checks can fail quietly
+
+The lab host deletes per-session TEMP directories at logoff:
+`DeleteTempDirsOnExit` and `PerSessionTempDir` are 1 under
+`HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server`, and `$env:TEMP` in a
+remote-desktop session is `...\Temp\<session id>`. The private evidence
+directories of 2026-09-07 were gone a month later. Keep acceptance evidence in
+the profile's base TEMP directory, `$env:LOCALAPPDATA\Temp`.
+
+On 2026-10-07 five agent-side checks reported a wrong result, for four
+reasons unrelated to the module:
+
+- InvokeBuild colors its summary line, so `^Build succeeded\.` misses the ANSI
+  prefix in a redirected log, and a run with warnings prints
+  `Build succeeded with warnings.` Judge a child build by its exit code, and
+  strip `\x1b\[[0-9;]*[A-Za-z]` before matching any text.
+- `Sort-Object` orders strings that contain hyphens and underscores
+  differently in Windows PowerShell 5.1 and PowerShell 7, so a joined, sorted
+  file list fingerprinted an identical tree differently on guest and host.
+  Sort with `[StringComparer]::Ordinal` on both sides, or compare sets.
+- `Get-ChildItem -Recurse -ErrorAction SilentlyContinue` silently skips a
+  directory whose DACL denies the administrator, so the tree reads as empty
+  and its size as zero. Old ACL probes left such directories in TEMP. List
+  with backup semantics, `robocopy <dir> <absent> /L /E /B`, before calling a
+  tree empty, and confirm a deletion with `Test-Path`, not with the absence of
+  an error message.
+- The same deny ACE made `Remove-Item` fail non-terminating inside a script
+  that then printed its success line. Report removal only after verifying it.

@@ -2,64 +2,72 @@
 status: current
 last-verified: 2026-10-07
 owner: software-engineer
-source: repository, GitHub API, and PowerShell Gallery evidence
+source: repository, GitHub API, PowerShell Gallery, and domain-lab evidence
 ---
 
 # Active context
 
 ## Current task
 
-The 2026-10-06 handoff sequence is complete except handoff 07. Pull request
-#5 merged the integration branch into `main` at 13:01 UTC on 2026-10-07 as
-merge commit `2ebb3a5`, and release run `37625244450` published
-`v0.3.0-preview0002` to GitHub Releases and the PowerShell Gallery at 13:21
-UTC; the wiki Home page carries the NTFSSecurity migration guide link.
-GitVersion 5.12.0 had predicted that version on a simulated merge. The pull
-request CI and the release run passed in both editions without a single
-annotation, so the Node.js 20 deprecation warnings are gone. Dependabot #1-#3
-are closed as superseded, and issue #4 has the approved reply (comment
-`6038696531`); it stays open for the reporters to answer. The remote branches
-`updateChangelogAfterv0.2.0`, `ai/post-release-fixes`, and
-`ai/test-gap-audit` are gone, and the local branches `ai/post-release-fixes`,
-`ai/post-release-triage`, and `ai/performance-refactor` were deleted with
-approval. The house rules block every remote-mutating command from an agent,
-even with approval, so the user ran each remote step from commands the agent
-handed over, and the agent verified every result read-only. This record sits
-on the local branch `ai/record-post-release-publication` and is not pushed,
-because any push to `main` publishes another preview.
+The 2026-10-06 handoff sequence is complete. Handoff 07 ran on the Hyper-V
+host that holds `WindowsAccessControlLab` on 2026-10-07 and accepted `main`
+at `2ebb3a5`, built release-equivalent as `0.3.0-preview0002` with GitVersion
+5.12.0. Its 25 module files are byte-identical to the package on the
+PowerShell Gallery. Four full lab passes, built and installed in Desktop and
+Core, each passed 97 cases with eight ready cleanup entries; the isolated
+Desktop DSC-engine gate passed 5 of 5; and both local gates passed with the
+fresh lab coverage merged: Core 1,931 passed at 91.22 percent asserted,
+Desktop 1,886 at 90.49 percent, two environment skips each. The runner's two
+ownership refusals were proven against run-owned decoys, and a byte and ACL
+inventory proves the restoration. The
+[acceptance record](../docs/lab-acceptance-2026-10-07.md) holds the evidence.
+
+This record and the two earlier Memory Bank commits sit on the local branch
+`ai/record-post-release-publication` and are not pushed, because any push to
+`main` publishes another preview. The branch travels back to the development
+machine as a bundle in the handoff folder, so all three documentation commits
+reach `main` together with the next real change (user, 2026-10-07).
 
 ## Handoff sequence
 
 Eight prompts in the user's desktop folder
 `WindowsAccessControl-handoffs-2026-10-06` drove the post-release work; its
-ledger and reports hold every ruling and the validation evidence. Handoffs 01
-to 06 and 08 are done, and the user accepted all 22 agent decisions of 04 to
-08 one by one. Handoff 07, live domain-lab acceptance of the merged candidate,
-is Blocked on the development machine, which has Hyper-V and AutomatedLab but
-no lab VMs. On 2026-10-07 the user moved it to the Hyper-V host that holds
-`WindowsAccessControlLab`: the handoff folder carries the prompts, the ledger,
-the reports, and a git bundle with `main`, its tags, and this record branch,
-and the 07 prompt has a dated update that replaces its stale branch
-precondition. The user keeps the 13 VMs, checkpoint
-`wac-pre-f5731f1-b1fe0b1f`, and the old evidence until 07 has run.
+ledger and reports hold every ruling and the validation evidence. All eight
+are done. The user accepted every agent decision of 01 to 08, answered the
+07 housekeeping questions explicitly, and ran each remote step of 08 from
+commands the agent handed over, because the house rules block agent pushes.
+
+## Lab state
+
+- All thirteen VMs run. Only checkpoint `wac07-pre-2ebb3a5-b4de5d73` remains;
+  the user had both 2026-09-07 checkpoints removed after the run.
+- The unmarked `C:\WacRepo` and `C:\WacLive` folders on `F1ADC1` were removed
+  at the user's request after the run proved them unchanged, so the runner's
+  default `-RemoteRepositoryPath` works again.
+- The unmarked `0.0.1` and `0.2.0` installations on `F1ADC1` and the `0.0.1`
+  installation on `F1DC1` stay (user). An installed-package pass of a `0.0.1`
+  fallback build is therefore still refused on `F1ADC1`; build acceptance
+  candidates with the GitVersion version.
+- The lab host deletes per-session TEMP directories at logoff, and the private
+  evidence of 2026-09-07 is no longer there. The 2026-10-07 evidence sits in
+  the profile's base TEMP directory.
 
 ## Release state
 
-- `v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07.
+- `v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07 and is now
+  accepted in the domain lab, on the installed package as well.
 - `v0.2.0` remains the stable release (2026-09-06).
-- The [reacceptance record](../docs/lab-reacceptance-2026-09-07.md) and the
-  [security review](../docs/security-review-2026-09-07.md) cover
-  `v0.3.0-preview0001`; live evidence for the post-release changes is owed
-  before the next stable release.
+- A stable release still needs explicit authorization to merge, tag, push,
+  or publish.
 
 ## Open work, in recommended order
 
-1. **Handoff 07, live lab acceptance**, on the Hyper-V host that holds
-   `WindowsAccessControlLab`, before the next stable release. It covers 01's
-   lab-runner refusals (the unmarked `C:\WacRepo` and the `0.0.1` module on
-   `F1ADC1` predate the marker and need a decision with fresh evidence), 02's
-   new Active Directory live cases and the Task Scheduler and SMB behavior,
-   and 03's shared batching, which so far only the full gates cover.
+1. **Live gaps, unit-tested only:** repairing a Task Scheduler DACL that has
+   no Local System ACE (the lab folder keeps one), and the SMB warning for a
+   description edited during a DACL write, the restore of a description the
+   write cleared, and the stop for an unreadable description. Live cases would
+   need a disposable task folder without Local System and a concurrent
+   description writer.
 2. **Changelog pull request token.** `GitHubToken` is a fine-grained token,
    and the user is granting it "Pull requests: Read and write". The Actions
    setting "Allow GitHub Actions to create and approve pull requests" stays
@@ -80,9 +88,10 @@ precondition. The user keeps the 13 VMs, checkpoint
    entry exists, which a migrated NTFSSecurity call that subtracts rights
    hits. The migration guide documents it; a warning would be a behavior
    change and needs a specification update first.
-6. **Watch:** the Desktop gate's asserted coverage is 80.95 percent against
-   the 80 percent threshold, and GitHub announced that `ubuntu-latest`, which
-   runs the publish job, moves to Ubuntu 26 from 2026-10-19.
+6. **Watch:** CI has no lab coverage, so its Desktop asserted coverage stays
+   near the 80.95 percent of 2026-10-06 against the 80 percent threshold;
+   with lab evidence merged it is 90.49 percent. GitHub moves
+   `ubuntu-latest`, which runs the publish job, to Ubuntu 26 from 2026-10-19.
 
 ## Limits
 

@@ -1,24 +1,32 @@
 ---
 status: current
-last-verified: 2026-10-06
+last-verified: 2026-10-07
 owner: software-engineer
-source: repository evidence
+source: repository and domain-lab evidence
 ---
 
 # Progress
 
 ## Current status
 
-`v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07; `v0.2.0` remains
-the stable release. Pull request #5 carried the post-release work that a
-2026-10-06 triage split into eight handoffs: the lab-runner Blocker, the Task
-Scheduler, SMB, and AD review defects, the performance refactor, the
-NTFSSecurity migration guide, the Node 24 action releases, the restored 0.2.0
-changelog section with a release guard, and FIND-002. Handoff 07, live lab
-acceptance, is still owed before the next stable release. `activeContext.md`
-holds the open work.
+`v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07 and passed live
+domain-lab acceptance the same day; `v0.2.0` remains the stable release. Pull
+request #5 carried the post-release work that a 2026-10-06 triage split into
+eight handoffs: the lab-runner Blocker, the Task Scheduler, SMB, and AD review
+defects, the performance refactor, the NTFSSecurity migration guide, the
+Node 24 action releases, the restored 0.2.0 changelog section with a release
+guard, and FIND-002. All eight handoffs are done. `activeContext.md` holds
+the open work.
 
 ## Recent milestones
+
+- 2026-10-07: Handoff 07 accepted `2ebb3a5` in the domain lab, recorded in
+    `docs/lab-acceptance-2026-10-07.md`. The release-equivalent build matches
+    the Gallery package byte-for-byte; four full passes of 97 cases, the DSC
+    engine gate, and both local gates with fresh lab coverage passed; the two
+    lab-runner refusals were proven against decoys. At the user's request the
+    two older lab checkpoints, `C:\WacRepo`, and `C:\WacLive` were removed
+    afterwards; checkpoint `wac07-pre-2ebb3a5-b4de5d73` remains.
 
 - 2026-10-07: Published `v0.3.0-preview0002`. The user answered every pending
     question and ran each remote step from commands the agent handed over,
