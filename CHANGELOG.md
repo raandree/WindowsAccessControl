@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     a path longer than 260 characters needs PowerShell 7. The documentation
     index had pointed NTFSSecurity users at the `NTFSPermission` rename map,
     which never mentions NTFSSecurity
+- Add live domain-lab cases for two safeguards that only unit tests covered.
+    A Task Scheduler folder and task whose protected DACL has no Local System
+    ACE accept an unrelated ACE, still refuse a Local System deny, and can have
+    Local System restored. Around an SMB share DACL write, the description
+    that the native write clears is restored and reported, a concurrent edit is
+    kept with a warning, and a description that cannot be read before the
+    write stops the command before anything is written
 
 ### Changed
 
@@ -50,6 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Describe both windows in which an SMB share DACL write can still lose a
+    concurrent description edit. The usage page and the specification named
+    only an edit that the native write clears; an edit that lands between the
+    write's read-back and its restoration is overwritten by that restoration
+    too, as the new live case observed
+    ([specification](specs/0009-smb-share-and-active-directory-dacl-management.md#smb-share-contract))
 - End a release that published without opening its changelog pull request.
     Sampler's `Create_ChangeLog_GitHub_PR` reports a refused pull request only
     as a line in the build log, so the v0.2.0 run pushed

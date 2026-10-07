@@ -552,6 +552,215 @@ Describe 'Task Scheduler typed access-rule commands' -Tag 'DomainLab', 'WindowsO
     }
 }
 
+# FR-20, NFR-13: a DACL without Local System can be repaired, and a Local System deny is still refused.
+Describe 'Task Scheduler DACL without Local System' -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    It 'Should accept and repair a protected folder and task DACL that has no Local System ACE' {
+        $result = Invoke-Command `
+            -Session $script:session `
+            -ArgumentList $script:taskPath `
+            -ScriptBlock {
+                param($TaskPath)
+
+                # The marked folder would pass Local System down again, so the
+                # disposable DACLs are protected and every remaining ACE is
+                # explicit.
+                $removeLocalSystem = {
+                    param([string]$Sddl)
+
+                    $descriptor = [Security.AccessControl.RawSecurityDescriptor]::new($Sddl)
+                    for ($index = $descriptor.DiscretionaryAcl.Count - 1; $index -ge 0; $index--) {
+                        $ace = $descriptor.DiscretionaryAcl[$index]
+                        $knownAce = $ace -as [Security.AccessControl.KnownAce]
+                        if ($knownAce -and $knownAce.SecurityIdentifier.Value -eq 'S-1-5-18') {
+                            $descriptor.DiscretionaryAcl.RemoveAce($index)
+                            continue
+                        }
+                        # AceFlags is byte-backed, so clear INHERITED_ACE (0x10)
+                        # with byte arithmetic.
+                        $ace.AceFlags = [Security.AccessControl.AceFlags](
+                            [byte]$ace.AceFlags -band [byte]0xEF
+                        )
+                    }
+                    $descriptor.SetFlags(
+                        $descriptor.ControlFlags -bor
+                            [Security.AccessControl.ControlFlags]::DiscretionaryAclProtected
+                    )
+                    $descriptor.GetSddlForm([Security.AccessControl.AccessControlSections]::Access)
+                }
+                $getLocalSystemAce = {
+                    param([string]$Sddl)
+
+                    @(
+                        [Security.AccessControl.RawSecurityDescriptor]::new($Sddl).DiscretionaryAcl |
+                            Where-Object {
+                                ($_ -as [Security.AccessControl.KnownAce]) -and
+                                $_.SecurityIdentifier.Value -eq 'S-1-5-18'
+                            }
+                    )
+                }
+
+                $folderName = 'WacNoSystem' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+                $folderPath = '{0}\{1}' -f $TaskPath, $folderName
+                $taskName = 'WacNoSystemTask'
+                $outcome = [ordered]@{}
+                $service = $null
+                $parentFolder = $null
+                $folder = $null
+                $definition = $null
+                $action = $null
+                $task = $null
+                try {
+                    $service = New-Object -ComObject 'Schedule.Service'
+                    $service.Connect()
+                    $parentFolder = $service.GetFolder($TaskPath)
+                    $folder = $parentFolder.CreateFolder($folderName, $null)
+                    $definition = $service.NewTask(0)
+                    $definition.RegistrationInfo.Description =
+                        'WindowsAccessControl disposable Local System repair test task.'
+                    $definition.Settings.Enabled = $false
+                    $definition.Principal.UserId = 'SYSTEM'
+                    $definition.Principal.LogonType = 5
+                    $action = $definition.Actions.Create(0)
+                    $action.Path = "$env:SystemRoot\System32\cmd.exe"
+                    $action.Arguments = '/c exit 0'
+                    $task = $folder.RegisterTaskDefinition(
+                        $taskName,
+                        $definition,
+                        6,
+                        $null,
+                        $null,
+                        5,
+                        $null
+                    )
+
+                    $folder.SetSecurityDescriptor(
+                        (& $removeLocalSystem (Get-TaskFolderSecurityDescriptor -Path $folderPath).Sddl),
+                        0
+                    )
+                    $task.SetSecurityDescriptor(
+                        (& $removeLocalSystem (Get-ScheduledTaskSecurityDescriptor `
+                            -TaskPath $folderPath -TaskName $taskName).Sddl),
+                        0x10
+                    )
+                    $folderWithoutSystem = (Get-TaskFolderSecurityDescriptor -Path $folderPath).Sddl
+                    $outcome.FolderSystemBefore = @(& $getLocalSystemAce $folderWithoutSystem).Count
+                    $outcome.TaskSystemBefore = @(& $getLocalSystemAce (Get-ScheduledTaskSecurityDescriptor `
+                        -TaskPath $folderPath -TaskName $taskName).Sddl).Count
+
+                    $outcome.DenyRejected = $null
+                    try {
+                        Add-TaskFolderAccessRule `
+                            -Path $folderPath `
+                            -AllowedRootPath $TaskPath `
+                            -Account 'S-1-5-18' `
+                            -AccessRights FullControl `
+                            -AccessControlType Deny `
+                            -Confirm:$false `
+                            -ErrorAction Stop
+                    }
+                    catch {
+                        $outcome.DenyRejected = $_.Exception.Message
+                    }
+                    $outcome.DenyLeftDaclUnchanged = (Get-TaskFolderSecurityDescriptor `
+                        -Path $folderPath).Sddl -ceq $folderWithoutSystem
+
+                    $unrelated = @(Add-TaskFolderAccessRule `
+                        -Path $folderPath `
+                        -AllowedRootPath $TaskPath `
+                        -Account 'S-1-1-0' `
+                        -AccessRights ReadAndTraverse `
+                        -PassThru `
+                        -Confirm:$false `
+                        -ErrorAction Stop)
+                    $outcome.UnrelatedSid = $unrelated[0].SID
+                    $outcome.SystemAfterUnrelated = @(& $getLocalSystemAce (Get-TaskFolderSecurityDescriptor `
+                        -Path $folderPath).Sddl).Count
+
+                    $folderRepair = @(Add-TaskFolderAccessRule `
+                        -Path $folderPath `
+                        -AllowedRootPath $TaskPath `
+                        -Account 'S-1-5-18' `
+                        -AccessRights FullControl `
+                        -PassThru `
+                        -Confirm:$false `
+                        -ErrorAction Stop)
+                    $taskRepair = @(Add-ScheduledTaskAccessRule `
+                        -TaskPath $folderPath `
+                        -TaskName $taskName `
+                        -AllowedRootPath $TaskPath `
+                        -Account 'S-1-5-18' `
+                        -AccessRights FullControl `
+                        -PassThru `
+                        -Confirm:$false `
+                        -ErrorAction Stop)
+                    $outcome.FolderRepairRights = [string]$folderRepair[0].AccessRights
+                    $outcome.TaskRepairRights = [string]$taskRepair[0].AccessRights
+                    $systemAfterRepair = @(
+                        & $getLocalSystemAce (Get-TaskFolderSecurityDescriptor -Path $folderPath).Sddl
+                        & $getLocalSystemAce (Get-ScheduledTaskSecurityDescriptor `
+                            -TaskPath $folderPath -TaskName $taskName).Sddl
+                    )
+                    $outcome.ExplicitSystemAllowAfterRepair = @(
+                        $systemAfterRepair | Where-Object {
+                            -not $_.IsInherited -and
+                            ($_ -as [Security.AccessControl.QualifiedAce]).AceQualifier -eq
+                                [Security.AccessControl.AceQualifier]::AccessAllowed
+                        }
+                    ).Count
+                    $outcome.SystemAceCountAfterRepair = $systemAfterRepair.Count
+                }
+                finally {
+                    try {
+                        if ($folder -and $task) {
+                            $folder.DeleteTask($taskName, 0)
+                        }
+                        if ($parentFolder -and $folder) {
+                            $parentFolder.DeleteFolder($folderName, 0)
+                        }
+                    }
+                    catch {
+                        Write-Warning $_.Exception.Message
+                    }
+                    $outcome.FolderRemoved = $true
+                    try {
+                        $remaining = $service.GetFolder($folderPath)
+                        $outcome.FolderRemoved = $false
+                        [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($remaining)
+                    }
+                    catch {
+                        $null = $_
+                    }
+                    foreach ($comObject in @(
+                        $task,
+                        $action,
+                        $definition,
+                        $folder,
+                        $parentFolder,
+                        $service
+                    )) {
+                        if ($null -ne $comObject -and
+                            [Runtime.InteropServices.Marshal]::IsComObject($comObject)) {
+                            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($comObject)
+                        }
+                    }
+                }
+                [pscustomobject]$outcome
+            }
+
+        $result.FolderSystemBefore | Should -Be 0
+        $result.TaskSystemBefore | Should -Be 0
+        $result.DenyRejected | Should -BeLike '*must not add an explicit SYSTEM deny ACE*'
+        $result.DenyLeftDaclUnchanged | Should -BeTrue
+        $result.UnrelatedSid | Should -BeExactly 'S-1-1-0'
+        $result.SystemAfterUnrelated | Should -Be 0
+        $result.FolderRepairRights | Should -BeExactly 'FullControl'
+        $result.TaskRepairRights | Should -BeExactly 'FullControl'
+        $result.SystemAceCountAfterRepair | Should -Be 2
+        $result.ExplicitSystemAllowAfterRepair | Should -Be 2
+        $result.FolderRemoved | Should -BeTrue
+    }
+}
+
 Describe 'Task Scheduler portability and desired state' -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
     It 'Should round trip a schema-version-2 task backup on its own computer' {
         $result = Invoke-Command `

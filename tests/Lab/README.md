@@ -232,9 +232,10 @@ For a junction or symbolic link, remove the link itself rather than what it
 points to, and run again.
 
 Directories left by runs before the marker existed carry no marker. The
-`C:\WacRepo` payload on `F1ADC1` is one of them, so the first run refuses it.
-The installed-package pass likewise refuses an unmarked installation of the
-package's version, such as the `0.0.1` installation the
+`C:\WacRepo` payload that `F1ADC1` held until 2026-10-07 was one of them; it
+was removed after that day's acceptance, so the default payload root works
+again. The installed-package pass likewise refuses an unmarked installation of
+the package's version, such as the `0.0.1` installation the
 [2026-09-07 reacceptance](../../docs/lab-reacceptance-2026-09-07.md) found and
 restored on `F1ADC1`; a local build without GitVersion also has version
 `0.0.1`. Decide before the run whether to keep such a directory and choose a

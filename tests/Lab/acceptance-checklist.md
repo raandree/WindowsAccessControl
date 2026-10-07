@@ -30,13 +30,14 @@ test-fixture repair found during that run. A later candidate needs fresh proof.
 - Do not use `-SkipPayloadDeployment` for this first run: the old lab payload
   does not contain the new tests or fixes.
 - Decide first what happens to directories that predate the runner's
-  ownership marker, because the runner refuses to replace them. The existing
-  `C:\WacRepo` payload on `F1ADC1` has no marker, and neither has the `0.0.1`
-  installation that the 2026-09-07 reacceptance restored there; a local build
-  without GitVersion has that same version. Either keep such a directory and
-  add a new, absent `RemoteRepositoryPath` to `$parameters` or install a
-  package with another version, or inspect it and remove it yourself. The
-  runner has no backup and restore. See
+  ownership marker, because the runner refuses to replace them. The unmarked
+  `C:\WacRepo` payload on `F1ADC1` was removed after the 2026-10-07
+  acceptance, so the default payload root works again. The unmarked `0.0.1`
+  and `0.2.0` installations there were kept; a local build without GitVersion
+  has that same `0.0.1` version. Either keep such a directory and add a new,
+  absent `RemoteRepositoryPath` to `$parameters` or install a package with
+  another version, or inspect it and remove it yourself. The runner has no
+  backup and restore. See
   [payload and module ownership](README.md#payload-and-module-ownership).
 
 Inspect the candidate locally:
@@ -146,16 +147,26 @@ because it instruments the built module, not the installed copy. It marks the
 module version directory it installs and refuses to replace an unmarked
 installation of the same version.
 
-The new live cases are:
+The most recently added live cases are:
 
-- `Should reject an escaped name outside the allowed OU without changing its
-  DACL` in [ADObjectPermissions.Live.Tests.ps1](ADObjectPermissions.Live.Tests.ps1).
-- `Should reject an old expected GUID after a distinguished name is reused` in
-  [ADObjectReplication.Live.Tests.ps1](ADObjectReplication.Live.Tests.ps1).
+- `Should accept and repair a protected folder and task DACL that has no Local
+  System ACE` in
+  [TaskSchedulerPermissions.Live.Tests.ps1](TaskSchedulerPermissions.Live.Tests.ps1).
+  It creates its own disposable folder and task and deletes both.
+- `Should restore a description that the native DACL write cleared`,
+  `Should keep a description edited during the DACL write and warn with the
+  earlier value`, and `Should stop before writing when the description cannot
+  be read before the write` in
+  [SmbSharePermissions.Live.Tests.ps1](SmbSharePermissions.Live.Tests.ps1).
+  The second races a native watcher against the setter's read-back and retries
+  a lost race, up to five writes; the third injects its read failure through a
+  module-scope shadow of `Get-SmbShare`.
 
-Both require unchanged DACL evidence and exact-identity cleanup. The existing
-replication suite still intentionally stops and restores the partner directory
-service; check that the partner answers LDAP after the suite.
+Every earlier case still runs, including the escaped-name and reused-GUID
+regressions, which require unchanged DACL evidence and exact-identity cleanup.
+The existing replication suite still intentionally stops and restores the
+partner directory service; check that the partner answers LDAP after the
+suite.
 
 ## Evidence and stop conditions
 

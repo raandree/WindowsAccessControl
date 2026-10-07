@@ -42,8 +42,9 @@ Set-SmbShareSecurityDescriptor -Name 'Data$' `
 
 Share DACL writes preserve the share description. A description the native
 write clears is restored. A description someone else changes during the write
-is kept and reported with a warning, unless the write then clears it, in which
-case the value from before the write returns. When the description cannot be
+is kept and reported with a warning, unless the edit lands just before the
+native write, which clears it, or just after the check, before the restoration;
+then the value from before the write returns. When the description cannot be
 checked or restored after the DACL was written, a warning names the earlier
 value instead of failing a change that is already live.
 

@@ -145,7 +145,10 @@ folder, proves typed and deduplicated reads, `WhatIf`, unsafe-boundary rejection
 folder and task DACL round trips, typed rule add and exact removal with
 unrelated-ACE preservation, Local System preservation, task-definition
 preservation, rollback, COM release, and task deletion in Windows PowerShell
-5.1 and PowerShell 7.6.3. The complete lab must remain ready afterward.
+5.1 and PowerShell 7.6.3. A second disposable folder and task, whose protected
+DACLs have no Local System ACE, prove that such a DACL accepts an unrelated
+ACE, still refuses a Local System deny without writing, and lets Local System
+be restored to both. The complete lab must remain ready afterward.
 
 ## Later work
 
