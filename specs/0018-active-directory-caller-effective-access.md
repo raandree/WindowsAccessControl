@@ -101,7 +101,10 @@ reuses the directory family's existing target resolution, so the naming-context,
 partition, and unique-resolution refusals apply unchanged. That resolution does
 not request `nTSecurityDescriptor`, because no output property depends on it, so
 a caller without read-control access to the object's security descriptor still
-receives a result.
+receives a result. The three-attribute request goes through the same directory
+search seam as the family's other reads: an object deleted after target
+resolution fails with `ItemNotFoundException` naming it, and a response without
+exactly one entry fails as an object that did not resolve uniquely.
 
 ## Verification
 
@@ -113,9 +116,13 @@ receives a result.
   that neither the prevalidation of every target nor the per-target resolution
   requests `nTSecurityDescriptor` or the security-descriptor flag control, and
   that a caller whose entry carries no descriptor still receives a result.
-- The three-attribute base-scope request itself has no unit-testable seam,
-  because it needs a bound `LdapConnection`. Its source file is declared
-  domain-lab-only for coverage, and live domain-lab evidence proves it.
+- Unit tests replace the three-attribute base-scope request at the directory
+  search seam and prove that it is sent there, that a response without exactly
+  one entry fails, and that an absent `sDRightsEffective` is reported as zero.
+  Live domain-lab evidence proves the request against a controller, and deletes
+  a disposable organizational unit after target resolution, just before the
+  request reaches the controller, to prove that the command reports the
+  object as not found.
 - Live domain-lab evidence reads a real organizational unit as a domain
   administrator and proves a nonzero section mask, a nonempty writable-attribute
   list, and a nonempty creatable-child-class list against the same object

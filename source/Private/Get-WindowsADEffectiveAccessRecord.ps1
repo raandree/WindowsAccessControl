@@ -22,9 +22,7 @@ function Get-WindowsADEffectiveAccessRecord {
             'sDRightsEffective'
         )
     )
-    $response = [System.DirectoryServices.Protocols.SearchResponse](
-        $Connection.SendRequest($request)
-    )
+    $response = Send-WindowsADSearchRequest -Connection $Connection -Request $request
     if ($response.Entries.Count -ne 1) {
         throw "Active Directory object did not resolve uniquely: '$DistinguishedName'."
     }

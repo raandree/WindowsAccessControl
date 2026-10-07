@@ -54,6 +54,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     entry, so the deny-removal warning raised before a directory write keeps
     its exact-match guarantee. Private-key DACL comparison keeps an ordered
     desired-state check separate from unordered post-write verification
+- Read the RootDSE and the caller's effective access through the same
+    directory search function as every other directory read, so unit tests
+    cover their response checks without a domain controller. An object deleted
+    between target resolution and the effective-access read of
+    `Get-ADObjectCallerEffectiveAccess` now fails with an
+    `ItemNotFoundException` naming it, like the family's other reads, instead
+    of a `MethodInvocationException` from the LDAP call
+    ([specification](specs/0018-active-directory-caller-effective-access.md#output-contract))
 
 ### Fixed
 

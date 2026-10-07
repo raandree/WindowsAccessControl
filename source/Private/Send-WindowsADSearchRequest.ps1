@@ -2,9 +2,10 @@ function Send-WindowsADSearchRequest {
     <#
         Sends one LDAP search over a bound connection and returns its response.
         A request for an object that does not exist fails with
-        ItemNotFoundException. Get-WindowsADObjectRecord reaches the directory
-        only through this function, so unit tests can supply a response without
-        a domain controller.
+        ItemNotFoundException. Get-WindowsADObjectRecord, Get-WindowsADRootDse,
+        and Get-WindowsADEffectiveAccessRecord reach the directory only through
+        this function, so unit tests can supply a response without a domain
+        controller.
     #>
     [CmdletBinding()]
     [OutputType([System.DirectoryServices.Protocols.SearchResponse])]

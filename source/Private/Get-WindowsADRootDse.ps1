@@ -17,9 +17,7 @@ function Get-WindowsADRootDse {
             'rootDomainNamingContext'
         )
     )
-    $response = [System.DirectoryServices.Protocols.SearchResponse](
-        $Connection.SendRequest($request)
-    )
+    $response = Send-WindowsADSearchRequest -Connection $Connection -Request $request
     if ($response.Entries.Count -ne 1) {
         throw 'The selected domain controller did not return one RootDSE entry.'
     }
