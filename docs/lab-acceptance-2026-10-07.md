@@ -5,7 +5,10 @@ which the release workflow published as `v0.3.0-preview0002`. The run followed
 the [acceptance checklist](../tests/Lab/acceptance-checklist.md). All four
 full lab passes, the isolated Desktop DSC-engine gate, and both local test and
 coverage gates passed. The lab-runner ownership refusals were also proven live.
-This record is not release approval.
+A follow-up the same day gave the changed paths that only unit tests covered
+their own live cases, proved each case red against the code before its change,
+and repeated all four passes and both local gates with them. This record is
+not release approval.
 
 ## Candidate and environment
 
@@ -94,24 +97,70 @@ the candidate and its marker was present.
   security descriptor` and `Should report a missing directory object as not
   found` passed in all four passes, as did the earlier escaped-name and
   reused-GUID regressions.
-- SMB share description: the live SMB case asserts that the share description
-  is byte-identical after both the add and the exact remove, so the pre-write
-  description read and the restore decision ran on a real share.
+- SMB share description: the earlier SMB case asserts that the description is
+  byte-identical after both the add and the exact remove. The follow-up below
+  proves the three description paths one by one.
+- Task Scheduler: the follow-up below proves the repair of a DACL that has no
+  Local System ACE.
 - Shared batching: the Active Directory, SMB share, and Task Scheduler
   commands that the live suites call dispatch through the refactored batching
   layer, so all four passes ran it. The certificate private-key commands do
   not use that layer.
 
-Changed behavior that still has no live evidence, only unit tests:
+Every changed behavior now has live evidence. The two recorded lab-runner
+follow-ups, member-server suites that delete `ModuleUnderTest` without an
+ownership check and the unmarked root that `-SkipPayloadDeployment
+-ModuleSource Installed` creates, are known runner defects rather than
+untested behavior, and they stay scheduled after the release.
 
-- Repairing a Task Scheduler DACL that has no Local System ACE. The lab
-  folder keeps a Local System rule, so the live suite never reaches that path.
-- The SMB warning for a description edited during the DACL write, the restore
-  of a description the write cleared, and the stop for a description that
-  cannot be read before the write.
-- The two recorded lab-runner follow-ups: member-server suites that delete
-  `ModuleUnderTest` without an ownership check, and the unmarked root that
-  `-SkipPayloadDeployment -ModuleSource Installed` creates.
+## Follow-up live cases
+
+Four cases were added after the first passes. Each reaches its path with real
+objects, except the last, whose failure is injected:
+
+| Case | How it reaches the path |
+| --- | --- |
+| `Should accept and repair a protected folder and task DACL that has no Local System ACE` | A disposable folder and task in the marked folder get protected DACLs without Local System, because an inherited Local System ACE would otherwise return. An unrelated ACE is accepted, a Local System deny is refused without a write, and Local System is restored to both. |
+| `Should restore a description that the native DACL write cleared` | A raw DACL-only `SE_LMSHARE` write first shows that the native write clears the description; the delegated add then restores it and reports the restoration. |
+| `Should keep a description edited during the DACL write and warn with the earlier value` | A native watcher edits the description as soon as the add's grant appears, before the setter reads the description back. A lost race is retried, up to five writes. |
+| `Should stop before writing when the description cannot be read before the write` | Target resolution reads the share twice just before the setter does, so a module-scope shadow of `Get-SmbShare` fails only the setter's own read. The DACL stays unchanged. |
+
+Each case failed for its expected reason against modules built from the
+commits before the changes, and passed against the candidate:
+
+| Module | Task Scheduler | Restoration | Concurrent edit | Unreadable description |
+| --- | --- | --- | --- | --- |
+| `96d6671`, before both changes | Refused, because the DACL had no SYSTEM ACE | Not reported | Stale value restored over the edit in 5 of 5 writes | DACL written first |
+| `5531824`, Task Scheduler change only | Passed | Not reported | Stale value restored over the edit in 5 of 5 writes | DACL written first |
+| Candidate | Passed | Passed | Passed | Passed |
+
+All four full passes were then repeated with the new cases:
+
+| Gate | Passed | Failed | Skipped | Cleanup | Completed UTC |
+| --- | ---: | ---: | ---: | --- | --- |
+| Built module, Desktop with coverage | 101 | 0 | 0 | Eight ready entries | 18:12:56 |
+| Built module, Core | 101 | 0 | 0 | Eight ready entries | 18:20:53 |
+| Installed package, Desktop | 101 | 0 | 0 | Eight ready entries | 18:32:17 |
+| Installed package, Core | 101 | 0 | 0 | Eight ready entries | 18:40:22 |
+
+The Task Scheduler suite now runs 9 cases and the SMB share suite 10; every
+other suite is unchanged. Every repeated pass reported `Passed`, eight suites,
+zero skipped tests, explicit native exit zero, and both readiness flags in all
+eight cleanup entries.
+
+Three observations came out of the follow-up:
+
+- The native write publishes the DACL and clears the description in one step.
+  A concurrent edit is also lost when it lands between the setter's read-back
+  and its restoration, a window that the specification and the usage page did
+  not name; both now do. Behavior is unchanged.
+- `Invoke-WindowsAccessControl` writes one `$null` to the pipeline when its
+  script block returns nothing, so `@()` around it counts one item. The new
+  case filters it out; the command is unchanged.
+- Once, against the `5531824` module, a share DACL write stalled for about a
+  minute while the watcher polled without pause, and then failed with
+  `ERROR_INVALID_PARAMETER`. It did not recur in 40 stress writes against the
+  candidate, and the watcher now polls once per millisecond.
 
 ## Artifact identity
 
@@ -121,33 +170,38 @@ Changed behavior that still has no live evidence, only unit tests:
 | Tested module manifest | `581F7E70ABEA58B3FB0B8D0A2C45FB79267207493CF9B215FAB285A3295F3785` |
 | Tested package | `148C5558F205B11502FC0545C26BB4D44E64C06693FC6044AE05EF2D33B2860F` |
 | PowerShell Gallery package | `3E122CC9BEA88C6C5D4B94492B1E91BB31F5BF445F35B61976B8472D0488CC03` |
-| Fresh lab coverage | `BC34FE2BEFE59E39D5D79CDDF9D1278FE4F2149EBB1ABD4D222A77C9E917BA23` |
+| Fresh lab coverage | `B3EE43139B05614012F110A623EBE7FF48ECAB8F8441A349D0BA8726AE436FD6` |
 
 The two package files differ only in their packaging metadata; their module
-files are identical. The new lab coverage measures 8,506 commands, of which
-the domain-lab profile exercised 3,868 (45.47 percent); the harness reports
-1,701 of them as reached only in the member-server runspace. It is not the
-local or merged coverage percentage. The previous coverage document was
-preserved before the run. The new one reached the configured coverage path
-from the instrumented Desktop pass and matches the guest original
+files are identical. The lab coverage from the follow-up measures 8,506
+commands, of which the domain-lab profile exercised 3,874 (45.54
+percent); the harness reports 1,707 of them as reached only in the
+member-server runspace. It is not the local or merged coverage percentage. It
+replaced the first passes' document, `BC34FE2B…BA23`, which had 3,868
+exercised commands. The coverage document that preceded both was preserved
+before the first run. Each new document reached the configured coverage path
+from its instrumented Desktop pass and matches the guest original
 byte-for-byte.
 
 ## Local coverage gates
 
 | Edition | Passed | Failed | Skipped | Asserted coverage | Whole-module coverage | Completed UTC |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Core 7.6.6 | 1,931 | 0 | 2 | 91.22% | 91.22% | 14:59:46 |
-| Desktop 5.1.26100.33438 | 1,886 | 0 | 2 | 90.49% | 90.50% | 15:27:04 |
+| Core 7.6.6 | 1,931 | 0 | 2 | 91.22% | 91.22% | 18:30:37 |
+| Desktop 5.1.26100.33438 | 1,886 | 0 | 2 | 90.49% | 90.50% | 18:53:09 |
 
-Both editions imported the fresh lab document and reported `Domain-lab
-evidence merged: yes`; the 80 percent threshold and the asserted source scope
-were unchanged. Each ten-task workflow completed with zero errors and two
-warnings from deliberately mocked evidence-copy failures in the runner's unit
-tests, not from actual acceptance collection. Each edition skipped the
-mounted-volume case and the audit-rule read that needs an unavailable
-privilege. The local gates ran on the host after the lab coverage was
-collected, while the remaining lab work continued in the VMs; they touch
-neither the lab nor its fixtures.
+These are the final gates, run after the follow-up's lab coverage was
+collected. The first gates, against the first lab document, passed with the
+same test counts: Core at 91.22 percent and Desktop at 90.49 percent
+asserted coverage. Both editions imported the current lab document each time
+and reported `Domain-lab evidence merged: yes`; the 80 percent threshold and
+the asserted source scope were unchanged. Each ten-task workflow completed
+with zero errors and two warnings from deliberately mocked evidence-copy
+failures in the runner's unit tests, not from actual acceptance collection.
+Each edition skipped the mounted-volume case and the audit-rule read that
+needs an unavailable privilege. The local gates ran on the host after the lab
+coverage was collected, while the remaining lab work continued in the VMs;
+they touch neither the lab nor its fixtures.
 
 ## Independent cleanup checks
 
@@ -167,20 +221,32 @@ running and all three checkpoint sets remained.
 
 After these checks, at the maintainer's request, the two 2026-09-07
 checkpoints were removed, as were `C:\WacRepo` and `C:\WacLive`, each first
-re-verified file by file against the pre-run inventory. All thirteen VMs keep
+re-verified file by file against the pre-run inventory. All thirteen VMs kept
 running with checkpoint `wac07-pre-2ebb3a5-b4de5d73`, and the unmarked
 installations on `F1ADC1` and `F1DC1` were kept. Without `C:\WacRepo`, the
 runner's default payload root works again.
 
+The follow-up took checkpoint `wac07-pre-livegaps-83cd16fa` on all thirteen
+VMs first, and did its probing on its own disposable shares, task folders,
+and local accounts, all removed afterwards. After the repeated passes, the
+same health checks passed again; the two follow-up payload roots, the marked
+`0.3.0` installation, and the four verified console logs were removed; and a
+new inventory of every module path showed no difference from the state before
+the follow-up. At the maintainer's request, `wac07-pre-2ebb3a5-b4de5d73` was
+then removed too, so `wac07-pre-livegaps-83cd16fa` is the lab's only
+checkpoint.
+
 ## Retention and remaining gates
 
 Private evidence is retained under administrator `%TEMP%` in
-`wac07-accept-2ebb3a5-b4de5d737dca43c6aabcf2b7100bd5b7`, in the profile's base
-TEMP directory, because this host deletes per-session TEMP directories at
-logoff. It holds the pinned candidate files, the Gallery package, the
-GitVersion output, inspections, inventories, checkpoint identities, native
-exit markers, raw console logs, per-pass reports, the coverage documents, and
-the local test results. Raw evidence is not sanitized for publication. The
+`wac07-accept-2ebb3a5-b4de5d737dca43c6aabcf2b7100bd5b7` and, for the
+follow-up, `wac07-livegaps-83cd16fa7a4645cf95066e8e92330c0f`, in the
+profile's base TEMP directory, because this host deletes per-session TEMP
+directories at logoff. It holds the pinned candidate files, the Gallery
+package, the GitVersion output, inspections, inventories, checkpoint
+identities, native exit markers, raw console logs, per-pass reports, the
+coverage documents, the red and green focused results, and the local test
+results. Raw evidence is not sanitized for publication. The
 private evidence directories named in the 2026-09-07 records are no longer on
 this host. Two agent-side completion markers reported failure although the
 build and the Core gate succeeded, because their patterns missed a colored
@@ -191,4 +257,4 @@ All requested acceptance gates for this candidate are closed. A stable release
 still requires explicit authorization to merge, tag, push, or publish. Broader
 native fault injection, interrupted rollback, cancellation, soak tests,
 unusual-ACE persistence, and untested topology profiles remain documented
-limits, as do the changed paths listed above without live evidence.
+limits.

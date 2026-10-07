@@ -1065,3 +1065,39 @@ reasons unrelated to the module:
   an error message.
 - The same deny ACE made `Remove-Item` fail non-terminating inside a script
   that then printed its success line. Report removal only after verifying it.
+
+## Live tests that reach a guard need the real trigger, measured first
+
+The 2026-10-07 follow-up gave four unit-only paths live cases. Each trigger
+had to be measured before it could be trusted:
+
+- Task Scheduler reapplies inherited ACEs. Removing the inherited Local System
+  ACEs from a subfolder or task changes nothing, so a DACL without Local
+  System must be protected, with the remaining ACEs made explicit.
+  `GenericAce.AceFlags` is byte-backed: `-bnot` yields a negative `Int32` that
+  Windows PowerShell 5.1 cannot cast back, so clear `INHERITED_ACE` with byte
+  arithmetic.
+- A DACL-only `SE_LMSHARE` write clears the share description in the same step
+  that publishes the DACL; a native recorder polling every 0.25 ms never saw
+  one without the other. `NetShareGetInfo` supports levels 0, 1, 2, 501, 502,
+  503, and 1005 only; level 1501 is for `NetShareSetInfo`.
+- A race watcher must fire on the exact change under test, such as the
+  grant's SID appearing in the descriptor, not on any byte difference, and it
+  must pace its polling. One tight, high-priority loop ran beside a share
+  write that stalled for a minute and then failed; paced polling at 1 ms won
+  every race in 40 stress writes. Give a race case retries and put the
+  per-attempt data in `-Because`, so a failure explains itself.
+- A guard behind two identical reads, such as the SMB setter's description
+  read after target resolution, cannot be reached by any live condition.
+  Shadow the command in the module's script scope, fail only the call whose
+  caller is the guard, assert the exact call sequence, and remove the shadow
+  only when `Get-Command` shows it is the module's own.
+- `-ErrorAction Stop` wraps the original error in an
+  `ActionPreferenceStopException` whose `ErrorRecord`, not `InnerException`,
+  holds it, so `GetBaseException()` stops at the wrapper.
+  `Invoke-WindowsAccessControl` writes one `$null` when its script block
+  returns nothing, so filter `$null` before counting its output.
+- Prove each new live case red against a build of the parent commit: a
+  detached `git worktree` plus a copied `output\RequiredModules` builds in
+  about 15 seconds. The `96d6671` build reproduced the accepted `f5731f1`
+  module hash, so builds are byte-reproducible across worktrees.

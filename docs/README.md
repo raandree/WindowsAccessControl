@@ -25,7 +25,7 @@ what the module does, and comment-based help defines every parameter.
 | [research.md](research.md) | Source review, platform API semantics, and the comparison that informed the specifications | Contributors and reviewers |
 | [domain-lab-inventory.md](domain-lab-inventory.md) | Machines, forests, and roles of the disposable acceptance lab | Contributors running the lab suites |
 | [lab-reacceptance-2026-09-07.md](lab-reacceptance-2026-09-07.md) | Corrected-candidate lab, package, DSC, local coverage, and cleanup evidence | Maintainers and reviewers |
-| [lab-acceptance-2026-10-07.md](lab-acceptance-2026-10-07.md) | Post-release candidate (`v0.3.0-preview0002`) lab, package, DSC, runner ownership, local coverage, and cleanup evidence | Maintainers and reviewers |
+| [lab-acceptance-2026-10-07.md](lab-acceptance-2026-10-07.md) | Post-release candidate (`v0.3.0-preview0002`) lab, package, DSC, runner ownership, local coverage, and cleanup evidence, plus the live cases for the paths only unit tests covered | Maintainers and reviewers |
 | [performance-refactor-2026-09-10.md](performance-refactor-2026-09-10.md) | Performance changes, repeatable measurements, validation evidence, and remaining gates | Contributors and reviewers |
 
 ## The usage guide

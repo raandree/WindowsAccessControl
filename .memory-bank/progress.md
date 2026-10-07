@@ -20,6 +20,15 @@ the open work.
 
 ## Recent milestones
 
+- 2026-10-07: A follow-up gave the four handoff 02 paths that only unit tests
+    covered live cases: Task Scheduler repair of a protected DACL without
+    Local System, and the SMB description that the native write clears, edits
+    concurrently, or cannot read before the write. Each case failed against
+    builds of `96d6671` and `5531824` and passed against the candidate; all
+    four passes ran 101 cases each, and both local gates passed again. The
+    SMB usage page and specification 0009 now name both windows in which a
+    concurrent description edit can be replaced.
+
 - 2026-10-07: Handoff 07 accepted `2ebb3a5` in the domain lab, recorded in
     `docs/lab-acceptance-2026-10-07.md`. The release-equivalent build matches
     the Gallery package byte-for-byte; four full passes of 97 cases, the DSC
