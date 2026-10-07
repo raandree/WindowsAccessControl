@@ -35,9 +35,13 @@ Eight prompts in the user's desktop folder
 ledger and reports hold every ruling and the validation evidence. Handoffs 01
 to 06 and 08 are done, and the user accepted all 22 agent decisions of 04 to
 08 one by one. Handoff 07, live domain-lab acceptance of the merged candidate,
-is Blocked: this machine has Hyper-V and AutomatedLab but no lab VMs. The user
-keeps the 13 VMs, checkpoint `wac-pre-f5731f1-b1fe0b1f`, and the old evidence
-until 07 has run.
+is Blocked on the development machine, which has Hyper-V and AutomatedLab but
+no lab VMs. On 2026-10-07 the user moved it to the Hyper-V host that holds
+`WindowsAccessControlLab`: the handoff folder carries the prompts, the ledger,
+the reports, and a git bundle with `main`, its tags, and this record branch,
+and the 07 prompt has a dated update that replaces its stale branch
+precondition. The user keeps the 13 VMs, checkpoint
+`wac-pre-f5731f1-b1fe0b1f`, and the old evidence until 07 has run.
 
 ## Release state
 
