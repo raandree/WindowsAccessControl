@@ -1188,9 +1188,9 @@ Describe 'SMB share DACL command guards' -Tag 'DomainLab', 'WindowsOnly', 'Requi
 
                     $sddlBefore = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
                     $descriptionBefore = (Get-SmbShare -Name $ShareName -ErrorAction Stop).Description
-                    # Arming member coverage leaves the session stopping on
-                    # every error, so the call states the default Continue
-                    # preference under which the refusal is reported.
+                    # The call states the default Continue preference under
+                    # which the refusal is reported, so the case does not
+                    # depend on the preference of the session it runs in.
                     $stream = @(
                         Set-SmbShareSecurityDescriptor `
                             -Name $ShareName `

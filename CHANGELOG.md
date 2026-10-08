@@ -73,6 +73,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Stop the domain-lab coverage pass from changing how member-server suites
+    handle errors: arming coverage in a member session set
+    `$ErrorActionPreference` to `Stop` for the rest of that session, so the
+    SMB share, certificate private-key, Task Scheduler, and foreign-principal
+    suites stopped at a non-terminating error only in the pass that collects
+    coverage
+    ([verification and traceability](specs/0005-verification-and-traceability.md#code-coverage-measurement))
 - Describe both windows in which an SMB share DACL write can still lose a
     concurrent description edit. The usage page and the specification named
     only an edit that the native write clears; an edit that lands between the

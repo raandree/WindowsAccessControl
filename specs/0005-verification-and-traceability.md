@@ -387,9 +387,10 @@ for every family it exercises and writes one JaCoCo document.
   locations of the module under test, the suite arms those locations in the
   member runspace, and the hit counts are returned in publication order and
   added to the harness-side counts. A suite that drives a second member
-  session arms and returns that session under its own name. A member module
-  file whose content differs from the measured one is refused rather than
-  measured.
+  session arms and returns that session under its own name. Arming changes no
+  preference variable of the session, so a suite handles errors the same way
+  whether or not coverage is collected. A member module file whose content
+  differs from the measured one is refused rather than measured.
 - The document is rendered from the harness-side locations, so its package,
   class, and source-file names are relative to the built module directory and
   are identical to the names the repository build produces for the same module
