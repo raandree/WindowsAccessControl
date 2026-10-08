@@ -9,16 +9,32 @@ source: repository and domain-lab evidence
 
 ## Current status
 
-`v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07 and passed live
-domain-lab acceptance the same day; `v0.2.0` remains the stable release. Pull
-request #5 carried the post-release work that a 2026-10-06 triage split into
-eight handoffs: the lab-runner Blocker, the Task Scheduler, SMB, and AD review
-defects, the performance refactor, the NTFSSecurity migration guide, the
-Node 24 action releases, the restored 0.2.0 changelog section with a release
-guard, and FIND-002. All eight handoffs are done. `activeContext.md` holds
-the open work.
+`v0.3.0-preview0003` shipped from `323928b` on 2026-10-08: pull request #6
+brought the domain-lab acceptance of `v0.3.0-preview0002`, a test for every
+command in the declared domain-lab-only files, the RootDSE and
+effective-access seam change, and the lab harness correction to `main`.
+`v0.2.0` remains the stable release. Pull request #5 carried the
+post-release work that a 2026-10-06 triage split into eight handoffs: the
+lab-runner Blocker, the Task Scheduler, SMB, and AD review defects, the
+performance refactor, the NTFSSecurity migration guide, the Node 24 action
+releases, the restored 0.2.0 changelog section with a release guard, and
+FIND-002; handoff 09 published the lab acceptance. All nine handoffs are
+done. `activeContext.md` holds the open work.
 
 ## Recent milestones
+
+- 2026-10-08: Published `v0.3.0-preview0003` from `323928b`, the merge commit
+    of pull request #6, which carried `ai/record-post-release-publication`
+    unchanged after the user pushed it from the lab host. Both local gates
+    passed on `a95321c` first (Core 1,938 tests at 83.19 percent asserted
+    coverage, Desktop 1,893 at 80.95 percent), GitVersion 5.12.0 predicted
+    the version on a simulated merge, and CI passed on the pull request and
+    on `main` with the same figures and no error or warning annotation. The
+    GitHub release, the Gallery entry, and the wiki Home page carry the
+    version, and the published root module is byte-identical to the one the
+    lab accepted. The user ran every remote step from commands the agent
+    handed over, and moved the CopilotAtelier Skill warning's pull request to
+    a prompt of their own.
 
 - 2026-10-08: `a572d3d` stops arming member coverage from leaving a member
     session stopping on every error: `Invoke-Command -Session` runs a script

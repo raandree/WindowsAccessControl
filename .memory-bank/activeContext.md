@@ -9,58 +9,49 @@ source: repository, GitHub API, PowerShell Gallery, and domain-lab evidence
 
 ## Current task
 
-Handoff 07 and its follow-ups are done. Asked on 2026-10-07 whether every live
-test was done, the user chose to give a test to each of the 17 commands in the
-declared domain-lab-only files that nothing executed, including a source change
-to make four of them unit-testable. The
-[2026-10-08 acceptance](../docs/lab-acceptance-2026-10-08.md) accepted the
-branch candidate `bad1302`, built as `0.3.0-record` with GitVersion 5.12.0:
+Handoff 09 is done. Pull request #6 merged
+`ai/record-post-release-publication` into `main` as the merge commit `323928b`
+on 2026-10-08, and the release run published `v0.3.0-preview0003`, the
+version GitVersion 5.12.0 computed for a simulated merge beforehand. The user
+had pushed the branch from the lab host before 09 ran, so its twelve commits
+reached `main` unchanged, with the SHAs that the records cite:
 
-- `4096d02` routes `Get-WindowsADRootDse` and
+- The two Memory Bank records of handoff 08 and the ten commits of handoff 07.
+  One changes the module: `4096d02` routes `Get-WindowsADRootDse` and
   `Get-WindowsADEffectiveAccessRecord` through `Send-WindowsADSearchRequest`,
-  so six unit cases reach their four guards. A deleted object during
-  `Get-ADObjectCallerEffectiveAccess` now reports `ItemNotFoundException`
-  (changelog `Changed`).
-- `938bdff` and `bad1302` add eight live cases: five SMB share guards with the
-  confirmation prompt, two injected enrichment failures, and a deletion inside
-  the effective-access read. Each was red against a build with its guard
-  removed.
-- DSC 5 of 5; four passes of 109 cases with eight ready cleanup entries; local
-  gates Core 1,937 at 91.26 percent and Desktop 1,892 at 90.53 percent
-  asserted; domain-lab-only coverage 100 percent, 154 of 154.
+  so unit tests reach their four response guards, and a directory object
+  deleted during `Get-ADObjectCallerEffectiveAccess` now fails with
+  `ItemNotFoundException` (changelog `Changed`).
+- `6ea9d7e`, `938bdff`, and `bad1302` give every command in the declared
+  domain-lab-only files a test, each red against a build with its guard
+  removed; `a572d3d` stops arming member coverage from leaving a member
+  session stopping on every error.
+- The [2026-10-07](../docs/lab-acceptance-2026-10-07.md) and
+  [2026-10-08](../docs/lab-acceptance-2026-10-08.md) records hold the
+  domain-lab acceptance of `2ebb3a5` and of the branch candidates `bad1302`
+  and `a572d3d`, whose root modules are byte-identical.
 
-The user then had the harness defect of that round corrected and its
-AutomatedLab lesson moved into the shared Skill (2026-10-08):
+Before the pull request, both local gates passed on `a95321c` without lab
+coverage, as CI runs them: Core 1,938 tests at 83.19 percent asserted
+coverage and Desktop 1,893 at 80.95 percent. CI on the pull request and on
+`main` reported the same figures, with no error or warning annotation.
 
-- `a572d3d` runs the remote body of `Enter-WindowsAccessControlMemberCoverage`
-  in a child scope, so arming coverage no longer leaves a member session
-  stopping on every error. A unit case failed with `Stop` before the change,
-  a live probe showed both behaviors, a built pass ran 109 of 109 in both
-  editions with line-identical lab coverage, and the local gates passed:
-  Core 1,938 and Desktop 1,893. The record's Harness correction section holds
-  the evidence.
-- The CopilotAtelier `automatedlab-deployment` Skill now warns, on a local
-  branch there, that `Remove-LabVMSnapshot` deletes the named checkpoint's
-  subtree, with a per-VM recipe that keeps newer checkpoints. Merging and
-  deploying it is the user's step; deploying rewrites the installed copy that
-  running sessions use.
-
-The [2026-10-07 record](../docs/lab-acceptance-2026-10-07.md) holds the
-acceptance of `2ebb3a5` as `0.3.0-preview0002` and the first follow-up. Every
-commit since `ce22f00` sits on the local branch
-`ai/record-post-release-publication` and is not pushed, because any push to
-`main` publishes another preview. The branch returns to the development machine
-as a bundle in the handoff folder, so these commits reach `main` together
-(user, 2026-10-07).
+The CopilotAtelier `automatedlab-deployment` Skill warning about
+`Remove-LabVMSnapshot` (`3f06142` on the local branch
+`ai/automatedlab-snapshot-children` there) left 09: the user moved its push,
+pull request, and merge to a prompt of their own in CopilotAtelier.
+CopilotAtelier brief 01 waits for that merge, because both change that
+repository's `CHANGELOG.md` under `[Unreleased]`.
 
 ## Handoff sequence
 
-Eight prompts in the user's desktop folder
+Nine prompts in the user's desktop folder
 `WindowsAccessControl-handoffs-2026-10-06` drove the post-release work; its
-ledger and reports hold every ruling and the validation evidence. All eight
+ledger and reports hold every ruling and the validation evidence. All nine
 are done. The user accepted every agent decision of 01 to 08, answered the
-07 housekeeping questions explicitly, and ran each remote step of 08 from
-commands the agent handed over, because the house rules block agent pushes.
+07 housekeeping questions explicitly, and ran each remote step of 08 and 09
+from commands the agent handed over, because the house rules block agent
+pushes.
 
 ## Lab state
 
@@ -77,13 +68,19 @@ commands the agent handed over, because the house rules block agent pushes.
   fallback build is therefore still refused on `F1ADC1`; build acceptance
   candidates with the GitVersion version.
 - The lab host deletes per-session TEMP directories at logoff, and the private
-  evidence of 2026-09-07 is no longer there. The 2026-10-07 evidence sits in
-  the profile's base TEMP directory.
+  evidence of 2026-09-07 is no longer there. The 2026-10-07 and 2026-10-08
+  evidence sits in the profile's base TEMP directory; the user approved its
+  removal once the branch reached `main` (2026-10-08), which is done on the
+  lab host, not from the development machine.
 
 ## Release state
 
-- `v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07 and is now
-  accepted in the domain lab, on the installed package as well.
+- `v0.3.0-preview0003` shipped from `323928b` on 2026-10-08. Its root module
+  is byte-identical to the one the domain lab accepted on 2026-10-08
+  (`A9671FD0…21CA`), and the Gallery and GitHub packages carry the same 25
+  module files.
+- `v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07 and is accepted
+  in the domain lab, on the installed package as well.
 - `v0.2.0` remains the stable release (2026-09-06).
 - A stable release still needs explicit authorization to merge, tag, push,
   or publish.
@@ -119,9 +116,10 @@ commands the agent handed over, because the house rules block agent pushes.
    hits. The migration guide documents it; a warning would be a behavior
    change and needs a specification update first.
 7. **Watch:** CI has no lab coverage, so its Desktop asserted coverage stays
-   near the 80.95 percent of 2026-10-06 against the 80 percent threshold;
-   with lab evidence merged it is 90.53 percent (2026-10-08). GitHub moves
+   at 80.95 percent against the 80 percent threshold, again on 2026-10-08;
+   with lab evidence merged it is 90.53 percent. GitHub moves
    `ubuntu-latest`, which runs the publish job, to Ubuntu 26 from 2026-10-19.
+
 ## Limits
 
 Agents may not push or otherwise mutate the remote, even with approval; the
