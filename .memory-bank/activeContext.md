@@ -9,6 +9,16 @@ source: repository, GitHub API, PowerShell Gallery, and domain-lab evidence
 
 ## Current task
 
+Next, at the user's request on 2026-10-08: the stable release `v0.3.0`. The
+user pushes a `v0.3.0` tag on `323928b`, the commit `v0.3.0-preview0003` came
+from, and merges the changelog pull request `updateChangelogAfterv0.3.0` that
+the tag's run opens; the agent verifies each step read-only. A simulation in a
+throwaway clone gave `0.3.0` from GitVersion 5.12.0 on the tagged commit,
+Sampler's changelog step selected `v0.3.0` over `v0.3.0-preview0003`, and
+`Update-Changelog` released all 21 `[Unreleased]` entries. That step reads the
+tags on `origin/main`'s head, so nothing may merge into `main` until the run
+ends.
+
 Handoff 09 is done. Pull request #6 merged
 `ai/record-post-release-publication` into `main` as the merge commit `323928b`
 on 2026-10-08, and the release run published `v0.3.0-preview0003`, the
@@ -82,8 +92,9 @@ pushes.
 - `v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07 and is accepted
   in the domain lab, on the installed package as well.
 - `v0.2.0` remains the stable release (2026-09-06).
-- A stable release still needs explicit authorization to merge, tag, push,
-  or publish.
+- The user authorized the stable release `v0.3.0` from `323928b` on
+  2026-10-08. Any later stable release still needs explicit authorization to
+  tag, push, or publish.
 
 ## Open work, in recommended order
 
@@ -92,7 +103,9 @@ pushes.
    setting "Allow GitHub Actions to create and approve pull requests" stays
    off, because it governs only `GITHUB_TOKEN`, which the changelog step does
    not use. The guard from handoff 06 fails the next stable release if the
-   pull request is still refused.
+   pull request is still refused. The `v0.3.0` release is the first run that
+   exercises it; Sampler pushes the changelog branch with this token too, so
+   it also needs "Contents: Read and write".
 2. **Lab-runner follow-ups** (user, 2026-10-06): the SMB, certificate
    private-key, Task Scheduler, and foreign-principal suites delete
    `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server without
@@ -106,7 +119,8 @@ pushes.
 4. **Observation, 2026-10-08:** a prototype that stopped a remote job blocked
    on the share-write confirmation and then wrote again left the `WacLab$`
    description empty with its DACL unchanged. Four controlled replays did not
-   reproduce it; the cause is not established.
+   reproduce it; the cause is not established. It does not block the stable
+   release `v0.3.0` (user, 2026-10-08).
 5. **Review finding, unscheduled:** the opt-in ModuleFast path in the vendored
    `Resolve-Dependency.ps1` downloads and runs `bit.ly/modulefast` unverified;
    it is disabled by default.
