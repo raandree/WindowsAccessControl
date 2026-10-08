@@ -1,177 +1,131 @@
 ---
 status: current
-last-verified: 2026-10-06
+last-verified: 2026-10-08
 owner: software-engineer
-source: repository, git reflog, and public GitHub API evidence
+source: repository, GitHub API, PowerShell Gallery, and domain-lab evidence
 ---
 
 # Active context
 
 ## Current task
 
-The 2026-10-06 handoff sequence has run as far as it can without the user,
-who delegated its decisions overnight; every agent decision is in the
-handoff ledger for review. Handoff 07 is Blocked: this machine runs Hyper-V
-and AutomatedLab but holds no lab VMs and no lab store, so live acceptance of
-the combined candidate waits for the lab host and should precede the next
-stable release. Handoff 08 is prepared and stopped before its first remote
-action. Its pull request body follows `.github/PULL_REQUEST_TEMPLATE.md`,
-which the prompt wrongly said did not exist, and its report lists every
-remaining remote step with the exact command. GitVersion 5.12.0 on a
-simulated merge reports `0.3.0-preview0002`. On `023afe9` both full gates
-pass: Core 1,931 passed, 0 failed, 2 skipped at 83.11 percent asserted
-coverage; Desktop 1,886 passed, 0 failed, 2 skipped at 80.95 percent.
-`ai/test-gap-audit` no longer exists on the remote. Next, the user approves
-or declines each remote step of 08, works through the 06 settings checklist,
-and runs 07 on the lab host. No git remote was mutated.
+Handoff 07 and its follow-ups are done. Asked on 2026-10-07 whether every live
+test was done, the user chose to give a test to each of the 17 commands in the
+declared domain-lab-only files that nothing executed, including a source change
+to make four of them unit-testable. The
+[2026-10-08 acceptance](../docs/lab-acceptance-2026-10-08.md) accepted the
+branch candidate `bad1302`, built as `0.3.0-record` with GitVersion 5.12.0:
 
-Handoff 06 restored the `## [0.2.0] - 2026-09-06` changelog section that the
-pipeline never merged, with every later entry still under `[Unreleased]` and
-a multiset proof that no line moved, and made a stable release end with an
-error when its changelog pull request is missing, because Sampler's
-`Create_ChangeLog_GitHub_PR` only logs a refused creation. The likeliest
-cause of the v0.2.0 gap is a `GitHubToken` secret without pull-request scope;
-the step log of run `34058863590` would settle it and needs an authenticated
-download by the user. FIND-002 is closed.
+- `4096d02` routes `Get-WindowsADRootDse` and
+  `Get-WindowsADEffectiveAccessRecord` through `Send-WindowsADSearchRequest`,
+  so six unit cases reach their four guards. A deleted object during
+  `Get-ADObjectCallerEffectiveAccess` now reports `ItemNotFoundException`
+  (changelog `Changed`).
+- `938bdff` and `bad1302` add eight live cases: five SMB share guards with the
+  confirmation prompt, two injected enrichment failures, and a deletion inside
+  the effective-access read. Each was red against a build with its guard
+  removed.
+- DSC 5 of 5; four passes of 109 cases with eight ready cleanup entries; local
+  gates Core 1,937 at 91.26 percent and Desktop 1,892 at 90.53 percent
+  asserted; domain-lab-only coverage 100 percent, 154 of 154.
 
-Handoff 05 pinned `actions/checkout` 7.0.1, `actions/upload-artifact` 7.0.1,
-and `actions/download-artifact` 8.0.1 by the SHA each tag resolves to, which
-ends the Node.js 20 deprecation warning. Every release note from v4 to each
-target was checked against this workflow and no input changed meaning, so the
-commit is seven pins; `download-artifact` v8 now fails a job on a digest
-mismatch instead of warning, which is kept. A `tests/Unit/Build` test holds
-every `uses:` reference to a SHA pin with a version comment and to a release
-line that declares Node.js 24. The three Dependabot pull requests are
-superseded: the seven changed lines are byte-identical to their proposals.
+The user then had the harness defect of that round corrected and its
+AutomatedLab lesson moved into the shared Skill (2026-10-08):
 
-Handoff 04 settled the NTFSSecurity positioning that the user confirmed:
-`WindowsAccessControl` is the successor of NTFSSecurity, which is deprecated
-and will be archived. `docs/migration-from-ntfssecurity.md` maps all 37
-commands that the 4.2.6 and 5.0.0-rc4 manifests export, confirmed against the
-built module, with the parameter and output differences and the decision
-behind each missing feature. The documentation index, the wiki Home page, the
-README, and three See also lists point at the guide, and the README no longer
-calls private keys read-only. The issue #4 reply is a draft in the handoff
-`reports` folder; its wiki link 404s until `main` has the guide.
+- `a572d3d` runs the remote body of `Enter-WindowsAccessControlMemberCoverage`
+  in a child scope, so arming coverage no longer leaves a member session
+  stopping on every error. A unit case failed with `Stop` before the change,
+  a live probe showed both behaviors, a built pass ran 109 of 109 in both
+  editions with line-identical lab coverage, and the local gates passed:
+  Core 1,938 and Desktop 1,893. The record's Harness correction section holds
+  the evidence.
+- The CopilotAtelier `automatedlab-deployment` Skill now warns, on a local
+  branch there, that `Remove-LabVMSnapshot` deletes the named checkpoint's
+  subtree, with a per-VM recipe that keeps newer checkpoints. Merging and
+  deploying it is the user's step; deploying rewrites the installed copy that
+  running sessions use.
 
-Handoffs 01 to 03 made the lab runner refuse to delete what it did not
-create, fixed the Task Scheduler, SMB, and AD review defects, and ported and
-re-measured the performance refactor; the Desktop gate passes narrowly at
-80.95 percent asserted coverage, and handoff 07 owns the first live and
-installed-package acceptance of the refactor. On 2026-10-06 the user reviewed
-all 14 recorded agent decisions of handoffs 01 to 03: twelve are accepted as
-recorded, and the other two were overtaken by doing the work (the decision log
-moved out of `systemPatterns.md`, and specs 0005 and 0006 name the descriptor
-benchmark). WinRM stays enabled here. Later handoffs ask their own questions
-with fresh evidence. The 2026-10-06 triage below remains the record of the
-open work. `main` is `40e364a`, in sync with `origin/main`;
-`ai/performance-refactor` stays at `5f06c03` until handoff 08 deletes it with
-approval.
+The [2026-10-07 record](../docs/lab-acceptance-2026-10-07.md) holds the
+acceptance of `2ebb3a5` as `0.3.0-preview0002` and the first follow-up. Every
+commit since `ce22f00` sits on the local branch
+`ai/record-post-release-publication` and is not pushed, because any push to
+`main` publishes another preview. The branch returns to the development machine
+as a bundle in the handoff folder, so these commits reach `main` together
+(user, 2026-10-07).
 
 ## Handoff sequence
 
-Eight sequential handoff prompts now drive the open work. They live outside
-the repository in the user's desktop folder
-`WindowsAccessControl-handoffs-2026-10-06`, with a README, a ledger, and a
-`reports` folder; trust that ledger and git history for progress. All prompts
-commit to the local integration branch `ai/post-release-fixes`, created from
-`ai/post-release-triage`. Execution order, which supersedes the triage order
-below: 01 lab-runner ownership guard, 02 Task Scheduler, SMB, and AD
-defects, 03 performance-refactor port, 04 NTFSSecurity guide and issue #4
-draft, 05 Actions bumps, 06 changelog section, silent changelog pull request
-step, and FIND-002, 07 live lab acceptance, 08 push, pull request, release,
-and cleanup. Only 08 touches the remote, with approval per action.
+Eight prompts in the user's desktop folder
+`WindowsAccessControl-handoffs-2026-10-06` drove the post-release work; its
+ledger and reports hold every ruling and the validation evidence. All eight
+are done. The user accepted every agent decision of 01 to 08, answered the
+07 housekeeping questions explicitly, and ran each remote step of 08 from
+commands the agent handed over, because the house rules block agent pushes.
+
+## Lab state
+
+- All thirteen VMs run with one checkpoint, `wac07-after-bad1302-9d9776ca`,
+  taken after the 2026-10-08 acceptance. Removing `wac07-pre-livegaps-83cd16fa`
+  with `Remove-LabVMSnapshot` also deleted its child
+  `wac07-pre-938bdff-098b3392` on ten VMs, so the user had the new checkpoint
+  taken and the remaining old ones merged away with `Remove-VMSnapshot`.
+- The unmarked `C:\WacRepo` and `C:\WacLive` folders on `F1ADC1` were removed
+  at the user's request after the run proved them unchanged, so the runner's
+  default `-RemoteRepositoryPath` works again.
+- The unmarked `0.0.1` and `0.2.0` installations on `F1ADC1` and the `0.0.1`
+  installation on `F1DC1` stay (user). An installed-package pass of a `0.0.1`
+  fallback build is therefore still refused on `F1ADC1`; build acceptance
+  candidates with the GitVersion version.
+- The lab host deletes per-session TEMP directories at logoff, and the private
+  evidence of 2026-09-07 is no longer there. The 2026-10-07 evidence sits in
+  the profile's base TEMP directory.
 
 ## Release state
 
-- `v0.3.0-preview0001` shipped from `40e364a` on 2026-09-07: Build run
-  `34158650074` passed, and the GitHub release and PowerShell Gallery package
-  were published at 20:32 UTC. The earlier "release awaits authorization"
-  note was stale.
-- `v0.2.0` is the current stable release (2026-09-06).
-- The [reacceptance record](../docs/lab-reacceptance-2026-09-07.md) and the
-  [security review](../docs/security-review-2026-09-07.md) remain the evidence
-  for the shipped candidate.
+- `v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07 and is now
+  accepted in the domain lab, on the installed package as well.
+- `v0.2.0` remains the stable release (2026-09-06).
+- A stable release still needs explicit authorization to merge, tag, push,
+  or publish.
 
 ## Open work, in recommended order
 
-1. **Performance refactor, ported by handoff 03.** `ai/performance-refactor`
-   (five commits on `5991673`, 2026-09-10, never pushed) is now on
-   `ai/post-release-fixes` as `fbced95`, `d13a517`, and `b860448`, re-measured
-   against the current baseline. Live-lab and installed-package acceptance of
-   it never ran; handoff 07 owns them. The source branch stays at `5f06c03`
-   until handoff 08 deletes it with approval.
-2. **Repository-wide review findings (2026-09-10).** They were recorded only
-   on that branch. Rechecked by reading `main` on 2026-10-06, not by running
-   anything:
-   - Blocker (lab harness), fixed by handoff 01 on `ai/post-release-fixes`:
-     `tests/Lab/Invoke-WindowsAccessControlLabAcceptance.ps1` recursively
-     deleted `-RemoteRepositoryPath` (only `ValidateNotNullOrEmpty`) on the
-     domain controller and replaced any same-version module under
-     `%ProgramFiles%\WindowsPowerShell\Modules\WindowsAccessControl`. It now
-     refuses unmarked directories. The existing `C:\WacRepo` and the `0.0.1`
-     installation on `F1ADC1` predate the marker, so 07 must decide what to do
-     with them before its first run.
-   - Post-release follow-ups (user, 2026-10-06): the SMB, certificate
-     private-key, Task Scheduler, and foreign-principal suites recursively
-     delete `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server
-     without an ownership check; it is a fixed child of the harness's marked
-     member root. And `-SkipPayloadDeployment -ModuleSource Installed` with no
-     payload root creates an unmarked root that a later full deployment
-     refuses; it fails safe and can be removed by hand.
-   - Major, fixed by handoff 02: `Test-WindowsTaskSchedulerSystemAce`
-     refused a write that restores SYSTEM to a DACL without a SYSTEM ACE. A
-     missing or null current DACL is still refused.
-   - Major, fixed by handoff 02: `Set-WindowsSmbShareSecurityDescriptor`
-     restored the description captured at target resolution, overwriting a
-     concurrent edit.
-   - Major: the opt-in ModuleFast path in the vendored `Resolve-Dependency.ps1`
-     downloads and runs `bit.ly/modulefast` unverified. Disabled by default.
-   - Major (CNG final read) is FIND-001, resolved on `main` by `f5731f1`.
-   - Minor, fixed by handoff 02: `Get-ADObjectCallerEffectiveAccess` requested
-     `nTSecurityDescriptor` it never used, and a caller without read-control
-     access got a null-index error. Live evidence is owed by handoff 07.
-   - Follow-ups: the batch dispatcher `CommandName`/`ObjectFamily` guard is
-     tested since handoff 03, and handoff 04 corrected the README private-key
-     statement against specification 0015.
-3. **Dependabot pull requests #1-#3** are superseded by handoff 05, which
-   applied all three bumps on `ai/post-release-fixes` in one commit:
-   `actions/checkout` 7.0.1, `actions/upload-artifact` 7.0.1, and
-   `actions/download-artifact` 8.0.1, each pinned by the SHA its tag resolves
-   to. The seven changed lines are byte-identical to the three proposals.
-   Reading every release note from v4 to each target found no input that
-   changed meaning for this workflow; `download-artifact` v8 now fails a job
-   on a digest mismatch instead of warning, which is kept. Their red test jobs
-   were inherited anyway: all three branch from `4806726` (2026-08-15, 42
-   commits behind `main`), whose own push build failed the same four NTFS path
-   tests that `0502254` fixed the next morning. Handoff 08 closes #1-#3 with
-   approval, after the pull-request CI proves the bumps.
-4. **Issue #4** (2026-09-07) asks whether this module replaces NTFSSecurity.
-   Handoff 04 answered it in `docs/migration-from-ntfssecurity.md` and left
-   the reply as a draft in the handoff `reports` folder. Handoff 08 posts it
-   only with approval and only after the guide reaches `main`, because the
-   linked URL returns 404 until then; re-check the NTFSSecurity Gallery state
-   first. Observation for a later decision: `Remove-NTFSAccessRule` and
-   `Remove-NTFSAuditRule` in their default `Exact` mode remove nothing and
-   report nothing when no identical entry exists, which a migrated
-   NTFSSecurity call that subtracts rights hits. The guide documents it; no
-   behavior changed.
-5. **Changelog, closed by handoff 06.** `CHANGELOG.md` carries the 0.2.0
-   section, and the publish job now ends a release whose changelog pull
-   request is missing. Branch `updateChangelogAfterv0.2.0` (`38cdabd`) is
-   superseded and must not be merged; handoff 08 deletes it with approval.
-   Left for the user: confirm that the `GitHubToken` secret grants
-   pull-request write access, and download the step log of run `34058863590`
-   if the cause needs proof rather than the best-supported hypothesis.
-6. **FIND-002, closed by handoff 06**: both test files end with CRLF, and
-   `docs/security-review-2026-09-07.md` records the disposition.
-7. **Housekeeping**: remote `ai/test-gap-audit` is merged. The thirteen lab
-   VMs, their checkpoints, and the administrator `%TEMP%` evidence are not
-   visible from this session's account; confirm before keeping or removing
-   them.
-
+1. **Changelog pull request token.** `GitHubToken` is a fine-grained token,
+   and the user is granting it "Pull requests: Read and write". The Actions
+   setting "Allow GitHub Actions to create and approve pull requests" stays
+   off, because it governs only `GITHUB_TOKEN`, which the changelog step does
+   not use. The guard from handoff 06 fails the next stable release if the
+   pull request is still refused.
+2. **Lab-runner follow-ups** (user, 2026-10-06): the SMB, certificate
+   private-key, Task Scheduler, and foreign-principal suites delete
+   `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server without
+   an ownership check, and `-SkipPayloadDeployment -ModuleSource Installed`
+   with no payload root creates an unmarked root that a later full deployment
+   refuses.
+3. **Observation, 2026-10-07:** `Invoke-WindowsAccessControl` writes one
+   `$null` when its script block returns nothing, so `@()` around it counts
+   one item. Emitting nothing instead would be a behavior change and needs a
+   specification update first.
+4. **Observation, 2026-10-08:** a prototype that stopped a remote job blocked
+   on the share-write confirmation and then wrote again left the `WacLab$`
+   description empty with its DACL unchanged. Four controlled replays did not
+   reproduce it; the cause is not established.
+5. **Review finding, unscheduled:** the opt-in ModuleFast path in the vendored
+   `Resolve-Dependency.ps1` downloads and runs `bit.ly/modulefast` unverified;
+   it is disabled by default.
+6. **Observation:** `Remove-NTFSAccessRule` and `Remove-NTFSAuditRule` in their
+   default `Exact` mode remove nothing and report nothing when no identical
+   entry exists, which a migrated NTFSSecurity call that subtracts rights
+   hits. The migration guide documents it; a warning would be a behavior
+   change and needs a specification update first.
+7. **Watch:** CI has no lab coverage, so its Desktop asserted coverage stays
+   near the 80.95 percent of 2026-10-06 against the 80 percent threshold;
+   with lab evidence merged it is 90.53 percent (2026-10-08). GitHub moves
+   `ubuntu-latest`, which runs the publish job, to Ubuntu 26 from 2026-10-19.
 ## Limits
 
-Remote deletions, pull request comments, issue replies, pushes, and releases
-need explicit user authorization. The review findings above were confirmed by
-reading code, not by fault injection or live runs.
+Agents may not push or otherwise mutate the remote, even with approval; the
+user runs those commands. Pushes, merges, releases, remote deletions, and
+pull request or issue comments need explicit user authorization. The
+2026-09-10 review findings were confirmed by reading code, not by fault
+injection or live runs.

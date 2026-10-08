@@ -30,13 +30,14 @@ test-fixture repair found during that run. A later candidate needs fresh proof.
 - Do not use `-SkipPayloadDeployment` for this first run: the old lab payload
   does not contain the new tests or fixes.
 - Decide first what happens to directories that predate the runner's
-  ownership marker, because the runner refuses to replace them. The existing
-  `C:\WacRepo` payload on `F1ADC1` has no marker, and neither has the `0.0.1`
-  installation that the 2026-09-07 reacceptance restored there; a local build
-  without GitVersion has that same version. Either keep such a directory and
-  add a new, absent `RemoteRepositoryPath` to `$parameters` or install a
-  package with another version, or inspect it and remove it yourself. The
-  runner has no backup and restore. See
+  ownership marker, because the runner refuses to replace them. The unmarked
+  `C:\WacRepo` payload on `F1ADC1` was removed after the 2026-10-07
+  acceptance, so the default payload root works again. The unmarked `0.0.1`
+  and `0.2.0` installations there were kept; a local build without GitVersion
+  has that same `0.0.1` version. Either keep such a directory and add a new,
+  absent `RemoteRepositoryPath` to `$parameters` or install a package with
+  another version, or inspect it and remove it yourself. The runner has no
+  backup and restore. See
   [payload and module ownership](README.md#payload-and-module-ownership).
 
 Inspect the candidate locally:
@@ -146,16 +147,34 @@ because it instruments the built module, not the installed copy. It marks the
 module version directory it installs and refuses to replace an unmarked
 installation of the same version.
 
-The new live cases are:
+The most recently added live cases are:
 
-- `Should reject an escaped name outside the allowed OU without changing its
-  DACL` in [ADObjectPermissions.Live.Tests.ps1](ADObjectPermissions.Live.Tests.ps1).
-- `Should reject an old expected GUID after a distinguished name is reused` in
-  [ADObjectReplication.Live.Tests.ps1](ADObjectReplication.Live.Tests.ps1).
+- The `SMB share DACL command guards` block in
+  [SmbSharePermissions.Live.Tests.ps1](SmbSharePermissions.Live.Tests.ps1):
+  an SDDL without a DACL is refused, `-PassThru` returns the stored
+  descriptor, a rule copy that was not read from the share and a rule bound to
+  another server are refused, and a share DACL write without
+  `-Confirm:$false` asks for confirmation. The last case opens its own member
+  session from a runspace without a user interface, so the prompt fails in
+  every host instead of waiting for a person. It enables remote debugging on
+  that session, which such a session starts without, and then arms and
+  returns member coverage for it under the name
+  `SmbSharePermissions.Live.Tests.Confirmation.ps1`.
+- The `Active Directory rule enrichment failures` block and `Should report an
+  object deleted after target resolution as not found` in
+  [ADObjectPermissions.Live.Tests.ps1](ADObjectPermissions.Live.Tests.ps1).
+  No directory condition fails only the enrichment lookups, so a module-scope
+  Pester mock injects each failure after the real descriptor read. The
+  deletion case creates a disposable organizational unit and deletes it
+  inside the effective-access request, before the real request reaches the
+  controller.
 
-Both require unchanged DACL evidence and exact-identity cleanup. The existing
-replication suite still intentionally stops and restores the partner directory
-service; check that the partner answers LDAP after the suite.
+Every earlier case still runs, including the Task Scheduler repair of a DACL
+without Local System, the SMB description cases, and the escaped-name and
+reused-GUID regressions, which require unchanged DACL evidence and
+exact-identity cleanup. The existing replication suite still intentionally
+stops and restores the partner directory service; check that the partner
+answers LDAP after the suite.
 
 ## Evidence and stop conditions
 

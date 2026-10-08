@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-10-06
+last-verified: 2026-10-08
 owner: software-engineer
 source: implementation and test evidence
 ---
@@ -1036,3 +1036,119 @@ outcome in an `Exit-Build` block so a red suite still reports it. The trigger
 that fired on 2026-08-11 was never named; the engine's own cache drop above 1024
 entries reproduces it, but a real gate peaked at 528 entries. Removing the
 precondition closes every trigger at once, so do not spend the day naming one.
+
+## Lab-host evidence and completion checks can fail quietly
+
+The lab host deletes per-session TEMP directories at logoff:
+`DeleteTempDirsOnExit` and `PerSessionTempDir` are 1 under
+`HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server`, and `$env:TEMP` in a
+remote-desktop session is `...\Temp\<session id>`. The private evidence
+directories of 2026-09-07 were gone a month later. Keep acceptance evidence in
+the profile's base TEMP directory, `$env:LOCALAPPDATA\Temp`.
+
+On 2026-10-07 five agent-side checks reported a wrong result, for four
+reasons unrelated to the module:
+
+- InvokeBuild colors its summary line, so `^Build succeeded\.` misses the ANSI
+  prefix in a redirected log, and a run with warnings prints
+  `Build succeeded with warnings.` Judge a child build by its exit code, and
+  strip `\x1b\[[0-9;]*[A-Za-z]` before matching any text.
+- `Sort-Object` orders strings that contain hyphens and underscores
+  differently in Windows PowerShell 5.1 and PowerShell 7, so a joined, sorted
+  file list fingerprinted an identical tree differently on guest and host.
+  Sort with `[StringComparer]::Ordinal` on both sides, or compare sets.
+- `Get-ChildItem -Recurse -ErrorAction SilentlyContinue` silently skips a
+  directory whose DACL denies the administrator, so the tree reads as empty
+  and its size as zero. Old ACL probes left such directories in TEMP. List
+  with backup semantics, `robocopy <dir> <absent> /L /E /B`, before calling a
+  tree empty, and confirm a deletion with `Test-Path`, not with the absence of
+  an error message.
+- The same deny ACE made `Remove-Item` fail non-terminating inside a script
+  that then printed its success line. Report removal only after verifying it.
+
+## Live tests that reach a guard need the real trigger, measured first
+
+The 2026-10-07 follow-up gave four unit-only paths live cases. Each trigger
+had to be measured before it could be trusted:
+
+- Task Scheduler reapplies inherited ACEs. Removing the inherited Local System
+  ACEs from a subfolder or task changes nothing, so a DACL without Local
+  System must be protected, with the remaining ACEs made explicit.
+  `GenericAce.AceFlags` is byte-backed: `-bnot` yields a negative `Int32` that
+  Windows PowerShell 5.1 cannot cast back, so clear `INHERITED_ACE` with byte
+  arithmetic.
+- A DACL-only `SE_LMSHARE` write clears the share description in the same step
+  that publishes the DACL; a native recorder polling every 0.25 ms never saw
+  one without the other. `NetShareGetInfo` supports levels 0, 1, 2, 501, 502,
+  503, and 1005 only; level 1501 is for `NetShareSetInfo`.
+- A race watcher must fire on the exact change under test, such as the
+  grant's SID appearing in the descriptor, not on any byte difference, and it
+  must pace its polling. One tight, high-priority loop ran beside a share
+  write that stalled for a minute and then failed; paced polling at 1 ms won
+  every race in 40 stress writes. Give a race case retries and put the
+  per-attempt data in `-Because`, so a failure explains itself.
+- A guard behind two identical reads, such as the SMB setter's description
+  read after target resolution, cannot be reached by any live condition.
+  Shadow the command in the module's script scope, fail only the call whose
+  caller is the guard, assert the exact call sequence, and remove the shadow
+  only when `Get-Command` shows it is the module's own.
+- `-ErrorAction Stop` wraps the original error in an
+  `ActionPreferenceStopException` whose `ErrorRecord`, not `InnerException`,
+  holds it, so `GetBaseException()` stops at the wrapper.
+  `Invoke-WindowsAccessControl` writes one `$null` when its script block
+  returns nothing, so filter `$null` before counting its output.
+- Prove each new live case red against a build of the parent commit: a
+  detached `git worktree` plus a copied `output\RequiredModules` builds in
+  about 15 seconds. The `96d6671` build reproduced the accepted `f5731f1`
+  module hash, so builds are byte-reproducible across worktrees.
+
+## Remote prompts, coverage sessions, and error preferences in live suites
+
+The 2026-10-08 round gave a test to every unexecuted lab-only command. Its
+prototypes and one stopped pass established these facts:
+
+- A remote prompt is answered by the host of the runspace that opened the
+  PSSession, not the one that runs or receives the command: `Receive-Job` in a
+  runspace without a user interface still asked the opening console. Open the
+  session from a `[powershell]::Create()` runspace and every prompt fails with
+  a `HostException` that names the operation and the target.
+- Such a session starts with remote debugging off, so `Set-PSBreakpoint` in it
+  fails with "remote debugging is not supported by the current host", and no
+  coverage can be armed. `$session.Runspace.Debugger.SetDebugMode` with
+  `LocalScript, RemoteScript` enables it; a custom host whose `DebuggerEnabled`
+  is true does not. Focused runs without coverage cannot show this, so run one
+  focused Desktop pass with member coverage armed before a full pass.
+- `Invoke-Command -Session` runs its script block at the session's top level,
+  so `$ErrorActionPreference = 'Stop'` inside it persists.
+  `Enter-WindowsAccessControlMemberCoverage` leaked it into member sessions, in
+  the coverage pass only, until `a572d3d` ran the body as
+  `& { param(...) ... } $ModulePath ...`: the child scope ends the preference
+  with the call, and `$global:` assignments still persist. A unit test
+  reproduces a session's top level with
+  `[powershell]::Create().AddScript($ScriptBlock.ToString())` plus
+  `AddArgument`, because `AddScript` runs a script in the runspace's global
+  scope; the test failed with `Stop` before the change.
+- A `pwsh -File` script that sets `$ErrorActionPreference = 'Stop'` at its top
+  level sets the global value, which module functions inherit, so a module's
+  non-terminating `Write-Error` stops the caller. A case that asserts a
+  degraded, non-terminating report states `-ErrorAction Continue`.
+- Windows PowerShell 5.1 misparses `@{ A = if (...) { ... }` when another key
+  follows, because it looks ahead for `else`; wrap the value in `$()`. A remote
+  script block is parsed by the 5.1 endpoint even from PowerShell 7.
+- To call the original of a mocked module function from the mock body, capture
+  `& $module { ${function:Name} }` before `Mock` and invoke that script block;
+  a `-ParameterFilter` leaves every other call on the original.
+- Red proof against a guard: copy the built `.psm1`, apply exact replacements
+  anchored on function-specific text, because guard messages repeat across
+  object families, require exactly one match each, and parse the result in
+  Windows PowerShell 5.1 before staging it.
+- Sampler keeps only the first hyphen-separated part of a prerelease label, so
+  GitVersion's `0.3.0-record-post-rele0001` builds `0.3.0-record`.
+- AutomatedLab's `Remove-LabVMSnapshot` pipes the named checkpoint to
+  `Remove-VMSnapshot -IncludeAllChildSnapshots`, so it also deletes every
+  checkpoint below the named one in the VM's checkpoint tree, which in a
+  linear chain is every newer one. To keep a newer
+  checkpoint, remove the older one with Hyper-V's `Remove-VMSnapshot`, without
+  that switch, one checkpoint and one merge at a time. A checkpoint that
+  survives on only some domain controllers is unsafe to apply, because it
+  rewinds their directory against the rest of the forest.

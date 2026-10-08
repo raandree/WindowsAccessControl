@@ -284,6 +284,59 @@ Describe 'Active Directory object DACL commands' `
             -ExpectedMessage '*was not found*'
     }
 
+    It 'Should report an object deleted after target resolution as not found' {
+        $deleted = New-ADOrganizationalUnit `
+            -Name ('WacDeleted{0}' -f [guid]::NewGuid().ToString('N')) `
+            -Path $script:targetOu `
+            -Server $script:server `
+            -ProtectedFromAccidentalDeletion $false `
+            -PassThru `
+            -ErrorAction Stop
+        try {
+            # Nothing runs between target resolution and the effective-access
+            # read, so the deletion happens inside that read: the mock removes
+            # the object and then sends the real request to the controller.
+            $script:deletedObjectGuid = $deleted.ObjectGuid
+            $script:searchSeam = & $script:module { ${function:Send-WindowsADSearchRequest} }
+            Mock -ModuleName WindowsAccessControl -CommandName Send-WindowsADSearchRequest `
+                -ParameterFilter { @($Request.Attributes) -contains 'sDRightsEffective' } `
+                -MockWith {
+                    Remove-ADOrganizationalUnit `
+                        -Identity $script:deletedObjectGuid `
+                        -Server $script:server `
+                        -Confirm:$false `
+                        -ErrorAction Stop
+                    & $script:searchSeam -Connection $Connection -Request $Request
+                }
+
+            {
+                Get-ADObjectCallerEffectiveAccess `
+                    -Server $script:server `
+                    -DistinguishedName $deleted.DistinguishedName `
+                    -ThrottleLimit 1 `
+                    -ErrorAction Stop
+            } | Should -Throw -ExceptionType ([System.Management.Automation.ItemNotFoundException]) `
+                -ExpectedMessage ("Active Directory object was not found: '{0}'." -f $deleted.DistinguishedName)
+            Should -Invoke -CommandName Send-WindowsADSearchRequest -ModuleName WindowsAccessControl `
+                -ParameterFilter { @($Request.Attributes) -contains 'sDRightsEffective' } `
+                -Times 1 -Exactly
+        }
+        finally {
+            try {
+                Remove-ADOrganizationalUnit `
+                    -Identity $deleted.ObjectGuid `
+                    -Server $script:server `
+                    -Confirm:$false `
+                    -ErrorAction Stop
+            }
+            catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
+                # The case itself deleted the object.
+                $null = $_
+            }
+            Remove-Variable -Name deletedObjectGuid, searchSeam -Scope Script -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'Should reject configuration and schema partition reads' {
         foreach ($distinguishedName in @(
                 $script:configurationDn
@@ -878,5 +931,99 @@ Describe 'Active Directory object DACL commands' `
                 -Confirm:$false `
                 -ErrorAction SilentlyContinue
         }
+    }
+}
+
+# FR-19: a lookup that fails after the descriptor read degrades the rule report
+# instead of discarding the rules already read.
+Describe 'Active Directory rule enrichment failures' `
+    -Tag 'DomainLab', 'WindowsOnly', 'RequiresElevation' {
+    # The ancestor walk absorbs its own read failures, and an identity that
+    # cannot read the schema or configuration partition cannot read the rules
+    # either, so no directory condition fails only these lookups. A module-scope
+    # mock injects that one failure after the real descriptor read. The runner
+    # stops on every error, so the calls state the default Continue preference
+    # under which the degraded report is returned.
+    It 'Should report rules without an inheritance source when the source lookup fails' {
+        Mock -ModuleName WindowsAccessControl -CommandName Get-WindowsADObjectInheritanceSource -MockWith {
+            throw [UnauthorizedAccessException]::new(
+                'WindowsAccessControl lab injected failure: the inheritance sources could not be read.'
+            )
+        }
+
+        $stream = @(
+            Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeExplicit `
+                -ThrottleLimit 1 `
+                -ErrorAction Continue 2>&1
+        )
+        $failures = @($stream | Where-Object { $_ -is [Management.Automation.ErrorRecord] })
+        $rules = @($stream | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] })
+        $expectedMessage = (
+            "Cannot resolve inheritance sources for '{0}': " +
+            'WindowsAccessControl lab injected failure: the inheritance sources could not be read. ' +
+            'Access rules are reported without an inheritance source.'
+        ) -f $script:targetOu
+
+        Should -Invoke -CommandName Get-WindowsADObjectInheritanceSource `
+            -ModuleName WindowsAccessControl -Times 1 -Exactly
+        $failures | Should -HaveCount 1
+        $failures[0].Exception.Message | Should -BeExactly $expectedMessage
+        $failures[0].CategoryInfo.Category |
+            Should -Be ([Management.Automation.ErrorCategory]::ReadError)
+        $failures[0].TargetObject | Should -BeExactly $script:targetOu
+        $rules | Should -Not -BeNullOrEmpty
+        @($rules | Where-Object { -not $_.IsInherited }) | Should -BeNullOrEmpty
+        @($rules | Where-Object InheritedFrom) | Should -BeNullOrEmpty
+        # The schema-name lookup does not depend on the failed one.
+        $objectRules = @($rules | Where-Object { $_.ObjectTypeGuid -ne [guid]::Empty })
+        $objectRules | Should -Not -BeNullOrEmpty
+        @($objectRules | Where-Object { -not $_.ObjectTypeName }) | Should -BeNullOrEmpty
+    }
+
+    It 'Should report object GUIDs without names when the schema-name lookup fails' {
+        Mock -ModuleName WindowsAccessControl -CommandName Resolve-WindowsADSchemaGuidName -MockWith {
+            throw [UnauthorizedAccessException]::new(
+                'WindowsAccessControl lab injected failure: the schema names could not be read.'
+            )
+        }
+
+        $stream = @(
+            Get-ADObjectAccessRule `
+                -Server $script:server `
+                -DistinguishedName $script:targetOu `
+                -ExcludeExplicit `
+                -ThrottleLimit 1 `
+                -ErrorAction Continue 2>&1
+        )
+        $failures = @($stream | Where-Object { $_ -is [Management.Automation.ErrorRecord] })
+        $rules = @($stream | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] })
+        $expectedMessage = (
+            "Cannot resolve directory schema names for '{0}': " +
+            'WindowsAccessControl lab injected failure: the schema names could not be read. ' +
+            'Access rules are reported with object GUIDs only.'
+        ) -f $script:targetOu
+
+        Should -Invoke -CommandName Resolve-WindowsADSchemaGuidName `
+            -ModuleName WindowsAccessControl -Times 1 -Exactly
+        $failures | Should -HaveCount 1
+        $failures[0].Exception.Message | Should -BeExactly $expectedMessage
+        $failures[0].CategoryInfo.Category |
+            Should -Be ([Management.Automation.ErrorCategory]::ReadError)
+        $failures[0].TargetObject | Should -BeExactly $script:targetOu
+        $objectRules = @(
+            $rules | Where-Object {
+                $_.ObjectTypeGuid -ne [guid]::Empty -or
+                $_.InheritedObjectTypeGuid -ne [guid]::Empty
+            }
+        )
+        $objectRules | Should -Not -BeNullOrEmpty
+        @(
+            $objectRules | Where-Object { $_.ObjectTypeName -or $_.InheritedObjectTypeName }
+        ) | Should -BeNullOrEmpty
+        # The inheritance-source lookup does not depend on the failed one.
+        @($rules | Where-Object { -not $_.InheritedFrom }) | Should -BeNullOrEmpty
     }
 }

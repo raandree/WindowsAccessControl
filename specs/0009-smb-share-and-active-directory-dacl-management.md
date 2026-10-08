@@ -58,9 +58,11 @@ native write and afterwards restores it only when the write cleared it,
 reporting the restoration in the verbose stream. A description that changed to
 any other value reflects a concurrent edit: it is left in place, and a warning
 names the value from before the write. The window is narrowed, not eliminated:
-an edit that lands during the write and is then cleared by it is replaced with
-the value from before the write. A description that cannot be read before the
-write stops the command before anything is written. After a committed write, a
+an edit that lands after that read but before the native write is cleared by
+the write, and an edit that lands between the read-back and the restoration is
+overwritten by it, so either edit is replaced with the value from before the
+write. A description that cannot be read before the write stops the command
+before anything is written. After a committed write, a
 description that cannot be checked or restored is reported as a warning that
 names the earlier value, because a step after the write must not report
 failure for a change that is already live; a failed restoration after a failed
@@ -214,12 +216,27 @@ multi-controller behavior this contract left open, and closes open issue OI-18.
 - Unit tests cover target rejection, rights typing, object GUID preservation,
   signed/sealed connection construction, protected-target rejection,
   `WhatIf`, idempotent add, exact removal, distinguished-name parent parsing,
-  ancestor provenance matching, and pinned domain-controller discovery.
+  ancestor provenance matching, pinned domain-controller discovery, and the
+  RootDSE read through the directory search seam, which refuses a response
+  without exactly one entry.
 - Disposable live tests prove SMB DACL round trip and unrelated-ACE
-  preservation on the member server.
+  preservation on the member server. They also prove that a DACL-only native
+  `SE_LMSHARE` write clears the description, that the command restores it and
+  reports the restoration, that a description a native watcher edits as soon
+  as the write lands is kept with the warning, and that a description that
+  cannot be read before the write stops the command with nothing written.
+  Target resolution reads the share just before the setter does, so that last
+  failure is injected by shadowing `Get-SmbShare` inside the module. Further
+  cases prove that an SDDL without a DACL is refused, that `-PassThru` returns
+  the written descriptor, that a rule object not read from the share or bound
+  to another target is refused before anything is written, and that a write
+  that needs confirmation fails closed in a session that cannot prompt.
 - Disposable live tests prove AD DACL round trip, object-specific ACE
   preservation, delegated mutation, GUID revalidation, and rollback in the
-  test OU.
+  test OU. A failed inheritance-source or schema-name lookup degrades the rule
+  report with a non-terminating error instead of discarding the descriptor
+  read; no directory condition the lab identity can create fails only those
+  lookups, so the live case injects the failure with a Pester mock.
 - Disposable live tests prove that set replaces only the matching object scope,
   that rights removal subtracts without dropping a still-granted ACE, that an
   account purge leaves unrelated rules intact, that a clear which would make the

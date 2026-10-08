@@ -512,3 +512,67 @@ Describe 'WindowsAccessControl domain lab plan' -Tag 'Unit', 'WindowsOnly' {
         $outputPath | Should -Not -Exist
     }
 }
+
+Describe 'Enter-WindowsAccessControlMemberCoverage' -Tag 'Unit', 'WindowsOnly' {
+    BeforeEach {
+        $script:previousCoverageDirectory = $env:WAC_DOMAIN_LAB_COVERAGE
+    }
+
+    AfterEach {
+        if ($null -eq $script:previousCoverageDirectory) {
+            Remove-Item -Path 'Env:WAC_DOMAIN_LAB_COVERAGE' -ErrorAction SilentlyContinue
+        }
+        else {
+            $env:WAC_DOMAIN_LAB_COVERAGE = $script:previousCoverageDirectory
+        }
+    }
+
+    It 'Should arm the measured locations without changing the error preference of the member session' {
+        $modulePath = Join-Path -Path $TestDrive -ChildPath 'Measured.psm1'
+        Set-Content -LiteralPath $modulePath -Value @('function Get-Measured {', '    1', '}')
+        [ordered]@{
+            SchemaVersion = 1
+            ModuleHash = (Get-FileHash -LiteralPath $modulePath -Algorithm SHA256).Hash
+            Lines = @(2)
+            Columns = @(5)
+        } |
+            ConvertTo-Json |
+            Set-Content -LiteralPath (Join-Path -Path $TestDrive -ChildPath 'breakpoints.json')
+        $env:WAC_DOMAIN_LAB_COVERAGE = $TestDrive
+        $probe = @'
+[pscustomobject]@{
+    Preference = [string]$ErrorActionPreference
+    Armed = @($global:WindowsAccessControlCoverageBreakpoints).Count
+}
+'@
+        # A member session runs every script block it receives at its top
+        # level, so whatever the block assigns there outlives the call. A
+        # runspace that runs the same text through AddScript does the same.
+        $memberRunspace = [powershell]::Create()
+        try {
+            Mock -ModuleName 'WindowsAccessControl.DomainLab' Invoke-Command {
+                $null = $memberRunspace.AddScript($ScriptBlock.ToString())
+                foreach ($argument in $ArgumentList) {
+                    $null = $memberRunspace.AddArgument($argument)
+                }
+                $memberRunspace.Invoke()
+                if ($memberRunspace.HadErrors) {
+                    throw $memberRunspace.Streams.Error[0].Exception
+                }
+                $memberRunspace.Commands.Clear()
+            }
+
+            $armed = Enter-WindowsAccessControlMemberCoverage `
+                -Session (New-MockObject -Type ([System.Management.Automation.Runspaces.PSSession])) `
+                -ModulePath $modulePath
+            $state = @($memberRunspace.AddScript($probe).Invoke())[0]
+        }
+        finally {
+            $memberRunspace.Dispose()
+        }
+
+        $armed | Should -Be 1
+        $state.Armed | Should -Be 1
+        $state.Preference | Should -BeExactly 'Continue'
+    }
+}

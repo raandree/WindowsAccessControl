@@ -26,6 +26,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     a path longer than 260 characters needs PowerShell 7. The documentation
     index had pointed NTFSSecurity users at the `NTFSPermission` rename map,
     which never mentions NTFSSecurity
+- Add live domain-lab cases for two safeguards that only unit tests covered.
+    A Task Scheduler folder and task whose protected DACL has no Local System
+    ACE accept an unrelated ACE, still refuse a Local System deny, and can have
+    Local System restored. Around an SMB share DACL write, the description
+    that the native write clears is restored and reported, a concurrent edit is
+    kept with a warning, and a description that cannot be read before the
+    write stops the command before anything is written
+- Add live domain-lab cases for the SMB share and Active Directory paths that
+    no test executed. An SDDL without a DACL is refused, `-PassThru` returns
+    the stored descriptor, a rule copy that was not read from the share and a
+    rule bound to another server are refused before anything is removed, and a
+    share DACL write asks for confirmation and writes nothing when the caller
+    cannot answer. A failed inheritance-source or schema-name lookup leaves the
+    rules in the report with a non-terminating error, and an object deleted
+    after target resolution is reported as not found
 
 ### Changed
 
@@ -47,9 +62,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     entry, so the deny-removal warning raised before a directory write keeps
     its exact-match guarantee. Private-key DACL comparison keeps an ordered
     desired-state check separate from unordered post-write verification
+- Read the RootDSE and the caller's effective access through the same
+    directory search function as every other directory read, so unit tests
+    cover their response checks without a domain controller. An object deleted
+    between target resolution and the effective-access read of
+    `Get-ADObjectCallerEffectiveAccess` now fails with an
+    `ItemNotFoundException` naming it, like the family's other reads, instead
+    of a `MethodInvocationException` from the LDAP call
+    ([specification](specs/0018-active-directory-caller-effective-access.md#output-contract))
 
 ### Fixed
 
+- Stop the domain-lab coverage pass from changing how member-server suites
+    handle errors: arming coverage in a member session set
+    `$ErrorActionPreference` to `Stop` for the rest of that session, so the
+    SMB share, certificate private-key, Task Scheduler, and foreign-principal
+    suites stopped at a non-terminating error only in the pass that collects
+    coverage
+    ([verification and traceability](specs/0005-verification-and-traceability.md#code-coverage-measurement))
+- Describe both windows in which an SMB share DACL write can still lose a
+    concurrent description edit. The usage page and the specification named
+    only an edit that the native write clears; an edit that lands between the
+    write's read-back and its restoration is overwritten by that restoration
+    too, as the new live case observed
+    ([specification](specs/0009-smb-share-and-active-directory-dacl-management.md#smb-share-contract))
 - End a release that published without opening its changelog pull request.
     Sampler's `Create_ChangeLog_GitHub_PR` reports a refused pull request only
     as a line in the build log, so the v0.2.0 run pushed

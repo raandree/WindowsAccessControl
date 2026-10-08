@@ -1264,39 +1264,46 @@ function Enter-WindowsAccessControlMemberCoverage {
         -ScriptBlock {
             param($ModulePath, $Lines, $Columns, $ModuleHash)
 
-            $ErrorActionPreference = 'Stop'
-            $algorithm = [Security.Cryptography.SHA256]::Create()
-            try {
-                $stream = [IO.File]::OpenRead($ModulePath)
+            # The session runs this block at its top level, so a preference set
+            # here would outlast the call and make the rest of the suite stop on
+            # its first non-terminating error. The child scope keeps it here.
+            & {
+                param($ModulePath, $Lines, $Columns, $ModuleHash)
+
+                $ErrorActionPreference = 'Stop'
+                $algorithm = [Security.Cryptography.SHA256]::Create()
                 try {
-                    $actualHash = [BitConverter]::ToString(
-                        $algorithm.ComputeHash($stream)
-                    ).Replace('-', '')
+                    $stream = [IO.File]::OpenRead($ModulePath)
+                    try {
+                        $actualHash = [BitConverter]::ToString(
+                            $algorithm.ComputeHash($stream)
+                        ).Replace('-', '')
+                    }
+                    finally {
+                        $stream.Dispose()
+                    }
                 }
                 finally {
-                    $stream.Dispose()
+                    $algorithm.Dispose()
                 }
-            }
-            finally {
-                $algorithm.Dispose()
-            }
-            if ($actualHash -cne $ModuleHash) {
-                throw [InvalidOperationException]::new(
-                    'The member module under test does not match the measured module.'
-                )
-            }
+                if ($actualHash -cne $ModuleHash) {
+                    throw [InvalidOperationException]::new(
+                        'The member module under test does not match the measured module.'
+                    )
+                }
 
-            $action = { $null = Remove-PSBreakpoint -Id $_.Id }
-            $global:WindowsAccessControlCoverageBreakpoints = @(
-                for ($index = 0; $index -lt $Lines.Count; $index++) {
-                    Set-PSBreakpoint `
-                        -Script $ModulePath `
-                        -Line $Lines[$index] `
-                        -Column $Columns[$index] `
-                        -Action $action
-                }
-            )
-            @($global:WindowsAccessControlCoverageBreakpoints).Count
+                $action = { $null = Remove-PSBreakpoint -Id $_.Id }
+                $global:WindowsAccessControlCoverageBreakpoints = @(
+                    for ($index = 0; $index -lt $Lines.Count; $index++) {
+                        Set-PSBreakpoint `
+                            -Script $ModulePath `
+                            -Line $Lines[$index] `
+                            -Column $Columns[$index] `
+                            -Action $action
+                    }
+                )
+                @($global:WindowsAccessControlCoverageBreakpoints).Count
+            } $ModulePath $Lines $Columns $ModuleHash
         })
 }
 

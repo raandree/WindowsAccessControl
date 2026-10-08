@@ -534,6 +534,156 @@ Describe 'Active Directory access-control internals' -Tag 'Unit', 'WindowsOnly' 
         }
     }
 
+    It 'Should read the RootDSE through the search seam and refuse <Count> entries' -ForEach @(
+        @{ Count = 0 }
+        @{ Count = 2 }
+    ) {
+        InModuleScope WindowsAccessControl -Parameters @{ EntryCount = $Count } {
+            $script:testEntryCount = $EntryCount
+            Mock Send-WindowsADSearchRequest {
+                [pscustomobject]@{
+                    Entries = @(
+                        for ($index = 0; $index -lt $script:testEntryCount; $index++) {
+                            [pscustomobject]@{
+                                DistinguishedName = ''
+                                Attributes = @{
+                                    defaultNamingContext = @('DC=example,DC=test')
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+            $connection = [System.DirectoryServices.Protocols.LdapConnection]::new(
+                [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                    'dc01.example.test', 389, $true, $false
+                )
+            )
+            try {
+                { Get-WindowsADRootDse -Connection $connection } |
+                    Should -Throw -ExpectedMessage 'The selected domain controller did not return one RootDSE entry.'
+            }
+            finally {
+                $connection.Dispose()
+            }
+
+            Should -Invoke Send-WindowsADSearchRequest -Times 1 -Exactly -ParameterFilter {
+                $Request.DistinguishedName -eq '' -and
+                $Request.Scope -eq [System.DirectoryServices.Protocols.SearchScope]::Base
+            }
+        }
+    }
+
+    It 'Should report no root domain naming context when the RootDSE omits it' {
+        InModuleScope WindowsAccessControl {
+            Mock Send-WindowsADSearchRequest {
+                [pscustomobject]@{
+                    Entries = @(
+                        [pscustomobject]@{
+                            DistinguishedName = ''
+                            Attributes = @{
+                                defaultNamingContext = @('DC=example,DC=test')
+                                configurationNamingContext = @('CN=Configuration,DC=example,DC=test')
+                                schemaNamingContext = @('CN=Schema,CN=Configuration,DC=example,DC=test')
+                            }
+                        }
+                    )
+                }
+            }
+            $connection = [System.DirectoryServices.Protocols.LdapConnection]::new(
+                [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                    'dc01.example.test', 389, $true, $false
+                )
+            )
+            try {
+                $rootDse = Get-WindowsADRootDse -Connection $connection
+            }
+            finally {
+                $connection.Dispose()
+            }
+
+            $rootDse.DefaultNamingContext | Should -BeExactly 'DC=example,DC=test'
+            $rootDse.SchemaNamingContext |
+                Should -BeExactly 'CN=Schema,CN=Configuration,DC=example,DC=test'
+            $rootDse.RootDomainNamingContext | Should -BeNullOrEmpty
+        }
+    }
+
+    It 'Should read effective access through the search seam and refuse <Count> entries' -ForEach @(
+        @{ Count = 0 }
+        @{ Count = 2 }
+    ) {
+        InModuleScope WindowsAccessControl -Parameters @{ EntryCount = $Count } {
+            $script:testEntryCount = $EntryCount
+            Mock Send-WindowsADSearchRequest {
+                [pscustomobject]@{
+                    Entries = @(
+                        for ($index = 0; $index -lt $script:testEntryCount; $index++) {
+                            [pscustomobject]@{
+                                DistinguishedName = $Request.DistinguishedName
+                                Attributes = @{ sDRightsEffective = @('15') }
+                            }
+                        }
+                    )
+                }
+            }
+            $connection = [System.DirectoryServices.Protocols.LdapConnection]::new(
+                [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                    'dc01.example.test', 389, $true, $false
+                )
+            )
+            try {
+                {
+                    Get-WindowsADEffectiveAccessRecord `
+                        -Connection $connection `
+                        -DistinguishedName 'OU=Lab,DC=example,DC=test'
+                } | Should -Throw -ExpectedMessage "Active Directory object did not resolve uniquely: 'OU=Lab,DC=example,DC=test'."
+            }
+            finally {
+                $connection.Dispose()
+            }
+
+            Should -Invoke Send-WindowsADSearchRequest -Times 1 -Exactly -ParameterFilter {
+                $Request.DistinguishedName -eq 'OU=Lab,DC=example,DC=test' -and
+                @($Request.Attributes) -contains 'sDRightsEffective'
+            }
+        }
+    }
+
+    It 'Should report zero descriptor rights when the controller omits sDRightsEffective' {
+        InModuleScope WindowsAccessControl {
+            Mock Send-WindowsADSearchRequest {
+                [pscustomobject]@{
+                    Entries = @(
+                        [pscustomobject]@{
+                            DistinguishedName = $Request.DistinguishedName
+                            Attributes = @{
+                                allowedAttributesEffective = @('description', 'displayName')
+                            }
+                        }
+                    )
+                }
+            }
+            $connection = [System.DirectoryServices.Protocols.LdapConnection]::new(
+                [System.DirectoryServices.Protocols.LdapDirectoryIdentifier]::new(
+                    'dc01.example.test', 389, $true, $false
+                )
+            )
+            try {
+                $record = Get-WindowsADEffectiveAccessRecord `
+                    -Connection $connection `
+                    -DistinguishedName 'OU=Lab,DC=example,DC=test'
+            }
+            finally {
+                $connection.Dispose()
+            }
+
+            $record.SDRightsEffective | Should -Be 0
+            @($record.WritableAttribute) | Should -Be @('description', 'displayName')
+            @($record.CreatableChildClass) | Should -HaveCount 0
+        }
+    }
+
     It 'Should split a distinguished name at the first unescaped comma only' {
         & $script:module {
             Get-WindowsADParentDistinguishedName `
