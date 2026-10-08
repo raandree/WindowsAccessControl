@@ -48,10 +48,11 @@ commands the agent handed over, because the house rules block agent pushes.
 
 ## Lab state
 
-- All thirteen VMs run. Two checkpoints remain: `wac07-pre-livegaps-83cd16fa`
-  from the first follow-up and `wac07-pre-938bdff-098b3392` from 2026-10-08;
-  the user decides which to keep. The user had the 2026-09-07 checkpoints and
-  `wac07-pre-2ebb3a5-b4de5d73` removed.
+- All thirteen VMs run with one checkpoint, `wac07-after-bad1302-9d9776ca`,
+  taken after the 2026-10-08 acceptance. Removing `wac07-pre-livegaps-83cd16fa`
+  with `Remove-LabVMSnapshot` also deleted its child
+  `wac07-pre-938bdff-098b3392` on ten VMs, so the user had the new checkpoint
+  taken and the remaining old ones merged away with `Remove-VMSnapshot`.
 - The unmarked `C:\WacRepo` and `C:\WacLive` folders on `F1ADC1` were removed
   at the user's request after the run proved them unchanged, so the runner's
   default `-RemoteRepositoryPath` works again.

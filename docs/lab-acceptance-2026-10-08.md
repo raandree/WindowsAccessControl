@@ -250,9 +250,19 @@ the state the 2026-10-07 follow-up left.
 The prototypes of this round staged their module in their own `wac07`
 directories, removed afterwards, and restored the share after each run. The
 one described under Observations left the share's description empty; the
-marker was restored before any pass ran. All thirteen VMs keep running, and
-the lab holds two checkpoints: `wac07-pre-livegaps-83cd16fa` and
-`wac07-pre-938bdff-098b3392`.
+marker was restored before any pass ran.
+
+At the maintainer's request, checkpoint `wac07-pre-livegaps-83cd16fa` was then
+to be removed and `wac07-pre-938bdff-098b3392` kept. AutomatedLab's
+`Remove-LabVMSnapshot` removes a checkpoint together with its children, and
+the newer checkpoint was a child of the older one, so on ten VMs both were
+removed; on the other three neither was. With the maintainer's agreement, a
+new checkpoint, `wac07-after-bad1302-9d9776ca`, was taken on all thirteen
+VMs, and the old checkpoints on the three were removed one at a time with
+Hyper-V's own removal, which merges each into its child. All thirteen VMs keep
+running with that one checkpoint, and the protocol-level readiness checks
+passed after each step. The new checkpoint captures the lab after this round,
+not before it.
 
 ## Retention and remaining gates
 

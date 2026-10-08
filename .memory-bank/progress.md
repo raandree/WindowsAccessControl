@@ -30,7 +30,10 @@ the open work.
     local gates; domain-lab-only coverage is 100 percent
     (`docs/lab-acceptance-2026-10-08.md`). The first built pass of `938bdff`
     stopped because a session opened without a user interface cannot arm
-    coverage breakpoints until its remote debugging is enabled.
+    coverage breakpoints until its remote debugging is enabled. Removing the
+    older checkpoint afterwards with `Remove-LabVMSnapshot` also deleted the
+    newer one on ten VMs; the lab now holds one checkpoint,
+    `wac07-after-bad1302-9d9776ca`, taken after the acceptance.
 
 - 2026-10-07: A follow-up gave the four handoff 02 paths that only unit tests
     covered live cases: Task Scheduler repair of a protected DACL without

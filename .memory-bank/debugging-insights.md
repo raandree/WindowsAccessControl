@@ -1138,3 +1138,10 @@ prototypes and one stopped pass established these facts:
   Windows PowerShell 5.1 before staging it.
 - Sampler keeps only the first hyphen-separated part of a prerelease label, so
   GitVersion's `0.3.0-record-post-rele0001` builds `0.3.0-record`.
+- AutomatedLab's `Remove-LabVMSnapshot` pipes the named checkpoint to
+  `Remove-VMSnapshot -IncludeAllChildSnapshots`, so removing an older
+  checkpoint also deletes every newer one taken after it. To keep a newer
+  checkpoint, remove the older one with Hyper-V's `Remove-VMSnapshot`, without
+  that switch, one checkpoint and one merge at a time. A checkpoint that
+  survives on only some domain controllers is unsafe to apply, because it
+  rewinds their directory against the rest of the forest.
