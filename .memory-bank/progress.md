@@ -20,6 +20,16 @@ the open work.
 
 ## Recent milestones
 
+- 2026-10-08: `a572d3d` stops arming member coverage from leaving a member
+    session stopping on every error: `Invoke-Command -Session` runs a script
+    block at the session's top level, so the preference the harness set there
+    outlasted the call, and it now sets it in a child scope. A unit case
+    failed with `Stop` before the change, a live probe showed both behaviors
+    in each edition, and a built pass ran 109 of 109 in both editions with
+    line-identical lab coverage; the local gates passed with Core 1,938 and
+    Desktop 1,893 tests. The CopilotAtelier `automatedlab-deployment` Skill
+    gained the `Remove-LabVMSnapshot` warning on a local branch there.
+
 - 2026-10-08: Every command in the declared domain-lab-only files now has a
     test. `4096d02` routes the RootDSE and effective-access reads through
     `Send-WindowsADSearchRequest`, so six unit cases reach their four guards;
@@ -118,54 +128,15 @@ the open work.
     that, only its two WinRM-bound DSC-engine tests failed. One
     independent review approved; its Minor and three Nits were addressed.
 
-- 2026-10-06: Handoff 02 fixed three review defects test-first on
-    `ai/post-release-fixes`, one commit each. A Task Scheduler write may
-    repair a DACL without a Local System ACE; a missing or null current DACL
-    is still refused. An SMB DACL write reads the description just before
-    the native call, keeps concurrent edits, and warns instead of failing
-    after a committed write. `Get-ADObjectCallerEffectiveAccess` no longer
-    requests `nTSecurityDescriptor`; an absent descriptor elsewhere raises a
-    typed read-control error. The Core gate passes 1,905 tests with two
-    environmental skips at 83.2 percent asserted coverage. The Desktop gate
-    fails only the two WinRM-bound DSC-engine tests; its scoped coverage,
-    computed from its document, is 81.03 percent. One review approved with
-    minor findings, most fixed. No live lab run; 07 owns two new AD cases.
-
-- 2026-10-06: Handoff 01 made the domain-lab acceptance runner refuse to
-    delete what it did not create, test-first on `ai/post-release-fixes`. It
-    marks the payload root, `package`, and installed module version directory
-    it creates; replaces only absent or marked directories with no junction or
-    symbolic link inside; validates the payload root on the management
-    controller in every mode; and stops when a remote step does not confirm
-    its directory, because AutomatedLab does not stop on a remote throw. 79
-    lab-runner tests pass in Core 7.6.6 and Desktop 5.1; the full gate passes
-    1,873 tests with two environmental skips at 83.0 percent asserted coverage.
-    One independent review approved with Minor findings; seven fixed, three
-    recorded. No live lab run; handoff 07 owns it.
-
-- 2026-10-06: Wrote eight sequential handoff prompts for the triaged work,
-    outside the repository, with a ledger and per-prompt reports. They commit
-    to local `ai/post-release-fixes`; only the final prompt touches the
-    remote, with approval per action.
-
-- 2026-10-06: Triaged open work. Verified from git, the public GitHub API,
-    and the PowerShell Gallery that `v0.3.0-preview0001` shipped on
-    2026-09-07, so the pending-authorization note was stale. Found the
-    2026-09-10 performance refactor and repository-wide review only on a
-    deleted, never-pushed local branch; restored `ai/performance-refactor` at
-    `5f06c03` before reflog expiry. Rechecked its findings against `main`:
-    the lab-runner deletion, Task Scheduler SYSTEM refusal, SMB description
-    overwrite, and AD descriptor overfetch remain; its CNG Major is FIND-001.
-    Dependabot failures are inherited from their parent `4806726`, fixed on
-    `main` by `0502254`. No code change and no remote mutation.
-
-- 2026-09-03 to 2026-09-07: OI-31, the 105-command audit, the audit-gap
+- 2026-09-03 to 2026-10-06: OI-31, the 105-command audit, the audit-gap
     closure, the `6f7ba15` close-out, the `34026468199` wiki-publication hang
     (DscResource.DocGenerator#111), the `34021812398` completer fix, the
     `ai/access-rights-completion` review, the script-inventory audit, the
     wiki-publisher investigation that run `34055979655` closed, the
     `ai/test-gap-audit` handoff push, the 2026-09-07 lab checkpoints, review,
-    FIND-001 resolution, and `f5731f1` reacceptance are in
+    FIND-001 resolution, `f5731f1` reacceptance, the 2026-10-06 triage, the
+    eight handoff prompts, and handoffs 01 and 02 are in
+    `git show a572d3d:.memory-bank/progress.md`,
     `git show 2ebb3a5:.memory-bank/progress.md`,
     `git show 023afe9:.memory-bank/progress.md`,
     `git show 4461b90:.memory-bank/progress.md`,

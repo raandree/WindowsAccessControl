@@ -29,6 +29,22 @@ branch candidate `bad1302`, built as `0.3.0-record` with GitVersion 5.12.0:
   gates Core 1,937 at 91.26 percent and Desktop 1,892 at 90.53 percent
   asserted; domain-lab-only coverage 100 percent, 154 of 154.
 
+The user then had the harness defect of that round corrected and its
+AutomatedLab lesson moved into the shared Skill (2026-10-08):
+
+- `a572d3d` runs the remote body of `Enter-WindowsAccessControlMemberCoverage`
+  in a child scope, so arming coverage no longer leaves a member session
+  stopping on every error. A unit case failed with `Stop` before the change,
+  a live probe showed both behaviors, a built pass ran 109 of 109 in both
+  editions with line-identical lab coverage, and the local gates passed:
+  Core 1,938 and Desktop 1,893. The record's Harness correction section holds
+  the evidence.
+- The CopilotAtelier `automatedlab-deployment` Skill now warns, on a local
+  branch there, that `Remove-LabVMSnapshot` deletes the named checkpoint's
+  subtree, with a per-VM recipe that keeps newer checkpoints. Merging and
+  deploying it is the user's step; deploying rewrites the installed copy that
+  running sessions use.
+
 The [2026-10-07 record](../docs/lab-acceptance-2026-10-07.md) holds the
 acceptance of `2ebb3a5` as `0.3.0-preview0002` and the first follow-up. Every
 commit since `ce22f00` sits on the local branch
@@ -85,11 +101,7 @@ commands the agent handed over, because the house rules block agent pushes.
    `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server without
    an ownership check, and `-SkipPayloadDeployment -ModuleSource Installed`
    with no payload root creates an unmarked root that a later full deployment
-   refuses. Also (2026-10-08): `Enter-WindowsAccessControlMemberCoverage` sets
-   `$ErrorActionPreference = 'Stop'` in a script block that a session runs at
-   its top level, so member sessions stop on every error only in the Desktop
-   coverage pass. Scope it to a child scope; the new cases state `Continue`
-   meanwhile.
+   refuses.
 3. **Observation, 2026-10-07:** `Invoke-WindowsAccessControl` writes one
    `$null` when its script block returns nothing, so `@()` around it counts
    one item. Emitting nothing instead would be a behavior change and needs a

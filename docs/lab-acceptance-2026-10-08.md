@@ -14,6 +14,11 @@ the previous commit, `938bdff`, stopped on the new confirmation case; `bad1302`
 corrected the case, and every pass ran again. This record is not release
 approval, and the candidate is not pushed.
 
+A harness correction followed the same day. `a572d3d` stops arming member
+coverage from changing the error preference of the member session; its built
+pass and both local gates passed, as recorded under
+[Harness correction](#harness-correction). It is not pushed either.
+
 ## Candidate and environment
 
 - Commit: `bad130221f65b8064d8eba6d03c8325b4858ad18` with a clean worktree.
@@ -211,13 +216,14 @@ pinned copy of the package outside the build output.
   not show. The case now enables remote debugging on the session before
   arming coverage, and a focused Desktop run with member coverage armed proved
   that the confirmation's throttle line is recorded.
-- Arming member coverage leaves the member session stopping on every error:
-  `Enter-WindowsAccessControlMemberCoverage` sets `$ErrorActionPreference` to
+- Arming member coverage left the member session stopping on every error:
+  `Enter-WindowsAccessControlMemberCoverage` set `$ErrorActionPreference` to
   `Stop` in a script block that a session runs at its top level, so the value
-  persists. Member suites therefore stop on every error in the Desktop
-  coverage pass and continue in every other pass. The confirmation case
-  states `Continue`, like the enrichment cases; the harness defect is open
-  work.
+  persisted. Member suites therefore stopped on every error in the Desktop
+  coverage pass and continued in every other pass. `a572d3d` corrects the
+  harness, as recorded under [Harness correction](#harness-correction). The
+  confirmation case still states `Continue`, so it does not depend on the
+  preference of the session it runs in.
 - A runner started with `-File` that sets `$ErrorActionPreference = 'Stop'`
   at its top level sets the global preference, which module functions
   inherit. The degraded enrichment error then stops the command, as a caller
@@ -264,19 +270,90 @@ running with that one checkpoint, and the protocol-level readiness checks
 passed after each step. The new checkpoint captures the lab after this round,
 not before it.
 
+## Harness correction
+
+At the maintainer's request, the harness defect under Observations was then
+corrected test-first in `a572d3d`, on the same branch. The remote block of
+`Enter-WindowsAccessControlMemberCoverage` now runs its body in a child scope
+that receives the values as parameters, so the `Stop` preference it sets ends
+with the call, while the global list of armed breakpoints still outlives it.
+The module itself did not change.
+
+- A unit case runs the block at the top level of a separate runspace, as a
+  member session does, and asserts one armed location and an unchanged
+  `Continue` preference. It failed with `Stop` against the previous harness
+  in both editions and passes after the change. The lab unit folder passes
+  97 of 97 in each edition, PSScriptAnalyzer 1.25.0 reports nothing in the
+  three changed scripts, and the QA specification and suite-identity tests
+  pass.
+- A live probe opened a member session from `F1ADC1` to `F1AFile1` and armed
+  all 8,504 locations in each edition. With the previous harness the
+  session's preference was `Stop` afterwards, and a non-terminating error
+  ended the next call; with `a572d3d` it stayed `Continue`, and the call
+  reached its next statement. The probe's staging was removed.
+- GitVersion 5.12.0 computed the same `0.3.0-record-post-rele0001`, and a
+  detached `pack` built 22 tasks with zero errors and zero warnings. The root
+  module is byte-identical to the build of `bad1302`; the manifest differs
+  only in the new release note.
+
+| Artifact | SHA-256 |
+| --- | --- |
+| Root module, unchanged | `A9671FD086456978E4CE0CB5E01270B201C56FE7C1305BF7B77B9B9FB0E921CA` |
+| Module manifest | `CF62149AB6151C8E8F51C023E0AFCA2CC9D20CB38AEF2A6EFFE41E6D6CA5D1FD` |
+| Package, `WindowsAccessControl.0.3.0-record.nupkg`, 276,413 bytes | `89D45C0545A3EA9B2332C3469825191D828EE0C07797356F929B8E89B0B8B5A8` |
+| Lab coverage | `E67DAAC331BFF1B8E80E2975FFCD284A61BB976385E2B9A6F1C5785F5F33554C` |
+
+| Gate | Passed | Failed | Skipped | Cleanup or coverage | Completed UTC |
+| --- | ---: | ---: | ---: | --- | --- |
+| Built module, Desktop with coverage | 109 | 0 | 0 | Eight ready entries | 07:50:57 |
+| Built module, Core | 109 | 0 | 0 | Eight ready entries | 07:59:19 |
+| Local Core 7.6.6 | 1,938 | 0 | 2 | 91.26% asserted | 08:17:52 |
+| Local Desktop 5.1.26100.33438 | 1,893 | 0 | 2 | 90.53% asserted | 08:40:51 |
+
+The built pass used the payload root `C:\wac07-built5-a572d3d`. Its Desktop
+edition is the only edition of a pass that runs the corrected code, because
+member coverage is armed only where coverage is collected. The four member
+suites that arm it, certificate private key, Task Scheduler, SMB share, and
+foreign principal, passed there under the same error preference as in every
+other pass. The coverage document measures the same 3,885 of 8,504 commands,
+1,712 of them reached only in a member session, with the same missed and
+covered counts on each of its 7,687 lines; it differs from `E0203097…97CA`
+only in its two timestamps. The confirmation session again returned its hits
+under its own name. Both local gates imported that document, reported
+`Domain-lab evidence merged: yes`, and each gained exactly the new unit case
+over the `bad1302` gates; domain-lab-only coverage stays at 100 percent, 154
+of 154.
+
+Readiness was proven at the protocol level before and after the pass, as for
+`bad1302`. Before anything was removed, the guest evidence matched its host
+copies, the fixtures and the directory baseline were ready, and both
+installations on `F1ADC1` matched their state before the pass in root-module
+hash, file count, write time, and ACL. The runner's marker then decided what
+was removed: the payload root and its two console logs. After cleanup, the
+inventory of every module path shows no difference in any path, length,
+hash, or security descriptor from the state after this round's earlier
+cleanup, and all thirteen VMs keep running with the one checkpoint
+`wac07-after-bad1302-9d9776ca`.
+
+The installed-package pass and the DSC-engine gate were not repeated, as an
+agent decision for the maintainer's review: the installed pass collects no
+coverage, so the corrected code does not run in it, and the DSC gate does
+not load the lab harness, while the module bytes both test are unchanged. No
+new checkpoint was taken, because the pass left the fixtures, the baseline,
+and every module path as they were before it.
+
 ## Retention and remaining gates
 
 Private evidence is retained under administrator `%TEMP%` in
 `wac07-livegaps-83cd16fa7a4645cf95066e8e92330c0f`, in the profile's base TEMP
-directory. It holds the pinned candidate files of `938bdff` and `bad1302`, the
-GitVersion download and its outputs, the readiness inspections, inventories,
-checkpoint identity, native exit markers, raw console logs, per-pass reports,
-the coverage document, the focused green and red results, the changed module
-the red runs used and the script that made it, the prototypes and their
-evidence, and the local test results. Raw evidence is not sanitized for
-publication.
+directory. It holds the pinned candidate files of `938bdff`, `bad1302`, and
+`a572d3d`, the GitVersion download and its outputs, the readiness
+inspections, inventories, checkpoint identity, native exit markers, raw
+console logs, per-pass reports, the coverage documents, the focused green and
+red results, the changed module the red runs used and the script that made
+it, the prototypes and harness probes with their evidence, and the local test
+results. Raw evidence is not sanitized for publication.
 
-All requested acceptance gates for this candidate are closed. The harness
-defect under Observations, which leaves member sessions stopping on every
-error in the coverage pass, is open work. A stable release still requires
-explicit authorization to merge, tag, push, or publish.
+All requested acceptance gates for `bad1302` and for the harness correction
+`a572d3d` are closed. A stable release still requires explicit authorization
+to merge, tag, push, or publish.

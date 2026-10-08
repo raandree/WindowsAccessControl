@@ -39,7 +39,9 @@ Directory reads reach LDAP only through `Send-WindowsADSearchRequest`, the seam
 unit tests replace. A live guard that no lab identity can reach is injected
 with a module-scope mock after the real read, and a prompt test opens its own
 session from a runspace without a user interface, with remote debugging on so
-coverage can be armed there.
+coverage can be armed there. A script block sent to a persistent session runs
+at its top level, so harness code that sets a preference there sets it in a
+child scope.
 Process wrappers must drain redirected output while a child runs; waiting for
 exit before reading can deadlock on a large Git commit summary. Treat a publish
 workflow as non-atomic and inspect every external destination before rerunning

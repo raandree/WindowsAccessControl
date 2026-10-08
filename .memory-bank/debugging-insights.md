@@ -1120,8 +1120,14 @@ prototypes and one stopped pass established these facts:
   focused Desktop pass with member coverage armed before a full pass.
 - `Invoke-Command -Session` runs its script block at the session's top level,
   so `$ErrorActionPreference = 'Stop'` inside it persists.
-  `Enter-WindowsAccessControlMemberCoverage` leaks it into member sessions, in
-  the coverage pass only.
+  `Enter-WindowsAccessControlMemberCoverage` leaked it into member sessions, in
+  the coverage pass only, until `a572d3d` ran the body as
+  `& { param(...) ... } $ModulePath ...`: the child scope ends the preference
+  with the call, and `$global:` assignments still persist. A unit test
+  reproduces a session's top level with
+  `[powershell]::Create().AddScript($ScriptBlock.ToString())` plus
+  `AddArgument`, because `AddScript` runs a script in the runspace's global
+  scope; the test failed with `Stop` before the change.
 - A `pwsh -File` script that sets `$ErrorActionPreference = 'Stop'` at its top
   level sets the global value, which module functions inherit, so a module's
   non-terminating `Write-Error` stops the caller. A case that asserts a
@@ -1139,8 +1145,9 @@ prototypes and one stopped pass established these facts:
 - Sampler keeps only the first hyphen-separated part of a prerelease label, so
   GitVersion's `0.3.0-record-post-rele0001` builds `0.3.0-record`.
 - AutomatedLab's `Remove-LabVMSnapshot` pipes the named checkpoint to
-  `Remove-VMSnapshot -IncludeAllChildSnapshots`, so removing an older
-  checkpoint also deletes every newer one taken after it. To keep a newer
+  `Remove-VMSnapshot -IncludeAllChildSnapshots`, so it also deletes every
+  checkpoint below the named one in the VM's checkpoint tree, which in a
+  linear chain is every newer one. To keep a newer
   checkpoint, remove the older one with Hyper-V's `Remove-VMSnapshot`, without
   that switch, one checkpoint and one merge at a time. A checkpoint that
   survives on only some domain controllers is unsafe to apply, because it
