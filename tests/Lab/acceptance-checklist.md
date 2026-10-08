@@ -156,8 +156,9 @@ The most recently added live cases are:
   another server are refused, and a share DACL write without
   `-Confirm:$false` asks for confirmation. The last case opens its own member
   session from a runspace without a user interface, so the prompt fails in
-  every host instead of waiting for a person, and it arms and returns member
-  coverage for that session under the name
+  every host instead of waiting for a person. It enables remote debugging on
+  that session, which such a session starts without, and then arms and
+  returns member coverage for it under the name
   `SmbSharePermissions.Live.Tests.Confirmation.ps1`.
 - The `Active Directory rule enrichment failures` block and `Should report an
   object deleted after target resolution as not found` in

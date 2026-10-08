@@ -1154,7 +1154,8 @@ Describe 'SMB share DACL command guards' -Tag 'DomainLab', 'WindowsOnly', 'Requi
         # A remote prompt goes to the host of the runspace that opened the
         # session, so a session opened from a runspace without a user interface
         # answers it with an error in every host, and this case never waits on
-        # a person. Coverage is armed in that session too.
+        # a person. Such a session also starts with remote debugging off, which
+        # the coverage breakpoints armed in it need.
         $opener = [powershell]::Create()
         $promptless = $null
         $coverageArmed = $false
@@ -1164,6 +1165,9 @@ Describe 'SMB share DACL command guards' -Tag 'DomainLab', 'WindowsOnly', 'Requi
                 AddParameter('Authentication', 'Kerberos').
                 AddParameter('ErrorAction', 'Stop')
             $promptless = @($opener.Invoke())[0]
+            $promptless.Runspace.Debugger.SetDebugMode(
+                [System.Management.Automation.DebugModes]'LocalScript, RemoteScript'
+            )
             Invoke-Command `
                 -Session $promptless `
                 -ArgumentList $script:remoteManifest `
@@ -1184,10 +1188,14 @@ Describe 'SMB share DACL command guards' -Tag 'DomainLab', 'WindowsOnly', 'Requi
 
                     $sddlBefore = (Get-SmbShareSecurityDescriptor -Name $ShareName).Sddl
                     $descriptionBefore = (Get-SmbShare -Name $ShareName -ErrorAction Stop).Description
+                    # Arming member coverage leaves the session stopping on
+                    # every error, so the call states the default Continue
+                    # preference under which the refusal is reported.
                     $stream = @(
                         Set-SmbShareSecurityDescriptor `
                             -Name $ShareName `
-                            -Sddl ($sddlBefore + "(A;;0x1200a9;;;$TestSid)") 2>&1
+                            -Sddl ($sddlBefore + "(A;;0x1200a9;;;$TestSid)") `
+                            -ErrorAction Continue 2>&1
                     )
                     $failures = @($stream | Where-Object { $_ -is [Management.Automation.ErrorRecord] })
                     [pscustomobject]@{
