@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-10-07
+last-verified: 2026-10-08
 owner: software-engineer
 source: implementation and test evidence
 ---
@@ -1101,3 +1101,40 @@ had to be measured before it could be trusted:
   detached `git worktree` plus a copied `output\RequiredModules` builds in
   about 15 seconds. The `96d6671` build reproduced the accepted `f5731f1`
   module hash, so builds are byte-reproducible across worktrees.
+
+## Remote prompts, coverage sessions, and error preferences in live suites
+
+The 2026-10-08 round gave a test to every unexecuted lab-only command. Its
+prototypes and one stopped pass established these facts:
+
+- A remote prompt is answered by the host of the runspace that opened the
+  PSSession, not the one that runs or receives the command: `Receive-Job` in a
+  runspace without a user interface still asked the opening console. Open the
+  session from a `[powershell]::Create()` runspace and every prompt fails with
+  a `HostException` that names the operation and the target.
+- Such a session starts with remote debugging off, so `Set-PSBreakpoint` in it
+  fails with "remote debugging is not supported by the current host", and no
+  coverage can be armed. `$session.Runspace.Debugger.SetDebugMode` with
+  `LocalScript, RemoteScript` enables it; a custom host whose `DebuggerEnabled`
+  is true does not. Focused runs without coverage cannot show this, so run one
+  focused Desktop pass with member coverage armed before a full pass.
+- `Invoke-Command -Session` runs its script block at the session's top level,
+  so `$ErrorActionPreference = 'Stop'` inside it persists.
+  `Enter-WindowsAccessControlMemberCoverage` leaks it into member sessions, in
+  the coverage pass only.
+- A `pwsh -File` script that sets `$ErrorActionPreference = 'Stop'` at its top
+  level sets the global value, which module functions inherit, so a module's
+  non-terminating `Write-Error` stops the caller. A case that asserts a
+  degraded, non-terminating report states `-ErrorAction Continue`.
+- Windows PowerShell 5.1 misparses `@{ A = if (...) { ... }` when another key
+  follows, because it looks ahead for `else`; wrap the value in `$()`. A remote
+  script block is parsed by the 5.1 endpoint even from PowerShell 7.
+- To call the original of a mocked module function from the mock body, capture
+  `& $module { ${function:Name} }` before `Mock` and invoke that script block;
+  a `-ParameterFilter` leaves every other call on the original.
+- Red proof against a guard: copy the built `.psm1`, apply exact replacements
+  anchored on function-specific text, because guard messages repeat across
+  object families, require exactly one match each, and parse the result in
+  Windows PowerShell 5.1 before staging it.
+- Sampler keeps only the first hyphen-separated part of a prerelease label, so
+  GitVersion's `0.3.0-record-post-rele0001` builds `0.3.0-record`.

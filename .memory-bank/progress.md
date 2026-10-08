@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-10-07
+last-verified: 2026-10-08
 owner: software-engineer
 source: repository and domain-lab evidence
 ---
@@ -19,6 +19,18 @@ guard, and FIND-002. All eight handoffs are done. `activeContext.md` holds
 the open work.
 
 ## Recent milestones
+
+- 2026-10-08: Every command in the declared domain-lab-only files now has a
+    test. `4096d02` routes the RootDSE and effective-access reads through
+    `Send-WindowsADSearchRequest`, so six unit cases reach their four guards;
+    `938bdff` and `bad1302` add eight live cases for the SMB share guards, the
+    confirmation prompt, the enrichment catches, and a deletion inside the
+    effective-access read. Each was red against a build with its guard
+    removed. `bad1302` passed the DSC gate, four passes of 109 cases, and both
+    local gates; domain-lab-only coverage is 100 percent
+    (`docs/lab-acceptance-2026-10-08.md`). The first built pass of `938bdff`
+    stopped because a session opened without a user interface cannot arm
+    coverage breakpoints until its remote debugging is enabled.
 
 - 2026-10-07: A follow-up gave the four handoff 02 paths that only unit tests
     covered live cases: Task Scheduler repair of a protected DACL without

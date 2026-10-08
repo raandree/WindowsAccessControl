@@ -258,3 +258,8 @@ still requires explicit authorization to merge, tag, push, or publish. Broader
 native fault injection, interrupted rollback, cancellation, soak tests,
 unusual-ACE persistence, and untested topology profiles remain documented
 limits.
+
+The [2026-10-08 acceptance](lab-acceptance-2026-10-08.md) tested a later
+candidate on the same branch, which routes two directory reads through the
+shared search function and gives a test to every command that no lab or unit
+case executed.

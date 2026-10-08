@@ -1,6 +1,6 @@
 ---
 status: current
-last-verified: 2026-10-07
+last-verified: 2026-10-08
 owner: software-engineer
 source: repository, GitHub API, PowerShell Gallery, and domain-lab evidence
 ---
@@ -9,32 +9,33 @@ source: repository, GitHub API, PowerShell Gallery, and domain-lab evidence
 
 ## Current task
 
-The 2026-10-06 handoff sequence is complete. Handoff 07 ran on the Hyper-V
-host that holds `WindowsAccessControlLab` on 2026-10-07 and accepted `main`
-at `2ebb3a5`, built release-equivalent as `0.3.0-preview0002` with GitVersion
-5.12.0. Its 25 module files are byte-identical to the package on the
-PowerShell Gallery. Four full lab passes, built and installed in Desktop and
-Core, each passed 97 cases with eight ready cleanup entries; the isolated
-Desktop DSC-engine gate passed 5 of 5; and both local gates passed with the
-fresh lab coverage merged: Core 1,931 passed at 91.22 percent asserted,
-Desktop 1,886 at 90.49 percent, two environment skips each. The runner's two
-ownership refusals were proven against run-owned decoys, and a byte and ACL
-inventory proves the restoration. The
-[acceptance record](../docs/lab-acceptance-2026-10-07.md) holds the evidence.
+Handoff 07 and its follow-ups are done. Asked on 2026-10-07 whether every live
+test was done, the user chose to give a test to each of the 17 commands in the
+declared domain-lab-only files that nothing executed, including a source change
+to make four of them unit-testable. The
+[2026-10-08 acceptance](../docs/lab-acceptance-2026-10-08.md) accepted the
+branch candidate `bad1302`, built as `0.3.0-record` with GitVersion 5.12.0:
 
-A follow-up the same day, at the user's request, gave the four handoff 02
-paths that only unit tests covered their own live cases: the Task Scheduler
-repair of a protected DACL without Local System, and the SMB description that
-the native write clears, edits concurrently, or cannot read. Each case failed
-for its expected reason against builds of `96d6671` and `5531824` and passed
-against the candidate. All four passes were repeated with 101 cases each, and
-both local gates passed again with the new lab coverage `B3EE4313…6FD6`.
+- `4096d02` routes `Get-WindowsADRootDse` and
+  `Get-WindowsADEffectiveAccessRecord` through `Send-WindowsADSearchRequest`,
+  so six unit cases reach their four guards. A deleted object during
+  `Get-ADObjectCallerEffectiveAccess` now reports `ItemNotFoundException`
+  (changelog `Changed`).
+- `938bdff` and `bad1302` add eight live cases: five SMB share guards with the
+  confirmation prompt, two injected enrichment failures, and a deletion inside
+  the effective-access read. Each was red against a build with its guard
+  removed.
+- DSC 5 of 5; four passes of 109 cases with eight ready cleanup entries; local
+  gates Core 1,937 at 91.26 percent and Desktop 1,892 at 90.53 percent
+  asserted; domain-lab-only coverage 100 percent, 154 of 154.
 
-The acceptance record, the follow-up test commit, and the two earlier Memory
-Bank commits sit on the local branch `ai/record-post-release-publication` and
-are not pushed, because any push to `main` publishes another preview. The
-branch travels back to the development machine as a bundle in the handoff
-folder, so these commits reach `main` together (user, 2026-10-07).
+The [2026-10-07 record](../docs/lab-acceptance-2026-10-07.md) holds the
+acceptance of `2ebb3a5` as `0.3.0-preview0002` and the first follow-up. Every
+commit since `ce22f00` sits on the local branch
+`ai/record-post-release-publication` and is not pushed, because any push to
+`main` publishes another preview. The branch returns to the development machine
+as a bundle in the handoff folder, so these commits reach `main` together
+(user, 2026-10-07).
 
 ## Handoff sequence
 
@@ -47,8 +48,9 @@ commands the agent handed over, because the house rules block agent pushes.
 
 ## Lab state
 
-- All thirteen VMs run. Only checkpoint `wac07-pre-livegaps-83cd16fa`, taken
-  before the follow-up, remains; the user had the 2026-09-07 checkpoints and
+- All thirteen VMs run. Two checkpoints remain: `wac07-pre-livegaps-83cd16fa`
+  from the first follow-up and `wac07-pre-938bdff-098b3392` from 2026-10-08;
+  the user decides which to keep. The user had the 2026-09-07 checkpoints and
   `wac07-pre-2ebb3a5-b4de5d73` removed.
 - The unmarked `C:\WacRepo` and `C:\WacLive` folders on `F1ADC1` were removed
   at the user's request after the run proved them unchanged, so the runner's
@@ -82,22 +84,30 @@ commands the agent handed over, because the house rules block agent pushes.
    `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server without
    an ownership check, and `-SkipPayloadDeployment -ModuleSource Installed`
    with no payload root creates an unmarked root that a later full deployment
-   refuses.
+   refuses. Also (2026-10-08): `Enter-WindowsAccessControlMemberCoverage` sets
+   `$ErrorActionPreference = 'Stop'` in a script block that a session runs at
+   its top level, so member sessions stop on every error only in the Desktop
+   coverage pass. Scope it to a child scope; the new cases state `Continue`
+   meanwhile.
 3. **Observation, 2026-10-07:** `Invoke-WindowsAccessControl` writes one
    `$null` when its script block returns nothing, so `@()` around it counts
    one item. Emitting nothing instead would be a behavior change and needs a
    specification update first.
-4. **Review finding, unscheduled:** the opt-in ModuleFast path in the vendored
+4. **Observation, 2026-10-08:** a prototype that stopped a remote job blocked
+   on the share-write confirmation and then wrote again left the `WacLab$`
+   description empty with its DACL unchanged. Four controlled replays did not
+   reproduce it; the cause is not established.
+5. **Review finding, unscheduled:** the opt-in ModuleFast path in the vendored
    `Resolve-Dependency.ps1` downloads and runs `bit.ly/modulefast` unverified;
    it is disabled by default.
-5. **Observation:** `Remove-NTFSAccessRule` and `Remove-NTFSAuditRule` in their
+6. **Observation:** `Remove-NTFSAccessRule` and `Remove-NTFSAuditRule` in their
    default `Exact` mode remove nothing and report nothing when no identical
    entry exists, which a migrated NTFSSecurity call that subtracts rights
    hits. The migration guide documents it; a warning would be a behavior
    change and needs a specification update first.
-6. **Watch:** CI has no lab coverage, so its Desktop asserted coverage stays
+7. **Watch:** CI has no lab coverage, so its Desktop asserted coverage stays
    near the 80.95 percent of 2026-10-06 against the 80 percent threshold;
-   with lab evidence merged it is 90.49 percent. GitHub moves
+   with lab evidence merged it is 90.53 percent (2026-10-08). GitHub moves
    `ubuntu-latest`, which runs the publish job, to Ubuntu 26 from 2026-10-19.
 ## Limits
 
