@@ -31,8 +31,9 @@ done. `activeContext.md` holds the open work.
     the manifest's prerelease label and release-notes heading. The handoff 06
     guard passed on its first run, because Sampler opened the changelog pull
     request #7, so `GitHubToken` has the pull-request permission the v0.2.0
-    release lacked. A throwaway-clone simulation had predicted the version,
-    the selected tag, and the released changelog section beforehand.
+    release lacked; the user merged it as `8cc42a1` without starting a build.
+    A throwaway-clone simulation had predicted the version, the selected tag,
+    and the released changelog section beforehand.
 
 - 2026-10-08: Published `v0.3.0-preview0003` from `323928b`, the merge commit
     of pull request #6, which carried `ai/record-post-release-publication`

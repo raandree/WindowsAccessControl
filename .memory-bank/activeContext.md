@@ -18,9 +18,12 @@ label and release-notes heading, so its root module is still the one the
 domain lab accepted. The handoff 06 guard ran for the first time and passed:
 Sampler opened the changelog pull request #7 from
 `updateChangelogAfterv0.3.0`, which adds the `## [0.3.0] - 2026-10-08`
-heading to `CHANGELOG.md`. Merging #7, after its CI, is the user's last step;
-the merge starts no build, because the push ignores a change to only
-`CHANGELOG.md`.
+heading to `CHANGELOG.md`. The user merged #7 as `8cc42a1` and deleted its
+branch; as designed, the merge started no build, because the push ignores a
+change to only `CHANGELOG.md`. This record lives on the local branch
+`ai/record-preview0003-publication`, not on `main`, because any other push
+to `main` publishes a preview; bring it to `main` with the next change that
+carries a changelog entry.
 
 Handoff 09 is done. Pull request #6 merged
 `ai/record-post-release-publication` into `main` as the merge commit `323928b`
