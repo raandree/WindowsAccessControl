@@ -9,11 +9,12 @@ source: repository and domain-lab evidence
 
 ## Current status
 
-`v0.3.0-preview0003` shipped from `323928b` on 2026-10-08: pull request #6
-brought the domain-lab acceptance of `v0.3.0-preview0002`, a test for every
-command in the declared domain-lab-only files, the RootDSE and
-effective-access seam change, and the lab harness correction to `main`.
-`v0.2.0` remains the stable release. Pull request #5 carried the
+`v0.3.0` is the stable release, shipped from `323928b` on 2026-10-08 after
+`v0.3.0-preview0003` from the same commit: pull request #6 brought the
+domain-lab acceptance of `v0.3.0-preview0002`, a test for every command in
+the declared domain-lab-only files, the RootDSE and effective-access seam
+change, and the lab harness correction to `main`. `v0.2.0` was the previous
+stable release. Pull request #5 carried the
 post-release work that a 2026-10-06 triage split into eight handoffs: the
 lab-runner Blocker, the Task Scheduler, SMB, and AD review defects, the
 performance refactor, the NTFSSecurity migration guide, the Node 24 action
@@ -22,6 +23,16 @@ FIND-002; handoff 09 published the lab acceptance. All nine handoffs are
 done. `activeContext.md` holds the open work.
 
 ## Recent milestones
+
+- 2026-10-08: Published the stable release `v0.3.0` from `323928b`, with the
+    user's authorization: the user pushed the tag, and run `37773125964`
+    published the GitHub release, marked Latest, the Gallery's stable `0.3.0`,
+    and the wiki. The stable package differs from `0.3.0-preview0003` only in
+    the manifest's prerelease label and release-notes heading. The handoff 06
+    guard passed on its first run, because Sampler opened the changelog pull
+    request #7, so `GitHubToken` has the pull-request permission the v0.2.0
+    release lacked. A throwaway-clone simulation had predicted the version,
+    the selected tag, and the released changelog section beforehand.
 
 - 2026-10-08: Published `v0.3.0-preview0003` from `323928b`, the merge commit
     of pull request #6, which carried `ai/record-post-release-publication`

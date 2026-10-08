@@ -9,15 +9,18 @@ source: repository, GitHub API, PowerShell Gallery, and domain-lab evidence
 
 ## Current task
 
-Next, at the user's request on 2026-10-08: the stable release `v0.3.0`. The
-user pushes a `v0.3.0` tag on `323928b`, the commit `v0.3.0-preview0003` came
-from, and merges the changelog pull request `updateChangelogAfterv0.3.0` that
-the tag's run opens; the agent verifies each step read-only. A simulation in a
-throwaway clone gave `0.3.0` from GitVersion 5.12.0 on the tagged commit,
-Sampler's changelog step selected `v0.3.0` over `v0.3.0-preview0003`, and
-`Update-Changelog` released all 21 `[Unreleased]` entries. That step reads the
-tags on `origin/main`'s head, so nothing may merge into `main` until the run
-ends.
+The stable release `v0.3.0` shipped on 2026-10-08, at the user's request.
+The user pushed the tag `v0.3.0` on `323928b`, the commit `v0.3.0-preview0003`
+came from, and its run `37773125964` published the GitHub release, marked
+Latest, the PowerShell Gallery's stable `0.3.0`, and the wiki. The stable
+package differs from `0.3.0-preview0003` only in the manifest's prerelease
+label and release-notes heading, so its root module is still the one the
+domain lab accepted. The handoff 06 guard ran for the first time and passed:
+Sampler opened the changelog pull request #7 from
+`updateChangelogAfterv0.3.0`, which adds the `## [0.3.0] - 2026-10-08`
+heading to `CHANGELOG.md`. Merging #7, after its CI, is the user's last step;
+the merge starts no build, because the push ignores a change to only
+`CHANGELOG.md`.
 
 Handoff 09 is done. Pull request #6 merged
 `ai/record-post-release-publication` into `main` as the merge commit `323928b`
@@ -85,51 +88,48 @@ pushes.
 
 ## Release state
 
+- `v0.3.0` is the stable release, shipped from `323928b` on 2026-10-08 with
+  the user's authorization. The unexplained `WacLab$` description loss of
+  open work item 3 did not block it (user).
 - `v0.3.0-preview0003` shipped from `323928b` on 2026-10-08. Its root module
   is byte-identical to the one the domain lab accepted on 2026-10-08
   (`A9671FD0…21CA`), and the Gallery and GitHub packages carry the same 25
   module files.
 - `v0.3.0-preview0002` shipped from `2ebb3a5` on 2026-10-07 and is accepted
   in the domain lab, on the installed package as well.
-- `v0.2.0` remains the stable release (2026-09-06).
-- The user authorized the stable release `v0.3.0` from `323928b` on
-  2026-10-08. Any later stable release still needs explicit authorization to
-  tag, push, or publish.
+- `v0.2.0` was the previous stable release (2026-09-06).
+- Any later stable release needs explicit authorization to tag, push, or
+  publish. Sampler's changelog step reads the tags on `origin/main`'s head
+  and pushes its branch with `GitHubToken`, so tag `main`'s newest commit,
+  merge nothing until the run ends, and keep the token's "Contents" and
+  "Pull requests" permissions at "Read and write".
 
 ## Open work, in recommended order
 
-1. **Changelog pull request token.** `GitHubToken` is a fine-grained token,
-   and the user is granting it "Pull requests: Read and write". The Actions
-   setting "Allow GitHub Actions to create and approve pull requests" stays
-   off, because it governs only `GITHUB_TOKEN`, which the changelog step does
-   not use. The guard from handoff 06 fails the next stable release if the
-   pull request is still refused. The `v0.3.0` release is the first run that
-   exercises it; Sampler pushes the changelog branch with this token too, so
-   it also needs "Contents: Read and write".
-2. **Lab-runner follow-ups** (user, 2026-10-06): the SMB, certificate
+1. **Lab-runner follow-ups** (user, 2026-10-06): the SMB, certificate
    private-key, Task Scheduler, and foreign-principal suites delete
    `C:\WindowsAccessControlLab\ModuleUnderTest` on the member server without
    an ownership check, and `-SkipPayloadDeployment -ModuleSource Installed`
    with no payload root creates an unmarked root that a later full deployment
    refuses.
-3. **Observation, 2026-10-07:** `Invoke-WindowsAccessControl` writes one
+2. **Observation, 2026-10-07:** `Invoke-WindowsAccessControl` writes one
    `$null` when its script block returns nothing, so `@()` around it counts
    one item. Emitting nothing instead would be a behavior change and needs a
    specification update first.
-4. **Observation, 2026-10-08:** a prototype that stopped a remote job blocked
+3. **Observation, 2026-10-08:** a prototype that stopped a remote job blocked
    on the share-write confirmation and then wrote again left the `WacLab$`
    description empty with its DACL unchanged. Four controlled replays did not
-   reproduce it; the cause is not established. It does not block the stable
+   reproduce it; the cause is not established. It did not block the stable
    release `v0.3.0` (user, 2026-10-08).
-5. **Review finding, unscheduled:** the opt-in ModuleFast path in the vendored
+4. **Review finding, unscheduled:** the opt-in ModuleFast path in the vendored
    `Resolve-Dependency.ps1` downloads and runs `bit.ly/modulefast` unverified;
    it is disabled by default.
-6. **Observation:** `Remove-NTFSAccessRule` and `Remove-NTFSAuditRule` in their
+5. **Observation:** `Remove-NTFSAccessRule` and `Remove-NTFSAuditRule` in their
    default `Exact` mode remove nothing and report nothing when no identical
    entry exists, which a migrated NTFSSecurity call that subtracts rights
    hits. The migration guide documents it; a warning would be a behavior
    change and needs a specification update first.
-7. **Watch:** CI has no lab coverage, so its Desktop asserted coverage stays
+6. **Watch:** CI has no lab coverage, so its Desktop asserted coverage stays
    at 80.95 percent against the 80 percent threshold, again on 2026-10-08;
    with lab evidence merged it is 90.53 percent. GitHub moves
    `ubuntu-latest`, which runs the publish job, to Ubuntu 26 from 2026-10-19.
